@@ -1,0 +1,106 @@
+# __METADATA__BEGIN__
+# <?xml version="1.0" encoding="utf-8" ?>
+# <meta>
+# <description>description</description>
+# <prerequisites>prerequisites</prerequisites>
+# <parameters>
+# </parameters>
+# </meta>
+# __METADATA__END__
+##
+# Sample script, demonstrating (and basically testing)
+# the remote.ssh probe.
+#
+# To run this test, you should run a pyagent with name 'localhost'
+# (or change the probe URI in test adapter configurations).
+# for instance, using ./pyagent.sh --name localhost
+#
+# Additionally, you need to provide a valid login/password for the
+# ssh probe (still in test adapter configuration).
+#
+# You may also create your own test adapter configuration, of course.
+# 
+# These will become ATS parameters once they are implemented.
+##
+
+#TestermanTCI.enableDebugLogs()
+
+"""
+SSH templates: 
+
+type union SshCommand
+{
+	charstring execute,
+	anytype    cancel
+}
+
+type record SshResponse
+{
+	integer status,
+	charstring output
+}
+
+type charstring ErrorResponse;
+
+type port SshPortType message
+{
+	in  SshCommand;
+	out SshResponse, ErrorResponse;
+}
+"""
+
+class TESTCASE_SSH(TestCase):
+	"""
+	Description: TODO
+	"""
+	def body(self, port = 2905):
+		def command_template(cmd = '/bin/ls /bin/tar'):
+			return ('execute', cmd)
+		
+		def cancel_template():
+			return ('cancel', any())
+		
+		def response_template(output):
+			return { 'status': 0, 'output': output }
+
+		ssh = self.mtc['ssh']
+		port_map(ssh, self.system['ssh-target'])
+
+		# We have 5s to complete the testcase
+		t = Timer(5.0, name = "Global watchdog")
+		t.start()
+		
+		ssh.send(command_template(cmd = '/bin/ls /bin/tar'))
+
+		# we should get a response
+		alt(
+		[
+			[ ssh.RECEIVE(response_template('/bin/tar\r\n')),
+				lambda: self.setverdict("pass"),
+			],
+			[ ssh.RECEIVE(),
+				lambda: self.log("Received something else than expected"),
+				lambda: self.setverdict("fail"),
+			],
+			[ t.TIMEOUT, 
+				lambda: self.setverdict("fail"),
+				lambda: stop()
+			],
+		]
+		)
+
+
+##
+# Test Adapter Configurations
+##
+
+conf = TestAdapterConfiguration('default')
+conf.bindByUri('ssh-target', 'probe:ssh@localhost', 'ssh', host = "localhost", username = "username", password = "password")
+
+
+##
+# Control definition
+##
+useTestAdapterConfiguration('default')
+
+TESTCASE_SSH().execute()

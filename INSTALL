@@ -1,0 +1,67 @@
+Requirements
+============
+
+1. Server-side:
+- Linux (some non-portable code will present the server from running
+  on other systems for now: Tools.kill*()) (untested under other OSes for now)
+- Python 2.4+ (tested with 2.5)
+- libxml2-python (debian:python-libxml2 and dependencies)
+
+2. Client-side (QTesterman):
+- Python 2.4+ (tested with 2.5.2)
+- Qt 4.4.1+ with PyQt bindings (debian:python-qt4 and dependencies)
+- QScintilla2 for python (debian:python-qscintilla2 and dependencies)
+- Only tested under Linux/Ubuntu 8.10 for now, should work
+  on any Python systems, including Windows
+
+3. For development
+- requirements above
+- pyrcc4 (included in debian:pyqt4-dev-tools)
+
+
+Testerman first run for the impatient
+=====================================
+
+1. Set up a repository:
+   in any directory (rw for the user you'll use to start the Testerman Server),
+   create:
+    repository/
+    archives/
+
+2. Copy some samples to this repository:
+    copy samples/*.ats to repository/samples/*.ats
+
+3. Start the Testerman Agent Controller Server (TACS):
+    from the source root: ./tacs.sh
+
+4. Start the Testerman Server
+    from the source root: ./ts.sh -r <rep>
+    where <rep> is the repository you set up
+
+5. Start an agent (not mandatory, but required for
+   samples execution):
+    from the source root: ./pyagent.sh --name localhost
+
+6. Start the QTesterman client:
+    cd qtesterman; python ./Main.py
+
+7. Enter http://localhost:8080 as the server URL,
+   use anything you wish as username (for instance 'guest')
+
+8. Browse the "remote repository" to access the samples/
+   and open "testerman.ats".
+   Run it. All tests should be OK.
+   Play with other samples on will.
+   Give feedbacks :-)
+
+
+Summary/sample:
+mkdir -p ~/testerman/{repository/samples,archives}
+cp samples/*.ats ~/testerman/repository/samples/
+./tacs.sh # use -d to daemonize if you prefer
+./ts.sh # use -d to daemonize if you prefer
+./pyagent.sh --name localhost # err.. -d not implemented yet
+cd qtesterman ; python ./Main.py
+
+
+

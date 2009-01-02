@@ -1,0 +1,135 @@
+# __METADATA__BEGIN__
+# <?xml version="1.0" encoding="utf-8" ?>
+# <meta>
+# <description>description</description>
+# <prerequisites>prerequisites</prerequisites>
+# <parameters>
+# </parameters>
+# </meta>
+# __METADATA__END__
+##
+# Sample script, demonstrating (and basically testing)
+# the local.rtsp.client probe.
+#
+# Note: this test connects to an RTSP server available to all
+# Free (a national ISP) subscribers, in France.
+# The test will fail if you don't have such an internet subscription.
+#
+# If you are aware of a public RTSP server somewhere, feel free
+# to update the testcase (and the test adapter configuration).
+##
+
+# TestermanTCI.enableDebugLogs()
+
+"""
+	type record RtspRequest
+	{
+		charstring method,
+		charstring uri,
+		charstring version optional, // default: 'RTSP/1.0', or as configured via codec aliasing
+		record { charstring <header name>* } headers,
+		charstring body optional, // default: ''
+	}
+
+	type record RtspResponse
+	{
+		integer status,
+		charstring reason,
+		charstring protocol,
+		record { charstring <header name>* } headers,
+		charstring body,
+	}
+
+	type portRtspClientPortType
+	{
+		in RtspRequest;
+		out RtspResponse;
+	}
+
+	Also use the SDP codec, encoding/decoding from/to:
+	type record Media
+	{
+		charstring name_transport, // m=
+		charstring title optional, // i=
+		charstring connection optional, // c=
+		list of charstring bandwidths, // b=
+		charstring key optional, // k =
+		list of charstring attributes, // a=
+	}
+	
+	type recode Sdp
+	{
+		// Session parameters
+		charstring version optional, // v= - set to the default if missing
+		charstring originator, // and session ; o=
+		charstring name optional, // s= - use the default if missing
+		charstring information optional, // i=
+		charstring description_uri optional, // u=
+		charstring email_address optional, // e=
+		charstring phone_number optional, // p=
+		charstring connection optional, // c=
+		list of charstring bandwidths, // b=
+		charstring key optional, // k=
+		list of charstring attibutes, // a=
+		charstring time optional, // t=
+		list of charstring repeats, // r=
+		// Media descriptions
+		list of Media media,
+	}
+	
+
+"""
+class TESTCASE_RTSP_CLIENT(TestCase):
+	"""
+	Sends a DESCRIBE request to a known server,
+	and expect a valid 200 OK response with some SDP describing at least one video media.
+	"""
+	def body(self, uri = "/"):
+		port = self.mtc['port']
+		port_map(port, self.system['rtsp'])
+
+		# We have 5s to complete the testcase
+		t = Timer(5.0, name = "Global watchdog")
+		t.start()
+		
+		port.send({ 'method': 'DESCRIBE', 'uri': 'rtsp://mafreebox.freebox.fr/fbxtv_pub/stream?namespace=1&service=201&flavour=sd', 
+			'headers': {'accept': 'application/sdp'} })
+		
+		# we should get a response - we expect a 200 OK with some SDP in it, with at least one video media stream.
+		
+		response = { 'status': 200, 'headers': {'content-type': 'application/sdp'}, 
+			'body': with_('sdp', { 'media': [ { 'name_transport': regexp('^video .*') }]})
+			}
+		
+		alt([
+			[ port.RECEIVE(response),
+				lambda: self.setverdict("pass"),
+			],
+			[ port.RECEIVE(),
+				lambda: self.log("Received something else than expected"),
+				lambda: self.setverdict("fail"),
+			],
+			[ t.TIMEOUT, 
+				lambda: self.setverdict("fail"),
+				lambda: stop()
+			],
+		])
+			
+
+
+##
+# Test Adapter Configurations
+##
+
+conf = TestAdapterConfiguration('free')
+# For the curious: transport = 'udp' is not yet implemented
+# The default port is 554. You may overwrite it here with a port = 80 or whatever
+conf.bindByUri('rtsp', 'probe:rtsp01', 'rtsp.client', host = 'mafreebox.freebox.fr', version = 'RTSP/1.0', transport = 'tcp')
+
+
+##
+# Control definition
+##
+
+useTestAdapterConfiguration('free')
+TESTCASE_RTSP_CLIENT().execute()

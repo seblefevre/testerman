@@ -1,0 +1,86 @@
+
+Core features / non-TTCN3:
+==========================
+
+- testerman nodes:
+ability to install a 'testerman container' on any machine that connects to a controller
+(as an agent connects to the TACS) that will be available to execute PTCs on demand.
+Enables PTC distribution on multiple machines, both for feature testing (PTC simulating
+endpoints behind a NAT gateway, etc) and performance (scalability, simulating endpoints
+from N IP addresses, etc).
+This is the TTCN-3/Test System Executor CH (Component Handler) part.
+
+- support for codec aliases: (PENDING)
+ability to configure codec properties, and set an alias to reference such a configured codec.
+For instance, an XML codec instance may have a "encode-headers" properties,
+other may have default behaviour (http version in a http.* codec used for encoding), etc.
+Could be useful to switch codec implementations easily, too.
+For instance, "map" may refer "map.phase2", "map.phase1", etc.
+
+- code cleanup around local/remote probes.
+Basically, this model with two kinds of probe is confusing.
+Initially, I planned to implement only remote probes:
+ benefits:
+ - language agnostic,
+ - flexible - we can deploy probes where needed to simulate NAT entities, etc.
+ drawbacks:
+ - require a pre-deployed agent
+ - slower than local ones
+ - difficult to manage when we are able to distribute PTCs over multiple testerman nodes (i.e. not yet)
+   for performance testing: typically, a PTC on a machine M should use the probe on the same machine,
+   and avoid the TACS that could be a bottleneck.
+But in most cases, we need to implement an additional local stub to transform data structs
+that won't serialize over Xa easily (at least with JSON encoding - pickle would be OK, but limited
+to python remote implementations) or to manage test adapters parameters (i.e. providing
+a stateful instance of the test adapter from the TE point of view).
+
+So it could be possible to imagine that all probes are local only, but:
+ - we are then stuck to Python for the implementation (not good)
+ - even when we have testerman nodes (and thus distribuable local probes over the network, enabling
+   simulating entities behind NAT once again), we won't be able to have a PTC controlling 2 probes
+   on different machines (for instance a SIP GW simulator controlling RTP probes on a machine and a 
+   signaling SIP port on another one)
+A possibility could be the implementation of affinity policies and local optimizations so that
+a TE node can detect and use the probes on the same machine without going through the TACS.
+Embedded TACS in a TE node ? "TACS" routing ? 
+
+
+- campaign management
+
+- preamble/postamble formalism, to avoid the use of testcases for that purpose.
+
+Core features / TTCN3:
+======================
+
+- default alternatives (i.e. activate/deactivate TTCN3 statements)
+
+Codecs:
+=======
+
+- XML codec
+- BER codec, with plugin support to support things like TCAP, MAP, INAP
+- SIP codec
+- SDP codec
+- RTSP codec
+
+Probes:
+=======
+
+- HTTP probe (local ? really based on urllib or httplib so that transfer-encoding, redirect, etc are correctly managed)
+- RTSP probe
+- SUA probe (remote)
+- M3UA probe (remote)
+- LDAP probe (local ?)
+- SQL probe (mysql, posgresql, oracle, informix) (remote)
+- file watcher probe (remote)
+- directory watcher probe (remote)
+- SIP probe (remote, waiting for testerman nodes; then local, based on codec ?)
+- RTP probe (remote, waiting for testerman nodes; then local ?)
+
+QTesterman:
+===========
+
+- modify the visual viewer so that it (mostly) matches TTCN-3 graphical representations
+- implement encoded message views in the log viewer
+
+

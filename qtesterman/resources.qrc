@@ -1,0 +1,82 @@
+<!DOCTYPE RCC><RCC version="1.0">
+<qresource prefix="icons">
+<!-- generate Resources.py file with:
+pyrcc4 resources.qrc -o Resources.py
+-->
+	<!-- main application icons -->
+	<file alias="testerman.png">resources/semn.png</file>
+	
+	<!-- browsers -->
+	<file alias="browser.png">resources/view-sidetree.png</file>
+	<file alias="ats.png">resources/application-x-m4.png</file>
+	<file alias="campaign.png">resources/folder-yellow.png</file>
+	<file alias="folder.png">resources/folder.png</file>
+	<file alias="log.png">resources/text-x-log.png</file>
+	<file alias="execution-log.png">resources/go-next-page.png</file>
+	<file alias="module.png">resources/text-x-python.png</file>
+	<file alias="archive.png">resources/application-x-archive.png</file>
+	<file alias="folder-archive.png">resources/folder-tar.png</file>
+	<file alias="unknown.png">resources/x-office-document.png</file>
+	<file alias="folder-virtual.png">resources/view-process-all.png</file>
+	<file alias="revision.png">resources/document-open-recent.png</file>
+	
+	<!-- addons -->
+	<file alias="multiple-files.png">resources/document-multiple.png</file>
+
+	<!-- dialog -->
+	<file alias="cancel.png">resources/dialog-cancel.png</file>
+	<file alias="critical.png">resources/process-stop.png</file>
+	<file alias="info.png">resources/dialog-information.png</file>
+	<file alias="warning.png">resources/dialog-warning.png</file>
+
+	<!-- standard actions -->
+	<file alias="configure.png">resources/configure.png</file>
+	<file alias="exit.png">resources/application-exit.png</file>
+	<file alias="file-new.png">resources/document-new.png</file>
+	<file alias="file-save-as.png">resources/document-save-as.png</file>
+	<file alias="file-save.png">resources/document-save.png</file>
+	<file alias="file-open.png">resources/document-open.png</file>
+	<file alias="file-close.png">resources/tab-close.png</file>
+	<file alias="add.png">resources/list-add.png</file>
+	<file alias="remove.png">resources/list-remove.png</file>
+	<file alias="list.png">resources/format-list-unordered.png</file>
+	<file alias="new-window.png">resources/window-new.png</file>
+	<file alias="windows.png">resources/window-duplicate.png</file>
+	<!-- specific actions -->
+	<file alias="save-to-repository.png">resources/go-top.png</file>
+	<file alias="campaign-new.png">resources/folder-yellow.png</file>
+	<file alias="module-new.png">resources/text-x-python.png</file>
+	<file alias="check.png">resources/tools-check-spelling.png</file>
+	<file alias="run.png">resources/media-playback-start.png</file>
+
+	<!-- tab management -->
+	<file alias="tab-close.png">resources/tab-close.png</file>
+	<file alias="tab-new.png">resources/tab-new.png</file>
+
+	<!-- job management -->
+	<file alias="job-manager.png">resources/view-process-all-tree.png</file>
+	<file alias="job-queue.png">resources/view-process-all-tree.png</file>
+	<file alias="pause.png">resources/user-away.png</file>
+	<file alias="pause-running.png">resources/user-away-extended.png</file>
+	<file alias="job-error.png">resources/dialog-close.png</file>
+	<file alias="job-waiting.png">resources/preferences-system-time.png</file>
+	<file alias="job-success.png">resources/dialog-ok.png</file>
+	<file alias="job-warning.png">resources/dialog-warning.png</file>
+	<file alias="job-running.png">resources/media-playback-start.png</file>
+	<file alias="job-paused.png">resources/media-playback-pause.png</file>
+	<file alias="job-campaign.png">resources/folder-yellow.png</file>
+	
+	<!-- probe management -->
+	<file alias="probe-unlocked.png">resources/user-online.png</file>
+	<file alias="probe-locked.png">resources/user-busy.png</file>
+	<file alias="probe-manager.png">resources/view-process-all.png</file>
+	<file alias="agent.png">resources/user-offline.png</file>
+
+</qresource>
+
+<qresource prefix="images">
+	<file alias="splash.png">resources/splash.png</file>
+	<file alias="splash-banner.png">resources/splash-banner.png</file>
+</qresource>
+
+</RCC>

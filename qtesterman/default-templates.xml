@@ -1,0 +1,53 @@
+﻿<?xml version="1.0" encoding="utf-8" ?>
+<templates>
+	<template name="New testcase" description="Create a new testcase, with epydoc structure" shortcut="testcase">class TESTCASE_<param name="Testcase name" description="Name of the testcase" mandatory="1" />(TestCase):
+	"""
+	Description: <param name="Testcase description" description="Description of the testcase" mandatory="0" />
+	Prerequisites: <param name="Testcase prerequisites" description="Prerequisites of the testcase" mandatory="0" />
+	Purposes: <param name="Testcase purposes" description="Purposes of the testcase" mandatory="0" />
+	"""
+	def body(self, vars):
+		"""
+		<param name="Testcase body description" description="Description of the testcase body" mandatory="0" />
+		"""
+		self.setverdict('pass')</template>
+
+	<template name="Separator" shortcut="sep">#################################################################</template>
+	
+	<template name="Timer" description="Timer instanciation and start" shortcut="timer"><param name="Timer name" description="Name of the timer" mandatory="1" default="t" /> = Timer(<param name="Timer duration" description="Duration of the timer" mandatory="1" />, "<param name="Timer description" description="Description of the timer" mandatory="0" />")
+<param name="Timer name" />.start()</template>
+
+	<template name="Alt" description="Alt structure" shortcut="alt"><param name="TC name" description="Name of the TC" mandatory="1" default="self" />.alt([
+	[ 
+	],
+	[ 
+		lambda: self.setverdict("fail"),
+	]
+])</template>
+
+	<template name="Epydoc file header" description="Documente the file" shortcut="epyheader">"""
+<param name="File content name" description="Name of the content" mandatory="0" />
+Description:
+  <param name="File description" description="Description of the file" mandatory="0" />
+Date:
+  <param name="Date" description="Date of the file" mandatory="0" />
+Author:
+  <param name="Author" description="Author of the file" mandatory="0" />
+"""</template>
+
+<template name="Epydoc variable documentation" description="Document a variable" shortcut="epyvar">"""
+@var: <param name="Variable name" description="Name of the variable" mandatory="0" />
+@type: <param name="Variable type" description="Type of the variable" mandatory="0" />
+"""</template>
+
+<template name="Epydoc function/method" description="Document a function/method" shortcut="epyfunc">"""
+<param name="Description" description="Description of the function/method" mandatory="1" />
+
+@author: <param name="Author" description="Author of the function/method" mandatory="0" />
+@contact: U{<param name="Author" />&lt;mailto:<param name="Author email" description="Author email address" mandatory="0" />&gt;}
+"""</template>
+
+<template name="Epydoc function/method parameters" description="Document a set of param/type for function/method" shortcut="epyparam">@param <param name="Parameter name" description="Name of the parameter" mandatory="1" />: <param name="Parameter description" description="Description of the parameter" mandatory="0" />
+@type <param name="Parameter name" />: <param name="Parameter Type" description="Type of the parameter" mandatory="0" /></template>
+
+</templates>

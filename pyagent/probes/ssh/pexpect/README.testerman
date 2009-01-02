@@ -1,0 +1,11 @@
+This module is from Noah Spurrier's pexpect library 2.3.
+
+Please see LICENSE and README files for credits.
+
+However, the 'examples' directory has not been included,
+and minor modifications were applied to match testerman's needs,
+rendering the module not as general purpose as the original 
+one was.
+As a consequence, you should not reuse this library if you need pexpect,
+but download the original one from http://pexpect.sourceforge.net/
+instead.

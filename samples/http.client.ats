@@ -1,0 +1,96 @@
+# __METADATA__BEGIN__
+# <?xml version="1.0" encoding="utf-8" ?>
+# <meta>
+# <description>description</description>
+# <prerequisites>prerequisites</prerequisites>
+# <parameters>
+# </parameters>
+# </meta>
+# __METADATA__END__
+##
+# Sample script, demonstrating (and basically testing)
+# the local.http.client probe.
+#
+##
+
+#TestermanTCI.enableDebugLogs()
+
+"""
+type record HttpRequest
+{
+	charstring method optional, // default: 'GET'
+	charstring version, // default: 'HTTP/1.0'
+	charstring url,
+	record { charstring <header name>* } headers,
+	charstring body optional, // default: ''
+}
+
+type record HttpResponse
+{
+	integer status,
+	charstring reason,
+	charstring version,
+	record { charstring <header name>* } headers,
+	charstring body,
+}
+
+type port HttpClientPortType
+{
+	in HttpRequest;
+	out HttpResponse;
+}
+"""
+class TESTCASE_HTTP_CLIENT(TestCase):
+	"""
+	Runs on SystemType {
+		HttpClientPortType web;
+	}
+	
+	In this testcase, we simply request a web page on a site, 
+	depending on the test adapter configuration.
+	We expect a 200 OK.
+	"""
+	def body(self, host = None):
+		port = self.mtc['port']
+		port_map(port, self.system['web'])
+
+		# We have 5s to complete the testcase
+		t = Timer(5.0, name = "Global watchdog")
+		t.start()
+		
+		port.send({ 'url': '/', 'headers': {'host': host } })
+
+		# we should get a response
+		alt(
+		[
+			[ port.RECEIVE({ 'status': 200 }),
+				lambda: self.setverdict("pass"),
+			],
+			[ port.RECEIVE(),
+				lambda: self.log("Received something else than expected"),
+				lambda: self.setverdict("fail"),
+			],
+			[ t.TIMEOUT, 
+				lambda: self.setverdict("fail"),
+				lambda: stop()
+			],
+		]
+		)
+
+
+##
+# Test Adapter Configurations
+##
+
+conf = TestAdapterConfiguration('google')
+conf.bindByUri('web', 'probe:http01', 'http.client', host = "www.google.com", version = 'HTTP/1.0')
+
+##
+# Control definition
+##
+
+useTestAdapterConfiguration('google')
+# OK, my sample is not well designed:
+# for google, we'll need to set a target host in the HTTP headers,
+# otherwise we get a redirect.
+TESTCASE_HTTP_CLIENT().execute(host = 'www.google.fr')

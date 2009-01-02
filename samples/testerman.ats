@@ -1,0 +1,831 @@
+# __METADATA__BEGIN__
+# <?xml version="1.0" encoding="utf-8" ?>
+# <meta>
+# <description>Testerman auto test to pass before any release.</description>
+# <prerequisites>
+# </prerequisites>
+# <parameters>
+# <parameter name="PX_UNICODE_STRING" default="ça marche" previous-value="" type="string"><![CDATA[]]></parameter>
+# </parameters>
+# </meta>
+# __METADATA__END__
+##
+# Testerman core feature (TTCN-3 oriented) auto tests.
+#
+##
+ 
+##
+# templates (messages) definitions
+##
+
+# None shared between testcases.
+
+##
+# Test case definitions
+##
+
+class TESTCASE_TIMER(TestCase):
+	"""
+	Basic Timer Management.
+	Run two timers, etc.
+	"""
+	def body(self):
+		log("Testerman autotest: timer basic management")
+		
+		# Let's define a timer
+		t = Timer(1.5)
+		
+		# Start and stop.
+		t.start()
+		t.stop()
+		
+		# Restart, timeout
+		t.start()
+		alt([
+			[ t.TIMEOUT,
+				lambda: log("timeout correctly received"),
+				lambda: self.setverdict("pass"),
+			]
+		])
+		
+		# Multiple timers.
+		t1 = Timer(3.0)
+		t2 = Timer(1.0)
+		t1.start()
+		t2.start()
+		alt([
+			[ t2.TIMEOUT,
+				lambda: log("Shortest timeout correctly received"),
+				lambda: t1.stop(),
+				lambda: self.setverdict("pass"),
+			],
+			[ t1.TIMEOUT,
+				lambda: log("Sorry, the longuest timeout was received first"),
+				lambda: self.setverdict("fail"),
+			]
+		])
+		
+		# "Sleep simulator": this is the TTCN-3 way to create a sleep(2000ms).
+		s = Timer(1.0)
+		s.start()
+		s.timeout()
+		
+		# running() test
+		
+		log("Checking running()...")
+		if s.running():
+			log("Stopped timer seen as running. Test failed.")
+			self.setverdict("fail")
+		s.start(1)
+		if not s.running():
+			log("Started timer not seen as running. Test failed.")
+			self.setverdict("fail")
+		s.stop()
+		
+		log("Checking read()...")
+		# Read timer expected accuracy: 50ms
+		delta = 0.05
+		t1.start(5.0)
+		t2.start(1.0)
+		t2.timeout()
+		# Normally, t1 started 1 second ago
+		d = t1.read()
+		if abs(1.0 - d) > delta:
+			log("Incorrect read timer: got %f, expected 1s" % d)
+			self.setverdict("fail")
+		log("Read timer accuracy: %fs" % abs(1.0 - d))
+			
+		self.setverdict("pass")
+		log("End of testcase reached.")
+
+class TESTCASE_SIMPLE_CONNECTION(TestCase):
+	"""
+	This sample demonstrates simple port communications.
+	"""
+	def body(self):
+		log("Testerman autotest: implicit MTC, simple port communications")
+		self.setDescription("A description. Overriding the default one.")
+		
+		# Let's define a PTC
+		ptc01 = self.create()
+		
+		# Let's connect some ports
+		p01 = self.mtc['port01']
+		p02 = ptc01['port02']
+		connect(p01, p02)
+		
+		# Let's send a message through port 01 and wait for it on port02
+		p01.send("This is a great stuff")
+		p02.receive()
+		
+		p02.send("This is really nice")
+		alt([
+			[ p01.RECEIVE("This is really nice"),
+				lambda: self.setverdict("pass"),
+			],
+			[ p01.RECEIVE("Something else"),
+				lambda: self.setverdict("inconc")
+			],
+			[ p01.RECEIVE(),
+				lambda: self.setverdict("fail")
+			],
+		])
+
+		# Order does matter in case of multiple matched events
+		p02.send(11)
+		alt([
+			[ p01.RECEIVE(greater_than(10)),
+				lambda: self.setverdict("pass"),
+			],
+			[ p01.RECEIVE(greater_than(5)),
+				lambda: self.setverdict("fail")
+			],
+		])
+		
+		# Port disconnection
+		disconnect(p01, p02)
+		p01.send("This is a great stuff")
+		t = Timer(1.0)
+		t.start()
+		alt([
+			[ p02.RECEIVE(),
+				lambda: log("Unexpected message received on a disconnected port"),
+				lambda: self.setverdict("fail"),
+				lambda: t.stop()
+			],
+			[ t.TIMEOUT,
+				lambda: log("OK, nothing received on a disconnected port"),
+				lambda: self.setverdict("pass"),
+			],
+		])
+		
+		# Loopback connection
+		connect(p01, p01)
+		p01.send("Loopback connection")
+		p01.receive("Loopback connection")
+		
+		log("End of testcase reached.")
+
+class TESTCASE_SIMPLE_1TON(TestCase):
+	def body(self):
+		log("Testerman autotest: implicit MTC, multiple ptc, one to N connections, no tsi, no ptc behavior, timeout objects")
+		
+		# Let's create some PTCs
+		ptc01 = self.create()
+		ptc02 = self.create()
+		
+		# Let's connect some ports: p01 connected to p02 and p03
+		p01 = self.mtc['port01']
+		p02 = ptc01['port02']
+		p03 = ptc02['port03']
+		connect(p01, p02)
+		connect(p01, p03)
+		
+		# When sending something through p03, only p01 receives it.
+		p03.send("message to p01")
+		alt([
+			[ p02.RECEIVE(),
+				lambda: log("received an unexpected message on p02"),
+				lambda: self.setverdict("fail"),
+				lambda: self.stop(),
+			],
+			[ p01.RECEIVE("message to p01"),
+				lambda: self.setverdict("pass"),
+			],
+			[ p01.RECEIVE(),
+				lambda: log("received an incorrect message on p01"),
+				lambda: self.setverdict("fail"),
+				lambda: self.stop(),
+			],
+		])
+		
+		# When sending something through p01, both p02 and p03 receives it.
+
+		# Long version, with precise case to diagnose the problem		
+		p01.send("message to p02+p03")
+		timer = Timer(5.0)
+		timer.start()
+		alt([
+			[ p02.RECEIVE("message to p02+p03"),
+				lambda: alt([
+					[ p02.RECEIVE(),
+						lambda: log("Multiple messages received on p02"),
+						lambda: self.setverdict("fail"),
+					],
+					[ p03.RECEIVE("message to p02+p03"),
+						lambda: self.setverdict("pass"),
+					],
+					[ timer.TIMEOUT,
+						lambda: log("Nothing received on p03"),
+						lambda: self.setverdict("fail"),
+					],
+				])
+			],
+			[ p03.RECEIVE("message to p02+p03"),
+				lambda: alt([
+					[ p03.RECEIVE(),
+						lambda: log("Multiple messages received on p03"),
+						lambda: self.setverdict("fail"),
+					],
+					[ p02.RECEIVE("message to p02+p03"),
+						lambda: self.setverdict("pass"),
+					],
+					[ timer.TIMEOUT,
+						lambda: log("Nothing received on p02"),
+						lambda: self.setverdict("fail"),
+					],
+				])
+			],
+			[ timer.TIMEOUT,
+				lambda: log("Nothing received on any port"),
+				lambda: self.setverdict("fail"),
+			],
+		])
+		timer.stop()
+
+		# Short version, no timeout watchdog. It worked once, so it should work once more.
+		p01.send("message to p02+p03")
+		p02.receive("message to p02+p03")
+		p03.receive("message to p02+p03")
+		
+		log("End of testcase reached.")
+
+class BEHAVIOUR_SIMPLE_PTC(Behaviour):
+	def body(self):
+		"""
+		This is a sample behaviour for TESTCASE_SIMPLE_PTC
+		"""
+		# Get an aliases referenced to the ports that are assumed
+		# to be connected
+		
+		# alternative: p02 = self.ptc['port02']
+		p02 = self['port02']
+		
+		# The usual watchdog
+		t = Timer(2.0, name = "watchdog")
+		t.start()
+		alt([
+			[ p02.RECEIVE("ping"),
+				lambda: p02.send("pong"),
+			],
+			[ t.TIMEOUT,
+				lambda: self.log("timeout while waiting for a ping"),
+				lambda: self.setverdict("fail")
+			]
+		])
+		t.stop()
+
+		log("This log was created from a parallel test component")
+		
+		# Let's create an articifial delay so that the ptc.done() must wait a little.
+		# Note: timers are not interruptible with a ptc.stop() or kill().
+		t = Timer(2.0)
+		t.start()
+		t.timeout()
+		
+		# PTC verdicts are taken into account to determine the final testcase verdict
+		# Will only be set to pass if not already failed due to the watchdog timeout above
+		self.setverdict("pass")
+
+class TESTCASE_SIMPLE_PTC(TestCase):
+	def body(self):
+		log("Testerman autotest: PTC (ping replier)")
+		
+		# Let's define a PTC
+		ptc01 = self.create(name = "Simple PTC")
+		
+		# Let's connect some ports
+		p01 = self.mtc['port01']
+		p02 = ptc01['port02']
+		connect(p01, p02)
+		
+		# Let's start ptc01 with a simple sample behavior.
+		# Note: it is dangerous to change the test configuration (i.e. the port connections) after starting PTCs.
+		ptc01.start(BEHAVIOUR_SIMPLE_PTC())
+		
+		# Let's send a message through port 01. The Behavior_Sample3 is expected to echo the message, adding a final * to it.
+		p01.send("ping")
+		
+		p01.receive("pong")
+
+		# Let's wait for ptc01 to finish
+		ptc01.done()
+
+		# In this testcase, only the PTC behavior verdict can set the testcase verdict to pass. This is what we want to test.
+		log("End of testcase reached.")
+
+
+class BEHAVIOUR_ALIVE_NONALIVE(Behaviour):
+	"""
+	You may also add a description here, but it won't be reflected into execution
+	logs (for now).
+	Still convenient for self documentation.
+	"""
+	def body(self):
+		p = self['port']
+
+		alt([
+			[ p.RECEIVE("This is a message"), # this is a comment
+				lambda: stop() # stop the behavior/PTC (no need to put it here, just to show it off)
+			],
+			[ p.RECEIVE("This is an almost missed message"),
+				lambda: self.setverdict("pass"), # ok, this is the missed message that can be received only on alive components.
+			]
+		])
+
+		
+class TESTCASE_ALIVE_AND_NONALIVE(TestCase):
+	def body(self):
+		log("Testerman autotest: alive and non-alive component")
+		
+		# Let's define a non-alive PTC (the default create() mechanism)
+		# The PTC will be killed automatically once start(behavior()) is over on it.
+		ptcNA = self.create(name = "ptc01, non alive")
+		
+		# Now, let's create an alive component
+		ptcA = self.create(alive = True)
+
+		# Let's connect some ports
+		p01 = self.mtc['port01']
+		p02 = self.mtc['port02']
+		pA = ptcA['port']
+		pNA = ptcNA['port']
+		connect(p01, pA)
+		connect(p02, pNA)
+		
+		# Let's start ptc01 with a simple sample behavior.
+		# Note: it is dangerous to change the test configuration (i.e. the port connections) after starting PTCs.
+		ptcNA.start(BEHAVIOUR_ALIVE_NONALIVE())
+		p02.send("This is a message")
+		ptcNA.done()
+		# automatically killed
+		if ptcNA.alive():
+			self.setverdict("fail")
+			log("non alive component not automatically killed")
+			stop()
+		else:
+			log("ptcNA was killed")
+		
+
+		# on alive component, when stopped (explicitly or on done()) and then restarted with the same or a new behavior,
+		# the port queues are unchanged. As a consequence, when restarting your new behavior, you may read
+		# events that you 'missed' during the component inactivity.
+		ptcA.start(BEHAVIOUR_ALIVE_NONALIVE())
+		p01.send("This is a message")
+		ptcA.done()
+		if not ptcA.alive():
+			self.setverdict("fail")
+			log("alive component automatically killed")
+			stop()
+		
+		p01.send("This is an almost missed message")
+		
+		ptcA.start(BEHAVIOUR_ALIVE_NONALIVE())
+		# ptcA will receive the missed message
+		ptcA.done()
+
+		# The verdict is defined by the synthesis of all PTC verdicts + current testcase verdict (set to 'none' by default)		
+		log("End of testcase reached.")
+
+		# remaining PTCs are automatically stop()ed and kill()ed when the TestCase if finished.
+
+class TESTCASE_VALUE_EXTRACTION(TestCase):
+	def body(self):
+		log("Testerman autotest: template matching and value extraction")
+
+		p01 = self.mtc['port01']
+		p02 = self.mtc['port02']
+		connect(p01, p02)
+		
+		# The template match is performed with the new value() complete message extractor function.
+		# This avoids to incorporate in templates extractors, which are context-dependent.
+		p01.send( { 'field1': 'value1', 'field2': 'value2' } )
+		alt([
+			[ p02.RECEIVE({ 'field2': any() }, 'message'),
+				lambda: self.log("Received message: " + str(value('message'))),
+				lambda: self.log("Received message field: " + value('message')['field1']),
+				lambda: self.setverdict("pass"),
+			],
+		])
+
+		log("End of testcase reached.")
+
+class TESTCASE_CODEC(TestCase):
+	def body(self):
+		log("Testerman autotest: simple codec management in templates")
+
+		p01 = self.mtc['port01']
+		p02 = self.mtc['port02']
+		connect(p01, p02)
+		
+		template = { 'string': 'a string', 'unicode': u"comment ca va ?", 'list': [1, 2, 3], 'tuple': ('choiceName', 'value') }
+		
+		template_codec = with_('pickle', template)
+
+		# TODO: support for a codec anywhere in the struct, on only at start
+		template = with_('pickle', { 'base64': with_('base64', 'hello'), 'no-encoding': 'yo' })
+
+		p01.send(template)
+		alt([
+			[ p02.RECEIVE(template, 'message'),
+				lambda: self.log("Received message: " + str(value('message'))),
+				lambda: self.setverdict("pass"),
+			],
+			[ p02.RECEIVE(),
+				lambda: self.log("Something else received."),
+				lambda: self.setverdict("fail"),
+			],
+		])
+
+		log("End of testcase reached.")
+
+class TESTCASE_TEMPLATE_MATCH(TestCase):
+	def body(self):
+		log("Testerman autotest: template matching")
+
+		p01 = self.mtc['port01']
+		p02 = self.mtc['port02']
+		connect(p01, p02)
+		
+		def assert_match(message, template):
+			res = StateManager(False)
+			t = Timer(1.0)
+			t.start()
+			p01.send(message)
+			alt([
+				[ p02.RECEIVE(template),
+					lambda: res.set(True)
+				],
+				[ p02.RECEIVE(),
+				],
+				[ t.TIMEOUT,
+				],
+			])
+			t.stop()
+			return res.get()
+			
+		try:
+			# Unit testing: simple types
+			if not assert_match('string', None): raise Exception('(all match)')
+			if not assert_match('string', 'string'): raise Exception('string')
+			if not assert_match(u'unicode', u'unicode'): raise Exception('unicode')
+			if not assert_match(1234, 1234): raise Exception('integer')
+			if not assert_match(1234.0, 1234.0): raise Exception('float')
+			if not assert_match(True, True): raise Exception('bool')
+			if not assert_match(False, False): raise Exception('bool')
+			if not assert_match(('choiceName', 'value'), ('choiceName', 'value')): raise Exception('couple')
+			if not assert_match([ 1, 2, 3, 4 ], [ ]): raise Exception('list/0')
+			if not assert_match([ 1, 2, 3, 4 ], [ 2 ]): raise Exception('list/1')
+			if not assert_match([ 1, 2, 3, 4 ], [ 1, 2 ]): raise Exception('list/2')
+			if not assert_match([ 1, 2, 3, 4 ], [ 1, 2, 3, 4 ]): raise Exception('list/3')
+			if not assert_match({ 'key1': 'value1' }, { }): raise Exception('dict/0')
+			if not assert_match({ 'key1': 'value1' }, { 'key1': 'value1' }): raise Exception('dict/1')
+			if not assert_match({ 'key0': 'value0', 'key1': 'value1' }, { 'key1': 'value1' }): raise Exception('dict/2')
+
+			# Recursive types
+			message = { 'string': 'a string', 'unicode': u"comment ca va ?", 'list': [1, 2, 3], 'tuple': ('choiceName', 'value') }
+			if not assert_match(message, message): raise Exception('recursive/0')
+			if not assert_match(message, { 'list': [ 2 ] }): raise Exception('recursive/1')
+			if not assert_match(message, { 'tuple': ('choiceName', 'value') }): raise Exception('recursive/2')
+			
+			message = ('choiceName', [ { 'key': [ ('choiceName2', { 'key2': 2.0 } ) ] }, { 'key4': [ ('choiceName2', { 'key2': 1.0 } ), ('choiceName3', { 'key2': 1.0 } ), ('choiceName4', { 'key2': 3.0 } ) ] } ])
+			if not assert_match(message, message): raise Exception('recursive/3')
+			if not assert_match(message, ('choiceName', [ { 'key4': [ ('choiceName3', { 'key2': 1.0 })]}])): raise Exception('recursive/3')
+	
+			self.setverdict('pass')
+		except Exception, e:
+			log("Unable to complete test case: matching error for %s" % str(e))
+			self.setverdict('fail')
+
+		log("End of testcase reached.")
+
+class TESTCASE_RECURSIVE_MATCHING(TestCase):
+	def body(self):
+		log("Testerman autotest: recursive template matching, including nested conditions")
+		
+		p01 = self.mtc['port1']
+		p02 = self.mtc['port2']
+		
+		connect(p01, p02)
+		
+		element1 = { 'name': 'element1', 'value': 123 }
+		element2 = { 'name': 'element2', 'value': 434 }
+		element3 = { 'name': 'element3', 'value': 123 }
+		element4 = { 'name': 'element3', 'value': 1000 }
+
+		# Non-conditional matching
+		p01.send([ element1, element2, element3 ])
+		alt([
+			[ p02.RECEIVE(contains( element3 )),
+				lambda: log("non-conditional matching OK"),
+			],
+			[ p02.RECEIVE(None),
+				lambda: self.setverdict('fail'),
+			],
+		])
+
+		# Non-conditional mistmatching
+		p01.send([ element1, element2, element3 ])
+		alt([
+			[ p02.RECEIVE(contains( element4 )),
+				lambda: self.setverdict('fail'),
+			],
+			[ p02.RECEIVE(None),
+				lambda: log("non-conditional mismatching OK"),
+			],
+		])
+
+		# Conditional matching (nested conditions)
+		p01.send([ element1, element2, element3, element4 ])
+		alt([
+			[ p02.RECEIVE(contains( { 'value': greater_than(500) } )),
+				lambda: log("conditional matching OK"),
+			],
+			[ p02.RECEIVE(None),
+				lambda: self.setverdict('fail'),
+			],
+		])
+
+		# Conditional mismatching (nested conditions)
+		p01.send([ element1, element2, element3, element4 ])
+		alt([
+			[ p02.RECEIVE(contains( { 'value': greater_than(1500) } )),
+				lambda: self.setverdict('fail'),
+			],
+			[ p02.RECEIVE(None),
+				lambda: log("conditional mismatching OK"),
+			],
+		])
+
+		self.setverdict('pass')
+		log("End of testcase reached.")
+
+class TESTCASE_UNICODE(TestCase):
+	"""
+	Verifies that we can send unicode strings (and log them correctly).
+	"""
+	def body(self):
+		log("Starting unicode support in ATS...")
+		
+		p01 = self.mtc['port1']
+		p02 = self.mtc['port2']
+		
+		connect(p01, p02)
+		
+		element1 = { 'name': u'élément', 'value': 123 }
+
+		log(u"User log: sending élément")
+
+		p01.send(element1)
+		alt([
+			[ p02.RECEIVE(element1),
+			],
+			[ p02.RECEIVE(None),
+				lambda: self.setverdict('fail'),
+				lambda: stop()
+			],
+		])
+		self.setverdict('pass')
+
+		log("End of testcase reached.")
+
+class TESTCASE_UNICODE_SESSION_PARAMETERS(TestCase):
+	"""
+	Verifies that the user can set unicode parameters in session parameters.
+	"""
+	def body(self):
+		log("Starting unicode support from Session...")
+		
+		p01 = self.mtc['port1']
+		p02 = self.mtc['port2']
+		
+		connect(p01, p02)
+		
+		log("User log: sending %s" % get('PX_UNICODE_STRING'))
+		
+		element1 = { 'name': get('PX_UNICODE_STRING'), 'value': 123 }
+
+		# Complete matching
+		p01.send(element1)
+		alt([
+			[ p02.RECEIVE(element1),
+			],
+			[ p02.RECEIVE(None),
+				lambda: self.setverdict('fail'),
+				lambda: stop()
+			],
+		])
+		self.setverdict('pass')
+
+		log("End of testcase reached.")
+
+class TESTCASE_BINARY_LOGGING(TestCase):
+	"""
+	Verifies that we can send binary payload - should
+	not lead to an exception when generating associated logs.
+	"""
+	def body(self):
+		p01 = self.mtc['port1']
+		p02 = self.mtc['port2']
+		
+		connect(p01, p02)
+		
+		element1 = { 'binary-value': '\x12\xff\x00' }
+
+		p01.send(element1)
+		alt([
+			[ p02.RECEIVE(element1),
+			],
+			[ p02.RECEIVE(),
+				lambda: self.setverdict('fail'),
+				lambda: stop()
+			],
+		])
+		self.setverdict('pass')
+
+		log("End of testcase reached.")
+
+class BEHAVIOUR_LOOP(Behaviour):
+	"""
+	A looping behaviour, used to test stop(), kill() ptc methods.
+	"""
+	def body(self):
+		control = self['control']
+		alt([
+			[ control.RECEIVE(),
+				lambda: self.log('Received an event on control port. Gracefully stopping...')
+			]
+		])
+		self.setverdict('pass')
+
+class TESTCASE_STOP_PTC_DONE_EVENT(TestCase):
+	"""
+	Verifies that a running PTC, when stopped, emits a DONE event.
+	"""
+	def body(self):
+		ptc = self.create('Looping ptc')
+		control = ptc['control']
+		connect(control, control)
+		ptc.start(BEHAVIOUR_LOOP())
+		
+		# Graceful stop
+		control.send("It's time to stop")
+		t = Timer(1.0)
+		t.start()
+		alt([
+			[ ptc.DONE,
+				lambda: log("PTC gracefully stopped, signal received.")
+			],	
+			[ t.TIMEOUT,
+				lambda: log("PTC not stopped as expected (no signal received)"),
+				lambda: self.setverdict("fail"),
+				lambda: stop(),
+			]
+		])
+		t.stop()
+		# Verdict from PTC
+		
+class TESTCASE_STOP_PTC_DONE(TestCase):
+	"""
+	Verifies that a ptc.done() operation works correctly.
+	Blocks if not...
+	"""
+	def body(self):
+		ptc = self.create('Looping ptc')
+		control = ptc['control']
+		connect(control, control)
+		ptc.start(BEHAVIOUR_LOOP())
+		
+		# Graceful stop
+		control.send("It's time to stop")
+		ptc.done()
+		# Verdict from PTC
+
+class TESTCASE_STOP_PTC_STOP(TestCase):
+	"""
+	Verifies that a running PTC with an infinite alt can be stopped from outside (explicit ptc.stop())
+	"""
+	def body(self):
+		ptc = self.create('Looping ptc')
+		control = ptc['control']
+		connect(control, control)
+		ptc.start(BEHAVIOUR_LOOP())
+	
+		ptc.stop()
+		
+		ptc.done()
+		# Normally we get the Verdict from PTC - the last known verdict,
+		# which is probably none when stopping a PTC from outside (but not necessarely)
+		self.setverdict('pass')
+
+class TESTCASE_STOP_PTC_STOP_TESTCASE(TestCase):
+	"""
+	Verifies that a running PTC with an infinite alt can be stopped when stopping the testcase (implicit stop)
+	
+	Note that this testcase is either pass, or never returns. So no "fail" is possible for it.
+	"""
+	def body(self):
+		ptc = self.create('Looping ptc')
+		control = ptc['control']
+		connect(control, control)
+		ptc.start(BEHAVIOUR_LOOP())
+
+		self.setverdict('pass')
+		# We don't wait for the ptc completion. We stop the testcase.
+		stop()
+
+class TESTCASE_KILL_PTC_KILLED_EVENT(TestCase):
+	"""
+	Verifies that a running PTC, when stopped, emits a KILLED event.
+	"""
+	def body(self):
+		ptc = self.create('Looping ptc')
+		control = ptc['control']
+		connect(control, control)
+		ptc.start(BEHAVIOUR_LOOP())
+		
+		# Graceful stop
+		ptc.kill()
+		t = Timer(1.0)
+		t.start()
+		alt([
+			[ ptc.KILLED,
+				lambda: log("PTC killed, signal received.")
+			],	
+			[ t.TIMEOUT,
+				lambda: log("PTC not stopped as expected (no signal received)"),
+				lambda: self.setverdict("fail"),
+				lambda: stop(),
+			]
+		])
+		t.stop()
+		self.setverdict('pass')
+
+class TESTCASE_KILL_PTC_DONE_EVENT(TestCase):
+	"""
+	Verifies that a running PTC, when stopped, emits a DONE event.
+	"""
+	def body(self):
+		ptc = self.create('Looping ptc')
+		control = ptc['control']
+		connect(control, control)
+		ptc.start(BEHAVIOUR_LOOP())
+		
+		# Graceful stop
+		ptc.kill()
+		t = Timer(1.0)
+		t.start()
+		alt([
+			[ ptc.DONE,
+				lambda: log("PTC killed, done signal received.")
+			],	
+			[ t.TIMEOUT,
+				lambda: log("PTC not killed as expected (no signal received)"),
+				lambda: self.setverdict("fail"),
+				lambda: stop(),
+			]
+		])
+		t.stop()
+		self.setverdict('pass')
+
+class TESTCASE_KILL_PTC_DONE(TestCase):
+	"""
+	Verifies that a ptc.done() operation works correctly after a kill() op.
+	This test is actually useless: TESTCASE_KILL_PTC_DONE_EVENT tests it, too.
+	"""
+	def body(self):
+		ptc = self.create('Looping ptc')
+		control = ptc['control']
+		connect(control, control)
+		ptc.start(BEHAVIOUR_LOOP())
+
+		ptc.kill()
+		ptc.done()
+		self.setverdict('pass')
+
+##
+# Control definition
+##
+
+TestermanTCI.enableDebugLogs()
+
+TESTCASE_TIMER("Testerman autotest: timer management").execute()
+TESTCASE_SIMPLE_CONNECTION("Testerman autotest: basic").execute()
+TESTCASE_SIMPLE_1TON("Testerman autotest: 1 to N connections").execute()
+TESTCASE_SIMPLE_PTC("Testerman autotest: PTC behavior").execute()
+TESTCASE_ALIVE_AND_NONALIVE("Testerman autotest: alive vs non-alive test component").execute()
+TESTCASE_VALUE_EXTRACTION("Testerman autotest: template matching with extraction").execute()
+TESTCASE_CODEC("Testerman autotest: simple codec management in templates").execute()
+TESTCASE_TEMPLATE_MATCH("Testerman autotest: template matching").execute()
+# Testerman 2008.12.31: test failed (underlying feature not yet implemented)
+TESTCASE_RECURSIVE_MATCHING("Testerman autotest: recursive template matching").execute()
+TESTCASE_UNICODE("Testerman autotest: unicode support in messages (+ logs)").execute()
+TESTCASE_UNICODE_SESSION_PARAMETERS("Testerman autotest: unicode support in session parameters").execute()
+TESTCASE_BINARY_LOGGING("Testerman autotest: binary support in messages (+ logs)").execute()
+TESTCASE_STOP_PTC_DONE_EVENT().execute()
+TESTCASE_STOP_PTC_DONE().execute()
+TESTCASE_STOP_PTC_STOP().execute()
+TESTCASE_STOP_PTC_STOP_TESTCASE().execute()
+TESTCASE_KILL_PTC_DONE_EVENT().execute()
+TESTCASE_KILL_PTC_KILLED_EVENT().execute()
+TESTCASE_KILL_PTC_DONE().execute()
