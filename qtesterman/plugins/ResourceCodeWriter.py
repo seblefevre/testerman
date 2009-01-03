@@ -1,9 +1,8 @@
 ##
 # -*- coding: utf-8 -*-
-# A plugin to create Helium-compliant resource
+# A plugin to create Testerman-compliant resources
 # from a file (either binary or text)
 #
-# $Id: ResourceCodeWriter.py,v 1.2 2008/07/11 09:55:23 slefevr Exp $
 ##
 
 import PyQt4.Qt as qt
@@ -223,8 +222,7 @@ class WResourceCodeWriterConfiguration(Plugin.WPluginConfiguration):
 		path = "plugins/%s" % PLUGIN_ID
 		# Read the settings
 		settings = qt.QSettings()
-#		xsltPath = settings.value(path + '/templatespath', qt.QVariant(qt.QString(os.path.normpath(qt.QApplication.instance().get('qtheliumpath'))))).toString()
-#		self.templatesPathLineEdit.setText(xsltPath)
+		# No settings to read for now
 
 	def saveConfiguration(self):
 		"""
@@ -232,7 +230,7 @@ class WResourceCodeWriterConfiguration(Plugin.WPluginConfiguration):
 		"""
 		settings = qt.QSettings()
 		path = "plugins/%s" % PLUGIN_ID
-#		settings.setValue(path + '/templatespath', qt.QVariant(self.templatesPathLineEdit.text()))
+		# No settings to save for now
 		return True
 
 	def checkConfiguration(self):

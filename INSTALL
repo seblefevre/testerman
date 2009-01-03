@@ -1,5 +1,5 @@
-Requirements
-============
+Minimal Requirements
+====================
 
 1. Server-side:
 - Linux (some non-portable code will present the server from running
@@ -14,9 +14,19 @@ Requirements
 - Only tested under Linux/Ubuntu 8.10 for now, should work
   on any Python systems, including Windows
 
-3. For development
+Optional Requirements
+=====================
+
+1. For development
 - requirements above
 - pyrcc4 (included in debian:pyqt4-dev-tools)
+
+2. For probes
+- None for now
+
+3. For QTesterman default plugins
+- xslt: xslt1 and xml2 for python (debian:{python-libxslt1 ,python-libxml2} and dependencies,
+  all included in libxml2 package for Windows))
 
 
 Testerman first run for the impatient
