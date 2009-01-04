@@ -2,8 +2,7 @@
 # <?xml version="1.0" encoding="utf-8" ?>
 # <meta>
 # <description>Testerman auto test to pass before any release.</description>
-# <prerequisites>
-# </prerequisites>
+# <prerequisites></prerequisites>
 # <parameters>
 # <parameter name="PX_UNICODE_STRING" default="ça marche" previous-value="" type="string"><![CDATA[]]></parameter>
 # </parameters>
@@ -24,7 +23,7 @@
 # Test case definitions
 ##
 
-class TESTCASE_TIMER(TestCase):
+class TC_TIMER(TestCase):
 	"""
 	Basic Timer Management.
 	Run two timers, etc.
@@ -98,7 +97,7 @@ class TESTCASE_TIMER(TestCase):
 		self.setverdict("pass")
 		log("End of testcase reached.")
 
-class TESTCASE_SIMPLE_CONNECTION(TestCase):
+class TC_SIMPLE_CONNECTION(TestCase):
 	"""
 	This sample demonstrates simple port communications.
 	"""
@@ -166,7 +165,7 @@ class TESTCASE_SIMPLE_CONNECTION(TestCase):
 		
 		log("End of testcase reached.")
 
-class TESTCASE_SIMPLE_1TON(TestCase):
+class TC_SIMPLE_1TON(TestCase):
 	def body(self):
 		log("Testerman autotest: implicit MTC, multiple ptc, one to N connections, no tsi, no ptc behavior, timeout objects")
 		
@@ -253,7 +252,7 @@ class TESTCASE_SIMPLE_1TON(TestCase):
 class BEHAVIOUR_SIMPLE_PTC(Behaviour):
 	def body(self):
 		"""
-		This is a sample behaviour for TESTCASE_SIMPLE_PTC
+		This is a sample behaviour for TC_SIMPLE_PTC
 		"""
 		# Get an aliases referenced to the ports that are assumed
 		# to be connected
@@ -287,7 +286,7 @@ class BEHAVIOUR_SIMPLE_PTC(Behaviour):
 		# Will only be set to pass if not already failed due to the watchdog timeout above
 		self.setverdict("pass")
 
-class TESTCASE_SIMPLE_PTC(TestCase):
+class TC_SIMPLE_PTC(TestCase):
 	def body(self):
 		log("Testerman autotest: PTC (ping replier)")
 		
@@ -334,7 +333,7 @@ class BEHAVIOUR_ALIVE_NONALIVE(Behaviour):
 		])
 
 		
-class TESTCASE_ALIVE_AND_NONALIVE(TestCase):
+class TC_ALIVE_AND_NONALIVE(TestCase):
 	def body(self):
 		log("Testerman autotest: alive and non-alive component")
 		
@@ -389,7 +388,7 @@ class TESTCASE_ALIVE_AND_NONALIVE(TestCase):
 
 		# remaining PTCs are automatically stop()ed and kill()ed when the TestCase if finished.
 
-class TESTCASE_VALUE_EXTRACTION(TestCase):
+class TC_VALUE_EXTRACTION(TestCase):
 	def body(self):
 		log("Testerman autotest: template matching and value extraction")
 
@@ -410,7 +409,7 @@ class TESTCASE_VALUE_EXTRACTION(TestCase):
 
 		log("End of testcase reached.")
 
-class TESTCASE_CODEC(TestCase):
+class TC_CODEC(TestCase):
 	def body(self):
 		log("Testerman autotest: simple codec management in templates")
 
@@ -439,7 +438,7 @@ class TESTCASE_CODEC(TestCase):
 
 		log("End of testcase reached.")
 
-class TESTCASE_TEMPLATE_MATCH(TestCase):
+class TC_TEMPLATE_MATCH(TestCase):
 	def body(self):
 		log("Testerman autotest: template matching")
 
@@ -499,9 +498,9 @@ class TESTCASE_TEMPLATE_MATCH(TestCase):
 
 		log("End of testcase reached.")
 
-class TESTCASE_RECURSIVE_MATCHING(TestCase):
+class TC_TEMPLATE_WILDCARDS_CONTAINS(TestCase):
 	def body(self):
-		log("Testerman autotest: recursive template matching, including nested conditions")
+		log("Testerman autotest: contains() wildcard, including nested conditions")
 		
 		p01 = self.mtc['port1']
 		p02 = self.mtc['port2']
@@ -513,54 +512,215 @@ class TESTCASE_RECURSIVE_MATCHING(TestCase):
 		element3 = { 'name': 'element3', 'value': 123 }
 		element4 = { 'name': 'element3', 'value': 1000 }
 
-		# Non-conditional matching
+		# Basic matching
 		p01.send([ element1, element2, element3 ])
 		alt([
 			[ p02.RECEIVE(contains( element3 )),
-				lambda: log("non-conditional matching OK"),
+				lambda: log("basic matching OK"),
 			],
-			[ p02.RECEIVE(None),
+			[ p02.RECEIVE(),
 				lambda: self.setverdict('fail'),
 			],
 		])
 
-		# Non-conditional mistmatching
+		# Basic mistmatching
 		p01.send([ element1, element2, element3 ])
 		alt([
 			[ p02.RECEIVE(contains( element4 )),
 				lambda: self.setverdict('fail'),
 			],
-			[ p02.RECEIVE(None),
-				lambda: log("non-conditional mismatching OK"),
+			[ p02.RECEIVE(),
+				lambda: log("basic mismatching OK"),
 			],
 		])
 
-		# Conditional matching (nested conditions)
+		# Netsted conditions, matching
 		p01.send([ element1, element2, element3, element4 ])
 		alt([
 			[ p02.RECEIVE(contains( { 'value': greater_than(500) } )),
-				lambda: log("conditional matching OK"),
+				lambda: log("nested conditions matching OK"),
 			],
-			[ p02.RECEIVE(None),
+			[ p02.RECEIVE(),
 				lambda: self.setverdict('fail'),
 			],
 		])
 
-		# Conditional mismatching (nested conditions)
+		# Neted conditions, mismatching
 		p01.send([ element1, element2, element3, element4 ])
 		alt([
 			[ p02.RECEIVE(contains( { 'value': greater_than(1500) } )),
 				lambda: self.setverdict('fail'),
 			],
-			[ p02.RECEIVE(None),
-				lambda: log("conditional mismatching OK"),
+			[ p02.RECEIVE(),
+				lambda: log("nested conditions mismatching OK"),
 			],
 		])
 
 		self.setverdict('pass')
 		log("End of testcase reached.")
 
-class TESTCASE_UNICODE(TestCase):
+class TC_TEMPLATE_WILDCARDS_LENGTH(TestCase):
+	"""
+	Typical length() usages, i.e. including sub-scalar conditions.
+	"""
+	def body(self):
+		log("Testerman autotest: length() wildcard, including nested conditions")
+		
+		p01 = self.mtc['port1']
+		p02 = self.mtc['port2']
+		
+		connect(p01, p02)
+		
+		# Length Equality: matching
+		p01.send([ 1, 2, 3, 4 ])
+		alt([
+			[ p02.RECEIVE(length(4)),
+				lambda: log("basic matching OK"),
+			],
+			[ p02.RECEIVE(),
+				lambda: self.setverdict('fail'),
+			],
+		])
+
+		# Length Equality: mismatching
+		p01.send([ 1, 2, 3, 4 ])
+		alt([
+			[ p02.RECEIVE(length(3)),
+				lambda: self.setverdict('fail'),
+			],
+			[ p02.RECEIVE(),
+				lambda: log("basic mismatching OK"),
+			],
+		])
+
+		# Length greater than: matching
+		p01.send([ 1, 2, 3, 4 ])
+		alt([
+			[ p02.RECEIVE(length(greater_than(3))),
+				lambda: log("greater than matching OK"),
+			],
+			[ p02.RECEIVE(),
+				lambda: self.setverdict('fail'),
+			],
+		])
+
+		# Length greater than: mismatching
+		p01.send([ 1, 2, 3, 4 ])
+		alt([
+			[ p02.RECEIVE(length(greater_than(5))),
+				lambda: self.setverdict('fail'),
+			],
+			[ p02.RECEIVE(),
+				lambda: log("greater than mismatching OK"),
+			],
+		])
+
+		# Length lower than: matching
+		p01.send([ 1, 2, 3, 4 ])
+		alt([
+			[ p02.RECEIVE(length(lower_than(10))),
+				lambda: log("lower than matching OK"),
+			],
+			[ p02.RECEIVE(),
+				lambda: self.setverdict('fail'),
+			],
+		])
+
+		# Length lower than: mismatching
+		p01.send([ 1, 2, 3, 4 ])
+		alt([
+			[ p02.RECEIVE(length(lower_than(3))),
+				lambda: self.setverdict('fail'),
+			],
+			[ p02.RECEIVE(),
+				lambda: log("lower than mismatching OK"),
+			],
+		])
+
+		# Length between: matching
+		p01.send([ 1, 2, 3, 4 ])
+		alt([
+			[ p02.RECEIVE(length(between(3, 6))),
+				lambda: log("between matching OK"),
+			],
+			[ p02.RECEIVE(),
+				lambda: self.setverdict('fail'),
+			],
+		])
+
+		# Length between: mismatching
+		p01.send([ 1, 2, 3, 4 ])
+		alt([
+			[ p02.RECEIVE(length(between(1, 3))),
+				lambda: self.setverdict('fail'),
+			],
+			[ p02.RECEIVE(),
+				lambda: log("between mismatching OK"),
+			],
+		])
+		self.setverdict('pass')
+		log("End of testcase reached.")
+
+class TC_TEMPLATE_WILDCARDS_NOT(TestCase):
+	"""
+	Several not_() usages.
+	"""
+	def body(self):
+		log("Testerman autotest: not_() wildcard, with nested conditions")
+		
+		p01 = self.mtc['port1']
+		p02 = self.mtc['port2']
+		
+		connect(p01, p02)
+		
+		# Basic not matching
+		p01.send(10)
+		alt([
+			[ p02.RECEIVE(not_(9)),
+				lambda: log("not matching OK"),
+			],
+			[ p02.RECEIVE(),
+				lambda: self.setverdict('fail'),
+			],
+		])
+		
+		# Basic not mistmatching
+		p01.send(10)
+		alt([
+			[ p02.RECEIVE(not_(10)),
+				lambda: self.setverdict('fail'),
+			],
+			[ p02.RECEIVE(),
+				lambda: log("not mismatching OK"),
+			],
+		])
+
+		# length negation: matching
+		p01.send([ 1, 2, 3, 4 ])
+		alt([
+			[ p02.RECEIVE(not_(length(between(1, 3)))),
+				lambda: log("between matching OK"),
+			],
+			[ p02.RECEIVE(),
+				lambda: self.setverdict('fail'),
+			],
+		])
+
+		# length negation: mismatching
+		p01.send([ 1, 2, 3, 4 ])
+		alt([
+			[ p02.RECEIVE(not_(length(between(1, 10)))),
+				lambda: self.setverdict('fail'),
+			],
+			[ p02.RECEIVE(),
+				lambda: log("between mismatching OK"),
+			],
+		])
+
+		self.setverdict('pass')
+		log("End of testcase reached.")
+
+class TC_UNICODE(TestCase):
 	"""
 	Verifies that we can send unicode strings (and log them correctly).
 	"""
@@ -589,7 +749,7 @@ class TESTCASE_UNICODE(TestCase):
 
 		log("End of testcase reached.")
 
-class TESTCASE_UNICODE_SESSION_PARAMETERS(TestCase):
+class TC_UNICODE_SESSION_PARAMETERS(TestCase):
 	"""
 	Verifies that the user can set unicode parameters in session parameters.
 	"""
@@ -601,9 +761,9 @@ class TESTCASE_UNICODE_SESSION_PARAMETERS(TestCase):
 		
 		connect(p01, p02)
 		
-		log("User log: sending %s" % get('PX_UNICODE_STRING'))
+		log("User log: sending %s" % get_variable('PX_UNICODE_STRING'))
 		
-		element1 = { 'name': get('PX_UNICODE_STRING'), 'value': 123 }
+		element1 = { 'name': get_variable('PX_UNICODE_STRING'), 'value': 123 }
 
 		# Complete matching
 		p01.send(element1)
@@ -619,7 +779,7 @@ class TESTCASE_UNICODE_SESSION_PARAMETERS(TestCase):
 
 		log("End of testcase reached.")
 
-class TESTCASE_BINARY_LOGGING(TestCase):
+class TC_BINARY_LOGGING(TestCase):
 	"""
 	Verifies that we can send binary payload - should
 	not lead to an exception when generating associated logs.
@@ -658,7 +818,7 @@ class BEHAVIOUR_LOOP(Behaviour):
 		])
 		self.setverdict('pass')
 
-class TESTCASE_STOP_PTC_DONE_EVENT(TestCase):
+class TC_STOP_PTC_DONE_EVENT(TestCase):
 	"""
 	Verifies that a running PTC, when stopped, emits a DONE event.
 	"""
@@ -685,7 +845,7 @@ class TESTCASE_STOP_PTC_DONE_EVENT(TestCase):
 		t.stop()
 		# Verdict from PTC
 		
-class TESTCASE_STOP_PTC_DONE(TestCase):
+class TC_STOP_PTC_DONE(TestCase):
 	"""
 	Verifies that a ptc.done() operation works correctly.
 	Blocks if not...
@@ -701,7 +861,7 @@ class TESTCASE_STOP_PTC_DONE(TestCase):
 		ptc.done()
 		# Verdict from PTC
 
-class TESTCASE_STOP_PTC_STOP(TestCase):
+class TC_STOP_PTC_STOP(TestCase):
 	"""
 	Verifies that a running PTC with an infinite alt can be stopped from outside (explicit ptc.stop())
 	"""
@@ -718,7 +878,7 @@ class TESTCASE_STOP_PTC_STOP(TestCase):
 		# which is probably none when stopping a PTC from outside (but not necessarely)
 		self.setverdict('pass')
 
-class TESTCASE_STOP_PTC_STOP_TESTCASE(TestCase):
+class TC_STOP_PTC_STOP_TESTCASE(TestCase):
 	"""
 	Verifies that a running PTC with an infinite alt can be stopped when stopping the testcase (implicit stop)
 	
@@ -734,7 +894,7 @@ class TESTCASE_STOP_PTC_STOP_TESTCASE(TestCase):
 		# We don't wait for the ptc completion. We stop the testcase.
 		stop()
 
-class TESTCASE_KILL_PTC_KILLED_EVENT(TestCase):
+class TC_KILL_PTC_KILLED_EVENT(TestCase):
 	"""
 	Verifies that a running PTC, when stopped, emits a KILLED event.
 	"""
@@ -761,7 +921,7 @@ class TESTCASE_KILL_PTC_KILLED_EVENT(TestCase):
 		t.stop()
 		self.setverdict('pass')
 
-class TESTCASE_KILL_PTC_DONE_EVENT(TestCase):
+class TC_KILL_PTC_DONE_EVENT(TestCase):
 	"""
 	Verifies that a running PTC, when stopped, emits a DONE event.
 	"""
@@ -788,10 +948,10 @@ class TESTCASE_KILL_PTC_DONE_EVENT(TestCase):
 		t.stop()
 		self.setverdict('pass')
 
-class TESTCASE_KILL_PTC_DONE(TestCase):
+class TC_KILL_PTC_DONE(TestCase):
 	"""
 	Verifies that a ptc.done() operation works correctly after a kill() op.
-	This test is actually useless: TESTCASE_KILL_PTC_DONE_EVENT tests it, too.
+	This test is actually useless: TC_KILL_PTC_DONE_EVENT tests it, too.
 	"""
 	def body(self):
 		ptc = self.create('Looping ptc')
@@ -809,23 +969,24 @@ class TESTCASE_KILL_PTC_DONE(TestCase):
 
 TestermanTCI.enableDebugLogs()
 
-TESTCASE_TIMER("Testerman autotest: timer management").execute()
-TESTCASE_SIMPLE_CONNECTION("Testerman autotest: basic").execute()
-TESTCASE_SIMPLE_1TON("Testerman autotest: 1 to N connections").execute()
-TESTCASE_SIMPLE_PTC("Testerman autotest: PTC behavior").execute()
-TESTCASE_ALIVE_AND_NONALIVE("Testerman autotest: alive vs non-alive test component").execute()
-TESTCASE_VALUE_EXTRACTION("Testerman autotest: template matching with extraction").execute()
-TESTCASE_CODEC("Testerman autotest: simple codec management in templates").execute()
-TESTCASE_TEMPLATE_MATCH("Testerman autotest: template matching").execute()
-# Testerman 2008.12.31: test failed (underlying feature not yet implemented)
-TESTCASE_RECURSIVE_MATCHING("Testerman autotest: recursive template matching").execute()
-TESTCASE_UNICODE("Testerman autotest: unicode support in messages (+ logs)").execute()
-TESTCASE_UNICODE_SESSION_PARAMETERS("Testerman autotest: unicode support in session parameters").execute()
-TESTCASE_BINARY_LOGGING("Testerman autotest: binary support in messages (+ logs)").execute()
-TESTCASE_STOP_PTC_DONE_EVENT().execute()
-TESTCASE_STOP_PTC_DONE().execute()
-TESTCASE_STOP_PTC_STOP().execute()
-TESTCASE_STOP_PTC_STOP_TESTCASE().execute()
-TESTCASE_KILL_PTC_DONE_EVENT().execute()
-TESTCASE_KILL_PTC_KILLED_EVENT().execute()
-TESTCASE_KILL_PTC_DONE().execute()
+TC_TIMER("Testerman autotest: timer management").execute()
+TC_SIMPLE_CONNECTION("Testerman autotest: basic").execute()
+TC_SIMPLE_1TON("Testerman autotest: 1 to N connections").execute()
+TC_SIMPLE_PTC("Testerman autotest: PTC behavior").execute()
+TC_ALIVE_AND_NONALIVE("Testerman autotest: alive vs non-alive test component").execute()
+TC_VALUE_EXTRACTION("Testerman autotest: template matching with extraction").execute()
+TC_CODEC("Testerman autotest: simple codec management in templates").execute()
+TC_TEMPLATE_MATCH("Testerman autotest: template matching").execute()
+TC_TEMPLATE_WILDCARDS_CONTAINS("Testerman autotest: contains() wildcard").execute()
+TC_TEMPLATE_WILDCARDS_LENGTH("Testerman autotest: length() wildcard").execute()
+TC_TEMPLATE_WILDCARDS_NOT("Testerman autotest: not_() wildcard").execute()
+TC_UNICODE("Testerman autotest: unicode support in messages (+ logs)").execute()
+TC_UNICODE_SESSION_PARAMETERS("Testerman autotest: unicode support in session parameters").execute()
+TC_BINARY_LOGGING("Testerman autotest: binary support in messages (+ logs)").execute()
+TC_STOP_PTC_DONE_EVENT().execute()
+TC_STOP_PTC_DONE().execute()
+TC_STOP_PTC_STOP().execute()
+TC_STOP_PTC_STOP_TESTCASE().execute()
+TC_KILL_PTC_DONE_EVENT().execute()
+TC_KILL_PTC_KILLED_EVENT().execute()
+TC_KILL_PTC_DONE().execute()

@@ -1638,7 +1638,7 @@ def registerAvailableTestAdapterConfiguration(name, tac):
 def useTestAdapterConfiguration(name):
 	global _CurrentTestAdapterConfiguration
 	if _CurrentTestAdapterConfiguration:
-		CurrentTestAdapterConfiguration._tac._uninstall()
+		_CurrentTestAdapterConfiguration._tac._uninstall()
 	if _AvailableTestAdapterConfigurations.has_key(name):
 		tac = _AvailableTestAdapterConfigurations[name]
 		tac._tac._install()
@@ -1657,13 +1657,23 @@ def getCurrentTestAdapterConfiguration():
 class ConditionTemplate:
 	"""
 	This is a template proxy, like a CodecTemplate.
+	
+	Some conditions can work on other conditions (wildcards/conditions templates),
+	some other ones are terminal and only works with fixed values
+	(fully defined templates - no wildcards, no conditions)
+	
+	For instance, contains() can nest a condition on scalar (lower_than, ...),
+	same for length(), (length(between(1, 3)), length(lower_than(2)), ...)
+	but not things like between, lower_than, regexp, etc.
 	"""
 	def match(self, message):
 		return True
 
 ##
-# Arithmetic
+# Terminal conditions
 ##
+
+# Scalar conditions
 class greater_than(ConditionTemplate):
 	def __init__(self, value):
 		self._value = value
@@ -1672,19 +1682,19 @@ class greater_than(ConditionTemplate):
 			return float(message) >= float(self._value)
 		except:
 			return False
-	def __str__(self):
-		return "(? >= %s)" % str(self._value)
+	def __repr__(self):
+		return "(>= %s)" % str(self._value)
 
 class lower_than(ConditionTemplate):
 	def __init__(self, value):
 		self._value = value
 	def match(self, message):
 		try:
-			return float(message) < float(self._value)
+			return float(message) <= float(self._value)
 		except:
 			return False
-	def __str__(self):
-		return "(? < %s)" % str(self._value)
+	def __repr__(self):
+		return "(<= %s)" % str(self._value)
 
 class between(ConditionTemplate):
 	def __init__(self, a, b):
@@ -1699,28 +1709,19 @@ class between(ConditionTemplate):
 			return float(message) <= float(self._b) and float(message) >= float(self._a)
 		except:
 			return False
-	def __str__(self):
-		return "(%s <= ? < %s)" % (str(self._a), str(self._b))
+	def __repr__(self):
+		return "(between %s and %s)" % (str(self._a), str(self._b))
 
-##
 # Any
-##
 class any(ConditionTemplate):
 	def __init__(self):
 		pass
 	def match(self, message):
 		return True
-	def __str__(self):
+	def __repr__(self):
 		return "(any value)"
 
-class not_(ConditionTemplate):
-	def __init__(self, template):
-		self._template = template
-	def match(self, message):
-		return not _templateMatch(message, self._template)
-	def __str__(self):
-		return "(not %s)" % str(self._template) # a recursive str(template) is needed - here it will work only for simple types/comparators.
-
+# Empty (list, string, dict)
 class empty(ConditionTemplate):
 	"""
 	Applies to lists, strings, dict
@@ -1732,12 +1733,10 @@ class empty(ConditionTemplate):
 			return len(message) == 0
 		except:
 			return False
-	def __str__(self):
+	def __repr__(self):
 		return "(empty)"
 
-##
 # String
-##
 class regexp(ConditionTemplate):
 	def __init__(self, pattern):
 		self._pattern = pattern
@@ -1745,70 +1744,22 @@ class regexp(ConditionTemplate):
 		if re.search(self._pattern, message):
 			return True
 		return False
-	def __str__(self):
+	def __repr__(self):
 		return "(regexp %s)" % str(self._pattern)
-
-class equals_to(ConditionTemplate):
-	"""
-	Won't work with structured type. Not good.
-	"""
-	def __init__(self, value):
-		self._value = value
-	def match(self, message):
-		return unicode(message).lower() == unicode(self._value).lower()
-	def __str__(self):
-		return "(? = %s)" % unicode(self._value)
-
-class length_lower_than(ConditionTemplate):
-	def __init__(self, value):
-		self._value = value
-	def match(self, message):
-		return len(message) < self._value
-	def __str__(self):
-		return "(length < %s)" % unicode(self._value)
-
-class length_greater_than(ConditionTemplate):
-	def __init__(self, value):
-		self._value = value
-	def match(self, message):
-		return len(message) >= self._value
-	def __str__(self):
-		return "(length >= %s)" % unicode(self._value)
-
-class length_is(ConditionTemplate):
-	def __init__(self, value):
-		self._value = value
-	def match(self, message):
-		return len(message) == self._value
-	def __str__(self):
-		return "(length = %s)" % unicode(self._value)
-
-class different_from(ConditionTemplate):
-	def __init__(self, value):
-		self._value = value
-	def match(self, message):
-		return len(message) != self._value
-	def __str__(self):
-		return "(? != %s)" % unicode(self._value)
 
 class not_present(ConditionTemplate):
 	"""
 	Special template. We won't execute match() on it.
+	Use it when you want to be sure you did not receive
+	an element in a dict.
 	"""
 	def __init__(self):
 		pass
 	def match(self, message):
-		return
-	def __str__(self):
+		return False
+	def __repr__(self):
 		return "(not present in list or dict)"
 
-class contains(ConditionTemplate):
-	def __init__(self, value):
-		self._value = value
-	def match(self, message):
-		return self._value in message
-	def __str__(self):
-		return "(? contains %s)" % unicode(self._value)
 
 class superset_of(ConditionTemplate):
 	"""
@@ -1822,8 +1773,8 @@ class superset_of(ConditionTemplate):
 			if not e in message:
 				return False
 		return True
-	def __str__(self):
-		return "(? superset of %s)" % unicode(self._value)
+	def __repr__(self):
+		return "(superset of %s)" % unicode(self._value)
 
 class subset_of(ConditionTemplate):
 	"""
@@ -1837,30 +1788,74 @@ class subset_of(ConditionTemplate):
 			if not e in self._value:
 				return False
 		return True
+	def __repr__(self):
+		return "(subset of %s)" % unicode(self._value)
+
+class equals_to(ConditionTemplate):
+	"""
+	Case-insensitive equality
+	WARNING: currently not recursive. It should...
+	Unless we simply remove this condition.
+	"""
+	def __init__(self, value):
+		self._value = value
+	def match(self, message):
+		return unicode(message).lower() == unicode(self._value).lower()
+	def __repr__(self):
+		return "(== %s)" % unicode(self._value)
+
+##
+# Non-terminal conditions
+##
+# Matching negation
+class not_(ConditionTemplate):
+	def __init__(self, template):
+		self._template = template
+	def match(self, message):
+		(m, _) = templateMatch(message, self._template)
+		return not m
+	def __repr__(self):
+		return "(not %s)" % str(self._template) # a recursive str(template) is needed - here it will work only for simple types/comparators.
+
+# Length attribute
+class length(ConditionTemplate):
+	def __init__(self, template):
+		self._template = template
+	def match(self, message):
+		(m, _) = templateMatch(len(message), self._template)
+		return m
+	def __repr__(self):
+		return "(length %s)" % unicode(self._template)
+
+# Dict/list/string content check
+class contains(ConditionTemplate):
+	def __init__(self, template):
+		self._template = template
+	def match(self, message):
+		# At least one match
+		for element in message:
+			(m, _) = templateMatch(element, self._template)
+			if m:
+				return True
+		return False
 	def __str__(self):
-		return "(? subset of %s)" % unicode(self._value)
+		return "(contains %s)" % unicode(self._template)
 
 class in_(ConditionTemplate):
 	"""
-	'included in' a set/list
+	'included in' a set/list of other templates
 	"""
-	def __init__(self, value):
-		self._value = value
+	def __init__(self, template):
+		# template is a list of templates (wildcards accepted)
+		self._template = template
 	def match(self, message):
-		return message in self._value
-	def __str__(self):
-		return "(? in %s)" % unicode(self._value)
-
-class not_in(ConditionTemplate):
-	"""
-	'not included in' a set/list
-	"""
-	def __init__(self, value):
-		self._value = value
-	def match(self, message):
-		return not message in self._value
-	def __str__(self):
-		return "(? not in %s)" % unicode(self._value)
+		for element in self._template:
+			(m, _) = templateMatch(message, element)
+			if m:
+				return True
+		return False
+	def __repr__(self):
+		return "(in %s)" % unicode(self._template)
 
 ################################################################################
 # "Global" Variables Management
@@ -1876,7 +1871,7 @@ _AtsVariables = {}
 
 _VariableMutex = threading.RLock()
 
-def get(name, defaultValue = None):
+def get_variable(name, defaultValue = None):
 	# Fallback to defaultValue for invalid variable names ?
 	ret = defaultValue
 	_VariableMutex.acquire()
@@ -1887,7 +1882,7 @@ def get(name, defaultValue = None):
 	_VariableMutex.release()
 	return ret
 
-def set(name, value):
+def set_variable(name, value):
 	_VariableMutex.acquire()
 	if name.startswith('PX_'):
 		_SessionVariables[name] = value

@@ -257,12 +257,12 @@ def testermanToXml(obj, simpleElement = None):
 	@param obj: the structure to serialize
 	@type  simpleElement: string, or None
 	@param simpleElement: if present, the function results to a string that contains
-	the element. This is mainly useful (if not mandatory) for simple types, so
-	that the element can contain a correct encoding attribute. Ignored for non-simple types.
+	       the element. This is mainly useful (if not mandatory) for simple types, so
+	       that the element can contain a correct encoding attribute. Ignored for non-simple types.
 
 	@rtype: unicode
 	@returns: the XML encoded string representing the structure.
-	Notice that no character encoding is applied (unicode).
+	          Notice that no character encoding is applied (unicode).
 	"""
 	if isinstance(obj, list):
 		# The internally working object is a lis - faster than a string for concat ops.
@@ -321,7 +321,7 @@ def testermanToXml(obj, simpleElement = None):
 			
 def convertToElement(e):
 	"""
-	Make sure e can be used as a valid element name.
+	Makes sure e can be used as a valid element name.
 	"""
 	ret = e
 	if (e[0] >= '0') and (e[0] <= '9'):

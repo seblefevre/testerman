@@ -39,6 +39,13 @@ def getLogger():
 	return logging.getLogger('TS.FSB.Local')
 
 
+def fileExists(path):
+	try:
+		os.stat(path)
+		return True
+	except:
+		return False
+
 class LocalBackend(FileSystemBackend.FileSystemBackend):
 	"""
 	Properties:
@@ -138,7 +145,7 @@ class LocalBackend(FileSystemBackend.FileSystemBackend):
 		if not path: 
 			return False
 		
-		if os.stat(path):
+		if fileExists(path):
 			if os.path.isdir(path):
 				return True
 			else:

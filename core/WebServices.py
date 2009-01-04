@@ -112,10 +112,10 @@ def scheduleAts(ats, atsId, username, session, at):
 	@throws Exception: in case of an internal error
 
 	@rtype: dict { 'job-uri': string, 'job-id': integer, 'message': string }
-	@return: a dict containing: 
-	         job-uri: the newly created job uri, only valid if status == 0
-	         job-id: the newly created job id, only valid if status == 0
-	         message: a human readable string indicating what was done.
+	@returns: a dict containing: 
+	          job-uri: the newly created job uri, only valid if status == 0
+	          job-id: the newly created job id, only valid if status == 0
+	          message: a human readable string indicating what was done.
 	"""
 	getLogger().info(">> scheduleAts(..., session = %s)" % str(session))
 
@@ -264,7 +264,7 @@ def sendSignal(jobId, signal):
 	@throws Exception: in case of an internal error.
 
 	@rtype: bool
-	@return: True if success, or False if the job was not found.
+	@returns: True if successfully sent, or False if the job was not found.
 	"""
 	getLogger().info(">> sendSignal(%d, %s)" % (jobId, signal))
 	ret = False
@@ -353,44 +353,49 @@ def putFile(content, path):
 
 def getDirectoryListing(path):
 	"""
-	Returns what is contained in a directory: filename and type.
-	This is a list of dict containing the following fields:
-		- name: string - the name of the entry (relative path), with complete extension
-		- type: string - a keyword in [ ats, py, campaign, directory ]
-	
-	Returns an empty list if the directory is invalid/cannot be listed.
+	Returns the contents of a directory.
+	Also filters some 'internal' files (in particular __init__.py files)
 	
 	@type  path: string
-	@param path: an absolute directory within the testerman doc root.
+	@param path: the path of the directory within the docroot
 	
-	@rtype: list of dict { 'name', 'type' }
-	@return: the items with additional type info.
+	@rtype: list of dict{'name': string, 'type': string in [ ats, campaign, module, log, directory ] }
+	@returns: the dir contents, with a name (with extension) relative to the dir, and an associated "meta"type.
+	          Returns None if the directory was not accessible or in case of an error.
 	"""
 	getLogger().info(">> getDirectoryListing(%s)" % path)
 	res = []
 	try:
 		contents = FileSystemManager.instance().getdir(path)
 		if contents is None:
-			raise Exception("Unable to retrieve directory content through backend")
-		for item in contents:
-			name = item['name']
-			if item['type'] == 'file':
-				if name.endswith('.campaign'):
-					res.append({'name': name, 'type': 'campaign'})
-				elif name.endswith('.ats'):
-					res.append({'name': name, 'type': 'ats'})
-				elif name.endswith('.py'):
-					res.append({'name': name, 'type': 'py'})
+			raise Exception("Unable to get directory contents through backend")
+
+		for entry in contents:
+			name = entry['name']
+			type_ = None
+			if entry['type'] == 'file':
+				if name.endswith('.ats'):
+					type_ = 'ats'
+				elif name.endswith('.campaign'):
+					type_ = 'campaign'
+				elif name.endswith('.py') and name != '__init__.py':
+					type_ = 'module'
 				elif name.endswith('.log'):
-					res.append({'name': name, 'type': 'log'})
-			elif item['type'] == 'directory':
-				res.append({'name': name, 'type': 'directory'})
+					type_ = 'log'
+				elif name.endswith('.package'):
+					type_ = 'package'
+			elif entry['type'] == 'directory':
+				type_ = 'directory'
+
+			if type_:			
+				res.append({'name': name, 'type': type_})
 
 		# Sort the entries, so that it is useless to implement it in all clients ?
 		res.sort(key = operator.itemgetter('name'))
 	except Exception, e:
 		e =  Exception("Unable to perform operation: %s\n%s" % (str(e), Tools.getBacktrace()))
 		getLogger().info("<< getDirectoryListing(...): Fault:\n%s" % str(e))
+		# Well, actually, we do not return a fault in this case...
 		res = None
 
 	if res is not None:
@@ -411,7 +416,7 @@ def getFileInfo(path):
 	@param path: the path to the file whose info we want to get
 	
 	@rtype: a dict, or None
-	@return: None on error, or the dict of attributes.
+	@returns: None on error, or the dict of attributes.
 	"""
 	getLogger().info(">> getFileInfo(%s)" % path)
 
@@ -441,7 +446,7 @@ def removeFile(path):
 	@param path: the path to the file to delete
 	
 	@rtype: bool
-	@return: True if OK, False if nothing deleted. (? to check)
+	@returns: True if OK, False if nothing deleted. (? to check)
 	"""
 	getLogger().info(">> removeFile(%s)" % path)
 	res = False
@@ -463,7 +468,7 @@ def getReferencingFiles(module):
 	return []
 	
 ################################################################################
-# Xc Management
+# Xc management
 ################################################################################
 
 def getXcInterfaceAddress():

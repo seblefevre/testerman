@@ -84,7 +84,7 @@ class FileSystemManager:
 
 	def mkdir(self, path):
 		"""
-		Automatically creates all the directory to create this one
+		Automatically creates all the directories to create this one
 		"""
 		paths = os.path.normpath(path).split('/')
 		previousPath = ''

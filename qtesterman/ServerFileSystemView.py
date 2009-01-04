@@ -176,6 +176,11 @@ class DirNode(FileSystemNode):
 				child = LogFileNode('%s%s' % (dirPath, entry['name']), self.getContext(), self)
 			elif entry['type'] == 'campaign':
 				child = CampaignNode('%s%s' % (dirPath, entry['name']), self.getContext(), self)
+			elif entry['type'] == 'module':
+				child = ModuleNode('%s%s' % (dirPath, entry['name']), self.getContext(), self)
+			# Not supported yet
+#			elif entry['type'] == 'package':
+#				child = PackageNode('%s%s' % (dirPath, entry['name']), self.getContext(), self)
 			else:
 				# Generic node
 				child = FileNode('%s%s' % (dirPath, entry['name']), self)
@@ -331,6 +336,16 @@ class LogFileNode(FileSystemNode):
 		FileSystemNode.__init__(self, path, context, parent)
 		self._type = FileSystemNode.TYPE_LOG
 
+##
+# Module
+##
+class ModuleNode(FileSystemNode):
+	"""
+	Module.
+	"""
+	def __init__(self, path, context, parent = None):
+		FileSystemNode.__init__(self, path, context, parent)
+		self._type = FileSystemNode.TYPE_MODULE
 ##
 # Other File
 ##
@@ -495,6 +510,10 @@ class ServerFileSystemModel(QAbstractItemModel):
 				ret = self.icon(':/icons/revision.png')
 			elif t == FileSystemNode.TYPE_VIRTUAL:
 				ret = self.icon(':/icons/folder-virtual.png')
+			elif t == FileSystemNode.TYPE_PACKAGE:
+				ret = self.icon(':/icons/archive.png')
+			elif t == FileSystemNode.TYPE_MODULE:
+				ret = self.icon(':/icons/module.png')
 
 			return QVariant(ret)
 
