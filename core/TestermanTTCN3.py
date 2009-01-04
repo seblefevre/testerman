@@ -1714,9 +1714,20 @@ class between(ConditionTemplate):
 
 # Any
 class any(ConditionTemplate):
+	"""
+	Following the TTCN-3 standard, equivalent to ?.
+	- must be present
+	- contains at least one element for dict/list/string
+	"""
 	def __init__(self):
 		pass
 	def match(self, message):
+		if isinstance(message, (list, dict, basestring)):
+			if message:
+				return True
+			else:
+				return False
+		# Primitives/non-constructed types (and tuple)
 		return True
 	def __repr__(self):
 		return "(any value)"
@@ -1747,19 +1758,20 @@ class regexp(ConditionTemplate):
 	def __repr__(self):
 		return "(regexp %s)" % str(self._pattern)
 
-class not_present(ConditionTemplate):
+class omit(ConditionTemplate):
 	"""
-	Special template. We won't execute match() on it.
+	Special template.
 	Use it when you want to be sure you did not receive
-	an element in a dict.
+	an entry in a dict (a field in a record).
+	Specially handled in _templateMatch since in case of matching,
+	we are not supposed to call it.match().
 	"""
 	def __init__(self):
 		pass
 	def match(self, message):
 		return False
 	def __repr__(self):
-		return "(not present in list or dict)"
-
+		return "(omitted)"
 
 class superset_of(ConditionTemplate):
 	"""
@@ -1857,6 +1869,56 @@ class in_(ConditionTemplate):
 	def __repr__(self):
 		return "(in %s)" % unicode(self._template)
 
+class complements(ConditionTemplate):
+	"""
+	'not included in a list'.
+	The TTCN-3 equivalent is 'complement'.
+	Equivalent to not_(in_)
+	"""
+	def __init__(self, template):
+		# template is a list of templates (wildcards accepted)
+		self._template = template
+	def match(self, message):
+		for element in self._template:
+			(m, _) = templateMatch(message, element)
+			if m:
+				return False
+		return True
+	def __repr__(self):
+		return "(complements %s)" % unicode(self._template)
+
+class and_(ConditionTemplate):
+	"""
+	And condition operator.
+	"""
+	def __init__(self, templateA, templateB):
+		# template is a list of templates (wildcards accepted)
+		self._templateA = templateA
+		self._templateB = templateB
+	def match(self, message):
+		(m, _) = templateMatch(message, self._templateA)
+		if m:
+			return templateMatch(message, self._templateB)[0]
+		return False
+	def __repr__(self):
+		return "(%s and %s)" % (unicode(self._templateA), unicode(self._templateB))
+		
+class or_(ConditionTemplate):
+	"""
+	Or condition operator.
+	"""
+	def __init__(self, templateA, templateB):
+		# template is a list of templates (wildcards accepted)
+		self._templateA = templateA
+		self._templateB = templateB
+	def match(self, message):
+		(m, _) = templateMatch(message, self._templateA)
+		if not m:
+			return templateMatch(message, self._templateB)[0]
+		return True
+	def __repr__(self):
+		return "(%s or %s)" % (unicode(self._templateA), unicode(self._templateB))
+	
 ################################################################################
 # "Global" Variables Management
 ################################################################################
@@ -2014,6 +2076,12 @@ def templateMatch(message, template):
 		return (False, message)
 	return (ret, decodedMessage)
 
+def match(message, template):
+	"""
+	TTCN-3 match function.
+	"""
+	return templateMatch(message, template)[0]
+
 def _templateMatch(message, template):
 	"""
 	Returns True if the message matches the template.
@@ -2054,19 +2122,25 @@ def _templateMatch(message, template):
 		if not isinstance(message, dict):
 			logInternal("mistmatch: expected a dict")
 			return (False, message)
-		# Existing entries in template dict must be matched (including 'not present' ones)
+		# Existing entries in template dict must be matched (excepting 'omit' entries, which must not be present...)
 		decodedDict = {}
 		result = True
 		for key, tmplt in template.items():
+			# any value or none, ie '*'
+			if tmplt is None:
+				continue
 			if message.has_key(key):
 				(ret, decodedField) = _templateMatch(message[key], tmplt)
 				decodedDict[key] = decodedField
 				if not ret:
 					logInternal("mistmatch: mismatched dict entry %s" % unicode(key))
 					result = False
-					# continue to traverse the dict to encode message decoding
+					# continue to traverse the dict to perform "maximum" message decoding
+			elif isinstance(tmplt, omit):
+				# if the missing keys are omit(), that's ok.
+				logInternal("omit: omitted value not found. Great.")
+				continue
 			else:
-				# if the missing key is notPresent, that's ok.
 				# if it's something else, missing key, so no match.
 				logInternal("mistmatch: missing dict entry %s" % unicode(key))
 				result = False

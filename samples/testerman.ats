@@ -720,6 +720,41 @@ class TC_TEMPLATE_WILDCARDS_NOT(TestCase):
 		self.setverdict('pass')
 		log("End of testcase reached.")
 
+class TC_TEMPLATE_WILDCARDS_OMIT(TestCase):
+	"""
+	Basic omit() verification
+	"""
+	def body(self):
+		log("Testerman autotest: omit() wildcard")
+		
+		p01 = self.mtc['port1']
+		p02 = self.mtc['port2']
+		
+		connect(p01, p02)
+		
+		# Basic not matching
+		p01.send({ 'f1': 'value1', 'f2': 'value2' })
+		alt([
+			[ p02.RECEIVE({ 'f1': 'value1', 'f3': omit() }),
+				lambda: log("omit matching OK"),
+			],
+			[ p02.RECEIVE(),
+				lambda: self.setverdict('fail'),
+			],
+		])
+		
+		# Basic not mistmatching
+		p01.send({ 'f1': 'value1', 'f2': 'value2' })
+		alt([
+			[ p02.RECEIVE({ 'f1': 'value1', 'f2': omit() }),
+				lambda: self.setverdict('fail'),
+			],
+			[ p02.RECEIVE(),
+				lambda: log("omit mismatching OK"),
+			],
+		])
+		self.setverdict('pass')
+
 class TC_UNICODE(TestCase):
 	"""
 	Verifies that we can send unicode strings (and log them correctly).
@@ -976,13 +1011,17 @@ TC_SIMPLE_PTC("Testerman autotest: PTC behavior").execute()
 TC_ALIVE_AND_NONALIVE("Testerman autotest: alive vs non-alive test component").execute()
 TC_VALUE_EXTRACTION("Testerman autotest: template matching with extraction").execute()
 TC_CODEC("Testerman autotest: simple codec management in templates").execute()
+
 TC_TEMPLATE_MATCH("Testerman autotest: template matching").execute()
-TC_TEMPLATE_WILDCARDS_CONTAINS("Testerman autotest: contains() wildcard").execute()
-TC_TEMPLATE_WILDCARDS_LENGTH("Testerman autotest: length() wildcard").execute()
-TC_TEMPLATE_WILDCARDS_NOT("Testerman autotest: not_() wildcard").execute()
+TC_TEMPLATE_WILDCARDS_CONTAINS("Testerman autotest: contains() matching mechanism").execute()
+TC_TEMPLATE_WILDCARDS_LENGTH("Testerman autotest: length() matching mechanism").execute()
+TC_TEMPLATE_WILDCARDS_NOT("Testerman autotest: not_() matching mechanism").execute()
+TC_TEMPLATE_WILDCARDS_OMIT("Testerman autotest: omit() matchin mechanism").execute()
+
 TC_UNICODE("Testerman autotest: unicode support in messages (+ logs)").execute()
 TC_UNICODE_SESSION_PARAMETERS("Testerman autotest: unicode support in session parameters").execute()
 TC_BINARY_LOGGING("Testerman autotest: binary support in messages (+ logs)").execute()
+
 TC_STOP_PTC_DONE_EVENT().execute()
 TC_STOP_PTC_DONE().execute()
 TC_STOP_PTC_STOP().execute()
