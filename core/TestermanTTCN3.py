@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 ##
 # This file is part of Testerman, a test automation system.
 # Copyright (c) 2008-2009 Sebastien Lefevre and other contributors
@@ -13,7 +14,6 @@
 ##
 
 ##
-# -*- coding: utf-8 -*-
 # Testerman default TTCN-3 Adapter.
 # The main module that provides ATS with entry points to
 # TTCN-3 logic.
@@ -1748,7 +1748,7 @@ class empty(ConditionTemplate):
 		return "(empty)"
 
 # String
-class regexp(ConditionTemplate):
+class pattern(ConditionTemplate):
 	def __init__(self, pattern):
 		self._pattern = pattern
 	def match(self, message):
@@ -1756,7 +1756,7 @@ class regexp(ConditionTemplate):
 			return True
 		return False
 	def __repr__(self):
-		return "(regexp %s)" % str(self._pattern)
+		return "(pattern %s)" % str(self._pattern)
 
 class omit(ConditionTemplate):
 	"""
@@ -1772,36 +1772,6 @@ class omit(ConditionTemplate):
 		return False
 	def __repr__(self):
 		return "(omitted)"
-
-class superset_of(ConditionTemplate):
-	"""
-	contains at least each element of the value.
-	(dict, list, possible for strings, too)
-	"""
-	def __init__(self, value):
-		self._value = value
-	def match(self, message):
-		for e in self._value:
-			if not e in message:
-				return False
-		return True
-	def __repr__(self):
-		return "(superset of %s)" % unicode(self._value)
-
-class subset_of(ConditionTemplate):
-	"""
-	contains at most each element of the value.
-	(dict, list, possible for strings, too)
-	"""
-	def __init__(self, value):
-		self._value = value
-	def match(self, message):
-		for e in message:
-			if not e in self._value:
-				return False
-		return True
-	def __repr__(self):
-		return "(subset of %s)" % unicode(self._value)
 
 class equals_to(ConditionTemplate):
 	"""
@@ -1839,7 +1809,59 @@ class length(ConditionTemplate):
 	def __repr__(self):
 		return "(length %s)" % unicode(self._template)
 
+class superset(ConditionTemplate):
+	"""
+	contains at least each element of the value (1 or more times ? currently at most 1...)
+	(list only)
+	"""
+	def __init__(self, templates):
+		self._templates = templates
+	def match(self, message):
+		result = True
+		# the different template entries the list should contain
+		# we consume them whenever we matched them - that's why this is a copy
+		templates = map(lambda x: x, self._templates)
+		# traverse the message list
+		for entry in message:
+			entryMatched = False
+			for tmplt in templates:
+				(ret, _) = _templateMatch(entry, tmplt)
+				if ret:
+					# this template is now satisfied by this element
+					templates.remove(tmplt)
+					entryMatched = True
+					break
+		# remaining non-matched templates ?
+		if templates:
+			result = False
+		else:
+			result = True
+		return result
+	def __repr__(self):
+		return "(superset of [%s])" % ', '.join([unicode(x) for x in self._templates]
+
+class subset(ConditionTemplate):
+	"""
+	contains at most each element of the template (1 or more times)
+	(list only)
+	"""
+	def __init__(self, templates):
+		self._templates = templates
+	def match(self, message):
+		for e in message:
+			ret = False
+			for tmplt in self._templates:
+				(ret, _) = _templateMatch(e, tmplt)
+				if ret: 
+					break
+			if not ret:
+				return False
+		return True
+	def __repr__(self):
+		return "(subset of [%s])" % ', '.join([unicode(x) for x in self._templates]
+
 # Dict/list/string content check
+# As a consequence, a bit wider than superset(template)
 class contains(ConditionTemplate):
 	def __init__(self, template):
 		self._template = template
@@ -1869,7 +1891,7 @@ class in_(ConditionTemplate):
 	def __repr__(self):
 		return "(in %s)" % unicode(self._template)
 
-class complements(ConditionTemplate):
+class complement(ConditionTemplate):
 	"""
 	'not included in a list'.
 	The TTCN-3 equivalent is 'complement'.
@@ -2167,7 +2189,7 @@ def _templateMatch(message, template):
 	# Structured type: list
 	# all entries in template must be matched. An entry in message can be matched only once. 
 	# Order matters (no "best matches" between template and message entries).
-	# TODO: check if this is TTCN-3 commliant.
+	# TODO: check if this is TTCN-3 compliant.
 	# for instance: m = [ 10, 12 ], t = [ >= 11, >= 8 ] returns a match: 	
 	# for instance: m = [ 10, 12 ], t = [ <= 11, <= 15 ] returns a match: 10 <= 11 (match), but then 12 is not <= 11 (mismatch)
 	# for instance: m = [ 10, 12 ], t = [ <= 15, <= 11 ] returns a mistmatch: 10 <= 15 (match), but then 12 is not <= 11 (mismatch)
@@ -2176,6 +2198,36 @@ def _templateMatch(message, template):
 			logInternal("mistmatch: expected a list")
 			return (False, message)
 		decodedList = []
+		
+		# Ordered matching. All elements in templates must be matched, in the correct order.
+		result = True
+		i = 0
+		messageLen = len(message)
+		for tmplt in template:
+			if i < messageLen:
+				m = message[i]
+				(ret, decodedEntry) = _templateMatch(m, tmplt)
+				if not ret:
+					# Not matched. Stop here.
+					result = False
+					decodedList.append(decodedEntry)
+					logInternal("mistmatch: lists stopped matching at element %d" % i)
+					break
+				else:
+					# OK, first template element matched.
+					# Continue with the next elements of both lists
+					decodedList.append(decodedEntry)
+					i += 1
+			else:
+				# We consumed our message
+				break
+		if not result or i < len(template):
+			logInternal("mismatch: not all templates were matched")
+			result = False
+		else:
+			result = True
+		
+		"""
 		result = True
 		# the different template entries the list should contain
 		# we consume them whenever we matched them - that's why this is a copy
@@ -2198,6 +2250,7 @@ def _templateMatch(message, template):
 			result = False
 		else:
 			result = True
+		"""
 		return (result, decodedList)
 
 	# conditions: proxied templates	
