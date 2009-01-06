@@ -1,12 +1,12 @@
 # __METADATA__BEGIN__
 # <?xml version="1.0" encoding="utf-8" ?>
-# <meta>
+# <metadata version="1.0">
 # <description>Testerman auto test to pass before any release.</description>
 # <prerequisites></prerequisites>
 # <parameters>
-# <parameter name="PX_UNICODE_STRING" default="ça marche" previous-value="" type="string"><![CDATA[]]></parameter>
+# <parameter name="PX_UNICODE_STRING" default="ça marche" type="string"><![CDATA[]]></parameter>
 # </parameters>
-# </meta>
+# </metadata>
 # __METADATA__END__
 ##
 # Testerman core feature (TTCN-3 oriented) auto tests.
@@ -438,9 +438,9 @@ class TC_CODEC(TestCase):
 
 		log("End of testcase reached.")
 
-class TC_TEMPLATE_MATCH(TestCase):
+class TC_TEMPLATE_MATCH_GENERAL(TestCase):
 	def body(self):
-		log("Testerman autotest: template matching")
+		log("Testerman autotest: template matching, general mechanisms")
 
 		p01 = self.mtc['port01']
 		p02 = self.mtc['port02']
@@ -473,23 +473,24 @@ class TC_TEMPLATE_MATCH(TestCase):
 			if not assert_match(True, True): raise Exception('bool')
 			if not assert_match(False, False): raise Exception('bool')
 			if not assert_match(('choiceName', 'value'), ('choiceName', 'value')): raise Exception('couple')
-			if not assert_match([ 1, 2, 3, 4 ], [ ]): raise Exception('list/0')
-			if not assert_match([ 1, 2, 3, 4 ], [ 2 ]): raise Exception('list/1')
-			if not assert_match([ 1, 2, 3, 4 ], [ 1, 2 ]): raise Exception('list/2')
-			if not assert_match([ 1, 2, 3, 4 ], [ 1, 2, 3, 4 ]): raise Exception('list/3')
+			if not assert_match([ 1, 2, 3, 4 ], [ 1, 2, 3, 4 ]): raise Exception('list/0')
+			if not assert_match([ 1, 2, 3, 4 ], superset()): raise Exception('list/0')
+			if not assert_match([ 1, 2, 3, 4 ], superset(2)): raise Exception('list/1')
+			if not assert_match([ 1, 2, 3, 4 ], superset(1, 2)): raise Exception('list/2')
+			if not assert_match([ 1, 2, 3, 4 ], superset(1, 2, 3, 4)): raise Exception('list/3')
 			if not assert_match({ 'key1': 'value1' }, { }): raise Exception('dict/0')
 			if not assert_match({ 'key1': 'value1' }, { 'key1': 'value1' }): raise Exception('dict/1')
 			if not assert_match({ 'key0': 'value0', 'key1': 'value1' }, { 'key1': 'value1' }): raise Exception('dict/2')
 
-			# Recursive types
+			# Nested types
 			message = { 'string': 'a string', 'unicode': u"comment ca va ?", 'list': [1, 2, 3], 'tuple': ('choiceName', 'value') }
 			if not assert_match(message, message): raise Exception('recursive/0')
-			if not assert_match(message, { 'list': [ 2 ] }): raise Exception('recursive/1')
+			if not assert_match(message, { 'list': superset(2) }): raise Exception('recursive/1')
 			if not assert_match(message, { 'tuple': ('choiceName', 'value') }): raise Exception('recursive/2')
 			
 			message = ('choiceName', [ { 'key': [ ('choiceName2', { 'key2': 2.0 } ) ] }, { 'key4': [ ('choiceName2', { 'key2': 1.0 } ), ('choiceName3', { 'key2': 1.0 } ), ('choiceName4', { 'key2': 3.0 } ) ] } ])
 			if not assert_match(message, message): raise Exception('recursive/3')
-			if not assert_match(message, ('choiceName', [ { 'key4': [ ('choiceName3', { 'key2': 1.0 })]}])): raise Exception('recursive/3')
+			if not assert_match(message, ('choiceName', superset({ 'key4': superset(('choiceName3', { 'key2': 1.0 }))}))): raise Exception('recursive/4')
 	
 			self.setverdict('pass')
 		except Exception, e:
@@ -497,6 +498,63 @@ class TC_TEMPLATE_MATCH(TestCase):
 			self.setverdict('fail')
 
 		log("End of testcase reached.")
+
+class TC_TEMPLATE_MATCH_LIST(TestCase):
+	def body(self):
+		log("Testerman autotest: template matching, list")
+
+		p01 = self.mtc['port01']
+		p02 = self.mtc['port02']
+		connect(p01, p02)
+		
+		def assert_match(message, template):
+			res = StateManager(False)
+			t = Timer(1.0)
+			t.start()
+			p01.send(message)
+			alt([
+				[ p02.RECEIVE(template),
+					lambda: res.set(True)
+				],
+				[ p02.RECEIVE(),
+				],
+				[ t.TIMEOUT,
+				],
+			])
+			t.stop()
+			return res.get()
+			
+		try:
+			# Unit testing: simple types
+			if not assert_match([], None): raise Exception('(none/0)')
+			if not assert_match([], any_or_none()): raise Exception('(any_or_none/0)')
+			# we should have a mismatch here: any() requires at least one element in list
+			if assert_match([], any()): raise Exception('(any/0)')
+			if not assert_match([1], None): raise Exception('(none/1)')
+			if not assert_match([1], any_or_none()): raise Exception('(any_or_none/1)')
+			if not assert_match([1], any()): raise Exception('(any/1)')
+
+			if not assert_match([1, 2], [1, 2]): raise Exception('(ordered/1)')
+			# order matters
+			if assert_match([1, 2], [2, 1]): raise Exception('(ordered/2)')
+			# wildcards
+			if not assert_match([1, 2, 3], [1, any(), 3]): raise Exception('(wildcard/1)')
+			if not assert_match([1, 2, 3], [1, any_or_none(), 3]): raise Exception('(wildcard/2)')
+			# still verifying order
+			if assert_match([1, 2, 3], [3, any(), 2]): raise Exception('(wildcard/3)')
+			# wildcards *
+			if not assert_match([1, 2, 3], [any_or_none(), 3]): raise Exception('(wildcard/4)')
+			if assert_match([1, 2, 3], [any(), 3]): raise Exception('(wildcard/5)')
+			if not assert_match([1, 2, 3], [1, 2, any_or_none()]): raise Exception('(wildcard/6)')
+			if not assert_match([1, 2, 3], [any_or_none()]): raise Exception('(wildcard/7)')
+			if not assert_match([1, 2, 3, 4], [1, any_or_none(), 4]): raise Exception('(wildcard/8)')
+			if not assert_match([1, 3], [1, any_or_none(), 3]): raise Exception('(wildcard/10)')
+			if not assert_match([1, 2, 3, 4, 5, 6, 7], [1, any_or_none(), 3, 4, any(), 6, 7]): raise Exception('(wildcard/9)')
+
+			self.setverdict('pass')
+		except Exception, e:
+			log("Unable to complete test case: matching error for %s" % str(e))
+			self.setverdict('fail')
 
 class TC_TEMPLATE_WILDCARDS_CONTAINS(TestCase):
 	def body(self):
@@ -1012,7 +1070,8 @@ TC_ALIVE_AND_NONALIVE("Testerman autotest: alive vs non-alive test component").e
 TC_VALUE_EXTRACTION("Testerman autotest: template matching with extraction").execute()
 TC_CODEC("Testerman autotest: simple codec management in templates").execute()
 
-TC_TEMPLATE_MATCH("Testerman autotest: template matching").execute()
+TC_TEMPLATE_MATCH_GENERAL("Testerman autotest: template matching").execute()
+TC_TEMPLATE_MATCH_LIST("Testerman autotest: list matching").execute()
 TC_TEMPLATE_WILDCARDS_CONTAINS("Testerman autotest: contains() matching mechanism").execute()
 TC_TEMPLATE_WILDCARDS_LENGTH("Testerman autotest: length() matching mechanism").execute()
 TC_TEMPLATE_WILDCARDS_NOT("Testerman autotest: not_() matching mechanism").execute()

@@ -1651,7 +1651,7 @@ def getCurrentTestAdapterConfiguration():
 	
 	
 ################################################################################
-# Template Conditions
+# Template Conditions, i.e. Matching Mechanisms
 ################################################################################
 
 class ConditionTemplate:
@@ -1730,7 +1730,22 @@ class any(ConditionTemplate):
 		# Primitives/non-constructed types (and tuple)
 		return True
 	def __repr__(self):
-		return "(any value)"
+		return "(?)"
+
+class any_or_none(ConditionTemplate):
+	"""
+	Equivalent to * in TTCN-3.
+	Provided for convenience. Equivalent to 'None' in Testerman.
+	- in a dict: any value if present
+	- in a list: match any number of elements
+	- as a value: any value
+	"""
+	def __init__(self):
+		pass
+	def match(self, message):
+		return True
+	def __repr__(self):
+		return "(*)"
 
 # Empty (list, string, dict)
 class empty(ConditionTemplate):
@@ -1747,7 +1762,7 @@ class empty(ConditionTemplate):
 	def __repr__(self):
 		return "(empty)"
 
-# String
+# String: regexp
 class pattern(ConditionTemplate):
 	def __init__(self, pattern):
 		self._pattern = pattern
@@ -1799,6 +1814,15 @@ class not_(ConditionTemplate):
 	def __repr__(self):
 		return "(not %s)" % str(self._template) # a recursive str(template) is needed - here it will work only for simple types/comparators.
 
+class ifpresent(ConditionTemplate):
+	def __init__(self, template):
+		self._template = template
+	def match(self, message):
+		(m, _) = templateMatch(message, self._template)
+		return m
+	def __repr__(self):
+		return "(if present: %s)" % unicode(self._template)
+
 # Length attribute
 class length(ConditionTemplate):
 	def __init__(self, template):
@@ -1811,54 +1835,46 @@ class length(ConditionTemplate):
 
 class superset(ConditionTemplate):
 	"""
-	contains at least each element of the value (1 or more times ? currently at most 1...)
+	contains at least each element of the value (1 or more times)
 	(list only)
 	"""
-	def __init__(self, templates):
+	def __init__(self, *templates):
 		self._templates = templates
 	def match(self, message):
-		result = True
-		# the different template entries the list should contain
-		# we consume them whenever we matched them - that's why this is a copy
-		templates = map(lambda x: x, self._templates)
-		# traverse the message list
-		for entry in message:
-			entryMatched = False
-			for tmplt in templates:
-				(ret, _) = _templateMatch(entry, tmplt)
-				if ret:
-					# this template is now satisfied by this element
-					templates.remove(tmplt)
-					entryMatched = True
+		for tmplt in self._templates:
+			ret = False
+			for e in message:
+				(ret, _) = templateMatch(e, tmplt)
+				if ret: 
+					# ok, tmplt is in message. Next template?
 					break
-		# remaining non-matched templates ?
-		if templates:
-			result = False
-		else:
-			result = True
-		return result
+			# sorry, tmplt is not in the message. This is not a superset.
+			if not ret:
+				return False
+		# All tmplt in the message, at least once (the actual count is not computed)
+		return True
 	def __repr__(self):
-		return "(superset of [%s])" % ', '.join([unicode(x) for x in self._templates]
+		return "(superset of [%s])" % ', '.join([unicode(x) for x in self._templates])
 
 class subset(ConditionTemplate):
 	"""
-	contains at most each element of the template (1 or more times)
+	contains only elements from the template (1 or more times each)
 	(list only)
 	"""
-	def __init__(self, templates):
+	def __init__(self, *templates):
 		self._templates = templates
 	def match(self, message):
 		for e in message:
 			ret = False
 			for tmplt in self._templates:
-				(ret, _) = _templateMatch(e, tmplt)
+				(ret, _) = templateMatch(e, tmplt)
 				if ret: 
 					break
 			if not ret:
 				return False
 		return True
 	def __repr__(self):
-		return "(subset of [%s])" % ', '.join([unicode(x) for x in self._templates]
+		return "(subset of [%s])" % ', '.join([unicode(x) for x in self._templates])
 
 # Dict/list/string content check
 # As a consequence, a bit wider than superset(template)
@@ -1878,6 +1894,8 @@ class contains(ConditionTemplate):
 class in_(ConditionTemplate):
 	"""
 	'included in' a set/list of other templates
+	
+	This is a subset() for a single element. (mergeable with subset ?)
 	"""
 	def __init__(self, template):
 		# template is a list of templates (wildcards accepted)
@@ -2124,7 +2142,7 @@ def _templateMatch(message, template):
 	# Match all
 	if template is None:
 		return (True, message)
-
+	
 	# CodecTemplate proxy template
 	if isinstance(template, CodecTemplate):
 		# Let's see if we can first decode the message
@@ -2158,9 +2176,9 @@ def _templateMatch(message, template):
 					logInternal("mistmatch: mismatched dict entry %s" % unicode(key))
 					result = False
 					# continue to traverse the dict to perform "maximum" message decoding
-			elif isinstance(tmplt, omit):
+			elif isinstance(tmplt, (omit, any_or_none, ifpresent)):
 				# if the missing keys are omit(), that's ok.
-				logInternal("omit: omitted value not found. Great.")
+				logInternal("omit: omitted value not found, or optional value not found. Great.")
 				continue
 			else:
 				# if it's something else, missing key, so no match.
@@ -2187,18 +2205,25 @@ def _templateMatch(message, template):
 		return (ret, (message[0], decoded))
 
 	# Structured type: list
-	# all entries in template must be matched. An entry in message can be matched only once. 
-	# Order matters (no "best matches" between template and message entries).
-	# TODO: check if this is TTCN-3 compliant.
-	# for instance: m = [ 10, 12 ], t = [ >= 11, >= 8 ] returns a match: 	
-	# for instance: m = [ 10, 12 ], t = [ <= 11, <= 15 ] returns a match: 10 <= 11 (match), but then 12 is not <= 11 (mismatch)
-	# for instance: m = [ 10, 12 ], t = [ <= 15, <= 11 ] returns a mistmatch: 10 <= 15 (match), but then 12 is not <= 11 (mismatch)
+	# This is a one-to-one exact match, ordered.
+	# as a consequence, the same number of elements in template and message are expected,
+	# unless we have some * in template.
 	if isinstance(template, list):
 		if not isinstance(message, list):
 			logInternal("mistmatch: expected a list")
 			return (False, message)
-		decodedList = []
 		
+		# Wildcard (*) support:
+		# match(message, *|template) =
+		#  matched = False
+		#  i = 0
+		#  while not matched and message[i:]:
+		#   matched = match(message[i:], template)
+		(result, decodedList) = _templateMatch_list(message, template)
+		return (result, decodedList)
+
+		"""		
+		decodedList = []
 		# Ordered matching. All elements in templates must be matched, in the correct order.
 		result = True
 		i = 0
@@ -2212,12 +2237,13 @@ def _templateMatch(message, template):
 					result = False
 					decodedList.append(decodedEntry)
 					logInternal("mistmatch: lists stopped matching at element %d" % i)
-					break
+					# but still continue to display the complete message attempt in log
+					# break
 				else:
 					# OK, first template element matched.
 					# Continue with the next elements of both lists
 					decodedList.append(decodedEntry)
-					i += 1
+				i += 1
 			else:
 				# We consumed our message
 				break
@@ -2226,32 +2252,8 @@ def _templateMatch(message, template):
 			result = False
 		else:
 			result = True
-		
-		"""
-		result = True
-		# the different template entries the list should contain
-		# we consume them whenever we matched them - that's why this is a copy
-		templates = map(lambda x: x, template) # copy.deepcopy(template)
-		# traverse the message list
-		for entry in message:
-			entryMatched = False
-			for tmplt in templates:
-				(ret, decodedEntry) = _templateMatch(entry, tmplt)
-				if ret:
-					decodedList.append(decodedEntry)
-					# this template is now satisfied by this element
-					templates.remove(tmplt)
-					entryMatched = True
-					break
-			if not entryMatched:
-				decodedList.append(entry)
-		if templates:
-			logInternal("mistmatch: %d expected element(s) in template list not matched" % len(templates))
-			result = False
-		else:
-			result = True
-		"""
 		return (result, decodedList)
+		"""
 
 	# conditions: proxied templates	
 	if isinstance(template, ConditionTemplate):
@@ -2261,6 +2263,69 @@ def _templateMatch(message, template):
 	# Simple types
 	return (message == template, message)
 
+
+def _templateMatch_list(message, template):
+	"""
+	both message and template are lists.
+	
+	Semi-recursive implementation.
+	De-resursived on wildcard * only.
+	"""
+#	logInternal("Trying to match %s with %s" % (unicode(message), unicode(template)))
+	# match(message, *|template) =
+	#  matched = False
+	#  i = 0
+	#  while not matched and message[i:]:
+	#   matched = match(message[i:], template)
+	
+	# [] can only be matched by [], [ * ]
+	if not message:
+		if not template or (len(template) == 1 and isinstance(template[0], any_or_none)):
+#			logInternal("_templateMatch_list matched: [] against [] or [*]")
+			return (True, [])
+		else:
+			return (False, [])
+
+	# message not empty.
+	if not template:
+		# ... but template is
+#		logInternal("_templateMatch_list mismatched: %s against %s" % (unicode(message), unicode(template)))
+		return (False, message)
+		
+	th, tt = (template[0], template[1:])
+	mh, mt = (message[0], message[1:])
+	if isinstance(th, any_or_none):
+		if not tt:
+#			logInternal("_templateMatch_list matched: %s against %s ([*])" % (unicode(message), unicode(template)))
+			return (True, message)
+		matched = False
+		decodedList = None
+		i = 0
+		while not matched and message[i:]:
+			(matched, decodedList) = _templateMatch_list(message[i:], tt)
+			i += 1
+#		logInternal("_templateMatch_list res %s: %s against %s ([*])" % (matched, unicode(message), unicode(template)))
+		return (matched, decodedList)
+	else:
+		# Recursive approach:
+		# we match the same element first element, and the trailing list should match, too
+		decodedList = []
+		result = True
+		(ret, decoded) = _templateMatch(mh, th)
+		decodedList.append(decoded)
+		if not ret:
+#			logInternal("_templateMatch_list mismatched on first element: %s against %s " % (unicode(message), unicode(template)))
+			result = False
+			# Complete with undecoded message
+			decodedList += mt
+		else:
+#			logInternal("_templateMatch_list matched on first element: %s against %s " % (unicode(message), unicode(template)))
+			(ret, decoded) = _templateMatch_list(mt, tt)
+			result = ret
+			decodedList += decoded
+
+#		logInternal("_templateMatch_list res %s: %s against %s ([*])" % (result, unicode(message), unicode(template)))
+		return (result, decodedList)
 
 ################################################################################
 # TRI interface - TE provided

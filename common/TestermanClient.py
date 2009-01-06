@@ -166,7 +166,7 @@ class Client(Nodes.ConnectingNode):
 		@type  atsId: unicode
 		@param atsId: a name identifying the ATS
 		@type  session: dict[unicode] of strings
-		@param session: the initial session parameters
+		@param session: the initial session parameters, altering the ATS metadata's provided ones
 		@type  at: float
 		@param at: timestamp of the scheduled start
 		@type  username: string

@@ -117,6 +117,12 @@ class MetadataModel(QObject):
 			raise Exception("Invalid metadata: %s (line %d, column %d)" % (str(errorMessage), errorLine, errorColumn))
 
 		# Now we fill our internal model representation
+		version = metadataDoc.documentElement().attribute('version')
+		# according to the version, we may fill our internal representation differently.
+		# for now, only version 1.0 (or no version) is supported.
+		if not version.isNull() and version != "1.0":
+			raise Exception("Unsupported metadata version %s" % version)
+		
 		element = metadataDoc.documentElement().firstChildElement('prerequisites')
 		if not element.isNull():
 			self.prerequisites = unicode(element.text())
@@ -133,7 +139,6 @@ class MetadataModel(QObject):
 					'default': unicode(parameter.attribute('default')),
 					'type': unicode(parameter.attribute('type')),
 					'description': unicode(parameter.text()),
-					'previous-value': unicode(parameter.attribute('previous-value')),
 				}
 
 				parameter = parameter.nextSiblingElement()
@@ -154,11 +159,11 @@ class MetadataModel(QObject):
 		Serializes the model to XML.
 
 		<?xml version="1.0" encoding="utf-8"?>
-		<meta>
+		<metadata version="1.0">
 			<description><![CDATA[description]]></description>
 			<prerequisites><![CDATA[prerequisites]]></prerequisites>
 			<parameters>
-				<parameter name="PX_PARAM1" previous-value="1234" default="defaultValue01" type="string"><![CDATA[description]]></parameter>
+				<parameter name="PX_PARAM1" default="defaultValue01" type="string"><![CDATA[description]]></parameter>
 			</parameters>
 		</meta>'
 
@@ -167,16 +172,16 @@ class MetadataModel(QObject):
 		"""
 		# Manual XML encoding.
 		res =  u'<?xml version="1.0" encoding="utf-8" ?>\n'
-		res += u'<meta>\n'
+		res += u'<metadata version="1.0">\n'
 		res += u'<description>%s</description>\n' % Qt.escape(self.description) # This replacement enables to correcly read \n from the XML (when reloaded)
 		res += u'<prerequisites>%s</prerequisites>\n' % Qt.escape(self.prerequisites)
 		res += u'<parameters>\n'
 		for (name, p) in self.parameters.items():
 			# We must escape the values (to avoid ", etc)
 			# TODO: use pure Qt facilities
-			res += u'<parameter name="%s" default="%s" previous-value="%s" type="string"><![CDATA[%s]]></parameter>\n' % (Qt.escape(name), Qt.escape(p['default']), Qt.escape(p['previous-value']), p['description'].replace('\n', '&cr;'))
+			res += u'<parameter name="%s" default="%s" type="string"><![CDATA[%s]]></parameter>\n' % (Qt.escape(name), Qt.escape(p['default']), p['description'].replace('\n', '&cr;'))
 		res += u'</parameters>\n'
-		res += u'</meta>\n'
+		res += u'</metadata>\n'
 		return res
 
 	def getParameter(self, name):
@@ -187,11 +192,14 @@ class MetadataModel(QObject):
 		@param name: the name of the parameter
 
 		@rtype: dict[unicode] of unicode
-		@returns: { 'default', 'type', 'previous-value', 'description' } None if the parameter does not exist.
+		@returns: { 'default', 'type', 'description' } None if the parameter does not exist.
 		"""
+		ret = {}
 		if self.parameters.has_key(name):
-			# We should return a copy...
-			return self.parameters[name]
+			for k, v in self.parameters[name]:
+				ret[k] = v
+			# FIXME: Kept for compatibility
+			ret['previous-value'] = ret['default']
 		return None
 
 	def setParameter(self, name, default = None, description = None, previousValue = None, newName = None):
@@ -200,18 +208,18 @@ class MetadataModel(QObject):
 		Adds it if name does not exists.
 		If newName is provided, rename the parameter (or create it with newName directly if it does not exist)
 
-		Keeps attributes that are set to None. For new parameters with None attributes, use empty default value.
+		Keeps attributes that are set to None. For new parameters with None attributes, uses an empty default value.
+		
+		FIXME: previousValue kept for compatibility. To remove.
 		"""
 		if not self.parameters.has_key(name):
-			self.parameters[name] = { 'type': 'string', 'default': '', 'previous-value': '', 'description': '' }
+			self.parameters[name] = { 'type': 'string', 'default': '', 'description': '' }
 		p = self.parameters[name]
 
 		if default is not None:
 			p['default'] = default
 		if description is not None:
 			p['description'] = description
-		if previousValue is not None:
-			p['previous-value'] = previousValue
 		
 		if newName and newName != name:
 			self.parameters[newName] = p
