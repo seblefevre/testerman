@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 ##
 # This file is part of Testerman, a test automation system.
 # Copyright (c) 2008-2009 Sebastien Lefevre and other contributors
@@ -13,7 +14,6 @@
 ##
 
 ##
-# -*- coding: utf-8 -*-
 # Test Executable Builder: contains all the necessary
 # to create a TE from an ATS.
 #
@@ -24,13 +24,19 @@
 ##
 
 import ConfigManager
+import JobTools
 import Versions
 
+import logging
 import os.path
 import pickle
 import time
 import tokenize
 import StringIO
+
+
+def getLogger():
+	return logging.getLogger('TEFactory')
 
 def smartReindent(code, indentCharacter = '\t', reindentCount = 1):
 	"""
@@ -45,7 +51,7 @@ def smartReindent(code, indentCharacter = '\t', reindentCount = 1):
 	@type  code: unicode
 	@param code: the Python code to reindent
 	@param indentCharacter: the character/substring to use for indendation. Will also
-	replace current indentation character(s) with it.
+	                        replace current indentation character(s) with it.
 	@param reindentCount: the number of new reindentation level (>= 0)
 	
 	@rtype: string (utf-8)
@@ -91,7 +97,7 @@ def createTestExecutable(name, ats):
 
 	@type  name: string
 	@param name: the ATS friendly name / identifier	
-	@type  ats: unicode string
+	@type  ats: string (utf-8)
 	@param ats: the source ats (contains metadata as Python comments)
 	
 	@rtype: string (utf-8 encoded)
@@ -403,5 +409,21 @@ def loadSession(dump):
 	"""
 	return pickle.loads(dump)
 	
-
+def getDefaultParametersFromMetadata(ats):
+	"""
+	Extracts the default parameters & values from an ats.
+	
+	@type  ats: string (utf-8)
+	@param ats: the ats code, should includes metadata
+	
+	@rtype: a dict[unicode] of unicode
+	@returns: the default session dictionary (parameter_name: default_value)
+	"""
+	xmlMetadata = JobTools.extractMetadata(sample, '#')
+	if xmlMetadata:
+		m = JobTools.parseMetadata(xmlMetadata)
+		if m:
+			return m.getDefaultSessionDict()
+	return None
+	
 

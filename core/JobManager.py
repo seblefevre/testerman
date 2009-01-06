@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 ##
 # This file is part of Testerman, a test automation system.
 # Copyright (c) 2008-2009 Sebastien Lefevre and other contributors
@@ -13,7 +14,6 @@
 ##
 
 ##
-# -*- coding: utf-8 -*-
 # Job Manager:
 # a job scheduler able to execute scheduling jobs on time.
 #
@@ -305,7 +305,8 @@ class Job(object):
 		Just be sure to be able to stop it when receiving a SIGNAL_KILLED at least.
 		
 		@type  inputSession: dict of unicode of any object
-		@param inputSession: the initial session variables to pass to the job. May be empty (but not None).
+		@param inputSession: the initial session variables to pass to the job. May be empty (but not None),
+		                     overriding the default variable definitions as contained in job's metadata (if any).
 
 		@rtype: integer
 		@returns: the job _result
@@ -338,11 +339,11 @@ class AtsJob(Job):
 	def __init__(self, name, ats):
 		"""
 		@type  name: string
-		@type  ats: unicode string
+		@type  ats: string (utf-8)
 		@param ats: the complete ats file (containing metadata)
 		"""
 		Job.__init__(self, name)
-		#
+		# string (as utf-8)
 		self._ats = ats
 		# The PID of the forked TE executable
 		self._tePid = None
@@ -386,6 +387,19 @@ class AtsJob(Job):
 			getLogger().error("%s: unable to handle signal %s: %s" % (str(self), sig, str(e)))
 
 	def run(self, inputSession = {}):
+		"""
+		Prepares the TE, starts it, and only returns when it's over.
+		
+		inputSession contains parameters values that overrides default ones.
+		The default ones are extracted (during the TE preparation) from the
+		metadata embedded within the ATS source.
+		
+		@type  inputSession: dict[unicode] of unicode
+		@param inputSession: the override session parameters.
+		
+		@rtype: int
+		@returns: the TE return code
+		"""
 		# TODO: package dependencies (user modules) so that we can reexecute the *same* TE
 		# later.
 	
@@ -452,9 +466,17 @@ class AtsJob(Job):
 			pass
 		inputSessionFilename = "%s/%s.input.session" % (baseSessionDirectory, baseFilename)
 		outputSessionFilename = "%s/%s.output.session"  % (baseSessionDirectory, baseFilename)
+		# Create the actual input session:
+		# the default session, from metadata, overriden with user input session values.
+		# FIXME: should we accept user input parameters that are not defined in default parameters, i.e.
+		# in ATS ignature ?
+		
+		# TODO
+		completeInputSession = inputSession
+		
 		# Dumps input session to the corresponding file
 		try:
-			dumpedInputSession = TEFactory.dumpSession(inputSession)
+			dumpedInputSession = TEFactory.dumpSession(completeInputSession)
 			f = open(inputSessionFilename, 'w')
 			f.write(dumpedInputSession)
 			f.close()
@@ -556,7 +578,7 @@ class AtsJob(Job):
 			f.close()
 			return res
 		else:
-			return '<?xml version="1.0"  encoding="utf-8" ?><ats></ats>'
+			return '<?xml version="1.0" encoding="utf-8" ?><ats></ats>'
 	
 	
 class Scheduler(threading.Thread):
