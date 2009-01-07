@@ -19,8 +19,24 @@
 
 import TestermanCD
 
+import StringIO
+import codecs
 import xml.dom.minidom
 
+# "overriden" Document.toxml and toprettyxml to optionaly write the header.
+
+def writexml(doc, header = True, encoding = None, indent = "", addindent = "", newl = ""):
+	writer = StringIO.StringIO()
+	if encoding is not None:
+		writer = codecs.lookup(encoding)[3](writer)
+	if header:
+		if encoding is None:
+			writer.write('<?xml version="1.0" ?>%s' % newl)
+		else:
+			writer.write('<?xml version="1.0" encoding="%s"?>%s' % (encoding, newl))
+	for node in doc.childNodes:
+		node.writexml(writer, indent, addindent, newl)
+	return writer.getvalue()
 
 class XmlCodec(TestermanCD.Codec):
 	"""
@@ -33,6 +49,13 @@ class XmlCodec(TestermanCD.Codec):
 	for text-node (as a consequence: <h1>hello <b>dolly</b></h1> 
 	will only return ('h1', { 'value': hello }) - the first text node renders the
 	element 'text only'.
+	
+	
+	Valid properties:
+	
+	prettyprint  || boolean || False || encoding: pretty xml print
+	encoding     || string  || utf-8 || encoding: encoding format. decoding: decoding format if no header present.
+	write_header || boolean || True || encoding: write the <?xml version="1.0" ?> header or not
 	"""
 	def encode(self, template):
 		(rootTag, rootAttr) = template
@@ -40,9 +63,9 @@ class XmlCodec(TestermanCD.Codec):
 		root_element = dom.documentElement
 		self._encode(dom, root_element, rootAttr)
 		if self.getProperty('prettyprint', False):
-			return dom.toprettyxml() # encoding support possible here.
+			return writexml(dom, header = self.getProperty('write_header', True), encoding = self.getProperty('encoding', 'utf-8'), addindent = "\t", newl = "\n")
 		else:
-			return dom.toxml()
+			return writexml(dom, header = self.getProperty('write_header', True), encoding = self.getProperty('encoding', 'utf-8'))
 	
 	def _encode(self, doc, element, attr):
 		"""
@@ -50,9 +73,9 @@ class XmlCodec(TestermanCD.Codec):
 		@type  element: Element
 		@type  attr: dict{'attributes' (optional), 'value' (optional), 'children' (optional), 'cdata' (optional)}
 		"""
-		if attr.has_key('attributes'):
-			for k, v in attr.items():
-				element.setAttribute(k, unicode(v))
+		attributes = attr.get('attributes', {})
+		for k, v in attributes.items():
+			element.setAttribute(k, unicode(v))
 		children = attr.get('children', [])
 		if children:
 			# OK, children present. Ignoring value/cdata
@@ -95,8 +118,8 @@ class XmlCodec(TestermanCD.Codec):
 			if node.nodeType == node.ELEMENT_NODE:
 				children.append(self._decode(node))
 			# We should return only if these nodes are the first one.. ?
-			elif node.nodeType == node.TEXT_NODE:
-				return (tag, { 'attributes': attributes, 'cdata': False, 'value': node.nodeValue }) 
+			elif node.nodeType == node.TEXT_NODE and node.nodeValue.strip():
+				return (tag, { 'attributes': attributes, 'cdata': False, 'value': node.nodeValue.strip() })
 			elif node.nodeType == node.CDATA_SECTION_NODE:
 				return (tag, { 'attributes': attributes, 'cdata': True, 'value': node.nodeValue })
 			# Ignore other final node types (comments, ...)
@@ -107,20 +130,34 @@ TestermanCD.registerCodecClass('xml', XmlCodec)
 
 
 if __name__ == '__main__':
-	codec = XmlCodec()
+	TestermanCD.alias('xmlp', 'xml', prettyprint = True, write_header = False)
+
+	TestermanCD.alias('xmliso', 'xml', encoding = "iso-8859-1", write_header = True)
 	
 	sample = """<?xml version="1.0"?>
-<library owner="John Smith" administrator="çalia utf">
+<library owner="John Smith" administrator="Héléna Utf8">
 	<book isbn="88888-7777788">
-		<author>Mickaël</author>
+		<author>Mickaël Orangina</author>
 		<title locale="fr">Tonnerre sous les tropiques</title>
 		<title locale="us">Tropic thunder</title>
 	</book>
 </library>
 """
 	
-	decoded = codec.decode(sample)
+	decoded = TestermanCD.decode('xml', sample)
+	print "decoded:"
 	print decoded
-	print codec.encode(decoded)
+	print "re-encoded:"
+	print TestermanCD.encode('xml', decoded)
+	print "re-encoded with prettyprint:"
+	print TestermanCD.encode('xmlp', decoded)
+	print "re-encoded with iso:"
+	print TestermanCD.encode('xmliso', decoded)
+	print "re-decoded:"
+	print TestermanCD.decode('xml', TestermanCD.encode('xml', decoded))
+	print "re-decoded from prettyprint:"
+	print TestermanCD.decode('xml', TestermanCD.encode('xmlp', decoded))
+	print "re-decoded from iso:"
+	print TestermanCD.decode('xml', TestermanCD.encode('xmliso', decoded))
 	
 	

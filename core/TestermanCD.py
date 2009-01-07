@@ -64,7 +64,7 @@ class CodecManager(object):
 		"""
 		if not self._codecs.has_key(codec):
 			raise Exception("Unable to alias codec %s to %s: codec %s is not registered" % (codec, name, codec))
-		(codecClass, properties) = self._codecs[name]
+		(codecClass, properties) = self._codecs[codec]
 		mergedProperties = {}
 		for n, p in properties.items():
 			mergedProperties[n] = p
