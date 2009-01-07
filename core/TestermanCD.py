@@ -27,16 +27,16 @@ class Codec:
 	Codec base class
 	"""
 	def __init__(self):
-		self._parameters = {}
+		self._properties = {}
 	
-	def setParameter(self, name, value):
-		self._parameters[name] = value
+	def setProperty(self, name, value):
+		self._properties[name] = value
 	
-	def getParameter(self, name, defaultValue = None):
-		return self._parameters.get(name, defaultValue)
+	def getProperty(self, name, defaultValue = None):
+		return self._properties.get(name, defaultValue)
 	
 	def __getitem__(self, name):
-		return self._parameters.get(name, None)
+		return self._properties.get(name, None)
 	
 	def encode(self, template):
 		return None
@@ -58,19 +58,19 @@ class CodecManager(object):
 	def alias(self, name, codec, **kwargs):
 		"""
 		Configure a codec and alias it.
-		Aliasing of configured codecs subclasses its parameters, so
+		Aliasing of configured codecs subclasses its properties, so
 		that we can create different specialized configurations based on
 		the same alias.
 		"""
 		if not self._codecs.has_key(codec):
 			raise Exception("Unable to alias codec %s to %s: codec %s is not registered" % (codec, name, codec))
-		(codecClass, parameters) = self._codecs[name]
-		mergedParameters = {}
-		for n, p in parameters.items():
-			mergedParameters[n] = p
+		(codecClass, properties) = self._codecs[name]
+		mergedProperties = {}
+		for n, p in properties.items():
+			mergedProperties[n] = p
 		for n, p in kwargs.items():
-			mergedParameters[n] = p
-		self._codecs[name] = (codecClass, mergedParameters)
+			mergedProperties[n] = p
+		self._codecs[name] = (codecClass, mergedProperties)
 
 	def _getCodecInstance(self, name):
 		"""
@@ -79,10 +79,10 @@ class CodecManager(object):
 		if not self._codecs.has_key(name):
 			return None
 		else:
-			codecClass, parameters = self._codecs[name]
+			codecClass, properties = self._codecs[name]
 			c = codecClass()
-			for n, p in parameters.items():
-				c.setParameter(n, p)
+			for n, p in properties.items():
+				c.setProperty(n, p)
 			return c
 	
 	def encode(self, name, template):
