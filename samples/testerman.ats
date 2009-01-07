@@ -43,7 +43,7 @@ class TC_TIMER(TestCase):
 		alt([
 			[ t.TIMEOUT,
 				lambda: log("timeout correctly received"),
-				lambda: self.setverdict("pass"),
+				lambda: setverdict("pass"),
 			]
 		])
 		
@@ -56,11 +56,11 @@ class TC_TIMER(TestCase):
 			[ t2.TIMEOUT,
 				lambda: log("Shortest timeout correctly received"),
 				lambda: t1.stop(),
-				lambda: self.setverdict("pass"),
+				lambda: setverdict("pass"),
 			],
 			[ t1.TIMEOUT,
 				lambda: log("Sorry, the longuest timeout was received first"),
-				lambda: self.setverdict("fail"),
+				lambda: setverdict("fail"),
 			]
 		])
 		
@@ -74,11 +74,11 @@ class TC_TIMER(TestCase):
 		log("Checking running()...")
 		if s.running():
 			log("Stopped timer seen as running. Test failed.")
-			self.setverdict("fail")
+			setverdict("fail")
 		s.start(1)
 		if not s.running():
 			log("Started timer not seen as running. Test failed.")
-			self.setverdict("fail")
+			setverdict("fail")
 		s.stop()
 		
 		log("Checking read()...")
@@ -91,10 +91,10 @@ class TC_TIMER(TestCase):
 		d = t1.read()
 		if abs(1.0 - d) > delta:
 			log("Incorrect read timer: got %f, expected 1s" % d)
-			self.setverdict("fail")
+			setverdict("fail")
 		log("Read timer accuracy: %fs" % abs(1.0 - d))
 			
-		self.setverdict("pass")
+		setverdict("pass")
 		log("End of testcase reached.")
 
 class TC_SIMPLE_CONNECTION(TestCase):
@@ -120,13 +120,13 @@ class TC_SIMPLE_CONNECTION(TestCase):
 		p02.send("This is really nice")
 		alt([
 			[ p01.RECEIVE("This is really nice"),
-				lambda: self.setverdict("pass"),
+				lambda: setverdict("pass"),
 			],
 			[ p01.RECEIVE("Something else"),
-				lambda: self.setverdict("inconc")
+				lambda: setverdict("inconc")
 			],
 			[ p01.RECEIVE(),
-				lambda: self.setverdict("fail")
+				lambda: setverdict("fail")
 			],
 		])
 
@@ -134,10 +134,10 @@ class TC_SIMPLE_CONNECTION(TestCase):
 		p02.send(11)
 		alt([
 			[ p01.RECEIVE(greater_than(10)),
-				lambda: self.setverdict("pass"),
+				lambda: setverdict("pass"),
 			],
 			[ p01.RECEIVE(greater_than(5)),
-				lambda: self.setverdict("fail")
+				lambda: setverdict("fail")
 			],
 		])
 		
@@ -149,12 +149,12 @@ class TC_SIMPLE_CONNECTION(TestCase):
 		alt([
 			[ p02.RECEIVE(),
 				lambda: log("Unexpected message received on a disconnected port"),
-				lambda: self.setverdict("fail"),
+				lambda: setverdict("fail"),
 				lambda: t.stop()
 			],
 			[ t.TIMEOUT,
 				lambda: log("OK, nothing received on a disconnected port"),
-				lambda: self.setverdict("pass"),
+				lambda: setverdict("pass"),
 			],
 		])
 		
@@ -185,16 +185,16 @@ class TC_SIMPLE_1TON(TestCase):
 		alt([
 			[ p02.RECEIVE(),
 				lambda: log("received an unexpected message on p02"),
-				lambda: self.setverdict("fail"),
-				lambda: self.stop(),
+				lambda: setverdict("fail"),
+				lambda: stop(),
 			],
 			[ p01.RECEIVE("message to p01"),
-				lambda: self.setverdict("pass"),
+				lambda: setverdict("pass"),
 			],
 			[ p01.RECEIVE(),
 				lambda: log("received an incorrect message on p01"),
-				lambda: self.setverdict("fail"),
-				lambda: self.stop(),
+				lambda: setverdict("fail"),
+				lambda: stop(),
 			],
 		])
 		
@@ -209,14 +209,14 @@ class TC_SIMPLE_1TON(TestCase):
 				lambda: alt([
 					[ p02.RECEIVE(),
 						lambda: log("Multiple messages received on p02"),
-						lambda: self.setverdict("fail"),
+						lambda: setverdict("fail"),
 					],
 					[ p03.RECEIVE("message to p02+p03"),
-						lambda: self.setverdict("pass"),
+						lambda: setverdict("pass"),
 					],
 					[ timer.TIMEOUT,
 						lambda: log("Nothing received on p03"),
-						lambda: self.setverdict("fail"),
+						lambda: setverdict("fail"),
 					],
 				])
 			],
@@ -224,20 +224,20 @@ class TC_SIMPLE_1TON(TestCase):
 				lambda: alt([
 					[ p03.RECEIVE(),
 						lambda: log("Multiple messages received on p03"),
-						lambda: self.setverdict("fail"),
+						lambda: setverdict("fail"),
 					],
 					[ p02.RECEIVE("message to p02+p03"),
-						lambda: self.setverdict("pass"),
+						lambda: setverdict("pass"),
 					],
 					[ timer.TIMEOUT,
 						lambda: log("Nothing received on p02"),
-						lambda: self.setverdict("fail"),
+						lambda: setverdict("fail"),
 					],
 				])
 			],
 			[ timer.TIMEOUT,
 				lambda: log("Nothing received on any port"),
-				lambda: self.setverdict("fail"),
+				lambda: setverdict("fail"),
 			],
 		])
 		timer.stop()
@@ -268,8 +268,8 @@ class BEHAVIOUR_SIMPLE_PTC(Behaviour):
 				lambda: p02.send("pong"),
 			],
 			[ t.TIMEOUT,
-				lambda: self.log("timeout while waiting for a ping"),
-				lambda: self.setverdict("fail")
+				lambda: log("timeout while waiting for a ping"),
+				lambda: setverdict("fail")
 			]
 		])
 		t.stop()
@@ -284,7 +284,7 @@ class BEHAVIOUR_SIMPLE_PTC(Behaviour):
 		
 		# PTC verdicts are taken into account to determine the final testcase verdict
 		# Will only be set to pass if not already failed due to the watchdog timeout above
-		self.setverdict("pass")
+		setverdict("pass")
 
 class TC_SIMPLE_PTC(TestCase):
 	def body(self):
@@ -328,7 +328,7 @@ class BEHAVIOUR_ALIVE_NONALIVE(Behaviour):
 				lambda: stop() # stop the behavior/PTC (no need to put it here, just to show it off)
 			],
 			[ p.RECEIVE("This is an almost missed message"),
-				lambda: self.setverdict("pass"), # ok, this is the missed message that can be received only on alive components.
+				lambda: setverdict("pass"), # ok, this is the missed message that can be received only on alive components.
 			]
 		])
 
@@ -359,7 +359,7 @@ class TC_ALIVE_AND_NONALIVE(TestCase):
 		ptcNA.done()
 		# automatically killed
 		if ptcNA.alive():
-			self.setverdict("fail")
+			setverdict("fail")
 			log("non alive component not automatically killed")
 			stop()
 		else:
@@ -373,7 +373,7 @@ class TC_ALIVE_AND_NONALIVE(TestCase):
 		p01.send("This is a message")
 		ptcA.done()
 		if not ptcA.alive():
-			self.setverdict("fail")
+			setverdict("fail")
 			log("alive component automatically killed")
 			stop()
 		
@@ -401,9 +401,9 @@ class TC_VALUE_EXTRACTION(TestCase):
 		p01.send( { 'field1': 'value1', 'field2': 'value2' } )
 		alt([
 			[ p02.RECEIVE({ 'field2': any() }, 'message'),
-				lambda: self.log("Received message: " + str(value('message'))),
-				lambda: self.log("Received message field: " + value('message')['field1']),
-				lambda: self.setverdict("pass"),
+				lambda: log("Received message: " + str(value('message'))),
+				lambda: log("Received message field: " + value('message')['field1']),
+				lambda: setverdict("pass"),
 			],
 		])
 
@@ -427,12 +427,12 @@ class TC_CODEC(TestCase):
 		p01.send(template)
 		alt([
 			[ p02.RECEIVE(template, 'message'),
-				lambda: self.log("Received message: " + str(value('message'))),
-				lambda: self.setverdict("pass"),
+				lambda: log("Received message: " + str(value('message'))),
+				lambda: setverdict("pass"),
 			],
 			[ p02.RECEIVE(),
-				lambda: self.log("Something else received."),
-				lambda: self.setverdict("fail"),
+				lambda: log("Something else received."),
+				lambda: setverdict("fail"),
 			],
 		])
 
@@ -492,10 +492,10 @@ class TC_TEMPLATE_MATCH_GENERAL(TestCase):
 			if not assert_match(message, message): raise Exception('recursive/3')
 			if not assert_match(message, ('choiceName', superset({ 'key4': superset(('choiceName3', { 'key2': 1.0 }))}))): raise Exception('recursive/4')
 	
-			self.setverdict('pass')
+			setverdict('pass')
 		except Exception, e:
 			log("Unable to complete test case: matching error for %s" % str(e))
-			self.setverdict('fail')
+			setverdict('fail')
 
 		log("End of testcase reached.")
 
@@ -559,10 +559,10 @@ class TC_TEMPLATE_MATCH_LIST(TestCase):
 			if not assert_match([1, 2, 3, 4, 5, 6, 7], [any_or_none(), 1, any_or_none()]): raise Exception('(wildcard/9)')
 			if assert_match([1, 2, 3, 4, 5, 6, 7], [1, any_or_none(), 1, any_or_none()]): raise Exception('(wildcard/9)')
 
-			self.setverdict('pass')
+			setverdict('pass')
 		except Exception, e:
 			log("Unable to complete test case: matching error for %s" % str(e))
-			self.setverdict('fail')
+			setverdict('fail')
 
 class TC_TEMPLATE_WILDCARDS_CONTAINS(TestCase):
 	def body(self):
@@ -585,7 +585,7 @@ class TC_TEMPLATE_WILDCARDS_CONTAINS(TestCase):
 				lambda: log("basic matching OK"),
 			],
 			[ p02.RECEIVE(),
-				lambda: self.setverdict('fail'),
+				lambda: setverdict('fail'),
 			],
 		])
 
@@ -593,7 +593,7 @@ class TC_TEMPLATE_WILDCARDS_CONTAINS(TestCase):
 		p01.send([ element1, element2, element3 ])
 		alt([
 			[ p02.RECEIVE(contains( element4 )),
-				lambda: self.setverdict('fail'),
+				lambda: setverdict('fail'),
 			],
 			[ p02.RECEIVE(),
 				lambda: log("basic mismatching OK"),
@@ -607,7 +607,7 @@ class TC_TEMPLATE_WILDCARDS_CONTAINS(TestCase):
 				lambda: log("nested conditions matching OK"),
 			],
 			[ p02.RECEIVE(),
-				lambda: self.setverdict('fail'),
+				lambda: setverdict('fail'),
 			],
 		])
 
@@ -615,14 +615,14 @@ class TC_TEMPLATE_WILDCARDS_CONTAINS(TestCase):
 		p01.send([ element1, element2, element3, element4 ])
 		alt([
 			[ p02.RECEIVE(contains( { 'value': greater_than(1500) } )),
-				lambda: self.setverdict('fail'),
+				lambda: setverdict('fail'),
 			],
 			[ p02.RECEIVE(),
 				lambda: log("nested conditions mismatching OK"),
 			],
 		])
 
-		self.setverdict('pass')
+		setverdict('pass')
 		log("End of testcase reached.")
 
 class TC_TEMPLATE_WILDCARDS_LENGTH(TestCase):
@@ -644,7 +644,7 @@ class TC_TEMPLATE_WILDCARDS_LENGTH(TestCase):
 				lambda: log("basic matching OK"),
 			],
 			[ p02.RECEIVE(),
-				lambda: self.setverdict('fail'),
+				lambda: setverdict('fail'),
 			],
 		])
 
@@ -652,7 +652,7 @@ class TC_TEMPLATE_WILDCARDS_LENGTH(TestCase):
 		p01.send([ 1, 2, 3, 4 ])
 		alt([
 			[ p02.RECEIVE(length(3)),
-				lambda: self.setverdict('fail'),
+				lambda: setverdict('fail'),
 			],
 			[ p02.RECEIVE(),
 				lambda: log("basic mismatching OK"),
@@ -666,7 +666,7 @@ class TC_TEMPLATE_WILDCARDS_LENGTH(TestCase):
 				lambda: log("greater than matching OK"),
 			],
 			[ p02.RECEIVE(),
-				lambda: self.setverdict('fail'),
+				lambda: setverdict('fail'),
 			],
 		])
 
@@ -674,7 +674,7 @@ class TC_TEMPLATE_WILDCARDS_LENGTH(TestCase):
 		p01.send([ 1, 2, 3, 4 ])
 		alt([
 			[ p02.RECEIVE(length(greater_than(5))),
-				lambda: self.setverdict('fail'),
+				lambda: setverdict('fail'),
 			],
 			[ p02.RECEIVE(),
 				lambda: log("greater than mismatching OK"),
@@ -688,7 +688,7 @@ class TC_TEMPLATE_WILDCARDS_LENGTH(TestCase):
 				lambda: log("lower than matching OK"),
 			],
 			[ p02.RECEIVE(),
-				lambda: self.setverdict('fail'),
+				lambda: setverdict('fail'),
 			],
 		])
 
@@ -696,7 +696,7 @@ class TC_TEMPLATE_WILDCARDS_LENGTH(TestCase):
 		p01.send([ 1, 2, 3, 4 ])
 		alt([
 			[ p02.RECEIVE(length(lower_than(3))),
-				lambda: self.setverdict('fail'),
+				lambda: setverdict('fail'),
 			],
 			[ p02.RECEIVE(),
 				lambda: log("lower than mismatching OK"),
@@ -710,7 +710,7 @@ class TC_TEMPLATE_WILDCARDS_LENGTH(TestCase):
 				lambda: log("between matching OK"),
 			],
 			[ p02.RECEIVE(),
-				lambda: self.setverdict('fail'),
+				lambda: setverdict('fail'),
 			],
 		])
 
@@ -718,13 +718,13 @@ class TC_TEMPLATE_WILDCARDS_LENGTH(TestCase):
 		p01.send([ 1, 2, 3, 4 ])
 		alt([
 			[ p02.RECEIVE(length(between(1, 3))),
-				lambda: self.setverdict('fail'),
+				lambda: setverdict('fail'),
 			],
 			[ p02.RECEIVE(),
 				lambda: log("between mismatching OK"),
 			],
 		])
-		self.setverdict('pass')
+		setverdict('pass')
 		log("End of testcase reached.")
 
 class TC_TEMPLATE_WILDCARDS_NOT(TestCase):
@@ -746,7 +746,7 @@ class TC_TEMPLATE_WILDCARDS_NOT(TestCase):
 				lambda: log("not matching OK"),
 			],
 			[ p02.RECEIVE(),
-				lambda: self.setverdict('fail'),
+				lambda: setverdict('fail'),
 			],
 		])
 		
@@ -754,7 +754,7 @@ class TC_TEMPLATE_WILDCARDS_NOT(TestCase):
 		p01.send(10)
 		alt([
 			[ p02.RECEIVE(not_(10)),
-				lambda: self.setverdict('fail'),
+				lambda: setverdict('fail'),
 			],
 			[ p02.RECEIVE(),
 				lambda: log("not mismatching OK"),
@@ -768,7 +768,7 @@ class TC_TEMPLATE_WILDCARDS_NOT(TestCase):
 				lambda: log("between matching OK"),
 			],
 			[ p02.RECEIVE(),
-				lambda: self.setverdict('fail'),
+				lambda: setverdict('fail'),
 			],
 		])
 
@@ -776,14 +776,14 @@ class TC_TEMPLATE_WILDCARDS_NOT(TestCase):
 		p01.send([ 1, 2, 3, 4 ])
 		alt([
 			[ p02.RECEIVE(not_(length(between(1, 10)))),
-				lambda: self.setverdict('fail'),
+				lambda: setverdict('fail'),
 			],
 			[ p02.RECEIVE(),
 				lambda: log("between mismatching OK"),
 			],
 		])
 
-		self.setverdict('pass')
+		setverdict('pass')
 		log("End of testcase reached.")
 
 class TC_TEMPLATE_WILDCARDS_OMIT(TestCase):
@@ -805,7 +805,7 @@ class TC_TEMPLATE_WILDCARDS_OMIT(TestCase):
 				lambda: log("omit matching OK"),
 			],
 			[ p02.RECEIVE(),
-				lambda: self.setverdict('fail'),
+				lambda: setverdict('fail'),
 			],
 		])
 		
@@ -813,13 +813,13 @@ class TC_TEMPLATE_WILDCARDS_OMIT(TestCase):
 		p01.send({ 'f1': 'value1', 'f2': 'value2' })
 		alt([
 			[ p02.RECEIVE({ 'f1': 'value1', 'f2': omit() }),
-				lambda: self.setverdict('fail'),
+				lambda: setverdict('fail'),
 			],
 			[ p02.RECEIVE(),
 				lambda: log("omit mismatching OK"),
 			],
 		])
-		self.setverdict('pass')
+		setverdict('pass')
 
 class TC_UNICODE(TestCase):
 	"""
@@ -842,11 +842,11 @@ class TC_UNICODE(TestCase):
 			[ p02.RECEIVE(element1),
 			],
 			[ p02.RECEIVE(None),
-				lambda: self.setverdict('fail'),
+				lambda: setverdict('fail'),
 				lambda: stop()
 			],
 		])
-		self.setverdict('pass')
+		setverdict('pass')
 
 		log("End of testcase reached.")
 
@@ -872,11 +872,11 @@ class TC_UNICODE_SESSION_PARAMETERS(TestCase):
 			[ p02.RECEIVE({ 'name': u'ça marche' }),
 			],
 			[ p02.RECEIVE(None),
-				lambda: self.setverdict('fail'),
+				lambda: setverdict('fail'),
 				lambda: stop()
 			],
 		])
-		self.setverdict('pass')
+		setverdict('pass')
 
 		log("End of testcase reached.")
 
@@ -900,11 +900,11 @@ class TC_BINARY_LOGGING(TestCase):
 			[ p02.RECEIVE(element1),
 			],
 			[ p02.RECEIVE(),
-				lambda: self.setverdict('fail'),
+				lambda: setverdict('fail'),
 				lambda: stop()
 			],
 		])
-		self.setverdict('pass')
+		setverdict('pass')
 
 		log("End of testcase reached.")
 
@@ -916,10 +916,10 @@ class BEHAVIOUR_LOOP(Behaviour):
 		control = self['control']
 		alt([
 			[ control.RECEIVE(),
-				lambda: self.log('Received an event on control port. Gracefully stopping...')
+				lambda: log('Received an event on control port. Gracefully stopping...')
 			]
 		])
-		self.setverdict('pass')
+		setverdict('pass')
 
 class TC_STOP_PTC_DONE_EVENT(TestCase):
 	"""
@@ -941,7 +941,7 @@ class TC_STOP_PTC_DONE_EVENT(TestCase):
 			],	
 			[ t.TIMEOUT,
 				lambda: log("PTC not stopped as expected (no signal received)"),
-				lambda: self.setverdict("fail"),
+				lambda: setverdict("fail"),
 				lambda: stop(),
 			]
 		])
@@ -979,7 +979,7 @@ class TC_STOP_PTC_STOP(TestCase):
 		ptc.done()
 		# Normally we get the Verdict from PTC - the last known verdict,
 		# which is probably none when stopping a PTC from outside (but not necessarely)
-		self.setverdict('pass')
+		setverdict('pass')
 
 class TC_STOP_PTC_STOP_TESTCASE(TestCase):
 	"""
@@ -993,7 +993,7 @@ class TC_STOP_PTC_STOP_TESTCASE(TestCase):
 		connect(control, control)
 		ptc.start(BEHAVIOUR_LOOP())
 
-		self.setverdict('pass')
+		setverdict('pass')
 		# We don't wait for the ptc completion. We stop the testcase.
 		stop()
 
@@ -1017,12 +1017,12 @@ class TC_KILL_PTC_KILLED_EVENT(TestCase):
 			],	
 			[ t.TIMEOUT,
 				lambda: log("PTC not stopped as expected (no signal received)"),
-				lambda: self.setverdict("fail"),
+				lambda: setverdict("fail"),
 				lambda: stop(),
 			]
 		])
 		t.stop()
-		self.setverdict('pass')
+		setverdict('pass')
 
 class TC_KILL_PTC_DONE_EVENT(TestCase):
 	"""
@@ -1044,12 +1044,12 @@ class TC_KILL_PTC_DONE_EVENT(TestCase):
 			],	
 			[ t.TIMEOUT,
 				lambda: log("PTC not killed as expected (no signal received)"),
-				lambda: self.setverdict("fail"),
+				lambda: setverdict("fail"),
 				lambda: stop(),
 			]
 		])
 		t.stop()
-		self.setverdict('pass')
+		setverdict('pass')
 
 class TC_KILL_PTC_DONE(TestCase):
 	"""
@@ -1064,7 +1064,7 @@ class TC_KILL_PTC_DONE(TestCase):
 
 		ptc.kill()
 		ptc.done()
-		self.setverdict('pass')
+		setverdict('pass')
 
 ##
 # Control definition

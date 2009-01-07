@@ -321,24 +321,6 @@ class MetadataModel(QObject):
 		"""
 		return self.prerequisites
 
-	def setParametersPreviousValues(self, values):
-		"""
-		Modify previous-value entries of the current parameters, according to values.
-		
-		@type  values: dict[unicode] of unicode
-		@param values: contains the previous-values to set for each parameter.
-		"""
-		log("Setting previous values...")
-		modified = False
-		for (name, val) in values.items():
-			if self.parameters.has_key(name):
-				if self.parameters[name]['previous-value'] != val:
-					self.parameters[name]['previous-value'] = val
-					modified = True
-		log("Setting previous values: we modified things: %s, current modified status %s" % (str(modified), str(self.modified)))
-		if modified:
-			self.setModified(True)
-
 
 class DocumentModel(QObject):
 	"""

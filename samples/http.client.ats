@@ -1,11 +1,11 @@
 # __METADATA__BEGIN__
 # <?xml version="1.0" encoding="utf-8" ?>
-# <meta>
+# <metadata version="1.0">
 # <description>description</description>
 # <prerequisites>prerequisites</prerequisites>
 # <parameters>
 # </parameters>
-# </meta>
+# </metadata>
 # __METADATA__END__
 ##
 # Sample script, demonstrating (and basically testing)
@@ -40,7 +40,7 @@ type port HttpClientPortType
 	out HttpResponse;
 }
 """
-class TESTCASE_HTTP_CLIENT(TestCase):
+class TC_HTTP_CLIENT(TestCase):
 	"""
 	Runs on SystemType {
 		HttpClientPortType web;
@@ -64,14 +64,14 @@ class TESTCASE_HTTP_CLIENT(TestCase):
 		alt(
 		[
 			[ port.RECEIVE({ 'status': 200 }),
-				lambda: self.setverdict("pass"),
+				lambda: setverdict("pass"),
 			],
 			[ port.RECEIVE(),
-				lambda: self.log("Received something else than expected"),
-				lambda: self.setverdict("fail"),
+				lambda: log("Received something else than expected"),
+				lambda: setverdict("fail"),
 			],
 			[ t.TIMEOUT, 
-				lambda: self.setverdict("fail"),
+				lambda: setverdict("fail"),
 				lambda: stop()
 			],
 		]
@@ -93,4 +93,4 @@ useTestAdapterConfiguration('google')
 # OK, my sample is not well designed:
 # for google, we'll need to set a target host in the HTTP headers,
 # otherwise we get a redirect.
-TESTCASE_HTTP_CLIENT().execute(host = 'www.google.fr')
+TC_HTTP_CLIENT().execute(host = 'www.google.fr')

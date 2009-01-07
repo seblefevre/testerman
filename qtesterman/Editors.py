@@ -533,8 +533,6 @@ class WAtsDocument(WDocument):
 		paramEditorDialog = WSessionParameterEditorDialog(self.model.getMetadataModel(), self)
 		if paramEditorDialog.exec_() == QDialog.Accepted:
 			session = paramEditorDialog.getSessionDict()
-			# We can modify our metadata to reflect the 'previous-value' based on this dict
-			self.model.getMetadataModel().setParametersPreviousValues(session)
 		else:
 			QApplication.instance().get('gui.statusbar').showMessage('Operation cancelled')
 			return
@@ -633,8 +631,6 @@ class WCampaignDocument(WDocument):
 		paramEditorDialog = WSessionParameterEditorDialog(self.model.getMetadataModel(), self)
 		if paramEditorDialog.exec_() == QDialog.Accepted:
 			session = paramEditorDialog.getSessionDict()
-			# We can modify our metadata to reflect the 'previous-value' based on this dict
-			self.model.getMetadataModel().setParametersPreviousValues(session)
 		else:
 			QApplication.instance().get('gui.statusbar').showMessage('Operation cancelled')
 			return

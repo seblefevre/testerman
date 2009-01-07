@@ -1,11 +1,11 @@
 # __METADATA__BEGIN__
 # <?xml version="1.0" encoding="utf-8" ?>
-# <meta>
+# <metadata version="1.0">
 # <description>description</description>
 # <prerequisites>prerequisites</prerequisites>
 # <parameters>
 # </parameters>
-# </meta>
+# </metadata>
 # __METADATA__END__
 ##
 # Sample script, demonstrating (and basically testing)
@@ -19,7 +19,7 @@
 # to update the testcase (and the test adapter configuration).
 ##
 
-# TestermanTCI.enableDebugLogs()
+TestermanTCI.enableDebugLogs()
 
 """
 	type record RtspRequest
@@ -76,10 +76,9 @@
 		// Media descriptions
 		list of Media media,
 	}
-	
-
 """
-class TESTCASE_RTSP_CLIENT(TestCase):
+
+class TC_RTSP_CLIENT(TestCase):
 	"""
 	Sends a DESCRIBE request to a known server,
 	and expect a valid 200 OK response with some SDP describing at least one video media.
@@ -98,19 +97,19 @@ class TESTCASE_RTSP_CLIENT(TestCase):
 		# we should get a response - we expect a 200 OK with some SDP in it, with at least one video media stream.
 		
 		response = { 'status': 200, 'headers': {'content-type': 'application/sdp'}, 
-			'body': with_('sdp', { 'media': [ { 'name_transport': regexp('^video .*') }]})
+			'body': with_('sdp', { 'media': superset({ 'name_transport': pattern('^video .*')}) } )
 			}
 		
 		alt([
 			[ port.RECEIVE(response),
-				lambda: self.setverdict("pass"),
+				lambda: setverdict("pass"),
 			],
 			[ port.RECEIVE(),
-				lambda: self.log("Received something else than expected"),
-				lambda: self.setverdict("fail"),
+				lambda: log("Received something else than expected"),
+				lambda: setverdict("fail"),
 			],
 			[ t.TIMEOUT, 
-				lambda: self.setverdict("fail"),
+				lambda: setverdict("fail"),
 				lambda: stop()
 			],
 		])
@@ -132,4 +131,5 @@ conf.bindByUri('rtsp', 'probe:rtsp01', 'rtsp.client', host = 'mafreebox.freebox.
 ##
 
 useTestAdapterConfiguration('free')
-TESTCASE_RTSP_CLIENT().execute()
+
+TC_RTSP_CLIENT().execute()

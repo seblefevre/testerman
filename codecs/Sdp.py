@@ -63,9 +63,9 @@ class SdpCodec(TestermanCD.Codec):
 	"""
 	def __init__(self):
 		TestermanCD.Codec.__init__(self)
-		# Some default (encoding) parameters
-		self.setParameter('version', '0')
-		self.setParameter('name', 'testerman SDP')
+		# Some default (encoding) properties
+		self.setProperty('version', '0')
+		self.setProperty('name', 'testerman SDP')
 	
 	def encode(self, template):
 		version = template.get('version', self['version'])

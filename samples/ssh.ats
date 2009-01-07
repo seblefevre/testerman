@@ -1,11 +1,14 @@
 # __METADATA__BEGIN__
 # <?xml version="1.0" encoding="utf-8" ?>
-# <meta>
+# <metadata version="1.0">
 # <description>description</description>
 # <prerequisites>prerequisites</prerequisites>
 # <parameters>
+# <parameter name="PX_USERNAME" default="user" type="string"><![CDATA[Valid SSH user on host]]></parameter>
+# <parameter name="PX_HOST" default="localhost" type="string"><![CDATA[a host with a ssh server]]></parameter>
+# <parameter name="PX_PASSWORD" default="secret" type="string"><![CDATA[Valid password for user]]></parameter>
 # </parameters>
-# </meta>
+# </metadata>
 # __METADATA__END__
 ##
 # Sample script, demonstrating (and basically testing)
@@ -49,11 +52,13 @@ type port SshPortType message
 }
 """
 
-class TESTCASE_SSH(TestCase):
+class TC_SSH(TestCase):
 	"""
-	Description: TODO
+	Demonstrates ssh probe basic feature:
+	ls -1 /bin/tar on a remote system,
+	expects some command output.
 	"""
-	def body(self, port = 2905):
+	def body(self):
 		def command_template(cmd = '/bin/ls /bin/tar'):
 			return ('execute', cmd)
 		
@@ -76,14 +81,14 @@ class TESTCASE_SSH(TestCase):
 		alt(
 		[
 			[ ssh.RECEIVE(response_template('/bin/tar\r\n')),
-				lambda: self.setverdict("pass"),
+				lambda: setverdict("pass"),
 			],
 			[ ssh.RECEIVE(),
-				lambda: self.log("Received something else than expected"),
-				lambda: self.setverdict("fail"),
+				lambda: log("Received something else than expected"),
+				lambda: setverdict("fail"),
 			],
 			[ t.TIMEOUT, 
-				lambda: self.setverdict("fail"),
+				lambda: setverdict("fail"),
 				lambda: stop()
 			],
 		]
@@ -95,7 +100,7 @@ class TESTCASE_SSH(TestCase):
 ##
 
 conf = TestAdapterConfiguration('default')
-conf.bindByUri('ssh-target', 'probe:ssh@localhost', 'ssh', host = "localhost", username = "username", password = "password")
+conf.bindByUri('ssh-target', 'probe:ssh@localhost', 'ssh', host = get_variable('PX_HOST'), username = get_variable('PX_USERNAME'), password = get_variable('PX_PASSWORD'))
 
 
 ##
@@ -103,4 +108,4 @@ conf.bindByUri('ssh-target', 'probe:ssh@localhost', 'ssh', host = "localhost", u
 ##
 useTestAdapterConfiguration('default')
 
-TESTCASE_SSH().execute()
+TC_SSH().execute()

@@ -2130,11 +2130,12 @@ class CodecTemplate:
 		try:
 			ret = TestermanCD.decode(self._codec, encodedMessage)
 		except Exception:
-			# Unable to decode: leave the buffer as is
+			logInternal('Decoding error: could not decode message with codec %s:\n%s' % (self._codec, getBacktrace()))
+			# Unable to decode: leave the buffer as is - it will lead to a match error probably.
 			return encodedMessage
 		if ret is None:
-			# Codec not found - leave the buffer as is
-			return encodedMessage
+			# Codec not found
+			raise TestermanException('Decoding error: codec %s not found' % self._codec)
 		else:
 			return ret
 			
