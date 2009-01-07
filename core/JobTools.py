@@ -18,6 +18,8 @@
 #
 ##
 
+import Tools
+
 import logging
 import xml.dom.minidom
 
@@ -142,7 +144,8 @@ def parseMetadata(xmlMetadata):
 	"""
 	metadata = None
 	try:
-		doc = xml.dom.minidom.parseString(xmlMetadata)
+		# parseString takes unicode ?? (hence ignoring the <?xml encoding=...?> ?
+ 		doc = xml.dom.minidom.parseString(xmlMetadata)
 		
 		metadata = Metadata()
 		# We don't need them for now (not used in TE)
@@ -159,8 +162,8 @@ def parseMetadata(xmlMetadata):
 			except Exception, e:
 				getLogger().warning("Unable to parse a parameter in metadata: %s" % str(e))
 	
-	except Exception, e:
-		getLogger().warning("Unable to parse metadata: %s" % str(e))
+	except Exception:
+		getLogger().warning("Unable to parse metadata:\n%s" % Tools.getBacktrace())
 	
 	return metadata
 				

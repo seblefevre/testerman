@@ -126,6 +126,13 @@ def scheduleAts(ats, atsId, username, session, at):
 			for (k, v) in session.items():
 				s[k.decode('utf-8')] = v.decode('utf-8')
 		
+		print "WEBSERVICES"
+		
+		# FIXME: ats seems to be received as ISO-8859-1, whereas it was sent by the client as UTF-8.
+		# I should check on the wire and/or an XML-RPC feature somewhere (default encoding, etc).
+		
+		ats = ats.encode('utf-8')
+		
 		job = JobManager.AtsJob(atsId, ats)
 		job.setUsername(username)
 		job.setScheduledStartTime(at)

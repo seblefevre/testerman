@@ -48,7 +48,7 @@ def smartReindent(code, indentCharacter = '\t', reindentCount = 1):
 	if a comment starts a code block, it won't be reindented correcty. The code is still
 	functional and correctly indented, however.
 	
-	@type  code: unicode
+	@type  code: string, as utf-8 
 	@param code: the Python code to reindent
 	@param indentCharacter: the character/substring to use for indendation. Will also
 	                        replace current indentation character(s) with it.
@@ -57,7 +57,7 @@ def smartReindent(code, indentCharacter = '\t', reindentCount = 1):
 	@rtype: string (utf-8)
 	@param: the reindented code.
 	"""
-	source = StringIO.StringIO(code.encode('utf-8'))
+	source = StringIO.StringIO(code)
 
 	last_tok_end_pos = 0
 	last_tok_line = 0
@@ -280,6 +280,20 @@ def onUserInterruptSignal(sig, frame):
 signal.signal(signal.SIGINT, onUserInterruptSignal)
 
 ##
+# Loads the input session
+##
+inputSession = {}
+try:
+	f = open(InputSessionFilename, 'r')
+	inputSession = pickle.loads(f.read(pickle.dumps({})))
+	f.close()
+except Exception, e:
+	TestermanTCI.logInternal("Unable to load input session: %s" % str(e))
+
+for k, v in inputSession.items():
+	Testerman.set_variable(k, v)
+
+##
 # Globals wrapping: a way to to export to the global scopes
 # variables that will change along the time
 # DOES NOT WORK, SORRY.
@@ -409,7 +423,7 @@ def loadSession(dump):
 	"""
 	return pickle.loads(dump)
 	
-def getDefaultParametersFromMetadata(ats):
+def getDefaultSession(ats):
 	"""
 	Extracts the default parameters & values from an ats.
 	
@@ -419,7 +433,7 @@ def getDefaultParametersFromMetadata(ats):
 	@rtype: a dict[unicode] of unicode
 	@returns: the default session dictionary (parameter_name: default_value)
 	"""
-	xmlMetadata = JobTools.extractMetadata(sample, '#')
+	xmlMetadata = JobTools.extractMetadata(ats, '#')
 	if xmlMetadata:
 		m = JobTools.parseMetadata(xmlMetadata)
 		if m:

@@ -1790,16 +1790,15 @@ class omit(ConditionTemplate):
 
 class equals_to(ConditionTemplate):
 	"""
-	Case-insensitive equality
-	WARNING: currently not recursive. It should...
-	Unless we simply remove this condition.
+	Case-insensitive equality.
+	To remove ?
 	"""
 	def __init__(self, value):
 		self._value = value
 	def match(self, message):
 		return unicode(message).lower() == unicode(self._value).lower()
 	def __repr__(self):
-		return "(== %s)" % unicode(self._value)
+		return "(=== %s)" % unicode(self._value)
 
 ##
 # Non-terminal conditions
@@ -1821,7 +1820,7 @@ class ifpresent(ConditionTemplate):
 		(m, _) = templateMatch(message, self._template)
 		return m
 	def __repr__(self):
-		return "(if present: %s)" % unicode(self._template)
+		return "(%s, if present)" % unicode(self._template)
 
 # Length attribute
 class length(ConditionTemplate):
@@ -1876,9 +1875,11 @@ class subset(ConditionTemplate):
 	def __repr__(self):
 		return "(subset of [%s])" % ', '.join([unicode(x) for x in self._templates])
 
-# Dict/list/string content check
-# As a consequence, a bit wider than superset(template)
 class contains(ConditionTemplate):
+	"""
+	Dict/list/string content check
+	As a consequence, a bit wider than superset(template)
+	"""
 	def __init__(self, template):
 		self._template = template
 	def match(self, message):
@@ -1897,7 +1898,7 @@ class in_(ConditionTemplate):
 	
 	This is a subset() for a single element. (mergeable with subset ?)
 	"""
-	def __init__(self, template):
+	def __init__(self, *template):
 		# template is a list of templates (wildcards accepted)
 		self._template = template
 	def match(self, message):
@@ -1915,7 +1916,7 @@ class complement(ConditionTemplate):
 	The TTCN-3 equivalent is 'complement'.
 	Equivalent to not_(in_)
 	"""
-	def __init__(self, template):
+	def __init__(self, *template):
 		# template is a list of templates (wildcards accepted)
 		self._template = template
 	def match(self, message):

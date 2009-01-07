@@ -182,6 +182,7 @@ class Client(Nodes.ConnectingNode):
 			if not (session is None):
 				for (k, v) in session.items():
 					s[k.encode('utf-8')] = v.encode('utf-8')
+			
 			return self.__proxy.scheduleAts(ats.encode('utf-8'), atsId.encode('utf-8'), username.encode('utf-8'), s, at)
 		except xmlrpclib.Fault, e:
 			self.getLogger().error("ATS Scheduling fault: " + str(e))

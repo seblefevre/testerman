@@ -470,13 +470,31 @@ class AtsJob(Job):
 		# the default session, from metadata, overriden with user input session values.
 		# FIXME: should we accept user input parameters that are not defined in default parameters, i.e.
 		# in ATS ignature ?
+		# default session
+		try:
+			defaultSession = TEFactory.getDefaultSession(self._ats)
+			if defaultSession is None:
+				getLogger().warning('%s: unable to extract default session from ats. Missing metadata ?' % (str(self)))
+				defaultSession = {}
+		except Exception, e:
+			getLogger().error('%s: unable to extract ATS parameters from metadata: %s' % (str(self), str(e)))
+			self.setResult(23)
+			self.setState(self.STATE_ERROR)
+			return self.getResult()
 		
-		# TODO
-		completeInputSession = inputSession
+		# The merged input session
+		mergedInputSession = {}
+		for n, v in defaultSession.items():
+			if inputSession.has_key(n):
+				mergedInputSession[n] = inputSession[n]
+			else:
+				mergedInputSession[n] = v
+		
+		getLogger().info('%s: using merged input session:\n%s' % (str(self), '\n'.join([ '%s = %s (%s)' % (x, y, repr(y)) for x, y in mergedInputSession.items()])))
 		
 		# Dumps input session to the corresponding file
 		try:
-			dumpedInputSession = TEFactory.dumpSession(completeInputSession)
+			dumpedInputSession = TEFactory.dumpSession(mergedInputSession)
 			f = open(inputSessionFilename, 'w')
 			f.write(dumpedInputSession)
 			f.close()
