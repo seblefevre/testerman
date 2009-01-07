@@ -285,7 +285,7 @@ signal.signal(signal.SIGINT, onUserInterruptSignal)
 inputSession = {}
 try:
 	f = open(InputSessionFilename, 'r')
-	inputSession = pickle.loads(f.read(pickle.dumps({})))
+	inputSession = pickle.loads(f.read())
 	f.close()
 except Exception, e:
 	TestermanTCI.logInternal("Unable to load input session: %s" % str(e))

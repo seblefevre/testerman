@@ -132,15 +132,22 @@ def getLocalContext():
 	_ContextMapMutex.release()
 	return context
 
-def clearContextAndStopAllTimers():
+def _stopAllTimers():
 	"""
-	Clears the current contexts out of the memory.
-	Also stops all existing timers in these contexts, if any.
+	Stops all registered timers.
+	(to call at the end of testcases)
 	"""
 	_ContextMapMutex.acquire()
 	for (thr, context) in _ContextMap.items():
 		for timer in context.timers:
 			timer.stop()
+	_ContextMapMutex.release()
+
+def _clearLocalContexts():
+	"""
+	Clears the existing local contexts.
+	"""
+	_ContextMapMutex.acquire()
 	_ContextMap.clear()
 	_ContextMapMutex.release()
 
@@ -465,8 +472,23 @@ class TestComponent:
 
 	def _setverdict(self, verdict):
 		"""
-		Updates the local verdict only
+		Updates the local verdict (may be the testcase verdict if the tc is the mtc)
+
+		TTCN-3 overwriting rules:
+		fail > [ pass, inconc, none ]
+		pass > none
+		inconc > pass, none
+		
+		to sum it up: fail > inconc > pass.
+		
+		'error' overwrites them all.
+		
+		@type  verdict: string in [ "none", "pass", "fail", "inconc", "error" ]
+		@param verdict: the new verdict
 		"""
+		updated = False
+		self._lock()
+		
 		if verdict == VERDICT_ERROR and self._verdict != VERDICT_ERROR:
 			self._verdict = verdict
 			updated = True
@@ -479,19 +501,29 @@ class TestComponent:
 		elif verdict == VERDICT_PASS and self._verdict in [VERDICT_NONE]:
 			self._verdict = verdict
 			updated = True
+			
+		self._unlock()
 
 		# Should we log the setverdict event if not actually updated ?
 		# if updated:
 		logVerdictUpdated(tc = str(self), verdict = self._verdict)
 
 	def _getverdict(self):
-		return self._verdict
+		"""
+		Returns the current local verdict (may be the testcase verdict if the tc is mtc)
+		@rtype: string in [ "none", "pass", "fail", "inconc", "error" ]
+		@returns: the current verdict
+		"""
+		self._lock()
+		ret = self._verdict
+		self._unlock()
+		return ret
 
 	def _updateTestCaseVerdict(self):
 		"""
-		Pushes the local verdict to the testcase verdict.
+		Pushes the local verdict to the MTC verdict.
 		"""
-		self._testcase.setverdict(self._verdict)
+		self._testcase._mtc._setverdict(self._verdict)
 
 	def _doStop(self, message):
 		"""
@@ -834,12 +866,14 @@ class Behaviour:
 	def setverdict(self, verdict):
 		"""
 		Diversion to the PTC setverdict.
+		Provided for convenience - DEPRECATED.
 		"""
 		self._ptc._setverdict(verdict)
 	
 	def getverdict(self):
 		"""
 		Diversion to the PTC getverdict.
+		Provided for convenience - DEPRECATED.
 		"""
 		return self._ptc._getverdict()
 
@@ -872,7 +906,6 @@ class TestCase:
 	def __init__(self, title = '', idSuffix = None):
 		self._title = title
 		self._idSuffix = idSuffix
-		self._verdict = VERDICT_NONE
 		self._description = self.__doc__
 		self._mutex = threading.RLock()
 		self._name = self.__class__.__name__
@@ -883,7 +916,7 @@ class TestCase:
 		self._mtc = None
 		self._system = None
 
-		# Aliases, kept for compatibility
+		# Aliases, provided for convenience in user part.
 		self.system = None
 		self.mtc = None
 	
@@ -915,9 +948,8 @@ class TestCase:
 		"""
 		Performs a test case finalization:
 		- stop all PTCs
-		- cleanup the system component (purge internal ports and TSI ports)
 		- stop all timers
-		- clear the TLS/Context associated to the testcase.
+		- cleanup the system component (purge internal ports and TSI ports)
 		- we should unmap all ports, though triSAReset will force it implicitly
 		NB: triSAReset is called after this finalization, in execute()
 		"""
@@ -927,60 +959,25 @@ class TestCase:
 			ptc.stop()
 		for ptc in self._ptcs:
 			ptc.done()
+			
+		# Stop timers
+		_stopAllTimers()
 
 		self._system._finalize()
-		
-		# Stop timers, purge the TLSes
-		clearContextAndStopAllTimers()
 
 	def setverdict(self, verdict):
 		"""
 		Sets the testcase verdict.
-		
-		TTCN-3 overwriting rules:
-		fail > [ pass, inconc, none ]
-		pass > none
-		inconc > pass, none
-		
-		to sum it up: fail > inconc > pass.
-		
-		'error' overwrites them all.
-		
-		@type  verdict: string in [ "none", "pass", "fail", "inconc", "error" ]
-		@param verdict: the new verdict
+		Provided for convenience - DEPRECATED.
 		"""
-		updated = False
-		self._lock()
-		
-		if verdict == VERDICT_ERROR and self._verdict != VERDICT_ERROR:
-			self._verdict = verdict
-			updated = True
-		elif verdict == VERDICT_FAIL and self._verdict in [VERDICT_NONE, VERDICT_PASS, VERDICT_INCONC]:
-			self._verdict = verdict
-			updated = True
-		elif verdict == VERDICT_INCONC and self._verdict in [VERDICT_NONE, VERDICT_PASS]:
-			self._verdict = verdict
-			updated = True
-		elif verdict == VERDICT_PASS and self._verdict in [VERDICT_NONE]:
-			self._verdict = verdict
-			updated = True
-
-		self._unlock()
-
-		# Should we log the setverdict event if not actually updated ?
-		# if updated:
-		logVerdictUpdated(tc = str(self._mtc), verdict = self._verdict)
-
+		return self._mtc._setverdict(verdict)
+	
 	def getverdict(self):
 		"""
 		Returns the current testcase verdict.
-		@rtype: string in [ "none", "pass", "fail", "inconc", "error" ]
-		@returns: the current verdict
+		Provided for convenience - DEPRECATED.
 		"""
-		self._lock()
-		ret = self._verdict
-		self._unlock()
-		return ret
+		return self._mtc._getverdict()
 
 	def setDescription(self, description):
 		"""
@@ -1066,13 +1063,16 @@ class TestCase:
 		# Reset the system queue (to do on start only ?)
 		_resetSystemQueue()
 		
-		logTestcaseStopped(str(self), verdict = self._verdict, description = self._description)
+		logTestcaseStopped(str(self), verdict = self._mtc._verdict, description = self._description)
+
+		# Make sure we clean the local contexts
+		_clearLocalContexts()
 
 		# Now check if we can continue or stop here if the ATS has been cancelled
 		if _isAtsCancelled():
 			raise TestermanCancelException()
 
-		return self._verdict
+		return self._mtc._getverdict()
 
 	def log(self, message):
 		"""
@@ -1199,7 +1199,56 @@ def log(msg):
 	@type  msg: unicode or string
 	@param msg: the message to log
 	"""
-	logUser(msg)
+	tc = getLocalContext().getTc()
+	if tc:
+		# Logging while a test component is executing (either mtc or ptc)
+		tc.log(msg)
+	else:
+		# control part logging
+		logUser(msg)
+
+def setverdict(verdict):
+	"""
+	Sets the local verdict.
+	"local" means: the currently running PTC (or MTC)
+
+	TTCN-3 overwriting rules:
+	fail > [ pass, inconc, none ]
+	pass > none
+	inconc > pass, none
+
+	to sum it up: fail > inconc > pass.
+
+	'error' overwrites them all.
+
+	@type  verdict: string in [ "none", "pass", "fail", "inconc", "error" ]
+	@param verdict: the new verdict
+	"""
+	tc = getLocalContext().getTc()
+	if tc:
+		# Setting a verdict while a TC is running (good)
+		tc._setverdict(verdict)
+	else:
+		# Control part: not goog
+		raise TestermanTtcn3Exception("Setting a verdict in control part - not applicable")
+
+def getverdict():
+	"""
+	Gets the local verdict.
+	"local" means: the currently running PTC (or MTC)
+
+	Returns the current local verdict (may be the testcase verdict if the tc is mtc)
+
+	@rtype: string in [ "none", "pass", "fail", "inconc", "error" ]
+	@returns: the current verdict
+	"""
+	tc = getLocalContext().getTc()
+	if tc:
+		# Setting a verdict while a TC is running (good)
+		return tc._getverdict()
+	else:
+		# Control part: not goog
+		raise TestermanTtcn3Exception("Getting a verdict in control part - not applicable")
 
 def connect(portA, portB):
 	"""

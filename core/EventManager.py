@@ -97,7 +97,7 @@ class IlServer(Nodes.ListeningNode):
 			if filename:
 				try:
 					f = open(filename, 'a')
-					f.write((u'%s\n' % notification.getBody()).encode('utf-8'))
+					f.write('%s\n' % notification.getBody())
 					f.close()
 				except Exception, e:
 					self.getLogger().error("Unable to write log for %s: %s" % (notification.getUri(), str(e)))		

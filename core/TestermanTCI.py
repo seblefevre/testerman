@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 ##
 # This file is part of Testerman, a test automation system.
 # Copyright (c) 2008-2009 Sebastien Lefevre and other contributors
@@ -13,7 +14,6 @@
 ##
 
 ##
-# -*- coding: utf-8 -*-
 # Logger module for Testerman.
 # Implements a part of the TCI TTCN-3 standard interface:
 # logging tli methods.
@@ -78,6 +78,7 @@ class IlClient(Nodes.ConnectingNode):
 				notification.setHeader("Log-Filename", self.logFilename)
 			notification.setHeader("Log-Class", logClass)
 			notification.setHeader("Log-Timestamp", time.time())
+			notification.setHeader("Content-Encoding", "utf-8")
 			notification.setHeader("Content-Type", "application/xml")
 			notification.setBody(xml.encode('utf-8'))
 
@@ -298,17 +299,26 @@ def testermanToXml(obj, simpleElement = None):
 		else:
 			return u''.join(ret)
 	
+
 	# Other (simple) types.
-	# Try to cast them to unicode. 
+	
+	# If they are unicode, encode them to utf-8 (if not containing the forbidden characters)
 	encoding = None
-	try:
-		ret = unicode(obj)
+	if isinstance(obj, unicode):
+		ret = obj
 		if not isPrintable(ret):
+			encoding = "base64"
+			ret = base64.encodestring(obj.encode('utf-8'))
+	else:
+		# Try to cast the object to unicode. 
+		try:
+			ret = unicode(obj)
+			if not isPrintable(ret):
+				ret = base64.encodestring(obj)
+				encoding = "base64"
+		except UnicodeDecodeError:
 			ret = base64.encodestring(obj)
 			encoding = "base64"
-	except UnicodeDecodeError:
-		ret = base64.encodestring(obj)
-		encoding = "base64"
 	
 	if simpleElement:
 		if encoding:

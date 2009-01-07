@@ -118,7 +118,7 @@ class Message(object):
 	def setApplicationBody(self, body, profile = CONTENT_TYPE_JSON):
 		"""
 		Convenience function: encode the body, sets
-		both Content-Encoding ad Content-Type as JSON encoding.
+		both Content-Encoding ad Content-Type as JSON or pickle encoding.
 		"""
 		if profile == self.CONTENT_TYPE_JSON:
 			self.body = JSON.dumps(body)
@@ -161,6 +161,12 @@ class Message(object):
 		If the encoding is not supported by this method, returns None.
 		"""	
 		contentType = self.getContentType()
+		
+		# Raw body
+		body = self.getBody()
+		if self.getContentEncoding() == self.ENCODING_UTF8:
+			body = body.decode('utf-8')
+		
 		if contentType == self.CONTENT_TYPE_JSON:
 			ret = JSON.loads(self.getBody())
 			return ret
@@ -168,7 +174,9 @@ class Message(object):
 			ret = pickle.loads(self.getBody())
 			return ret
 		else:
-			return self.body
+			# No application decoding, but encoding decoding done.
+			# returns a unicode string.
+			return body
 
 	def getTransactionId(self):
 		try:
@@ -306,11 +314,9 @@ def parse(data):
 		else:
 			raise Exception("Invalid header in message (%s)" % str(l))
 	
-	# Body
-	if message.getContentEncoding() == message.ENCODING_UTF8:
-		message.setBody(SEPARATOR.join(map(lambda x: x.decode('utf-8'), lines[i:])))
-	else:
-		message.setBody(SEPARATOR.join(lines[i:]))
+	# Body - raw, no additional decoding or interpretation.
+	# use getApplicationBody() for that.
+	message.setBody(SEPARATOR.join(lines[i:]))
 
 	# OK, we're done.
 	return message
