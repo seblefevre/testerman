@@ -14,7 +14,24 @@
 ##
 
 ##
-# XML codec.
+# XER-like lite codec.
+# (ITU-T X.693 inspired)
+#
+# Not a real XER codec since it won't map received data to
+# a provided ASN.1 specification.
+# Instead, see it as a XML codec without:
+# - element attributes support
+# - cdata support
+#
+# This enables to simplify the userland syntax:
+#
+# ('name', [ ('givenName', 'John'), ('familyName', 'Smith') ])
+#
+# decoded from/encoded to:
+# 
+# <name><givenName>John</givenName><familyName>Smith</familyName></name>
+#
+# (with optional prolog)
 ##
 
 import TestermanCD
@@ -38,58 +55,43 @@ def writexml(doc, prolog = True, encoding = None, indent = "", addindent = "", n
 		node.writexml(writer, indent, addindent, newl)
 	return writer.getvalue()
 
-class XmlCodec(TestermanCD.Codec):
+class XerLiteCodec(TestermanCD.Codec):
 	"""
-	('element', { 'attributes': { ... }, 'children': [ ... ])
+	('element', [ ... ])
 	if no child:
-	('element', { 'attributes': { ... }, 'value': <unicode>, 'cdata': bool)
-	
-	
-	This codec is NOT SUITABLE to parse XHTML, since it won't create dedicated nodes
-	for text-node (as a consequence: <h1>hello <b>dolly</b></h1> 
-	will only return ('h1', { 'value': hello }) - the first text node renders the
-	element 'text only'.
+	('element', <unicode>)
 	
 	
 	Valid properties:
 	
-	prettyprint  || boolean || False || encoding: pretty xml print
+	canonical    || boolean || False || encoding: CANONICAL-XER (no pretty print) or BASIC-XER if false.
 	encoding     || string  || utf-8 || encoding: encoding format. decoding: decoding format if no prolog present.
-	write_prolog || boolean || True || encoding: write the <?xml version="1.0" ?> prolog or not
+	write_prolog || boolean || True  || encoding: write the <?xml version="1.0" ?> prolog or not
 	"""
 	def encode(self, template):
-		(rootTag, rootAttr) = template
+		(rootTag, value) = template
 		dom = xml.dom.minidom.getDOMImplementation().createDocument(None, rootTag, None)
 		root_element = dom.documentElement
-		self._encode(dom, root_element, rootAttr)
-		if self.getProperty('prettyprint', False):
+		self._encode(dom, root_element, value)
+		if not self.getProperty('canonical', False):
 			return writexml(dom, prolog = self.getProperty('write_prolog', True), encoding = self.getProperty('encoding', 'utf-8'), addindent = "\t", newl = "\n")
 		else:
 			return writexml(dom, prolog = self.getProperty('write_prolog', True), encoding = self.getProperty('encoding', 'utf-8'))
 	
-	def _encode(self, doc, element, attr):
+	def _encode(self, doc, element, value):
 		"""
 		@type  doc: Document
 		@type  element: Element
-		@type  attr: dict{'attributes' (optional), 'value' (optional), 'children' (optional), 'cdata' (optional)}
+		@type  value: basetring, or a list of (string, value)
 		"""
-		attributes = attr.get('attributes', {})
-		for k, v in attributes.items():
-			element.setAttribute(k, unicode(v))
-		children = attr.get('children', [])
-		if children:
+		if isinstance(value, list):
 			# OK, children present. Ignoring value/cdata
-			for (tag, a) in children:
+			for (tag, v) in value:
 				e = doc.createElement(tag)
-				self._encode(doc, e, a)
+				self._encode(doc, e, v)
 				element.appendChild(e)
 		else:
-			cdata = attr.get('cdata', False)
-			value = attr.get('value', '')
-			if cdata:
-				e = doc.createCDATASection(value)
-			else:
-				e = doc.createTextNode(value)
+			e = doc.createTextNode(unicode(value))
 			element.appendChild(e)
 			
 	def decode(self, data):
@@ -104,13 +106,9 @@ class XmlCodec(TestermanCD.Codec):
 		Recursive decoding.
 		@type  element: Element
 		
-		@rtype: tuple (tag, { attributes, children (if any), text (if any), cdata (if applicable) }
+		@rtype: tuple (tag, list or unicode)
 		"""
 		tag = element.tagName
-		attributes = {}
-		# Retrieve attributes
-		for a, v in element.attributes.items():
-			attributes[a] = v
 		
 		# Now retrieve children, if any
 		children = []
@@ -119,32 +117,32 @@ class XmlCodec(TestermanCD.Codec):
 				children.append(self._decode(node))
 			# We should return only if these nodes are the first one.. ?
 			elif node.nodeType == node.TEXT_NODE and node.nodeValue.strip():
-				return (tag, { 'attributes': attributes, 'cdata': False, 'value': node.nodeValue.strip() })
-			elif node.nodeType == node.CDATA_SECTION_NODE:
-				return (tag, { 'attributes': attributes, 'cdata': True, 'value': node.nodeValue })
-			# Ignore other final node types (comments, ...)
+				return (tag, node.nodeValue.strip())
+			# Ignore other final node types (cdata, comments, ...)
 		
-		return (tag, { 'attributes': attributes, 'children': children }) 
+		return (tag, children) 
 
-TestermanCD.registerCodecClass('xml', XmlCodec)
+TestermanCD.registerCodecClass('xer.lite', XerLiteCodec)
 
 
 if __name__ == '__main__':
-	TestermanCD.alias('xml.noprolog', 'xml', write_prolog = False)
-	TestermanCD.alias('xml.iso', 'xml', encoding = "iso-8859-1", write_prolog = True)
-	TestermanCD.alias('xml.pretty', 'xml', prettyprint = True)
+	TestermanCD.alias('xer.noprolog', 'xer.lite', write_prolog = False)
+	TestermanCD.alias('xer.iso', 'xer.lite', encoding = "iso-8859-1")
+	TestermanCD.alias('xer.canonical', 'xer.lite', canonical = True)
 	
 	sample = """<?xml version="1.0"?>
-<library owner="John Smith" administrator="Héléna Utf8">
-	<book isbn="88888-7777788">
+<library>
+	<administrator>Héléna Utf8</administrator>
+	<book>
+		<isbn>89084-89089</isbn>
+		<author>Philippe Kendall</author>
 		<author>Mickaël Orangina</author>
-		<title locale="fr">Tonnerre sous les tropiques</title>
-		<title locale="us">Tropic thunder</title>
+		<title>Tropic thunder</title>
 	</book>
 </library>
 """
-	
-	for codec in [ 'xml', 'xml.noprolog', 'xml.iso', 'xml.pretty' ]:
+
+	for codec in [ 'xer.lite', 'xer.noprolog', 'xer.iso', 'xer.canonical' ]:
 		print "%s %s %s" % (40*'=', codec, 40*'=')
 		print "decoded with %s:" % codec
 		decoded = TestermanCD.decode(codec, sample)
@@ -159,6 +157,7 @@ if __name__ == '__main__':
 		print redecoded
 		assert(decoded == redecoded)
 		print
+
 
 	
 	
