@@ -25,9 +25,10 @@ import TestermanPA
 import TestermanCD
 from TestermanTCI import *
 
-import time
+import binascii
 import re
 import threading
+import time
 
 
 ################################################################################
@@ -1361,6 +1362,20 @@ def port_unmap(port, tsiPort):
 			# OK, the tsiPort is not used anymore. We can remove it.
 			del _TsiPorts[tsiPort._name]
 	_TsiPortsLock.release()
+
+################################################################################
+# Some built-in functions (both TTCN-3 and for convenience)
+################################################################################
+
+def octetstring(s):
+	"""
+	Enables to get a human-readable representation for TTCN-3 octetstring:
+	'aabb00'O
+	-> octetstring('aabb00')
+	
+	we may alias it to O('aabb00') too ?
+	"""
+	return binascii.unhexlify(s)
 
 ################################################################################
 # alt() management

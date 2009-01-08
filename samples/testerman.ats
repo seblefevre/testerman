@@ -897,7 +897,7 @@ class TC_BINARY_LOGGING(TestCase):
 
 		p01.send(element1)
 		alt([
-			[ p02.RECEIVE(element1),
+			[ p02.RECEIVE({ 'binary-value': octetstring('12ff00')}),
 			],
 			[ p02.RECEIVE(),
 				lambda: setverdict('fail'),
