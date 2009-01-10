@@ -1,121 +1,78 @@
-##
 # -*- coding: utf-8 -*-
+##
+# This file is part of Testerman, a test automation system.
+# Copyright (c) 2009 QTesterman contributors
 #
+# This program is free software; you can redistribute it and/or modify it under
+# the terms of the GNU General Public License as published by the Free Software
+# Foundation; either version 2 of the License, or (at your option) any later
+# version.
+# This program is distributed in the hope that it will be useful, but WITHOUT
+# ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
+# FOR A PARTICULAR PURPOSE.  See the GNU General Public License for more
+# details.
+##
+
+##
 # Auto update management.
 #
-# $Id$
+# GUI interface over the TestermanClient-provided updates features.
+#
 ##
 
-import PyQt4.Qt as qt
 
-try:
-	from Base import *
-except:
-	pass
+from PyQt4.Qt import *
 
 ################################################################################
-# Autoupdate management
+# Auto update management
 ################################################################################
 
-import tarfile
-import StringIO
-import os
-import sys
-import re
-
-def isComponentVersionNewer(a, b):
+def updateComponent(proxy, basepath, component, currentVersion = None, branches = [ "stable" ]):
 	"""
-	Given two component version strings a, b, returns True if a < b, else otherwise.
+	Checks for updates, and proposes the user to update if a newer version is available.
 
-	Used to detect if (current / local) version a should be upgraded to (reference / remote) version b.
-	
-	@type  a: string
-	@param a: the "current" version
-	@type  b: string
-	@param b: the "reference" version
+	@type  basepath: QString 
+	@param basepath: the application basepath were we should unpack the update archive
+
+	@throws exceptions
 	
 	@rtype: bool
-	@returns: True if we can upgrade from current to reference, (ie b > a), False otherwise.
+	@returns: True if the component was updated. False otherwise (on error or user abort)
 	"""
-	# Valid Testerman component versions are:
-	# A.B.C and A.B.C-<keyword>-* where <keyword> in [ testing ] (for now)
-	# Rules:
+	updates = proxy.getComponentVersions(component, branches)
+
+	if not updates:
+		# No updates available - nothing to do
+		print "No updates available on this server."
+		return False
+
+	print "Available updates:"
+	print "\n".join([ "%s (%s)" % (x['version'], x['branch']) for x in updates])
+
+	# Versions rules
 	# A.B.C < A+n.b.c
 	# A.B.C < A.B+n.c
 	# A.B.C < A.B.C+n
-	# (ie when comparing A.B.C and a.b.c, lexigographic order is ok)
+	# (ie when comparing A.B.C and a.b.c, lexicographic order is ok)
+	
+	# Let's check if we have a better version than the current one
+	if not currentVersion or (currentVersion < updates[0]['version']):
+		newerVersion = updates[0]['version']
+		url = updates[0]['url']
+		branch = updates[0]['branch']
+		print "Newer version available: %s" % newerVersion
 
-	# If no reference version, never gives a positive feedback.
-	if not b: return False
-	# If no current version, always gives a positive feedback to upgrade.
-	if not a: return True
+		ret = QMessageBox.question(None, "Update manager", "A new QTesterman Client version is available on the server:\n%s (%s)\nDo you want to update now ?" % (newerVersion, branch), QMessageBox.Yes, QMessageBox.No)
+		if ret == QMessageBox.Yes:
+			# Download and unpack the archive
 
- 	abcVersion = re.compile(r'(?P<base>(?P<A>[0-9]+)\.(?P<B>[0-9]+)\.(?P<C>[0-9]+))(-(?P<extension>.*))?')
-
-	current = abcVersion.match(a)
- 	reference = abcVersion.match(b)
-
- 	# In case of an invalid local version, positive feedback, always
-	if not current: return True
-	# In case of an invalid remote version, negative feedback, always
- 	if not reference: return False
-
-	# Extension is only taken into account in case of local.base == remote.base
-	# Otherwise, the base can decide for itself.
-	if current.group('base') != reference.group('base'):
-		return (current.group('base') < reference.group('base'))
-
-	# OK, now we have the same A.B.C, we can compare extensions
-	# We have an extension, not the remote: the remote version is newer (the 'final' version)
-	if current.group('extension') and not reference.group('extension'):
-		return True
-	# We don't have an extension, but the remote has one: the local is newer (the 'final' version)
-	if not current.group('extension') and reference.group('extension'):
-		return False
-	# Both have extensions:
-	return (current.group('extension') < reference.group('extension'))
-
-def checkForUpdates(acceptTestRelease = 0):
-	# This first request to the server is a good opportunity to check the server availability
-	try:
-		onServer = getProxy().getLatestComponentVersion('qtesterman', getClientVersion(), acceptTestRelease)
-	except Exception, e: # Socket.socketerror, in fact...
-		import traceback
-		traceback.print_stack()
-		qt.QMessageBox.warning(None, getClientName() + " Auto update", "Unable to connect to the Testerman Server.\nPlease check the Testerman Server URI and/or your connections.")
-		print "DEBUG: exception caught: " + str(e)
-		sys.exit(1) # Don't continue, we may get too many problems after this one.
-
-	if onServer is None:
-		# No better version
-		return
-
-	if isComponentVersionNewer(getClientVersion(), onServer) or qt.QApplication.instance().get('autoupdate.force'):
-		ret = qt.QMessageBox.question(None, getClientName() + " Auto update", "A new Qt Testerman Client version is available on the server\n(current: %s, available: %s).\nDo you want to update now ?" % (getClientVersion(), onServer), qt.QMessageBox.Yes, qt.QMessageBox.No)
-		if ret == qt.QMessageBox.Yes:
-			# We retrieve the archive
-			archive = getProxy().getComponentArchive('qtesterman', onServer)
-			if not archive:
-				qt.QMessageBox.warning(None, getClientName() + " Auto update", "Unable to retrieve the new client from the server. Continuing with the current version.")
-				return
-			# We untar it into the current directory.
-			archiveFileObject = StringIO.StringIO(archive)
-			try:
-				tfile = tarfile.TarFile.open('any', 'r', archiveFileObject)
-				contents = tfile.getmembers()
-				# untar each file into the qtesterman directory
-				
-				for c in contents:
-					print str(c)
-					tfile.extract(c, qt.QApplication.instance().get('basepath'))
-					# TODO: make sure to set W right for future updates
-				tfile.close()
+			try:			
+				proxy.installComponent(url, unicode(basepath))
 			except Exception, e:
-				qt.QMessageBox.warning(None, getClientName() + " Auto update", "Unable to install the new client from the server:\n%s.\nContinuing with the current version." % str(e))
-				return
+				QMessageBox.warning(None, "Update manager", "Unable to install the update:\n%s\nContinuing with the current version." % str(e))
+				return False
 
-			archiveFileObject.close()
-
-			# Propose to restart
-			qt.QMessageBox.information(None, getClientName() + " Auto update", "Qt Testerman Client updated. You can now restart it.")
+			QMessageBox.information(None, "Update manager", "Update succesfully installed.")
+			# Let the caller propose a restart
+			return True
 

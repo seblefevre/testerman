@@ -18,8 +18,8 @@ import TestermanClient
 from Base import *
 from Settings import *
 from CommonWidgets import *
-from AutoUpdate import *
 
+import AutoUpdate
 import ProbeManager
 import Logger
 import JobManager
@@ -685,7 +685,7 @@ def runClient():
 	style = settings.value('style', QVariant(QString('Cleanlooks'))).toString()
 	app.setStyle(style)
 
-	acceptExperimentalUpdates = settings.value('autoupdate/acceptExperimentalUpdates', QVariant(False)).toBool()
+	acceptUnstableUpdates = settings.value('autoupdate/acceptExperimentalUpdates', QVariant(False)).toBool()
 
 	try:
 		import PyQt4.Qsci
@@ -719,8 +719,16 @@ Please install the appropriate package for your Linux/Unix distribution or downl
 	QApplication.instance().set('gui.splash', splash)
 
 	# The next step is the autoUpdate
-	splash.showMessage("Checking for updates...")
-	checkForUpdates(acceptExperimentalUpdates)
+	splash.showMessage("Checking updates...")
+	branches = [ 'stable' ]
+	if acceptUnstableUpdates:
+		branches.append('testing')
+		branches.append('experimental')
+	if AutoUpdate.updateComponent(proxy = QApplication.instance().getProxy(), basepath = QApplication.instance().get('basepath'), component = "qtesterman", currentVersion = getClientVersion(), branches = branches):
+		# Update done. Restart ?
+		# TODO: implement a real application restart
+		QMessageBox.information(None, "Restart", "You must now restart QTesterman")
+		sys.exit(1)
 	log("Updates checked.")
 
 	splash.showMessage("Loading plugins...")

@@ -15,7 +15,7 @@ import Resources
 # Non-GUI related code
 ################################################################################
 
-CLIENT_VERSION = "1.0.0-testing-20090101"
+CLIENT_VERSION = "1.0.0"
 
 CLIENT_NAME = "QTesterman"
 
