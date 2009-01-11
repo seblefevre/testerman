@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 ##
 # This file is part of Testerman, a test automation system.
 # Copyright (c) 2008-2009 Sebastien Lefevre and other contributors
@@ -13,16 +14,14 @@
 ##
 
 ##
-# -*- coding: utf-8 -*-
 # SDP codec.
 # Based on RFC4566
 ##
 
-import TestermanCD
-import TestermanTCI
+import CodecManager
 
 
-class SdpCodec(TestermanCD.Codec):
+class SdpCodec(CodecManager.Codec):
 	"""
 	Encode/decode from to:
 	
@@ -62,7 +61,7 @@ class SdpCodec(TestermanCD.Codec):
 	
 	"""
 	def __init__(self):
-		TestermanCD.Codec.__init__(self)
+		CodecManager.Codec.__init__(self)
 		# Some default (encoding) properties
 		self.setProperty('version', '0')
 		self.setProperty('name', 'testerman SDP')
@@ -159,6 +158,6 @@ class SdpCodec(TestermanCD.Codec):
 		
 		return ret
 		
-TestermanCD.registerCodecClass('sdp', SdpCodec)
+CodecManager.registerCodecClass('sdp', SdpCodec)
 
 

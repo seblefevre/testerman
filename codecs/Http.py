@@ -17,7 +17,7 @@
 # HTTP codec.
 ##
 
-import TestermanCD
+import CodecManager
 
 import re
 
@@ -26,7 +26,7 @@ REQUESTLINE_REGEXP = re.compile(r'(?P<method>[a-zA-Z0-9_-]+)\s*(?P<url>[^\s]*)\s
 STATUSLINE_REGEXP = re.compile(r'(?P<version>[a-zA-Z0-9_/\.-]+)\s*(?P<status>[0-9]+)\s*(?P<reason>.*)')
 
 
-class HttpRequestCodec(TestermanCD.Codec):
+class HttpRequestCodec(CodecManager.Codec):
 	"""
 	Encode/decode from to:
 	
@@ -101,11 +101,9 @@ class HttpRequestCodec(TestermanCD.Codec):
 		
 		return ret
 		
-TestermanCD.registerCodecClass('http.request', HttpRequestCodec)
+CodecManager.registerCodecClass('http.request', HttpRequestCodec)
 
-import TestermanTCI
-
-class HttpResponseCodec(TestermanCD.Codec):
+class HttpResponseCodec(CodecManager.Codec):
 	"""
 	Encode/decode from to:
 	
@@ -173,12 +171,12 @@ class HttpResponseCodec(TestermanCD.Codec):
 			else:
 				raise Exception("Invalid header in message (%s)" % str(l))
 		
-		TestermanTCI.logInternal('remaining lines: ' + unicode(lines[i:]))
+		self.log('remaining lines: ' + unicode(lines[i:]))
 		
 		ret['body'] ="\r\n".join(lines[i:])
 		
 		contentLength = ret['headers'].get('content-length', None)
-		TestermanTCI.logInternal('content length: ' + str(contentLength))
+		self.log('content length: ' + str(contentLength))
 		if contentLength is not None:
 			cl = int(contentLength)
 			bl = len(ret['body'])
@@ -190,6 +188,6 @@ class HttpResponseCodec(TestermanCD.Codec):
 		
 		return ret
 		
-TestermanCD.registerCodecClass('http.response', HttpResponseCodec)
+CodecManager.registerCodecClass('http.response', HttpResponseCodec)
 		
 

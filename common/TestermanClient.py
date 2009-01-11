@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 ##
 # This file is part of Testerman, a test automation system.
 # Copyright (c) 2008-2009 Sebastien Lefevre and other contributors
@@ -13,7 +14,6 @@
 ##
 
 ##
-# -*- coding: utf-8 -*-
 # Module to implement Testerman clients, interfacing both Ws and Xc interfaces.
 #
 ##
@@ -22,13 +22,18 @@ import TestermanMessages as Messages
 import TestermanNodes as Nodes
 
 import base64
+import tarfile
 import threading
 import time
 import xmlrpclib
 import zlib
 
+import StringIO
 
 class DummyLogger:
+	"""
+	A Defaut logging.Logger-like implementation.
+	"""
 	def formatTimestamp(self, timestamp):
 		return time.strftime("%Y%m%d %H:%M:%S", time.localtime(timestamp))  + ".%3.3d" % int((timestamp * 1000) % 1000)
 
@@ -41,6 +46,9 @@ class DummyLogger:
 	def critical(self, txt):
 		print "%s - CRITICAL - %s" % (self.formatTimestamp(time.time()), txt)
 	
+	def warning(self, txt):
+		print "%s - WARNING - %s" % (self.formatTimestamp(time.time()), txt)
+
 	def error(self, txt):
 		print "%s - ERROR - %s" % (self.formatTimestamp(time.time()), txt)
 
@@ -61,7 +69,7 @@ class Client(Nodes.ConnectingNode):
 	
 	def trace(self, txt):
 		"""
-		Reimplemented from Nodes.ConnectingNode).
+		Reimplemented from Nodes.ConnectingNode.
 		Forwards the trace as a debug action for the current logger.
 		"""
 		self.getLogger().debug(txt)
@@ -159,7 +167,7 @@ class Client(Nodes.ConnectingNode):
 	def scheduleAts(self, ats, atsId, username, session = {}, at = 0.0):
 		"""
 		Schedules an ATS to be executed at 'at' time.
-		If 'at' is lower than the current time, an immediate execution occurs. 
+		If 'at' is lower than the current server's time, an immediate execution occurs. 
 		
 		@type  ats: unicode
 		@param ats: the ATS to schedule
@@ -186,6 +194,28 @@ class Client(Nodes.ConnectingNode):
 			return self.__proxy.scheduleAts(ats.encode('utf-8'), atsId.encode('utf-8'), username.encode('utf-8'), s, at)
 		except xmlrpclib.Fault, e:
 			self.getLogger().error("ATS Scheduling fault: " + str(e))
+			raise(e)
+		
+	def rescheduleJob(self, jobId, at):
+		"""
+		Schedules a (waiting) job to be executed at 'at' time.
+		If 'at' is lower than the current server's time, an immediate execution occurs. 
+
+		@type  jobId: integer
+		@param jobId: the job ID
+		@type  at: float
+		@param at: timestamp of the scheduled start
+		
+		@throws Exception in case of a scheduling technical error.
+		
+		@rtype: bool
+		@returns: True if the job was actually rescheduled (i.e. still in waiting state), 
+		          or False if already started (or finished) or not found.
+		"""
+		try:
+			return self.__proxy.rescheduleJob(jobId, at)
+		except xmlrpclib.Fault, e:
+			self.getLogger().error("Job rescheduling fault: " + str(e))
 			raise(e)
 
 	def getJobLog(self, jobId):
@@ -497,42 +527,108 @@ class Client(Nodes.ConnectingNode):
 		self.getLogger().debug("Removed %s: " % filename + str(res))
 		return res
 
-	def getReferencingFiles(self, module):
-		"""
-		Returns a list of files referencing a module.
-		The module is a module friendly ID.
+	##
+	# Update management
+	##
 
-		@type  module: string
-		@param module: the module friendly ID we should check
+	def getComponentVersions(self, component, branches = [ 'stable', 'testing', 'experimental' ]):
+		"""
+		Returns the available updates for a given component, with a basic filering on branches.
 		
-		@rtype: list of strings
-		@returns: a list of filenames (complete paths within the docroot) that references the module.
+		Based on metadata stored into /updates.xml within the server's docroot:
+		
+		<updates>
+			<update component="componentname" branch="stable" version="1.0.0" url="/components/componentname-1.0.0.tar">
+				<!-- optional properties -->
+				<property name="release_notes_url" value="/components/rn-1.0.0.txt />
+				<!-- ... -->
+			</update>
+		</update>
+		
+		@type  component: string
+		@param component: the component identifier ("qtesterman", "pyagent", ...)
+		@type  branches: list of strings in [ 'stable', 'testing', 'experimental' ]
+		@param branches: the acceptable branches. 
+		
+		@rtype: list of dict{'version': string, 'branch': string, 'url': string, 'properties': dict[string] of strings}
+		@returns: versions info, as list ordered from the newer to the older. The url is a relative path from the docroot, suitable
+		          for a subsequent getFile() to get the update archive.
 		"""
-		self.getLogger().debug("Checking files referencing module %s..." % module)
-		ret = self.__proxy.getReferencingFiles(module)
-		self.getLogger().debug("Referencing files: " + str(ret))
+		updates = None
+		try:
+			updates = self.getFile("/updates.xml")
+		except:
+			return []
+		if updates is None:
+			return []
+		
+		ret = []
+		# Now, parse the updates metadata
+		import xml.dom.minidom
+		import operator
+		
+		doc = xml.dom.minidom.parseString(updates)
+		rootNode = doc.documentElement
+		for node in rootNode.getElementsByTagName('update'):
+			c = None
+			branch = None
+			version = None
+			url = None
+			if node.attributes.has_key('component'):
+				c = node.attributes.get('component').value
+			if node.attributes.has_key('branch'):
+				branch = node.attributes.get('branch').value
+			if node.attributes.has_key('version'):
+				version = node.attributes.get('version').value
+			if node.attributes.has_key('url'):
+				url = node.attributes.get('url').value
+			
+			if c and c == component and url and version and branch in branches:
+				# Valid version detected. Add it to our return result
+				entry = {'version': version, 'branch': branch, 'url': url, 'properties': {}}
+				# Don't forget to add optional update properties
+				for p in node.getElementsByTagName('property'):
+					if p.attributes.has_key('name') and p.attribute.has_key('value'):
+						entry['properties'][p.attributes['name']] = p.attributes['value']
+				ret.append(entry)
+
+		# Sort the results
+		ret.sort(key = operator.itemgetter('version'))
+		ret.reverse()
 		return ret
+	
+	def installComponent(self, url, basepath):
+		"""
+		Download the component file referenced by url, and install it in basepath.
+		
+		@type  url: string
+		@type  basepath: unicode string
+		@param url: the url of the coponent archive to download, relative to the docroot
+		"""
+		# We retrieve the archive
+		archive = self.getFile(url)
+		if not archive:
+			raise Exception("Archive file not found on server (%s)" % url)
+		
+		# We untar it into the current directory.
+		archiveFileObject = StringIO.StringIO(archive)
+		try:
+			tfile = tarfile.TarFile.open('any', 'r', archiveFileObject)
+			contents = tfile.getmembers()
+			# untar each file into the qtesterman directory
 
-	##
-	# Component management
-	# TODO: replace this by simple getFile.
-	##
+			for c in contents:
+				self.getLogger().debug("Unpacking %s to %s..." % (c.name, basepath))
+				tfile.extract(c, basepath)
+				# TODO: make sure to set write rights to allow future updates
+				# os.chmod("%s/%s" % (basepath, c), ....)
+			tfile.close()
+		except Exception, e:
+			archiveFileObject.close()
+			raise Exception("Error while unpacking the update archive:\n%s" % str(e))
 
-	def getLatestComponentVersion(self, module, currentVersion, acceptTestVersion):
-		self.getLogger().debug("getLatestComponent(%s, %s)..." % (module, currentVersion))
-		res = self.__proxy.getLatestComponentVersion(module, currentVersion, acceptTestVersion)
-		self.getLogger().debug("getLatestComponent returned version: " + str(res))
-		return res
-
-	def getComponentArchive(self, module, version):
-		self.getLogger().debug("Downloading Component Archive %s-%s..." % (module, version))
-		res = self.__proxy.getComponentArchive(module, version)
-		self.getLogger().debug("Downloaded. Decoding...")
-		if res:
-			res = base64.decodestring(res)
-		self.getLogger().debug("Decoded.")
-		return res
-
+		archiveFileObject.close()
+	
 	##
 	# Probe management
 	##

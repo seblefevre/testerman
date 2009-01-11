@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 ##
 # This file is part of Testerman, a test automation system.
 # Copyright (c) 2008-2009 Sebastien Lefevre and other contributors
@@ -13,15 +14,14 @@
 ##
 
 ##
-# -*- coding: utf-8 -*-
 # Testerman PyAgent stub.
 # 
-# $Id$
 ##
 
 
 import TestermanMessages as Messages
 import TestermanNodes as Nodes
+import CodecManager
 
 import time
 import os
@@ -466,36 +466,32 @@ class Agent(Nodes.ConnectingNode):
 # Probe implementations registration
 ################################################################################
 
+def scanPlugins(paths, label):
+	for path in paths:
+		if not path in sys.path:
+			sys.path.append(path)
+	for path in paths:
+		try:
+			for m in os.listdir(path):
+				if m.startswith('__init__') or not (os.path.isdir(path + '/' + m) or m.endswith('.py')) or m.startswith('.'):
+					continue
+				if m.endswith('.py'):
+					m = m[:-3]
+				try:
+					__import__(m)
+				except Exception, e:
+					getLogger().warning("Unable to import %s %s: %s" % (m, label, str(e)))
+		except Exception, e:
+			getLogger().warning("Unable to scan %s path for %ss: %s" % (path, label, str(e)))
+
 # Contains the Class (python obj) of the probe, indexed by its probeType (probeId)
 ProbeClasses = {}
-
-def scanProbes(probeDirs = ["probes"]):
-	global ProbeClasses 
-	ProbeClasses = {}
-	
-	currentDir = os.path.normpath(os.path.realpath(os.path.dirname(sys.modules[globals()['__name__']].__file__))) + '/'
-
-	# Now, let's scan our probes directory
-	for probeDir in probeDirs:
-		for m in os.listdir(currentDir + probeDir):
-			# We ignore some files
-			# We can import directory, or python files only.
-			if m.startswith('__init__') or not (os.path.isdir(currentDir + probeDir + '/' + m) or m.endswith('.py')):
-				continue
-			# We suppose that only a file will be finished by .py, not a dir...
-			if m.endswith('.py'):
-				m = m[:-3]
-			try:
-				__import__(probeDir + '.' + m)
-			except Exception, e:
-				getLogger().warning("Unable to import %s: %s" % (probeDir + '.' + m, str(e)))
 
 def getProbeClasses():
 	return ProbeClasses
 
 def registerProbeClass(type_, class_):
 	# For the internal registrations, all probe types are started with a remote.
-	global ProbeClasses
 	if not type_.startswith("remote."):
 		type_ = "remote." + type_
 	if ProbeClasses.has_key(type_):
@@ -507,4 +503,10 @@ def registerProbeClass(type_, class_):
 # Main
 ################################################################################
 
-	
+def initialize(probePaths = ["probes"], codecPaths = ["../codecs"]):
+	# CodecManager logging diversion
+	CodecManager.instance().setLogCallback(logging.getLogger("Agent.CD").debug)
+	# Loading plugins: probes & codecs
+	currentDir = os.path.normpath(os.path.realpath(os.path.dirname(sys.modules[globals()['__name__']].__file__)))
+	scanPlugins(["%s/%s" % (currentDir, x) for x in codecPaths], label = "codec")
+	scanPlugins(["%s/%s" % (currentDir, x) for x in probePaths], label = "probe")

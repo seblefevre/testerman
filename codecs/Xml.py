@@ -17,7 +17,7 @@
 # XML codec.
 ##
 
-import TestermanCD
+import CodecManager
 
 import StringIO
 import codecs
@@ -38,7 +38,7 @@ def writexml(doc, prolog = True, encoding = None, indent = "", addindent = "", n
 		node.writexml(writer, indent, addindent, newl)
 	return writer.getvalue()
 
-class XmlCodec(TestermanCD.Codec):
+class XmlCodec(CodecManager.Codec):
 	"""
 	('element', { 'attributes': { ... }, 'children': [ ... ])
 	if no child:
@@ -126,13 +126,13 @@ class XmlCodec(TestermanCD.Codec):
 		
 		return (tag, { 'attributes': attributes, 'children': children }) 
 
-TestermanCD.registerCodecClass('xml', XmlCodec)
+CodecManager.registerCodecClass('xml', XmlCodec)
 
 
 if __name__ == '__main__':
-	TestermanCD.alias('xml.noprolog', 'xml', write_prolog = False)
-	TestermanCD.alias('xml.iso', 'xml', encoding = "iso-8859-1", write_prolog = True)
-	TestermanCD.alias('xml.pretty', 'xml', prettyprint = True)
+	CodecManager.alias('xml.noprolog', 'xml', write_prolog = False)
+	CodecManager.alias('xml.iso', 'xml', encoding = "iso-8859-1", write_prolog = True)
+	CodecManager.alias('xml.pretty', 'xml', prettyprint = True)
 	
 	sample = """<?xml version="1.0"?>
 <library owner="John Smith" administrator="Héléna Utf8">
@@ -140,6 +140,7 @@ if __name__ == '__main__':
 		<author>Mickaël Orangina</author>
 		<title locale="fr">Tonnerre sous les tropiques</title>
 		<title locale="us">Tropic thunder</title>
+		<summary><![CDATA[This is a CDATA section <-> <-- this is a tie fighter]]></summary>
 	</book>
 </library>
 """
@@ -147,18 +148,17 @@ if __name__ == '__main__':
 	for codec in [ 'xml', 'xml.noprolog', 'xml.iso', 'xml.pretty' ]:
 		print "%s %s %s" % (40*'=', codec, 40*'=')
 		print "decoded with %s:" % codec
-		decoded = TestermanCD.decode(codec, sample)
+		decoded = CodecManager.decode(codec, sample)
 		print decoded
 		print
 		print "re-encoded with %s:" % codec
-		reencoded = TestermanCD.encode(codec, decoded)
+		reencoded = CodecManager.encode(codec, decoded)
 		print
 		print reencoded
 		print "re-decoded with %s:" % codec
-		redecoded = TestermanCD.decode(codec,reencoded)
+		redecoded = CodecManager.decode(codec,reencoded)
 		print redecoded
 		assert(decoded == redecoded)
 		print
-
 	
 	

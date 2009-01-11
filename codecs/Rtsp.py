@@ -17,8 +17,7 @@
 # RTSP codec.
 ##
 
-import TestermanCD
-import TestermanTCI
+import CodecManager
 
 import re
 
@@ -27,7 +26,7 @@ REQUESTLINE_REGEXP = re.compile(r'(?P<method>[a-zA-Z0-9_-]+)\s*(?P<uri>[^\s]*)\s
 STATUSLINE_REGEXP = re.compile(r'(?P<version>[a-zA-Z0-9_/\.-]+)\s*(?P<status>[0-9]+)\s*(?P<reason>.*)')
 
 
-class RtspRequestCodec(TestermanCD.Codec):
+class RtspRequestCodec(CodecManager.Codec):
 	"""
 	Encode/decode from to:
 	
@@ -101,10 +100,10 @@ class RtspRequestCodec(TestermanCD.Codec):
 		
 		return ret
 		
-TestermanCD.registerCodecClass('rtsp.request', RtspRequestCodec)
+CodecManager.registerCodecClass('rtsp.request', RtspRequestCodec)
 
 
-class RtspResponseCodec(TestermanCD.Codec):
+class RtspResponseCodec(CodecManager.Codec):
 	"""
 	Encode/decode from to:
 	
@@ -173,8 +172,6 @@ class RtspResponseCodec(TestermanCD.Codec):
 			else:
 				raise Exception("Invalid header in message (%s)" % str(l))
 		
-		TestermanTCI.logInternal('remaining lines: ' + unicode(lines[i:]))
-		
 		ret['body'] ="\r\n".join(lines[i:])
 		
 		contentLength = ret['headers'].get('content-length', None)
@@ -189,6 +186,6 @@ class RtspResponseCodec(TestermanCD.Codec):
 		
 		return ret
 		
-TestermanCD.registerCodecClass('rtsp.response', RtspResponseCodec)
+CodecManager.registerCodecClass('rtsp.response', RtspResponseCodec)
 		
 

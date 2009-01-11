@@ -1,4 +1,5 @@
 #!/usr/bin/env python
+# -*- coding: utf-8 -*-
 ##
 # This file is part of Testerman, a test automation system.
 # Copyright (c) 2008-2009 Sebastien Lefevre and other contributors
@@ -14,10 +15,8 @@
 ##
 
 ##
-# -*- coding: utf-8 -*-
 # Testerman PyAgent launcher.
 #
-# $Id$
 ##
 
 import PyTestermanAgent as Agent
@@ -41,7 +40,8 @@ def main():
 	parser.add_option("-p", "--port", dest = "controllerPort", metavar = "PORT", help = "set agent controller Xa port address to PORT (default: %default)", default = 40000, type="int")
 	parser.add_option("--deploy", dest = "probes", metavar = "PROBES", help = "automatically deploy PROBES on startup, format: name=type[,name=type]* (default: none)", default = "")
 	parser.add_option("--local", dest = "localIp", metavar = "ADDRESS", help = "set local IP address to ADDRESS for XA connection (default: system-dependent)", default = "")
-	parser.add_option("--probe-path", dest = "probePaths", metavar = "PATHS", help = "search for probe modules in PATHS, which is a comma-separated list of probe paths (default: %default)", default = "probes")
+	parser.add_option("--probe-path", dest = "probePaths", metavar = "PATHS", help = "search for probe modules in PATHS, which is a comma-separated list of paths (default: %default)", default = "probes")
+	parser.add_option("--codec-path", dest = "codecPaths", metavar = "PATHS", help = "search for codec modules in PATHS, which is a comma-separated list of paths (default: %default)", default = "../codecs")
 
 	(options, args) = parser.parse_args()
 
@@ -51,7 +51,8 @@ def main():
 		level = logging.INFO
 	logging.basicConfig(level = level, format = '%(asctime)s.%(msecs)03d %(thread)d %(levelname)-8s %(name)-20s %(message)s', datefmt = '%Y%m%d %H:%M:%S')
 	
-	Agent.scanProbes(options.probePaths.split(','))
+	# Static initialization
+	Agent.initialize(probePaths = options.probePaths.split(','), codecPaths = options.codecPaths.split(','))
 
 	agent = Agent.Agent(name = options.name)
 	agent.initialize(controllerAddress = (options.controllerIp, options.controllerPort), localAddress = (options.localIp, 0))
