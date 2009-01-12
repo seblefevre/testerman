@@ -102,6 +102,8 @@ class Message(object):
 		self.body = None # unicode or datastring
 
 	def setHeader(self, header, value):
+		if value is None:
+			return
 		if not isinstance(value, basestring):
 			value = str(value)
 		self.headers[header] = value.encode('utf-8')

@@ -81,20 +81,25 @@ class Probe:
 	# Convenience functions provided to Probe implementors
 	##
 	
-	def notifyReceived(self, message, sutAddress = None):
+	def notifyReceived(self, message, sutAddress = None, profile = Messages.Message.CONTENT_TYPE_PYTHON_PICKLE):
 		"""
 		Creates a RECEIVED notification message over XA and sends it.
 		
-		Currently you have no way to perform your own encoding.
+		You may select the encoding used for the body. The default, python/pickle,
+		is safe and the preferred encoding when sending to the TACS.
 		
 		@type  event: the event, any python type
 		@param event: the event to raise.
+		@type  sutAddress: the sutAddress the message has been received from (if applicable)
+		@param sutAddress: string
+		@type  profile: enum in Messages.Message.CONTENT_TYPE*
+		@param profile: the body encoding profile, as defined in Messages.Message
 		
 		@rtype: boolean
 		@returns: True in case of a success, False otherwise [but this is a notification...]
 		"""
 		msg = Messages.Notification(method = "RECEIVED", uri = self.getUri(), protocol = "Xa", version = "1.0")
-		msg.setApplicationBody(message)
+		msg.setApplicationBody(message, profile)
 		msg.setHeader("SUT-Address", sutAddress)
 		msg.setHeader("Probe-Name", self.getName())
 		return self.__agent.notify(msg)

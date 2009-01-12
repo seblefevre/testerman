@@ -97,10 +97,10 @@ class IaClient(Nodes.ConnectingNode):
 
 	# High level functions callable from an IaClient
 	
-	def send(self, probeUri, message, sutAddress):
+	def send(self, probeUri, message, sutAddress, profile = Messages.Message.CONTENT_TYPE_JSON):
 		request = Messages.Request("SEND", probeUri, "Ia", "1.0")
 		request.setHeader("SUT-Address", sutAddress)
-		request.setApplicationBody(message)
+		request.setApplicationBody(message, profile)
 		response = self.executeRequest(0, request)
 		if response and response.getStatusCode() == 200:
 			return True
