@@ -89,6 +89,8 @@ class TestermanContext:
 		self._testcase = None
 		# Current matched values for value()
 		self._values = {}
+		# Current matched senders for sender()
+		self._senders = {}
 	
 	def getValues(self):
 		return self._values
@@ -98,6 +100,12 @@ class TestermanContext:
 	
 	def setValue(self, name, value):
 		self._values[name] = value
+	
+	def getSender(self, name):
+		return self._senders.get(name, None)
+	
+	def setSender(self, name, sender):
+		self._senders[name] = sender
 	
 	def getTc(self):
 		return self._tc
@@ -152,6 +160,17 @@ def _clearLocalContexts():
 	_ContextMap.clear()
 	_ContextMapMutex.release()
 
+
+class _BranchCondition:
+	"""
+	This class represents a branch condition in an alternative.
+	"""
+	def __init__(self, port, template = None, value = None, sender = None, from_ = None):
+		self.port = port
+		self.template = template
+		self.value = value
+		self.sender = sender
+		self.from_ = from_
 
 ################################################################################
 # Some tools: StateManager (to implement alt-based state machines)
@@ -226,7 +245,7 @@ class Timer:
 		if self._name is None:
 			self._name = "timer_%d" % getNewId()
 		
-		self.TIMEOUT = (_getSystemQueue(), self._TIMEOUT_EVENT, None)
+		self.TIMEOUT = _BranchCondition(_getSystemQueue(), self._TIMEOUT_EVENT)
 		getLocalContext().timers.append(self)
 		self._tc = getLocalContext().getTc()
 
@@ -238,7 +257,7 @@ class Timer:
 	def _onTimeout(self):
 		logTimerExpiry(tc = str(self._tc), id_ = str(self))
 		# we post a message into the system component special port
-		_postSystemEvent(self._TIMEOUT_EVENT)
+		_postSystemEvent(self._TIMEOUT_EVENT, self)
 
 	# TTCN-3 compliant interface
 
@@ -383,9 +402,9 @@ class TestComponent:
 		self._DONE_EVENT = { 'event': 'done', 'ptc': self }
 		# ... and when it's killed()
 		self._KILLED_EVENT = { 'event': 'killed', 'ptc': self }
-		# The complete alt associated entries
-		self.DONE = (_getSystemQueue(), self._DONE_EVENT, None)
-		self.KILLED = (_getSystemQueue(), self._KILLED_EVENT, None)
+		# The associated branch conditions to use in alt
+		self.DONE = _BranchCondition(_getSystemQueue(), self._DONE_EVENT)
+		self.KILLED = _BranchCondition(_getSystemQueue(), self._KILLED_EVENT)
 		
 		logTestComponentCreated(id_ = str(self))
 
@@ -538,13 +557,13 @@ class TestComponent:
 				logTestComponentKilled(id_ = str(self), message = "PTC %s, non-alive, automatically killed after stop" % str(self))
 				self._setState(self.STATE_KILLED)
 				self._finalize()
-				_postSystemEvent(self._DONE_EVENT)
-				_postSystemEvent(self._KILLED_EVENT)
+				_postSystemEvent(self._DONE_EVENT, self)
+				_postSystemEvent(self._KILLED_EVENT, self)
 		else:
 			if not self._getState() == self.STATE_STOPPED:
 				# Alive components
 				self._setState(self.STATE_STOPPED)
-				_postSystemEvent(self._DONE_EVENT)
+				_postSystemEvent(self._DONE_EVENT, self)
 	
 	def _doKill(self):
 		"""
@@ -554,7 +573,7 @@ class TestComponent:
 			logTestComponentKilled(id_ = str(self), message = "killed")
 			self._setState(self.STATE_KILLED)
 			self._finalize()
-			_postSystemEvent(self._KILLED_EVENT)
+			_postSystemEvent(self._KILLED_EVENT, self)
 
 	def _raiseStopException(self):
 		"""
@@ -576,8 +595,8 @@ class TestComponent:
 		making sure that TC.alt()s are interruptible.
 		"""
 		return [
-				[ (_getSystemQueue(), self._STOP_COMMAND, None), self._raiseStopException ],
-				[ (_getSystemQueue(), self._KILL_COMMAND, None), self._raiseKillException ],
+				[ _BranchCondition(_getSystemQueue(), self._STOP_COMMAND), self._raiseStopException ],
+				[ _BranchCondition(_getSystemQueue(), self._KILL_COMMAND), self._raiseKillException ],
 		]
 
 	# TTCN-3 compliant interface
@@ -666,7 +685,7 @@ class TestComponent:
 			if self._getState() == self.STATE_RUNNING:
 				logInternal("Stopping %s..." % str(self))
 				# Let's post a system event to manage inter-thread communications
-				_postSystemEvent(self._STOP_COMMAND)
+				_postSystemEvent(self._STOP_COMMAND, self)
 
 	def kill(self):
 		"""
@@ -682,7 +701,7 @@ class TestComponent:
 		else:
 			if self._getState() == self.STATE_RUNNING:
 				# Post our internal event to communicate with the PTC thread.
-				_postSystemEvent(self._KILL_COMMAND)
+				_postSystemEvent(self._KILL_COMMAND, self)
 
 	def done(self):
 		"""
@@ -751,16 +770,16 @@ class Port:
 	def _isConnectedTo(self, port):
 		return port in self._connectedPorts
 	
-	def _enqueue(self, message):
+	def _enqueue(self, message, from_):
 		# logInternal("%s enqueuing message, started %s" % (str(self), str(self._started)))
 		if self._started:
 			self._lock()
-			self._messageQueue.append(message)
+			self._messageQueue.append((message, from_))
 			self._unlock()
 		# else not started: not enqueueing anything.
 
 	# TTCN-3 compliant operations
-	def send(self, message, sutAddress = None):
+	def send(self, message, to = None):
 		"""
 		Sends a message to the connected ports or the mapped port.
 		
@@ -781,27 +800,31 @@ class Port:
 			# Mapped port first.
 			if self._mappedTsiPort:
 				logMessageSent(fromTc = str(self._tc), fromPort = self._name, toTc = "system", toPort = self._mappedTsiPort._name, message = messageToLog)
-				self._mappedTsiPort.send(messageToSend, sutAddress)
+				self._mappedTsiPort.send(messageToSend, to)
 			else:
 				for port in self._connectedPorts:
 					logMessageSent(fromTc = str(self._tc), fromPort = self._name, toTc = str(port._tc), toPort = port._name, message = messageToLog)
-					port._enqueue(messageToSend)
+					port._enqueue(messageToSend, to)
 			return True
 		else:
 			return False
 
-	def receive(self, template = None, asValue = None):
+	def receive(self, template = None, value = None, sender = None, from_ = None):
 		"""
 		Waits (blocking) for template to be received on this port. 
 		If asValue is provided, store the received message to it.
 		
 		@type  template: any structure valid for a template
 		@param template: the template to match
-		@type  asValue: string
-		@param asValue: the name of the value() variable to store the received message to.
+		@type  value: string
+		@param value: the name of the value() variable to store the received message to.
+		@type  sender: string
+		@param sender: the name of the value() variable to store the sender of the message to.
+		@type  from_: string
+		@param from_: the SUT address to send the message shoud be received from
 		"""
 		if self._started:
-			alt([[self.RECEIVE(template, asValue)]])
+			alt([[self.RECEIVE(template, value, sender, from_)]])
 
 	def start(self):
 		"""
@@ -830,12 +853,21 @@ class Port:
 		self._unlock()
 		logInternal("%s cleared" % str(self))
 
-	def RECEIVE(self, template = None, asValue = None):
+	def RECEIVE(self, template = None, value = None, sender = None, from_ = None):
 		"""
-		Returns the event structure to use in alt()
+		Returns the branch condition to use in alt()
+
+		@type  template: any structure valid for a template
+		@param template: the template to match
+		@type  value: string
+		@param value: the name of the value() variable to store the received message to.
+		@type  sender: string
+		@param sender: the name of the value() variable to store the sender of the message to.
+		@type  from_: string
+		@param from_: the SUT address to send the message shoud be received from
 		"""
-		# TODO: more flexible internal representation for a alt clause event (dict ?)
-		return (self, template, asValue)
+		# This is an internal branch condition representation.
+		return _BranchCondition(self, template, value, sender, from_)
 
 
 ###############################################################################
@@ -1145,14 +1177,14 @@ class TestSystemInterfacePort:
 	def __str__(self):
 		return "system.%s" % self._name
 
-	def _enqueue(self, message):
+	def _enqueue(self, message, sutAddress):
 		"""
 		Forwards an incoming message (from TRI) to the ports mapped to this tsi port.
 		Called by triEnqueueMsg.
 		"""
 		for port in self._mappedPorts:
 			logMessageSent(fromTc = "system", fromPort = self._name, toTc = str(port._tc), toPort = port._name, message = message)
-			port._enqueue(message)
+			port._enqueue(message, sutAddress)
 
 	def send(self, message, sutAddress):
 		"""
@@ -1389,8 +1421,7 @@ def _setValue(name, message):
 
 def value(name):
 	"""
-	Gets a value that was matched in a receive(..., 'asValue') or RECEIVE=(..., 'asValue'),
-	where 'asValue' is the name of the value to retrieve.
+	Gets a saved value after a match.
 
 	In TTCN-3, this is:
 		port.receive(myTemplate) -> value myValue
@@ -1404,9 +1435,37 @@ def value(name):
 	@param name: the name of the value to retrieve
 	
 	@rtype: object, or None
-	@returns: the matched value object, if any, or None if it was not matched or the value was not set.
+	@returns: the matched value object, if any, or None if the value was not set.
 	"""
 	return getLocalContext().getValue(name)
+
+def _setSender(name, sender):
+	"""
+	Called by alt() to store a message to a variable.
+	"""
+	getLocalContext().setSender(name, sender)
+
+def sender(name):
+	"""
+	Gets a saved sender after a match.
+	
+	In TTCN-3, this is:
+		port.receive(myTemplate) -> value myValue sender mySender
+		log("value" & myValue)
+		log("sender" & mySender)
+
+	Testerman equivalent:
+		port.receive(myTemplate, 'myValue', 'mySender')
+		log("value" + value('myValue'))
+		log("sender" + value('mySender'))
+	
+	@type  name: string
+	@param name: the name of the sender to retrieve
+	
+	@rtype: string, or None
+	@returns: the matched value object, if any, or None if the sender was not set.
+	"""
+	return getLocalContext().getSender(name)
 
 def alt(alternatives):
 	"""
@@ -1450,8 +1509,8 @@ def alt(alternatives):
 	- an optional guard. If present, detected because the first element of the alternative is callable().
 	  In TTCN-3, the guard is mandatory, even if empty (and is actually not part of the alternative itself,
 	  but just precedes it (and separate them).
-	- the branch condition, which is currently implemented by a tuple (port, template, asValue) but
-	  MUST be declared in userland through port.RECEIVE(template, asValue) or timer.TIMEOUT,
+	- the branch condition, which is implemented by a _BranchCondition instance but
+	  MUST be declared in userland through port.RECEIVE(template, ...) or timer.TIMEOUT,
 	  tc.DONE, tc.KILLED, etc (since the internal representation may change)
 	- the associated branch actions, as the remaining list of elements in the alternative list.
 	  They must be lambda or callable() to be executed only if the branch is selected.
@@ -1476,7 +1535,7 @@ def alt(alternatives):
 	
 	@type  alternatives: list of [ callable, (Port, any, string), callable, callable, ... ]
 	@param alternatives: a list of alternatives, containing an optional callable as a guard,
-	                     then a branch condition as (port, template, asValue),
+	                     then a branch condition as _BranchCondition (port, template, value, sender, from),
 	                     then 0..N callable as actions to perform if the branch is selected.
 
 	The guard is detected if the first object in the list is callable. If it is, this is a guard. If not, no guard available.
@@ -1504,6 +1563,8 @@ def alt(alternatives):
 	for a in additionalInternalAlternatives:
 		alternatives.insert(0, a)
 	
+	logInternal("Entering alt():\n%s" % alternatives)
+	
 	# Step 1.
 	# Alternatives per port
 	portAlternatives = {}
@@ -1520,11 +1581,9 @@ def alt(alternatives):
 			condition = alternative[0]
 			actions = alternative[1:]
 		
-		(port, template, asValue) = condition
-
- 		if not portAlternatives.has_key(port):
-			portAlternatives[port] = []
-		portAlternatives[port].append((guard, template, asValue, actions))
+ 		if not portAlternatives.has_key(condition.port):
+			portAlternatives[condition.port] = []
+		portAlternatives[condition.port].append((guard, condition, actions))
 
 	# Step 2.
 	matchedInfo = None # tuple (guard, template, asValue, actions, message, decodedMessage)
@@ -1538,15 +1597,16 @@ def alt(alternatives):
 			# Special handling for system queue
 			if port is _getSystemQueue():
 				port._lock()
-				for message in port._messageQueue:
-					for (guard, template, asValue, actions) in alternatives:
+				for (message, from_) in port._messageQueue:
+					# We ignore the from in systemQueue
+					for (guard, condition, actions) in alternatives:
 						# Guard is ignored for internal messages (we shouldn't have one, anyway)
 						# Ignore the decoded message: must be the same as encoded for internal events.
-						(match, _) = templateMatch(message, template)
+						(match, _) = templateMatch(message, condition.template)
 						if match:
-							matchedInfo = (guard, template, asValue, actions, message, None) # None: decodedMessage
+							matchedInfo = (guard, condition, actions, message, None) # None: decodedMessage
 							# Consume the message
-							port._messageQueue.remove(message)
+							port._messageQueue.remove((message, from_))
 							# Exit the port alternative loop, with matchedInfo
 							break
 					if matchedInfo:
@@ -1554,23 +1614,23 @@ def alt(alternatives):
 						break
 				port._unlock()
 				if matchedInfo:
-					(guard, template, asValue, actions, message, _) = matchedInfo
+					(guard, condition, actions, message, _) = matchedInfo
 					# OK, we have some actions to trigger (outside the critical section)
 					# According to the event type we matched, log it (or not)
 					# system queue events are always formatted as a dict { 'event': string } and 'ptc' or 'timer' dependending on the event.
-					branch = template['event']
+					branch = condition.template['event']
 					if branch == 'timeout':
 						# timeout-branch selected
-						logTimeoutBranchSelected(id_ = str(template['timer']))
+						logTimeoutBranchSelected(id_ = str(condition.template['timer']))
 					elif branch == 'done':
 						# done-branch selected
-						logDoneBranchSelected(id_ = str(template['ptc']))
+						logDoneBranchSelected(id_ = str(condition.template['ptc']))
 					elif branch =='killed':
 						# killed-branch selected
-						logKilledBranchSelected(id_ = str(template['ptc']))
+						logKilledBranchSelected(id_ = str(condition.template['ptc']))
 					else:
 						# Other system messages are for internal purpose only and does not have TTCN-3 branch equivalent
-						logInternal('system event received in system queue: %s' % repr(template))
+						logInternal('system event received in system queue: %s' % repr(condition.template))
 					
 					for action in actions:
 						# Minimal command management for internal messages
@@ -1589,23 +1649,31 @@ def alt(alternatives):
 					# 2.1 Let's pop the first message in the queue (will be consumed whatever happens since not kept in queue)
 					# FIXME: flawn implementation: we shoud not consume only one message per port per pass.
 					# We should really take a "snapshot" (ie freezing ports) and considering timestamped messages...
-					message = port._messageQueue[0]
+					(message, from_) = port._messageQueue[0]
 					port._messageQueue = port._messageQueue[1:]
 				port._unlock()
 				if message is not None: # And what is we want to send "None" ? should be considered as a non-message, ie a non-send ?
 					# 2.2: For each existing satisfied conditions for this port (x[0] is the guard)
-					for (guard, template, asValue, actions) in filter(lambda x: (x[0] and x[0]()) or (x[0] is None), alternatives):
-						(match, decodedMessage) = templateMatch(message, template)
+					for (guard, condition, actions) in filter(lambda x: (x[0] and x[0]()) or (x[0] is None), alternatives):
+						# Only try to match messages from the expected sender
+						if condition.from_ and condition.from_ != from_:
+							logInternal("not matching condition: not received from the expected address (expected: %s, got: %s)" % (condition.from_, from_))
+							match = False
+						else:
+							(match, decodedMessage) = templateMatch(message, condition.template)
+						# Now handle the matching result
 						if not match:
 							# 2.3 - Mismatch, we should log it.
-							logTemplateMismatch(tc = port._tc, port = port._name, message = decodedMessage, template = _expandTemplate(template), encodedMessage = message)
+							logTemplateMismatch(tc = port._tc, port = port._name, message = decodedMessage, template = _expandTemplate(condition.template), encodedMessage = message)
 						else:
 							# 2.3 - Match
-							matchedInfo = (guard, template, asValue, actions, message, decodedMessage)
-							logTemplateMatch(tc = port._tc, port = port._name, message = decodedMessage, template = _expandTemplate(template), encodedMessage = message)
+							matchedInfo = (guard, condition, actions, message, decodedMessage)
+							logTemplateMatch(tc = port._tc, port = port._name, message = decodedMessage, template = _expandTemplate(condition.template), encodedMessage = message)
 							# Store the message as value, if needed
-							if asValue:
-								_setValue(asValue, decodedMessage)
+							if condition.value:
+								_setValue(condition.value, decodedMessage)
+							if condition.sender:
+								_setSender(condition.sender, from_)
 							# Then execute actions
 							for action in actions:
 								if callable(action):
@@ -1667,11 +1735,11 @@ def _resetSystemQueue():
 	_getSystemQueue().stop()
 	_getSystemQueue().start()
 
-def _postSystemEvent(event):
+def _postSystemEvent(event, from_):
 	"""
 	Posts an event in the system bus
 	"""
-	_getSystemQueue()._enqueue(event)
+	_getSystemQueue()._enqueue(event, from_)
 
 
 ################################################################################
@@ -2408,7 +2476,7 @@ def triEnqueueMsg(tsiPortId, sutAddress = None, componentId = None, message = No
 	@type  tsiPortId: string
 	@param tsiPortId: the name of the test system interface port.
 	@type  sutAddress: string
-	@param sutAddress: the sutAddress the message arrives from
+	@param sutAddress: the sutAddress the message comes from
 	@type  componentId: string
 	@param componentId: the name of ?? (dest test component ?) - not used.
 	@type  message: any valid testerman message
@@ -2421,11 +2489,11 @@ def triEnqueueMsg(tsiPortId, sutAddress = None, componentId = None, message = No
 	_TsiPortsLock.release()
 	
 	if tsiPort:
-		logInternal("triEnqueueMsg: received a message for tsiPort %s. Enqueing it." % str(tsiPort))
-		tsiPort._enqueue(message)
+		logInternal("triEnqueueMsg: received a message for tsiPort %s from %s. Enqueing it." % (str(tsiPort), str(sutAddress)))
+		tsiPort._enqueue(message, sutAddress)
 	else:
 		# Late message ? just discard it.
-		logInternal("triEnqueueMsg: received a message for unmapped tsiPort %s. Not delivering to userland, discarding." % str(tsiPortId))
+		logInternal("triEnqueueMsg: received a message for unmapped tsiPortId %s. Not delivering to userland, discarding." % str(tsiPortId))
 
 
 ################################################################################

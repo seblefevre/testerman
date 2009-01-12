@@ -44,7 +44,7 @@ class Codec:
 	def __getitem__(self, name):
 		return self._properties.get(name, None)
 	
-	def log(self):
+	def log(self, txt):
 		log(txt)
 
 	# To reimplement	
