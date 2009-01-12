@@ -1970,7 +1970,7 @@ class superset(ConditionTemplate):
 	(list only)
 	"""
 	def __init__(self, *templates):
-		self._templates = templates
+		self._templates = list(templates)
 	def match(self, message):
 		for tmplt in self._templates:
 			ret = False
@@ -1986,6 +1986,8 @@ class superset(ConditionTemplate):
 		return True
 	def __repr__(self):
 		return "(superset of [%s])" % ', '.join([unicode(x) for x in self._templates])
+	def toMessage(self):
+		return ('superset', self._templates)
 
 class subset(ConditionTemplate):
 	"""
@@ -1993,7 +1995,7 @@ class subset(ConditionTemplate):
 	(list only)
 	"""
 	def __init__(self, *templates):
-		self._templates = templates
+		self._templates = list(templates)
 	def match(self, message):
 		for e in message:
 			ret = False
@@ -2006,6 +2008,8 @@ class subset(ConditionTemplate):
 		return True
 	def __repr__(self):
 		return "(subset of [%s])" % ', '.join([unicode(x) for x in self._templates])
+	def toMessage(self):
+		return ('subset', self._templates)
 
 class contains(ConditionTemplate):
 	"""

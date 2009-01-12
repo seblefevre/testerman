@@ -265,6 +265,12 @@ def testermanToXml(obj, simpleElement = None):
 	@returns: the XML encoded string representing the structure.
 	          Notice that no character encoding is applied (unicode).
 	"""
+	# Tries to apply the 'to message' transformation (useful for template proxies)
+	try:
+		obj = obj.toMessage()
+	except:
+		pass
+	
 	if isinstance(obj, list):
 		# The internally working object is a lis - faster than a string for concat ops.
 		ret = []
