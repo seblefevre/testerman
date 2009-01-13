@@ -34,7 +34,7 @@
 # (with optional prolog)
 ##
 
-import TestermanCD
+import CodecManager
 
 import StringIO
 import codecs
@@ -55,7 +55,7 @@ def writexml(doc, prolog = True, encoding = None, indent = "", addindent = "", n
 		node.writexml(writer, indent, addindent, newl)
 	return writer.getvalue()
 
-class XerLiteCodec(TestermanCD.Codec):
+class XerLiteCodec(CodecManager.Codec):
 	"""
 	('element', [ ... ])
 	if no child:
@@ -122,13 +122,13 @@ class XerLiteCodec(TestermanCD.Codec):
 		
 		return (tag, children) 
 
-TestermanCD.registerCodecClass('xer.lite', XerLiteCodec)
+CodecManager.registerCodecClass('xer.lite', XerLiteCodec)
 
 
 if __name__ == '__main__':
-	TestermanCD.alias('xer.noprolog', 'xer.lite', write_prolog = False)
-	TestermanCD.alias('xer.iso', 'xer.lite', encoding = "iso-8859-1")
-	TestermanCD.alias('xer.canonical', 'xer.lite', canonical = True)
+	CodecManager.alias('xer.noprolog', 'xer.lite', write_prolog = False)
+	CodecManager.alias('xer.iso', 'xer.lite', encoding = "iso-8859-1")
+	CodecManager.alias('xer.canonical', 'xer.lite', canonical = True)
 	
 	sample = """<?xml version="1.0"?>
 <library>
@@ -145,15 +145,15 @@ if __name__ == '__main__':
 	for codec in [ 'xer.lite', 'xer.noprolog', 'xer.iso', 'xer.canonical' ]:
 		print "%s %s %s" % (40*'=', codec, 40*'=')
 		print "decoded with %s:" % codec
-		decoded = TestermanCD.decode(codec, sample)
+		decoded = CodecManager.decode(codec, sample)
 		print decoded
 		print
 		print "re-encoded with %s:" % codec
-		reencoded = TestermanCD.encode(codec, decoded)
+		reencoded = CodecManager.encode(codec, decoded)
 		print
 		print reencoded
 		print "re-decoded with %s:" % codec
-		redecoded = TestermanCD.decode(codec,reencoded)
+		redecoded = CodecManager.decode(codec,reencoded)
 		print redecoded
 		assert(decoded == redecoded)
 		print

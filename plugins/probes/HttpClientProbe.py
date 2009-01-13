@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 ##
 # This file is part of Testerman, a test automation system.
 # Copyright (c) 2008-2009 Sebastien Lefevre and other contributors
@@ -13,21 +14,19 @@
 ##
 
 ##
-# -*- coding: utf-8 -*-
 # A probe HTTP/HTTPS client behaviours (request/response)
 ##
 
 
-import TestermanSA
-import TestermanTCI
-import TestermanCD
+import ProbeImplementationManager
+import CodecManager
 
 import threading
 import socket
 import select
 
 
-class HttpClientProbe(TestermanSA.LocalProbe):
+class HttpClientProbe(ProbeImplementationManager.ProbeImplementation):
 	"""
 	type record HttpRequest
 	{
@@ -53,18 +52,18 @@ class HttpClientProbe(TestermanSA.LocalProbe):
 	}
 	"""
 	def __init__(self):
-		TestermanSA.LocalProbe.__init__(self)
+		ProbeImplementationManager.ProbeImplementation.__init__(self)
 		self._mutex = threading.RLock()
 		self._httpThread = None
 		self._httpConnection = None
 		# Default test adapter parameters
-		self.setParameter('maintain_connection', False)
-		self.setParameter('version', 'HTTP/1.0')
-		self.setParameter('auto_connect', False)
-		self.setParameter('protocol', 'http')
-		self.setParameter('host', 'localhost')
-		self.setParameter('port', 80)
-		self.setParameter('local_ip', '')
+		self.setDefaultParameter('maintain_connection', False)
+		self.setDefaultParameter('version', 'HTTP/1.0')
+		self.setDefaultParameter('auto_connect', False)
+		self.setDefaultParameter('protocol', 'http')
+		self.setDefaultParameter('host', 'localhost')
+		self.setDefaultParameter('port', 80)
+		self.setDefaultParameter('local_ip', '')
 
 	# LocalProbe reimplementation)
 	def onTriMap(self):
@@ -82,7 +81,7 @@ class HttpClientProbe(TestermanSA.LocalProbe):
 		# No static connections
 		pass
 	
-	def send(self, message, sutAddress):
+	def onTriSend(self, message, sutAddress):
 		try:
 			# FIXME:
 			# Should go to a configured codec instance instead.
@@ -90,9 +89,9 @@ class HttpClientProbe(TestermanSA.LocalProbe):
 			if not message.has_key('version'):
 				message['version'] = self['version']
 			try:
-				encodedMessage = TestermanCD.encode('http.request', message)
+				encodedMessage = CodecManager.encode('http.request', message)
 			except Exception, e:
-				raise TestermanSA.ProbeException('Invalid request message format: cannot encode HTTP request')
+				raise ProbeImplementationManager.ProbeException('Invalid request message format: cannot encode HTTP request')
 			
 			# Connect if needed
 			if not self.isConnected():
@@ -100,11 +99,11 @@ class HttpClientProbe(TestermanSA.LocalProbe):
 
 			# Send our payload
 			self._httpConnection.send(encodedMessage)
-			TestermanTCI.logSystemSent(self._tsiPortId, encodedMessage.split('\r\n')[0], encodedMessage)
+			self.logSentPayload(encodedMessage.split('\r\n')[0], encodedMessage)
 			# Now wait for a response asynchronously
 			self.waitResponse()
 		except Exception, e:
-			raise TestermanSA.ProbeException('Unable to send HTTP request: %s' % str(e))
+			raise ProbeImplementationManager.ProbeException('Unable to send HTTP request: %s' % str(e))
 				
 			
 	# Specific methods
@@ -175,20 +174,20 @@ class ResponseThread(threading.Thread):
 					
 					decodedMessage = None
 					try:
-						TestermanTCI.logInternal('data received (bytes %d), decoding attempt...' % len(buf))
-						decodedMessage = TestermanCD.decode('http.response', buf)
+						self._probe.getLogger().debug('data received (bytes %d), decoding attempt...' % len(buf))
+						decodedMessage = CodecManager.decode('http.response', buf)
 					except Exception, e:
 						# Incomplete message. Wait for more data.
-						TestermanTCI.logInternal('unable to decode: %s' % str(e))
+						self._probe.getLogger().debug('unable to decode: %s' % str(e))
 						pass
 						
 					if decodedMessage:
-						TestermanTCI.logInternal('message decoded, enqueuing...')
-						TestermanTCI.logSystemReceived(self._probe._tsiPortId, buf.split('\r\n')[0], buf)
-						self._probe.enqueueMessage(decodedMessage)
+						self._probe.getLogger().debug('message decoded, enqueuing...')
+						self._probe.logReceivedPayload(buf.split('\r\n')[0], buf)
+						self._probe.triEnqueueMsg(decodedMessage)
 						self._stopEvent.set()
 			except Exception, e:
-				TestermanTCI.logInternal('Error while waiting for http response: %s' % str(e))
+				self._probe.getLogger().error('Error while waiting for http response: %s' % str(e))
 				self._stopEvent.set()
 		if not self._probe['maintain_connection']:
 			# Well, actually this should depends on the HTTP protocol version...
@@ -199,5 +198,5 @@ class ResponseThread(threading.Thread):
 		self.join()
 					
 					
-TestermanSA.registerProbeClass('local.http.client', HttpClientProbe)
+ProbeImplementationManager.registerProbeImplementationClass('http.client', HttpClientProbe)
 		

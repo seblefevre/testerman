@@ -22,10 +22,6 @@
 ##
 
 
-
-def log(txt):
-	instance().log(txt)
-
 class Codec:
 	"""
 	Codec base class.
@@ -45,7 +41,7 @@ class Codec:
 		return self._properties.get(name, None)
 	
 	def log(self, txt):
-		log(txt)
+		instance().log(txt)
 
 	# To reimplement	
 	def encode(self, template):
@@ -62,6 +58,11 @@ class Codec:
 
 
 class CodecManager(object):
+	"""
+	A CodecManager is adapted according to the
+	target context (a TE or a PyAgent) via the following methods:
+	- setLogCallback(): enables to implement logging according to the target context
+	"""
 	def __init__(self):
 		#: dict[codec/aliasname] = (codec class, params)
 		self._codecs = {}
@@ -77,7 +78,7 @@ class CodecManager(object):
 	def registerCodecClass(self, name, class_):
 		if not self._codecs.has_key(name):
 			self._codecs[name] = (class_, {})
-			self.log("Registered codec class for %s" % name)
+			self.log("Codec class %s registered as codec %s" % (class_.__name__, name))
 	
 	def alias(self, name, codec, **kwargs):
 		"""
@@ -143,7 +144,6 @@ def alias(name, codec, **kwargs):
 	return instance().alias(name, codec, **kwargs)
 
 def registerCodecClass(name, class_):
-	log("Registering codec class %s ..." % name)
 	return instance().registerCodecClass(name, class_)
 
 def encode(name, template):

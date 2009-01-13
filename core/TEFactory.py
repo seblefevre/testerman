@@ -111,8 +111,8 @@ def createTestExecutable(name, ats):
 	maxLogPayloadSize = int(ConfigManager.get("testerman.te.log.maxpayloadsize"))
 	adapterModuleName = ConfigManager.get("testerman.te.python.ttcn3module")
 	
-	probePaths = [ os.path.normpath(ConfigManager.get("testerman.server_path") + "/../probes") ]
-	codecPaths = [ os.path.normpath(ConfigManager.get("testerman.server_path") + "/../codecs") ]
+	probePaths = [ os.path.normpath(ConfigManager.get("testerman.server_path") + "/../plugins/probes") ]
+	codecPaths = [ os.path.normpath(ConfigManager.get("testerman.server_path") + "/../plugins/codecs") ]
 
 	# We construct the te as a list to ''.join() for better performance (better than str += operator)
 	te = []

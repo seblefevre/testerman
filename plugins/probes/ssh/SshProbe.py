@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 ##
 # This file is part of Testerman, a test automation system.
 # Copyright (c) 2008-2009 Sebastien Lefevre and other contributors
@@ -13,18 +14,18 @@
 ##
 
 ##
-# -*- coding: utf-8 -*-
 # A probe managing SSH-based command executions.
+#
 ##
 
-import PyTestermanAgent as Agent
+import ProbeImplementationManager
 
 import sys
 import os
 import pexpect.pxssh
 import threading
 
-class SshProbe(Agent.Probe):
+class SshProbe(ProbeImplementationManager.ProbeImplementation):
 	"""
 
 type union SshCommand
@@ -49,17 +50,27 @@ type port SshPortType message
 
 	"""
 	def __init__(self):
-		Agent.Probe.__init__(self)
+		ProbeImplementationManager.ProbeImplementation.__init__(self)
 		self._mutex = threading.RLock()
 		self._sshThread = None
 
-	# Probe reimplementation
+	# ProbeImplementation reimplementation
 
-	def onReset(self):
-		self.getLogger().debug("onReset()")
+	def onTriUnmap(self):
+		self.getLogger().debug("onTriUnmap()")
 		self.cancelCommand()
 
-	def onSend(self, message, sutAddress):
+	def onTriMap(self):
+		self.getLogger().debug("onTriMap()")
+		self.cancelCommand()
+	
+	def onTriSAReset(self):
+		self.getLogger().debug("onTriSAReset()")
+	
+	def onTriExecuteTestCase(self):
+		self.getLogger().debug("onTriExecuteTestCase()")
+
+	def onTriSend(self, message, sutAddress):
 		"""
 		Internal SSH probe message:
 		
@@ -70,28 +81,40 @@ type port SshPortType message
 		The command itself may last forever.
 		
 		"""
-		self.getLogger().debug("onSend(%s, %s)" % (unicode(message), unicode(sutAddress)))
+		self.getLogger().debug("onTriSend(%s, %s)" % (unicode(message), unicode(sutAddress)))
+
+		if not isinstance(message, tuple) and not len(message) == 2:
+			raise Exception("Invalid message format")
+		
+		cmd, value = message
+		if cmd == 'execute':
+			m = { 'cmd': 'execute', 'command': value, 'host': self['host'], 'username': self['username'], 'password': self['password'] }
+		elif cmd == 'cancel':
+			m = { 'cmd': 'cancel' }
+		else:
+			raise Exception("Invalid message format")
+
 		try:
-			self.checkArgs(message, [ ('cmd', None) ])
-			cmd = message['cmd']
+			self._checkArgs(m, [ ('cmd', None) ])
+			cmd = m['cmd']
 
 			if cmd == 'cancel':
 				return self.cancelCommand()
 			elif cmd == 'execute':
-				self.checkArgs(message, [ ('command', None), ('host', None), ('username', None), ('password', None), ('timeout', 5.0) ])
-				command = message['command']
-				host = message['host']
-				username = message['username']
-				password = message['password']
-				timeout = message['timeout']
+				self._checkArgs(m, [ ('command', None), ('host', None), ('username', None), ('password', None), ('timeout', 5.0) ])
+				command = m['command']
+				host = m['host']
+				username = m['username']
+				password = m['password']
+				timeout = m['timeout']
 
 				try:
 					self.executeCommand(command, username, host, password, timeout)
 				except Exception, e:
-					self.notifyReceived(str(e))
+					self.triEnqueueMsg(str(e))
 
 		except Exception, e:
-			raise Agent.ProbeException(str(e))
+			raise ProbeImplementationManager.ProbeException(self._getBacktrace())
 		
 	# Specific implementation
 	
@@ -186,11 +209,11 @@ class SshThread(threading.Thread):
 					self._ssh.logout()
 					break
 		except Exception, e:
-			self._probe.notifyReceived('Internal SSH error: %s' % str(e))
+			self._probe.triEnqueueMsg('Internal SSH error: %s' % str(e))
 			
 		if status is not None:
 			# We stopped on command completion
-			self._probe.notifyReceived({ 'status': status, 'output': output })
+			self._probe.triEnqueueMsg({ 'status': status, 'output': output })
 		# Otherwise, we stopped on cancel - nothing to raise.
 
 		# Kill the ssh session, if still active for wathever reason
@@ -205,4 +228,4 @@ class SshThread(threading.Thread):
 		self._stopEvent.set()
 
 
-Agent.registerProbeClass("remote.ssh", SshProbe)
+ProbeImplementationManager.registerProbeImplementationClass("ssh", SshProbe)

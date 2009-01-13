@@ -79,11 +79,14 @@ class XaServer(Nodes.ListeningNode):
 	
 	Probe -> TACS:
 	 N LOG
-	 N RECEIVED
+	 N TRI-ENQUEUE-MSG
 	
 	TACS -> Probe:
-	 R RESET
-	 R SEND
+	 R TRI-SEND
+	 R TRI-SA-RESET
+	 R TRI-EXECUTE-TESTCASE
+	 R TRI-UNMAP
+	 R TRI-MAP
 	
 	"""
 	def __init__(self, controller, xaAddress):
@@ -142,12 +145,12 @@ class XaServer(Nodes.ListeningNode):
 			self.sendResponse(channel, transactionId, resp)
 	
 	def onNotification(self, channel, notification):
-		self.getLogger().debug("New notification received")
+		self.getLogger().debug("New notification received:\n%s" % str(notification))
 		method = notification.getMethod()
 		if method == "LOG":
 			self._controller.onLog(channel, notification)
-		elif method == "RECEIVED":
-			self._controller.onReceived(channel, notification)
+		elif method == "TRI-ENQUEUE-MSG":
+			self._controller.onTriEnqueueMsg(channel, notification)
 		else:
 			self.getLogger().info("Received unsupported notification method: " + method)
 	
@@ -156,26 +159,58 @@ class XaServer(Nodes.ListeningNode):
 
 	# TACS -> Probes
 
-	def send(self, channel, request):
+	def triSend(self, channel, request):
 		"""
 		@type request: TestermanMessages.Request
 		"""
 		resp = self.executeRequest(channel, request)
 		if not resp:
-			raise XaException("Timeout while waiting for SEND response from probe %s" % request.getUri())
+			raise XaException("Timeout while waiting for TRI-SEND response from probe %s" % request.getUri())
 		if resp.getStatusCode() != 200:
-			raise XaException("SEND from probe %s returned %d %s" % (request.getUri(), resp.getStatusCode(), resp.getReasonPhrase()))
+			raise XaException("TRI-SEND from probe %s returned %d %s" % (request.getUri(), resp.getStatusCode(), resp.getReasonPhrase()))
 
-	def reset(self, channel, uri):
+	def triExecuteTestCase(self, channel, request):
+		"""
+		@type request: TestermanMessages.Request
+		"""
+		resp = self.executeRequest(channel, request)
+		if not resp:
+			raise XaException("Timeout while waiting for TRI-EXECUTE-TESTCASE response from probe %s" % request.getUri())
+		if resp.getStatusCode() != 200:
+			raise XaException("TRI-EXECUTE-TESTCASE from probe %s returned %d %s" % (request.getUri(), resp.getStatusCode(), resp.getReasonPhrase()))
+
+	def triMap(self, channel, uri):
 		"""
 		Constructs a reset request, execute it.
 		"""
-		req = Messages.Request(method = "RESET", uri = uri, protocol = "XA", version = Versions.getXaVersion())
+		req = Messages.Request(method = "TRI-MAP", uri = uri, protocol = "XA", version = Versions.getXaVersion())
 		resp = self.executeRequest(channel, req)
 		if not resp:
-			raise XaException("Timeout while waiting for RESET response from probe %s" % req.getUri())
+			raise XaException("Timeout while waiting for TRI-MAP response from probe %s" % req.getUri())
 		if resp.getStatusCode() != 200:
-			raise XaException("RESET from probe %s returned %d %s" % (req.getUri(), resp.getStatusCode(), resp.getReasonPhrase()))
+			raise XaException("TRI-MAP from probe %s returned %d %s" % (req.getUri(), resp.getStatusCode(), resp.getReasonPhrase()))
+
+	def triUnmap(self, channel, uri):
+		"""
+		Constructs a reset request, execute it.
+		"""
+		req = Messages.Request(method = "TRI-UNMAP", uri = uri, protocol = "XA", version = Versions.getXaVersion())
+		resp = self.executeRequest(channel, req)
+		if not resp:
+			raise XaException("Timeout while waiting for TRI-UNMAP response from probe %s" % req.getUri())
+		if resp.getStatusCode() != 200:
+			raise XaException("TRI-UNMAP from probe %s returned %d %s" % (req.getUri(), resp.getStatusCode(), resp.getReasonPhrase()))
+
+	def triSAReset(self, channel, uri):
+		"""
+		Constructs a reset request, execute it.
+		"""
+		req = Messages.Request(method = "TRI-SA-RESET", uri = uri, protocol = "XA", version = Versions.getXaVersion())
+		resp = self.executeRequest(channel, req)
+		if not resp:
+			raise XaException("Timeout while waiting for TRI-SA-RESET response from probe %s" % req.getUri())
+		if resp.getStatusCode() != 200:
+			raise XaException("TRI-SA-RESET from probe %s returned %d %s" % (req.getUri(), resp.getStatusCode(), resp.getReasonPhrase()))
 
 	# TACS -> Agents
 	
@@ -233,8 +268,10 @@ class IaServer(Nodes.ListeningNode):
 	 R GET-PROBE
 
 	TE -> Probe via TACS:
-	 R RESET
-	 R SEND
+	 R TRI-SEND
+	 R TRI-EXECUTE-TESTCASE
+	 R TRI-UNMAP
+	 R TRI-MAP
 	
 	TE/TS -> Agent via TACS:
 	 R DEPLOY
@@ -245,7 +282,7 @@ class IaServer(Nodes.ListeningNode):
 	
 	Probe -> TE/TS via TACS:
 	 N LOG
-	 N RECEIVED
+	 N TRI-ENQUEUE-MSG
 	 
 	"""
 	def __init__(self, controller, iaAddress):
@@ -258,17 +295,26 @@ class IaServer(Nodes.ListeningNode):
 		return logging.getLogger('TACS.IaServer')
 	
 	def onRequest(self, channel, transactionId, request):
-		self.getLogger().debug("New request received:\n" + str(request))
+		self.getLogger().debug("New request received:\n%s" % str(request))
 		try:
 			method = request.getMethod()
 			# Probe-targeted requests
-			if method == "RESET":
-				# Probe reset
-				self._controller.reset(request.getUri())
+			if method == "TRI-EXECUTE-TESTCASE":
+				# Forward the body as is, with possible parameters
+				self._controller.triExecuteTestCase(request.getUri(), request)
 				self.sendResponse(channel, transactionId, Messages.Response(200, "OK"))
-			elif method == "SEND":
+			elif method == "TRI-SEND":
 				# Probe send - we forward the body as is, with the original encoding and type.
-				self._controller.send(request.getUri(), request)
+				self._controller.triSend(request.getUri(), request)
+				self.sendResponse(channel, transactionId, Messages.Response(200, "OK"))
+			elif method == "TRI-SA-RESET":
+				self._controller.triSaReset(request.getUri())
+				self.sendResponse(channel, transactionId, Messages.Response(200, "OK"))
+			elif method == "TRI-MAP":
+				self._controller.triMap(request.getUri())
+				self.sendResponse(channel, transactionId, Messages.Response(200, "OK"))
+			elif method == "TRI-UNMAP":
+				self._controller.triUnmap(request.getUri())
 				self.sendResponse(channel, transactionId, Messages.Response(200, "OK"))
 
 			# TACS-targeted requests
@@ -338,7 +384,7 @@ class IaServer(Nodes.ListeningNode):
 			self.sendResponse(channel, transactionId, resp)
 	
 	def onNotification(self, channel, notification):
-		self.getLogger().debug("New notification received:\n" + str(notification))
+		self.getLogger().debug("New notification received:\n%s" % str(notification))
 		try:
 			method = notification.getMethod()
 			uri = notification.getUri()
@@ -613,7 +659,7 @@ class Controller(object):
 	##
 	# TACS Northbound API (exposed through Ia)
 	##
-	def reset(self, uri):
+	def triSAReset(self, uri):
 		uri = str(uri)
 		probe = None
 		self._lock()
@@ -621,7 +667,31 @@ class Controller(object):
 			probe = self._probes[uri]
 		self._unlock()
 		if probe:
-			self._xaServer.reset(probe['channel'], probe['uri'])
+			self._xaServer.triSAReset(probe['channel'], probe['uri'])
+		else:
+			raise TacsException("Probe %s not available on controller" % uri)
+
+	def triUnmap(self, uri):
+		uri = str(uri)
+		probe = None
+		self._lock()
+		if self._probes.has_key(uri):
+			probe = self._probes[uri]
+		self._unlock()
+		if probe:
+			self._xaServer.triUnmap(probe['channel'], probe['uri'])
+		else:
+			raise TacsException("Probe %s not available on controller" % uri)
+
+	def triMap(self, uri):
+		uri = str(uri)
+		probe = None
+		self._lock()
+		if self._probes.has_key(uri):
+			probe = self._probes[uri]
+		self._unlock()
+		if probe:
+			self._xaServer.triMap(probe['channel'], probe['uri'])
 		else:
 			raise TacsException("Probe %s not available on controller" % uri)
 
@@ -712,9 +782,9 @@ class Controller(object):
 		self._unlock()
 		raise TacsException("", 404, "Probe Not Found")
 
-	def send(self, uri, request):
+	def triSend(self, uri, request):
 		"""
-		Forwards a SEND operation, expect a response.
+		Forwards a TRI-SEND operation, expect a response.
 		"""
 		uri = str(uri)
 		probe = None
@@ -724,12 +794,34 @@ class Controller(object):
 		self._unlock()
 		
 		if probe:
-			req = Messages.Request("SEND", uri, "Xa", "1.0")
+			# FIXME: what do we rewrite the message ??
+			req = Messages.Request("TRI-SEND", uri, "Xa", "1.0")
 			req.setHeader("SUT-Address", request.getHeader("SUT-Address"))
 			req.setContentType(request.getContentType())
 			req.setContentEncoding(request.getContentEncoding())
 			req.setBody(request.getBody())
-			self._xaServer.send(probe['channel'], req)
+			self._xaServer.triSend(probe['channel'], req)
+		else:
+			raise TacsException("Probe %s not available on controller" % uri)
+
+	def triExecuteTestCase(self, uri, request):
+		"""
+		Forwards a TRI-SEND operation, expect a response.
+		"""
+		uri = str(uri)
+		probe = None
+		self._lock()
+		if self._probes.has_key(uri):
+			probe = self._probes[uri]
+		self._unlock()
+		
+		if probe:
+			# FIXME: what do we rewrite the message ??
+			req = Messages.Request("TRI-EXECUTE-TESTCASE", uri, "Xa", "1.0")
+			req.setContentType(request.getContentType())
+			req.setContentEncoding(request.getContentEncoding())
+			req.setBody(request.getBody())
+			self._xaServer.triExecuteTestCase(probe['channel'], req)
 		else:
 			raise TacsException("Probe %s not available on controller" % uri)
 
@@ -777,9 +869,9 @@ class Controller(object):
 	##
 	# Technical callbacks
 	##
-	def onReceived(self, channel, notification):
+	def onTriEnqueueMsg(self, channel, notification):
 		"""
-		Forward to subscribers for the probe
+		Forward from Xa to Ia (to probe's subscribers)
 		"""
 		self._dispatchNotification(notification)
 	

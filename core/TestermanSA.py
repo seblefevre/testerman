@@ -40,6 +40,7 @@ import TestermanTTCN3 as Testerman
 import TestermanTCI
 import TestermanAgentControllerClient as TACC
 import TestermanMessages as Messages
+import ProbeImplementationManager
 
 ################################################################################
 # TRI constants
@@ -54,14 +55,15 @@ TR_OK = 1
 ################################################################################
 
 def log(msg):
-	TestermanTCI.logInternal("SA: %s" % str(msg))
+	TestermanTCI.logInternal("SA: %s" % msg)
 
+class TliLogger:
+	def warning(self, txt): TestermanTCI.logInternal("SA: %s" % txt)
+	def error(self, txt): TestermanTCI.logInternal("SA: %s" % txt)
+	def debug(self, txt): TestermanTCI.logInternal("SA: %s" % txt)
+	def critical(self, txt): TestermanTCI.logInternal("SA: %s" % txt)
+	def info(self, txt): TestermanTCI.logInternal("SA: %s" % txt)
 
-################################################################################
-# Local exceptions
-################################################################################
-
-class ProbeException(Exception): pass
 
 ################################################################################
 # The TRI interface
@@ -149,7 +151,7 @@ def triSend(componentId, tsiPortId, sutAddress, message):
 	# Test adapter found. Send the message through it.
 	probe = ProbeBindings[tsiPortId]
 	try:
-		probe.send(message, sutAddress)
+		probe.onTriSend(message, sutAddress)
 	except Exception, e:
 		raise Testerman.TestermanException("Unable to send message through TSI port %s: " % tsiPortId + str(e))
 
@@ -236,8 +238,9 @@ def initialize(tacsAddress):
 	"""
 	Initializes the AgentController proxy (client).
 	"""
+	ProbeImplementationManager.setLogger(TliLogger())
 	TACC.initialize("TE", tacsAddress)
-	TACC.instance().setReceivedNotificationCallback(onReceivedNotification)
+	TACC.instance().setReceivedNotificationCallback(onTriEnqueueMsgNotification)
 	TACC.instance().setLogNotificationCallback(onLogNotification)
 
 def finalize():
@@ -279,20 +282,20 @@ def onLogNotification(probeUri, logClass, logInfo):
 			TestermanTCI.logSystemReceived(tsiPort = probeUri, label = label, payload = payload)
 
 	except Exception, e:
-		log("Exception in onLogNotification: " + str(e))
+		log("Exception in onLogNotification: %s" % str(e))
 
-def onReceivedNotification(probeUri, message, sutAddress):
+def onTriEnqueueMsgNotification(probeUri, message, sutAddress):
 	"""
-	Called when receiving a RECEIVED event from a probe
+	Called when receiving a TRI-ENQUEUE-MSG event from a probe
 	"""
 	probeUri = str(probeUri)
 	try:
 		if WatchedProbes.has_key(probeUri):
-			probe = WatchedProbes[probeUri]
-			probe.onReceived(message, sutAddress)
+			probeAdapter = WatchedProbes[probeUri]
+			probeAdapter.triEnqueueMsg(message, sutAddress)
 
 	except Exception, e:
-		log("Exception in onReceivedNotification: " + str(e))
+		log("Exception in onTriEnqueueMsgNotification: %s" % str(e))
 
 ################################################################################
 # Test Adapters configuration management (bindings)
@@ -335,7 +338,7 @@ class TestAdapterConfiguration(object):
 		"""
 		Installs bindings for current testcase(s).
 		
-		Actually checks that probes are deployed.
+		Actually checks that probes are deployed, but do not lock them (locked on triMap)
 		
 		@throws TestermanException if we are unable to find a valid test adapter matching uri and type_, or
 		if we cannot autodeploy it.
@@ -385,10 +388,11 @@ def unbind(tsiPortId):
 # Probes (ie Test Adapters) management
 ################################################################################
 
-class Probe:
+class ProbeAdapter(ProbeImplementationManager.IProbeImplementationAdapter):
 	"""
 	A Probe is a Test Adapter implementation that must be bound to a tsiPort
 	prior to being accessed.
+	It interfaces a real Probe Implementation available as a plugin.
 	
 	A Probe is uniquely identified on the Testerman system by a URI:
 	probe:<name>@<agent-name> for distributed probes,
@@ -414,148 +418,123 @@ class Probe:
 	##
 	# For Probe manager
 	##
-	def attachToUri(self, uri, type_):
-		"""
-		Local probes will accept the URI without any problem.
-		Remote probes will check that a probe of their type actually exists on the TACS.
-		If not, autodeploy ?
-		"""
-		self._uri = uri
-		self._type = type_
-
 	def bind(self, tsiPortId):
 		self._tsiPortId = tsiPortId
 
 	def isRemote(self):
 		return self._remote
-	
-	def setParameter(self, name, value):
-		self._parameters[name] = value
 
+	def attachToUri(self, uri, type_):
+		"""
+		Reimplemented in remote probes, as it is the opportunity
+		to check for remote probe availability and auto deployment.
+		"""
+		self._type = type_
+		self._uri = uri
 	##
-	# Convenience functions for probe implementors
-	##
+	# IProbeImplementationAdapter
+	##	
 	def getType(self):
 		return self._type
 	
 	def getUri(self):
 		return self._uri
-	
-	def __getitem__(self, name):
-		return self._parameters.get(name, None)
-	
-	def enqueueMessage(self, message, sutAddress = None):
-		"""
-		Convenience function for probe implementors.
-		
-		@type  message: any Python object - must be a valid Testerman structure, however
-		@param message: the message to enqueue to userland, i.e. to forward to mapped test component ports
-		@type  sutAddress: string
-		@param sutAddress: the originating source SUT address, if any.
-		"""
+
+	def setParameter(self, name, value):
+		self._parameters[name] = value
+
+	def getParameter(self, name, defaultValue = None):
+		return self._parameters.get(name, defaultValue)
+
+	def triEnqueueMsg(self, message, sutAddress = None):
 		Testerman.triEnqueueMsg(tsiPortId = self._tsiPortId, sutAddress = None, componentId = None, message = message)
 
-	def checkArgs(self, args, defaultValues = []):
-		"""
-		Checks that all mandatory arguments are present, based on default values.
-		Adds default values for non-existing arguments in args.
-		
-		@type  defaultValues: list of tuple (string, <any>)
-		@param defaultValues: list of default values and expected args in args as tuples (argname, defaultValue)
-		                      If the default value is None, implies that argname is mandatory and must be provided
-		                      in args.
-		@type  args: dict[string] of <any>
-		@param args: the provided arguments and their initial values.
-		
-		@throws: ProbeException in case of a missing mandatory argument.
-		
-		@rtype: None
-		@returns: None
-		"""
-		try:
-			missingArgs = []
-			for (argName, defaultValue) in defaultValues:
-				if not args.has_key(argName):
-					if defaultValue is None:
-						missingArgs.append(argName)
-					else:
-						args[argName] = defaultValue
-			if not missingArgs:
-				# OK
-				return
-			else:
-				# Missing arguments
-				raise ProbeException("Missing mandatory parameter(s): %s" % ', '.join(missingArgs))
-		except Exception, e:
-			raise e
+	def getLogger(self):
+		return TliLogger()
 
 	##
 	# To reimplement
 	##	
-	def send(self, message, sutAddress):
-		"""
-		This method is called by triSend when we need to send
-		a message through this test adapter.
-		
-		The test adapter/probe may encode the message,
-		interpret it as a command, or anything else.
-		
-		@type  message: any
-		@param message: the message to send.
-		@type  sutAddress: string
-		@param sutAddress: the SUT address to the message should be sent.
-		                   The use and meaning if this parameter is
-		                   test-adapter-dependent
-		
-		@throws: Exception or ProbeException in case of an error
+	def onTriSend(self, message, sutAddress): pass
+	def onTriMap(self): pass
+	def onTriUnmap(self): pass
+	def onTriExecuteTestCase(self): pass
+	def onTriSAReset(self): pass
 
-		@rtype: None
-		@returns: None
-		"""
-		# Default implementation: can't do anything, raise an error
-		raise Exception("send() not implemented for this probe")
-
-	def onReceived(self, message, sutAddress = None):
-		"""
-		Called when receiving a RECEIVED message from the remote implementation,
-		or simple convenience function for local probe implementations.
-		"""
-		self.enqueueMessage(message, sutAddress)
-
+class LocalProbeAdapter(ProbeAdapter):
+	"""
+	Local Probe adapters: simply forward IProbe interface calls to the
+	local implementation via binary interface.
+	
+	This adapter also provide a logging implementation
+	based on local TLI.
+	"""
+	def __init__(self, probeImplementation):
+		ProbeAdapter.__init__(self)
+		self.__probeImplementation = probeImplementation
+		self.__probeImplementation._setAdapter(self)
+	def onTriSend(self, message, sutAddress):
+		self.__probeImplementation.onTriSend(message, sutAddress)
 	def onTriMap(self):
-		"""
-		Called whenever the probe is mapped.
-		You may establish "dynamic" connections here, if any.
-		"""
-		pass
-	
+		self.__probeImplementation.onTriMap()
 	def onTriUnmap(self):
-		"""
-		Called whenever the probe is unmapped.
-		You typically have nothing to do here.
-		You may disconnect "dynamic" connections here, if any.
-		"""
-		pass
-	
+		self.__probeImplementation.onTriUnmap()
 	def onTriExecuteTestCase(self):
-		"""
-		Called when starting a testcase involving this probe.
-		This is typically here that you can establish static connections, if any.
-		"""
-		pass
-	
+		self.__probeImplementation.onTriExecuteTestCase()
 	def onTriSAReset(self):
-		"""
-		Called when a testcase if over.
-		This is typically here that you can reset existing connections, if any.
-		"""
-		pass
+		self.__probeImplementation.onTriSAReset()
+	
+	def logSentPayload(self, label, payload):
+		TestermanTCI.logSystemSent(tsiPort = self.getUri(), label = label, payload = payload)
+	def logReceivedPayload(self, label, payload):
+		TestermanTCI.logSystemReceived(tsiPort = self.getUri(), label = label, payload = payload)
 
-class LocalProbe(Probe): pass
 
-class RemoteProbe(Probe):
+class RemoteStubAdapter(LocalProbeAdapter):
+	"""
+	To use to adapt a remote stub/interceptor.
+	
+	Binary interfacing towards the IProbe,
+	but autodeployment capability and flagged as being remote
+	(requiring locking/unlocking)
+	"""
+	def __init__(self, probeImplementation):
+		LocalProbeAdapter.__init__(self, probeImplementation)
+		self._remote = True
+
+	def attachToUri(self, uri, type_):
+		"""
+		Check if such a probe already exists on the controller.
+		"""
+		info = TACC.instance().getProbeInfo(uri)
+		if info:
+			# Check type
+			if type_ and info['type'] != type_:
+				raise Testerman.TestermanException("Unable to use probe %s as %s: such a probe is deployed, but its type is %s" % (uri, self._type, info['type']))
+			# OK (discarded type or valid type)
+			self._uri = uri
+			self._type = type_
+		elif type_:
+			# Autodeployment attempt
+			ret = TACC.instance().deployProbe(uri, type_)
+			if not ret:
+				raise Testerman.TestermanException("Unable to autodeploy %s as %s." % (uri, self._type))
+			# Autodeployment OK.
+			self._uri = uri
+			self._type = type_
+		else:
+			raise Testerman.TestermanException("Unable to use probe %s: not deployed, no type given, no autodeployment possible." % (uri))
+
+class RemoteProbeAdapter(ProbeAdapter):
+	"""
+	Remote Probe Adapter, that forwards IProbe interface calls to
+	the remote implementation via the TACS.
+	This is a default remote adapter as remote stubs may exist;
+	in this case the adapter to use is a RemoteStubAdapter, which is
+	technically equivalent to a LocalProbeAdapter in term of IProbe interface forwarding.
+	"""
 	def __init__(self):
-		Probe.__init__(self)
+		ProbeAdapter.__init__(self)
 		self._remote = True
 	
 	def attachToUri(self, uri, type_):
@@ -581,40 +560,30 @@ class RemoteProbe(Probe):
 		else:
 			raise Testerman.TestermanException("Unable to use probe %s: not deployed, no type given, no autodeployment possible." % (uri))
 
-
-# A default Remote Probe stub implementation, forwarding everything to
-# the remote probe, performing reset on map/unmap.
-class DefaultRemoteProbe(RemoteProbe):
 	def onTriExecuteTestCase(self):
-		self.reset()
+		TACC.instance().triExecuteTestCase(self.getUri(), self._parameters)
 	
 	def onTriSAReset(self):
-		self.reset()
+		TACC.instance().triSAReset(self.getUri())
+
+	def onTriMap(self):
+		TACC.instance().triMap(self.getUri())
+
+	def onTriUnmap(self):
+		TACC.instance().triUnmap(self.getUri())
 	
-	def reset(self):
-		TACC.instance().reset(self.getUri())
-	
-	def send(self, message, sutAddress):
-		TACC.instance().send(self.getUri(), message, sutAddress)
+	def onTriSend(self, message, sutAddress):
+		TACC.instance().triSend(self.getUri(), message, sutAddress)
 
 
 ################################################################################
 # Probe as plugins management
 ################################################################################
 
-#: indexed by their types
-RegisteredProbeClasses = {}
-
-def registerProbeClass(type_, probeClass):
-	if not RegisteredProbeClasses.has_key(type_):
-		RegisteredProbeClasses[type_] = probeClass
-		log("registerProbeClass: probe type %s registered" % type_)
-	else:
-		log("registerProbeClass: probe type %s already registered: discarding" % type_)
-
 def createProbe(uri, type_):
 	"""
-	Instantiates a new Test Adapter (i.e. a Probe instance) from type_, uri.
+	Instantiates a new Test Adapter (i.e. a Probe instance) with its adapter
+	from type_, uri.
 	
 	If the uri if of the form name@agent, we look for a remote type, prefixing the
 	provided type with a "remote." to look for actually implemented type.
@@ -634,27 +603,23 @@ def createProbe(uri, type_):
 	"""
 	# Derive the actual implementation identifier from the uri + given type
 	u = Messages.Uri(uri)
+	adapter = None
 	if u.getUser():
-		# Remote implementation
-		type_ = "remote.%s" % (type_)
+		# The probe is remote. 
+		# We may look for additional stubs here
+		adapter = RemoteProbeAdapter()
+		# No need for a local implementation.
 	else:
-		# Local implementation
-		type_ = "local.%s" % (type_)
-	
-	probeClass = None
-	# Let's check the type
-	# Explicitly defined ?
-	if RegisteredProbeClasses.has_key(type_):
-		probeClass = RegisteredProbeClasses[type_]
-	# if not, let's use the default remote probe implementation if the probe is remote
-	elif type_.startswith('remote.'):
-		probeClass = DefaultRemoteProbe
+		# We're looking for a local probe only.
+		# Search for an implementation in local plugin space
+		if ProbeImplementationManager.getProbeImplementationClasses().has_key(type_):
+			probeImplementation = ProbeImplementationManager.getProbeImplementationClasses()[type_]()
+			adapter = LocalProbeAdapter(probeImplementation)
 
-	if probeClass:
-		probe = probeClass()
-		# May raise an exception if the attachment is not feasible.
-		probe.attachToUri(uri, type_)
-		return probe
+	if adapter:
+		# May raise an exception if the attachment is not feasible (Stubs and remote probes)
+		adapter.attachToUri(uri, type_)
+		return adapter
 	# Otherwise, nothing to do.
 	else:
 		raise Testerman.TestermanException("No registered factory for test adapter/probe type %s" % type_)

@@ -4,7 +4,7 @@
 # <description>description</description>
 # <prerequisites>prerequisites</prerequisites>
 # <parameters>
-# <parameter name="PX_USERNAME" default="user" type="string"><![CDATA[Valid SSH user on host]]></parameter>
+# <parameter name="PX_USERNAME" default="username" type="string"><![CDATA[Valid SSH user on host]]></parameter>
 # <parameter name="PX_HOST" default="localhost" type="string"><![CDATA[a host with a ssh server]]></parameter>
 # <parameter name="PX_PASSWORD" default="secret" type="string"><![CDATA[Valid password for user]]></parameter>
 # </parameters>
@@ -12,7 +12,7 @@
 # __METADATA__END__
 ##
 # Sample script, demonstrating (and basically testing)
-# the remote.ssh probe.
+# the ssh probe.
 #
 # To run this test, you should run a pyagent with name 'localhost'
 # (or change the probe URI in test adapter configurations).
@@ -26,7 +26,7 @@
 # These will become ATS parameters once they are implemented.
 ##
 
-#TestermanTCI.enableDebugLogs()
+TestermanTCI.enableDebugLogs()
 
 """
 SSH templates: 
@@ -99,13 +99,17 @@ class TC_SSH(TestCase):
 # Test Adapter Configurations
 ##
 
-conf = TestAdapterConfiguration('default')
+conf = TestAdapterConfiguration('local')
+conf.bindByUri('ssh-target', 'probe:ssh', 'ssh', host = get_variable('PX_HOST'), username = get_variable('PX_USERNAME'), password = get_variable('PX_PASSWORD'))
+
+conf = TestAdapterConfiguration('remote')
 conf.bindByUri('ssh-target', 'probe:ssh@localhost', 'ssh', host = get_variable('PX_HOST'), username = get_variable('PX_USERNAME'), password = get_variable('PX_PASSWORD'))
 
 
 ##
 # Control definition
 ##
-useTestAdapterConfiguration('default')
-
+useTestAdapterConfiguration('local')
+TC_SSH().execute()
+useTestAdapterConfiguration('remote')
 TC_SSH().execute()

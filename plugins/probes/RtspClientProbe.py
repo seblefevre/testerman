@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 ##
 # This file is part of Testerman, a test automation system.
 # Copyright (c) 2008-2009 Sebastien Lefevre and other contributors
@@ -13,7 +14,6 @@
 ##
 
 ##
-# -*- coding: utf-8 -*-
 # Implements RTSP encoding/decoding (request and response) over tcp (for now)
 # RFC 2326
 # 
@@ -22,16 +22,15 @@
 ##
 
 
-import TestermanSA
-import TestermanTCI
-import TestermanCD
+import CodecManager
+import ProbeImplementationManager
 
 import threading
 import socket
 import select
 
 
-class RtspClientProbe(TestermanSA.LocalProbe):
+class RtspClientProbe(ProbeImplementationManager.ProbeImplementation):
 	"""
 	type record RtspRequest
 	{
@@ -58,20 +57,20 @@ class RtspClientProbe(TestermanSA.LocalProbe):
 	}
 	"""
 	def __init__(self):
-		TestermanSA.LocalProbe.__init__(self)
+		ProbeImplementationManager.ProbeImplementation.__init__(self)
 		self._mutex = threading.RLock()
 		self._responseThread = None
 		self._connection = None
 		self._cseq = 0
 		# Default test adapter parameters
-		self.setParameter('version', 'RTSP/1.0')
-		self.setParameter('auto_connect', False)
-		self.setParameter('maintain_connection', False)
-		self.setParameter('host', 'localhost')
-		self.setParameter('port', 554)
-		self.setParameter('transport', 'tcp')
-		self.setParameter('local_ip', '')
-		self.setParameter('local_port', 0)
+		self.setDefaultParameter('version', 'RTSP/1.0')
+		self.setDefaultParameter('auto_connect', False)
+		self.setDefaultParameter('maintain_connection', False)
+		self.setDefaultParameter('host', 'localhost')
+		self.setDefaultParameter('port', 554)
+		self.setDefaultParameter('transport', 'tcp')
+		self.setDefaultParameter('local_ip', '')
+		self.setDefaultParameter('local_port', 0)
 
 	# LocalProbe reimplementation)
 	def onTriMap(self):
@@ -89,7 +88,7 @@ class RtspClientProbe(TestermanSA.LocalProbe):
 		# No static connections
 		pass
 	
-	def send(self, message, sutAddress):
+	def onTriSend(self, message, sutAddress):
 		try:
 			# FIXME:
 			# Should go to a configured codec instance instead.
@@ -101,9 +100,9 @@ class RtspClientProbe(TestermanSA.LocalProbe):
 			if not message['headers'].has_key('cseq'):
 				message['headers']['cseq'] = self.generateCSeq()
 			try:
-				encodedMessage = TestermanCD.encode('rtsp.request', message)
+				encodedMessage = CodecManager.encode('rtsp.request', message)
 			except Exception, e:
-				raise TestermanSA.ProbeException('Invalid request message format: cannot encode RTSP request')
+				raise ProbeImplementationManager.ProbeException('Invalid request message format: cannot encode RTSP request')
 			
 			# Connect if needed
 			if not self.isConnected():
@@ -111,11 +110,11 @@ class RtspClientProbe(TestermanSA.LocalProbe):
 
 			# Send our payload
 			self._connection.send(encodedMessage)
-			TestermanTCI.logSystemSent(self._tsiPortId, encodedMessage.split('\r\n')[0], encodedMessage)
+			self.logSentPayload(encodedMessage.split('\r\n')[0], encodedMessage)
 			# Now wait for a response asynchronously
 			self.waitResponse(cseq = str(message['headers']['cseq']))
 		except Exception, e:
-			raise TestermanSA.ProbeException('Unable to send RTSP request: %s' % str(e))
+			raise ProbeImplementationManager.ProbeException('Unable to send RTSP request: %s' % str(e))
 			
 	# Specific methods
 	def _lock(self):
@@ -191,23 +190,23 @@ class ResponseThread(threading.Thread):
 					# In RTSP/1.0, content-length is mandatory if there is a body.
 					decodedMessage = None
 					try:
-						TestermanTCI.logInternal('data received (bytes %d), decoding attempt...' % len(buf))
-						decodedMessage = TestermanCD.decode('rtsp.response', buf)
+						self._probe.getLogger().debug('data received (bytes %d), decoding attempt...' % len(buf))
+						decodedMessage = CodecManager.decode('rtsp.response', buf)
 					except Exception, e:
 						# Incomplete message. Wait for more data.
-						TestermanTCI.logInternal('unable to decode: %s' % str(e))
+						self._probe.getLogger().debug('unable to decode: %s' % str(e))
 						pass
 						
 					if decodedMessage:
 						# System log, always
-						TestermanTCI.logSystemReceived(self._probe._tsiPortId, buf.split('\r\n')[0], buf)
+						self._probe.logReceivedPayload(buf.split('\r\n')[0], buf)
 						# Conditional enqueing
 						if decodedMessage['headers'].get('cseq', None) == self._cseq:
-							TestermanTCI.logInternal('message decoded, enqueuing...')
-							self._probe.enqueueMessage(decodedMessage)
+							self._probe.getLogger().info('message decoded, enqueuing...')
+							self._probe.triEnqueueMsg(decodedMessage)
 							self._stopEvent.set()
 						else:
-							TestermanTCI.logInternal('Invalid cseq received. Not enqueuing, ignoring message')
+							self._probe.getLogger().warning('Invalid cseq received. Not enqueuing, ignoring message')
 							buf = ''
 							decodedMessage = None
 							# Wait for a possible next message...
@@ -218,7 +217,7 @@ class ResponseThread(threading.Thread):
 						# .. and we should disconnect, too...
 						
 			except Exception, e:
-				TestermanTCI.logInternal('Error while waiting for rtsp response: %s' % str(e))
+				self._probe.getLogger().error('Error while waiting for rtsp response: %s' % str(e))
 				self._stopEvent.set()
 		if not self._probe['maintain_connection']:
 			# Well, maintain connection in RTSP ? 
@@ -229,5 +228,5 @@ class ResponseThread(threading.Thread):
 		self.join()
 					
 					
-TestermanSA.registerProbeClass('local.rtsp.client', RtspClientProbe)
+ProbeImplementationManager.registerProbeImplementationClass('rtsp.client', RtspClientProbe)
 		

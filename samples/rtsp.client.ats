@@ -9,7 +9,7 @@
 # __METADATA__END__
 ##
 # Sample script, demonstrating (and basically testing)
-# the local.rtsp.client probe.
+# the rtsp.client probe.
 #
 # Note: this test connects to an RTSP server available to all
 # Free (a national ISP) subscribers, in France.
@@ -120,16 +120,21 @@ class TC_RTSP_CLIENT(TestCase):
 # Test Adapter Configurations
 ##
 
-conf = TestAdapterConfiguration('free')
+conf = TestAdapterConfiguration('free using local probe')
 # For the curious: transport = 'udp' is not yet implemented
 # The default port is 554. You may overwrite it here with a port = 80 or whatever
 conf.bindByUri('rtsp', 'probe:rtsp01', 'rtsp.client', host = 'mafreebox.freebox.fr', version = 'RTSP/1.0', transport = 'tcp')
 
+# Same test adapter, but using a remote probe
+conf = TestAdapterConfiguration('free using remote probe')
+conf.bindByUri('rtsp', 'probe:rtsp01@localhost', 'rtsp.client', host = 'mafreebox.freebox.fr', version = 'RTSP/1.0', transport = 'tcp')
 
 ##
 # Control definition
 ##
 
-useTestAdapterConfiguration('free')
+useTestAdapterConfiguration('free using local probe')
+TC_RTSP_CLIENT().execute()
 
+useTestAdapterConfiguration('free using remote probe')
 TC_RTSP_CLIENT().execute()

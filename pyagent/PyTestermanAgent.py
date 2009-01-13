@@ -22,6 +22,7 @@
 import TestermanMessages as Messages
 import TestermanNodes as Nodes
 import CodecManager
+import ProbeImplementationManager
 
 import time
 import os
@@ -50,20 +51,24 @@ class ProbeException(Exception):
 	def __init__(self, label):
 		Exception.__init__(self, label)
 
-class Probe:
-	def __init__(self):
-		self.__agent = None
-		self.__name = None
-		self.__type = None
-
-	##
-	# Functions to ensure correct Probe management by the Agent
-	##
-
-	def attachToAgent(self, agent, name, type_):
+class ProbeImplementationAdapter(ProbeImplementationManager.IProbeImplementationAdapter):
+	"""
+	A Probe Implementation Adapter to host a ProbeImplementation in a PyAgent.
+	"""
+	def __init__(self, agent, name, type_, probeImplementation):
 		self.__agent = agent
-		self.__type = type_
 		self.__name = name
+		self.__type = type_
+		self.__probeImplementation = probeImplementation
+		self.__probeImplementation._setAdapter(self)
+		self.__parameters = {}
+
+	##
+	# IProbeImplementationAdapter
+	##
+
+	def setParameter(self, name, value):
+		self.__parameters[name] = value
 
 	def getUri(self):
 		return "probe:%s@%s" % (self.__name, self.__agent.getNodeName())
@@ -73,17 +78,15 @@ class Probe:
 	
 	def getType(self):
 		return self.__type
+
+	# Methods provided for the adapted Probe Implementation
 	
-	def getAgent(self):
-		return self.__agent
+	def triEnqueueMsg(self, message, sutAddress = None):
+		self._triEnqueueMsg(message, sutAddress, profile = Messages.Message.CONTENT_TYPE_PYTHON_PICKLE)
 	
-	##
-	# Convenience functions provided to Probe implementors
-	##
-	
-	def notifyReceived(self, message, sutAddress = None, profile = Messages.Message.CONTENT_TYPE_PYTHON_PICKLE):
+	def _triEnqueueMsg(self, message, sutAddress, profile):
 		"""
-		Creates a RECEIVED notification message over XA and sends it.
+		Creates a TRI-ENQUEUE-MSG notification message over XA and sends it.
 		
 		You may select the encoding used for the body. The default, python/pickle,
 		is safe and the preferred encoding when sending to the TACS.
@@ -98,7 +101,8 @@ class Probe:
 		@rtype: boolean
 		@returns: True in case of a success, False otherwise [but this is a notification...]
 		"""
-		msg = Messages.Notification(method = "RECEIVED", uri = self.getUri(), protocol = "Xa", version = "1.0")
+		self.getLogger().debug("triEnqueueing to the TACS...")
+		msg = Messages.Notification(method = "TRI-ENQUEUE-MSG", uri = self.getUri(), protocol = "Xa", version = "1.0")
 		msg.setApplicationBody(message, profile)
 		msg.setHeader("SUT-Address", sutAddress)
 		msg.setHeader("Probe-Name", self.getName())
@@ -109,14 +113,16 @@ class Probe:
 		Creates a LOG notification message over XA and sends it,
 		for "sent" payload logging.
 		
-		@type  event: the event, any python type
-		@param event: the event to raise.
+		@type  label: string
+		@param label: a short description of the sent message
+		@type  payload: string (as buffer)
+		@param payload: the (raw) sent message
 		
 		@rtype: boolean
 		@returns: True in case of a success, False otherwise [but this is a notification...]
 		"""
 		msg = Messages.Notification(method = "LOG", uri = self.getUri(), protocol = "Xa", version = "1.0")
-		msg.setHeader("Log-Class", "sent-payload")
+		msg.setHeader("Log-Class", "system-sent")
 		msg.setHeader("Probe-Name", self.getName())
 		msg.setApplicationBody({'label': label, 'payload': payload})
 		return self.__agent.notify(msg)
@@ -124,94 +130,48 @@ class Probe:
 	def logReceivedPayload(self, label, payload):
 		"""
 		Creates a LOG notification message over XA and sends it,
-		for "sent" payload logging.
+		for "received" payload logging.
 		
-		@type  event: the event, any python type
-		@param event: the event to raise.
+		@type  label: string
+		@param label: a short description of the received message
+		@type  payload: string (as buffer)
+		@param payload: the (raw) received message
 		
 		@rtype: boolean
 		@returns: True in case of a success, False otherwise [but this is a notification...]
 		"""
 		msg = Messages.Notification(method = "LOG", uri = self.getUri(), protocol = "Xa", version = "1.0")
-		msg.setHeader("Log-Class", "received-payload")
+		msg.setHeader("Log-Class", "system-received")
 		msg.setHeader("Probe-Name", self.getName())
 		msg.setApplicationBody({'label': label, 'payload': payload})
 		return self.__agent.notify(msg)
-	
-	def checkArgs(self, args, defaultValues = []):
-		"""
-		Checks that all mandatory arguments are present, based on default values.
-		Adds default values for non-existing arguments in args.
-		
-		@type  defaultValues: list of tuple (string, <any>)
-		@param defaultValues: list of default values and expected args in args as tuples (argname, defaultValue)
-		                      If the default value is None, implies that argname is mandatory and must be provided
-		                      in args.
-		@type  args: dict[string] of <any>
-		@param args: the provided arguments and their initial values.
-		
-		@throws: ProbeException in case of a missing mandatory argument.
-		
-		@rtype: None
-		@returns: None
-		"""
-		try:
-			missingArgs = []
-			for (argName, defaultValue) in defaultValues:
-				if not args.has_key(argName):
-					if defaultValue is None:
-						missingArgs.append(argName)
-					else:
-						args[argName] = defaultValue
-			if not missingArgs:
-				# OK
-				return
-			else:
-				# Missing arguments
-				raise ProbeException("Missing mandatory parameter(s): %s" % ', '.join(missingArgs))
-		except Exception, e:
-			self.debug("checkArgs: %s" % str(e))
-			raise e
 
-	##
-	# To reimplement in your probe implementations
-	##
-	
-	def onSend(self, message, sutAddress):
-		"""
-		@type  arg: depends on what was sent over XA by the probe stub
-		@param arg: the arguments related to the SEND method invoked on the probe. 
-		
-		@rtype: None
-		@returns: None
-		
-		@throws: ProbeException in case of probe-level errors
-		"""
-		raise ProbeException("Not implemented")
-	
-	def onReset(self):
-		"""
-		@rtype: None
-		@returns: None
+	def getParameter(self, name, defaultValue):
+		return self.__parameters.get(name, defaultValue)
 
-		@throws: ProbeException in case of probe-level errors
-		"""
-		raise ProbeException("Not implemented")
-	
 	def getLogger(self):
 		return logging.getLogger('Agent.%s' % self.getName())
 	
-	def info(self, txt):
-		self.getLogger().info(txt)
+	##
+	# IProbe part implementation
+	##
+	
+	def onTriSend(self, message, sutAddress):
+		self.__probeImplementation.onTriSend(message, sutAddress)
 
-	def debug(self, txt):
-		self.getLogger().debug(txt)
+	def onTriMap(self):
+		self.__probeImplementation.onTriMap()
 
-	def error(self, txt):
-		self.getLogger().error(txt)
+	def onTriUnmap(self):
+		self.__probeImplementation.onTriUnmap()
 
-	def warning(self, txt):
-		self.getLogger().warning(txt)
+	def onTriExecuteTestCase(self):
+		self.__probeImplementation.onTriExecuteTestCase()
+
+	def onTriSAReset(self):
+		self.__probeImplementation.onTriSAReset()
+		
+	
 	
 
 ################################################################################
@@ -251,7 +211,7 @@ class Agent(Nodes.ConnectingNode):
 		resp = Messages.Response(status, reason)
 		if body:
 			resp.setBody(body)
-		self.debug("Sending a response:\n%s" % str(resp))
+		self.getLogger().debug("Sending a response:\n%s" % str(resp))
 		self.sendResponse(self.channel, transactionId, resp)
 
 	##
@@ -274,33 +234,33 @@ class Agent(Nodes.ConnectingNode):
 		self.getLogger().warning(txt)
 
 	def onConnection(self, channel):
-		self.info("Connected.")
-		self.info("Registering agent...")
+		self.getLogger().info("Connected.")
+		self.getLogger().info("Registering agent...")
 		self.channel = channel
 		try:
 			self.registerAgent()
 		except Exception, e:
-			self.error("Unable to register agent: " + str(e))
-			self.error("Disconnecting for a later attempt")
+			self.getLogger().error("Unable to register agent: " + str(e))
+			self.getLogger().error("Disconnecting for a later attempt")
 			self.disconnect(self.channel)
 			return
 			
-		self.info("Agent registered")
-		self.info("Registering probes...")
+		self.getLogger().info("Agent registered")
+		self.getLogger().info("Registering probes...")
 		for probe in self.probes.values():
 			try:
 				self.registerProbe(probe)
 			except Exception, e:
-				self.warning("Unable to register probe %s (%s)" % (str(probe.getUri()), str(e)))
+				self.getLogger().warning("Unable to register probe %s (%s)" % (str(probe.getUri()), str(e)))
 
-		self.info("Probes registered")
+		self.getLogger().info("Probes registered")
 	
 	def onDisconnection(self, channel):
-		self.info("Disconnected")
+		self.getLogger().info("Disconnected")
 		self.registered = False
 		
 	def onRequest(self, channel, transactionId, request):
-		self.debug("Received a request:\n%s" % str(request))
+		self.getLogger().debug("Received a request:\n%s" % str(request))
 		method = request.getMethod()
 		uri = request.getUri()
 		
@@ -334,11 +294,24 @@ class Agent(Nodes.ConnectingNode):
 				if not probe:
 					self.response(transactionId, 404, "Probe not found")
 				else:
-					if method == "SEND":
-						probe.onSend(request.getApplicationBody(), request.getHeader('SUT-Address'))
+					if method == "TRI-SEND":
+						probe.onTriSend(request.getApplicationBody(), request.getHeader('SUT-Address'))
 						self.response(transactionId, 200, "OK")
-					elif method == "RESET":
-						probe.onReset()
+					elif method == "TRI-SA-RESET":
+						probe.onTriSAReset()
+						self.response(transactionId, 200, "OK")
+					elif method == "TRI-MAP":
+						probe.onTriMap()
+						self.response(transactionId, 200, "OK")
+					elif method == "TRI-UNMAP":
+						probe.onTriSAReset()
+						self.response(transactionId, 200, "OK")
+					elif method == "TRI-EXECUTE-TESTCASE":
+						parameters = request.getApplicationBody()
+						if parameters:
+							for name, value in parameters.items():
+								probe.setParameter(name, value)
+						probe.onTriExecuteTestCase()
 						self.response(transactionId, 200, "OK")
 					else:
 						self.response(transactionId, 505, "Not supported")
@@ -357,10 +330,10 @@ class Agent(Nodes.ConnectingNode):
 		"""
 		Notification: nothing to support in this Agent.
 		"""
-		self.warning("Received a notification, discarding:\n" + str(message))
+		self.getLogger().warning("Received a notification, discarding:\n" + str(message))
 
 	def onResponse(self, channel, transactionId, message):
-		self.warning("Received an asynchronous response, discarding:\n" + str(message))
+		self.getLogger().warning("Received an asynchronous response, discarding:\n" + str(message))
 
 	def initialize(self, controllerAddress, localAddress):
 		Nodes.ConnectingNode.initialize(self, controllerAddress, localAddress)
@@ -374,17 +347,15 @@ class Agent(Nodes.ConnectingNode):
 		Instantiates and registers a new probe.
 		Raises an exception in case of any error.
 		"""
-		self.info("Deploying probe %s, type %s..." % (name, type_))
-		if not type_.startswith("remote."):
-			type_ = "remote." + type_
-		if not getProbeClasses().has_key(type_):
+		self.getLogger().info("Deploying probe %s, type %s..." % (name, type_))
+		if not ProbeImplementationManager.getProbeImplementationClasses().has_key(type_):
 			raise Exception("No factory registered for probe type %s" % type_)
 		
 		if self.probes.has_key(name):
 			raise Exception("A probe with this name is already deployed on this agent")
 
-		probe = getProbeClasses()[type_]()
-		probe.attachToAgent(self, name, type_)
+		probeImplementation = ProbeImplementationManager.getProbeImplementationClasses()[type_]()
+		probe = ProbeImplementationAdapter(self, name, type_, probeImplementation)
 		# We reference the probe as deployed, though the registration may fail...
 		self.probes[name] = probe
 
@@ -392,14 +363,14 @@ class Agent(Nodes.ConnectingNode):
 		if self.registered:
 			self.registerProbe(probe)
 		else:
-			self.info("Deferred probe registration: agent not registered yet.")
+			self.getLogger().info("Deferred probe registration: agent not registered yet.")
 
 	def undeployProbe(self, name):
 		"""
 		Unregister an existing probe.
 		Raises an exception in case of any error.
 		"""
-		self.info("Undeploying probe %s..." % (name))
+		self.getLogger().info("Undeploying probe %s..." % (name))
 		
 		if not self.probes.has_key(name):
 			raise Exception("Probe currently not deployed on this agent.")
@@ -412,14 +383,14 @@ class Agent(Nodes.ConnectingNode):
 		if self.registered:
 			self.unregisterProbe(probe)
 		else:
-			self.info("No probe unregistration: agent not registered yet.")
+			self.getLogger().info("No probe unregistration: agent not registered yet.")
 	
 	def registerProbe(self, probe):
 		"""
 		Sends a REGISTER request over XA to register the probe uri, type type_
 		on the TACS.
 		"""
-		self.info("Registering probe %s, type %s, uri %s..." % (probe.getName(), probe.getType(), probe.getUri()))
+		self.getLogger().info("Registering probe %s, type %s, uri %s..." % (probe.getName(), probe.getType(), probe.getUri()))
 		msg = Messages.Request(method = "REGISTER", uri = probe.getUri(), protocol = "Xa", version = "1.0")
 		msg.setHeader("Probe-Type", probe.getType())
 		msg.setHeader("Probe-Name", probe.getName())
@@ -430,14 +401,14 @@ class Agent(Nodes.ConnectingNode):
 
 		if response.getStatusCode() != 200:
 			raise Exception("Unable to register: " + response.getReasonPhrase())
-		self.info("Probe %s registered" % probe.getUri())
+		self.getLogger().info("Probe %s registered" % probe.getUri())
 		
 	def unregisterProbe(self, probe):
 		"""
 		Sends a UNREGISTER request over XA to register the probe uri, type type_
 		on the TACS.
 		"""
-		self.info("Registering probe %s, type %s, uri %s..." % (probe.getName(), probe.getType(), probe.getUri()))
+		self.getLogger().info("Registering probe %s, type %s, uri %s..." % (probe.getName(), probe.getType(), probe.getUri()))
 		msg = Messages.Request(method = "UNREGISTER", uri = probe.getUri(), protocol = "Xa", version = "1.0")
 		msg.setHeader("Probe-Type", probe.getType())
 		msg.setHeader("Probe-Name", probe.getName())
@@ -447,13 +418,13 @@ class Agent(Nodes.ConnectingNode):
 
 		if response.getStatusCode() != 200:
 			raise Exception("Unable to unregister: " + response.getReasonPhrase())
-		self.info("Probe %s unregistered" % probe.getUri())
+		self.getLogger().info("Probe %s unregistered" % probe.getUri())
 
 	def registerAgent(self):
 		self.registered = False
 		req = Messages.Request(method = "REGISTER", uri = self.getUri(), protocol = "Xa", version = "1.0")
 		# we should add a list of supported probe types, os, etc ?
-		req.setHeader("Agent-Supported-Probe-Types", ','.join(getProbeClasses().keys()))
+		req.setHeader("Agent-Supported-Probe-Types", ','.join(ProbeImplementationManager.getProbeImplementationClasses().keys()))
 		response = self.request(req)
 		if not response:
 			raise Exception("Timeout")
@@ -462,7 +433,7 @@ class Agent(Nodes.ConnectingNode):
 			raise Exception("Unable to register: " + response.getReasonPhrase())
 
 		self.registered = True
-		self.info("Agent %s registered" % self.getUri())
+		self.getLogger().info("Agent %s registered" % self.getUri())
 		
 		
 		
@@ -489,21 +460,6 @@ def scanPlugins(paths, label):
 		except Exception, e:
 			getLogger().warning("Unable to scan %s path for %ss: %s" % (path, label, str(e)))
 
-# Contains the Class (python obj) of the probe, indexed by its probeType (probeId)
-ProbeClasses = {}
-
-def getProbeClasses():
-	return ProbeClasses
-
-def registerProbeClass(type_, class_):
-	# For the internal registrations, all probe types are started with a remote.
-	if not type_.startswith("remote."):
-		type_ = "remote." + type_
-	if ProbeClasses.has_key(type_):
-		getLogger().warning("Not registering class for probe type %s: already registered" % type_)
-	ProbeClasses[type_] = class_
-	getLogger().info("%s type has been registered" % type_)
-
 ################################################################################
 # Main
 ################################################################################
@@ -511,6 +467,8 @@ def registerProbeClass(type_, class_):
 def initialize(probePaths = ["probes"], codecPaths = ["../codecs"]):
 	# CodecManager logging diversion
 	CodecManager.instance().setLogCallback(logging.getLogger("Agent.CD").debug)
+	# ProbeImplementationManager logging diversion
+	ProbeImplementationManager.setLogger(logging.getLogger("Agent"))
 	# Loading plugins: probes & codecs
 	currentDir = os.path.normpath(os.path.realpath(os.path.dirname(sys.modules[globals()['__name__']].__file__)))
 	scanPlugins(["%s/%s" % (currentDir, x) for x in codecPaths], label = "codec")

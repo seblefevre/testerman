@@ -42,7 +42,7 @@ class DummyLogger:
 class IaClient(Nodes.ConnectingNode):
 	def __init__(self, name):
 		Nodes.ConnectingNode.__init__(self, name, "IaClient")
-		self.receivedNotificationCallback = None # on RECEIVED
+		self.receivedNotificationCallback = None # on TRI-ENQUEUE-MSG
 		self.logNotificationCallback = None # on LOG
 		self.probeNotificationCallback = None # on PROBE
 		self._logger = DummyLogger()
@@ -76,7 +76,7 @@ class IaClient(Nodes.ConnectingNode):
 	
 	def onNotification(self, channel, notification):
 		self.getLogger().debug("Received a notification")
-		if notification.getMethod() == "RECEIVED" and self.receivedNotificationCallback:
+		if notification.getMethod() == "TRI-ENQUEUE-MSG" and self.receivedNotificationCallback:
 			self.receivedNotificationCallback(notification.getUri(), notification.getApplicationBody(), notification.getHeader("SUT-Address"))
 		elif notification.getMethod() == "LOG" and self.logNotificationCallback:
 			self.logNotificationCallback(notification.getUri(), notification.getHeader('Log-Class'), notification.getApplicationBody())
@@ -97,8 +97,8 @@ class IaClient(Nodes.ConnectingNode):
 
 	# High level functions callable from an IaClient
 	
-	def send(self, probeUri, message, sutAddress, profile = Messages.Message.CONTENT_TYPE_JSON):
-		request = Messages.Request("SEND", probeUri, "Ia", "1.0")
+	def triSend(self, probeUri, message, sutAddress, profile = Messages.Message.CONTENT_TYPE_JSON):
+		request = Messages.Request("TRI-SEND", probeUri, "Ia", "1.0")
 		request.setHeader("SUT-Address", sutAddress)
 		request.setApplicationBody(message, profile)
 		response = self.executeRequest(0, request)
@@ -107,8 +107,33 @@ class IaClient(Nodes.ConnectingNode):
 		else:
 			raise TaccException("Unable to send message through %s: %d %s\n%s" % (probeUri, response.getStatusCode(), response.getReasonPhrase(), response.getBody()))
 	
-	def reset(self, probeUri):
-		request = Messages.Request("RESET", probeUri, "Ia", "1.0")
+	def triSAReset(self, probeUri):
+		request = Messages.Request("TRI-SA-RESET", probeUri, "Ia", "1.0")
+		response = self.executeRequest(0, request)
+		if response and response.getStatusCode() == 200:
+			return True
+		else:
+			return False
+
+	def triMap(self, probeUri):
+		request = Messages.Request("TRI-MAP", probeUri, "Ia", "1.0")
+		response = self.executeRequest(0, request)
+		if response and response.getStatusCode() == 200:
+			return True
+		else:
+			return False
+
+	def triUnmap(self, probeUri):
+		request = Messages.Request("TRI-UNMAP", probeUri, "Ia", "1.0")
+		response = self.executeRequest(0, request)
+		if response and response.getStatusCode() == 200:
+			return True
+		else:
+			return False
+
+	def triExecuteTestCase(self, probeUri, parameters = {}, profile = Messages.Message.CONTENT_TYPE_JSON):
+		request = Messages.Request("TRI-EXECUTE-TESTCASE", probeUri, "Ia", "1.0")
+		request.setApplicationBody(parameters, profile = profile)
 		response = self.executeRequest(0, request)
 		if response and response.getStatusCode() == 200:
 			return True
