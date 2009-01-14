@@ -1,0 +1,93 @@
+# __METADATA__BEGIN__
+# <?xml version="1.0" encoding="utf-8" ?>
+# <metadata version="1.0">
+# <description>description</description>
+# <prerequisites>prerequisites</prerequisites>
+# <parameters>
+# </parameters>
+# </metadata>
+# __METADATA__END__
+##
+# Sample script, demonstrating (and basically testing)
+# the watcher.file probe.
+#
+##
+
+TestermanTCI.enableDebugLogs()
+
+"""
+	type union FileWatcherCommand
+	{
+		any stopWatchingFiles,
+		StartWatchingFiles startWatchingFiles
+	}
+
+	type record StartWatchingFiles
+	{
+		record of charstring files, // filenames
+		record of charstring patterns optional, // regexp patterns, defaulted to .*, first match and single match per line
+		float interval optional // delay in s between 2 file pools, defaulted to 1.0
+	}
+	
+	type record NewLineEvent
+	{
+		charstring filename, // the watched filename that has changed
+		charstring line, // the complete line that matched a pattern
+		charstring matched_* // * is the name of a matched group, if provided in patterns
+	}	
+"""
+
+class TC_FILE_WATCHER(TestCase):
+	"""
+	Sends a DESCRIBE request to a known server,
+	and expect a valid 200 OK response with some SDP describing at least one video media.
+	"""
+	def body(self, filenames = [ "/tmp/afile" ]):
+		port = self.mtc['port']
+		port_map(port, self.system['logs'])
+
+		def m_startWatchingFiles(filenames, patterns = [ r'.*' ], interval = 1.0):
+				return ('startWatchingFiles', { 'files': filenames, 'patterns': patterns, 'interval': interval })
+		
+		def m_stopWatchingFiles():
+				return ('stopWatchingFiles', None)
+		
+		def mw_lineReceived():
+				return { 'line': any(), 'filename': any() }
+		
+		port.send(m_startWatchingFiles(filenames, patterns = [ r'^hello .*$']))
+		
+		# We have 5s to complete the testcase
+		t = Timer(5.0, name = "Global watchdog")
+		t.start()
+		
+		alt([
+			[ port.RECEIVE(mw_lineReceived()),
+				lambda: setverdict("pass"),
+			],
+			[ port.RECEIVE(),
+				lambda: log("Received something else than expected"),
+				lambda: setverdict("fail"),
+			],
+			[ t.TIMEOUT, 
+				lambda: setverdict("fail"),
+				lambda: stop()
+			],
+		])
+			
+
+
+##
+# Test Adapter Configurations
+##
+
+conf = TestAdapterConfiguration('local')
+conf.bindByUri('logs', 'probe:logwatcher01', 'watcher.file')
+
+##
+# Control definition
+##
+
+useTestAdapterConfiguration('local')
+
+TC_FILE_WATCHER().execute()
