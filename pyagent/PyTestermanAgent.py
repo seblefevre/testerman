@@ -124,7 +124,7 @@ class ProbeImplementationAdapter(ProbeImplementationManager.IProbeImplementation
 		msg = Messages.Notification(method = "LOG", uri = self.getUri(), protocol = "Xa", version = "1.0")
 		msg.setHeader("Log-Class", "system-sent")
 		msg.setHeader("Probe-Name", self.getName())
-		msg.setApplicationBody({'label': label, 'payload': payload})
+		msg.setApplicationBody({'label': label, 'payload': payload}, profile = Messages.Message.CONTENT_TYPE_PYTHON_PICKLE)
 		return self.__agent.notify(msg)
 	
 	def logReceivedPayload(self, label, payload):
@@ -143,7 +143,9 @@ class ProbeImplementationAdapter(ProbeImplementationManager.IProbeImplementation
 		msg = Messages.Notification(method = "LOG", uri = self.getUri(), protocol = "Xa", version = "1.0")
 		msg.setHeader("Log-Class", "system-received")
 		msg.setHeader("Probe-Name", self.getName())
-		msg.setApplicationBody({'label': label, 'payload': payload})
+		print "DEBUG: setting application body..."
+		msg.setApplicationBody({'label': label, 'payload': payload}, profile = Messages.Message.CONTENT_TYPE_PYTHON_PICKLE)
+		print "DEBUG: set OK"
 		return self.__agent.notify(msg)
 
 	def getParameter(self, name, defaultValue):
@@ -201,7 +203,9 @@ class Agent(Nodes.ConnectingNode):
 	##
 
 	def notify(self, message):
+		print "DEBUG: sending notificatioN..."
 		self.sendNotification(self.channel, message)
+		print "SENT OK"
 	
 	def request(self, request):
 		response = self.executeRequest(self.channel, request)
