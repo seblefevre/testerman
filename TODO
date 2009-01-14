@@ -10,39 +10,29 @@ endpoints behind a NAT gateway, etc) and performance (scalability, simulating en
 from N IP addresses, etc).
 This is the TTCN-3/Test System Executor CH (Component Handler) part.
 
-- support for codec aliases: (PENDING)
+- support for codec aliases: DONE
 ability to configure codec properties, and set an alias to reference such a configured codec.
 For instance, an XML codec instance may have a "encode-headers" properties,
 other may have default behaviour (http version in a http.* codec used for encoding), etc.
 Could be useful to switch codec implementations easily, too.
 For instance, "map" may refer "map.phase2", "map.phase1", etc.
 
-- code cleanup around local/remote probes.
-Basically, this model with two kinds of probe is confusing.
-Initially, I planned to implement only remote probes:
- benefits:
- - language agnostic,
- - flexible - we can deploy probes where needed to simulate NAT entities, etc.
- drawbacks:
- - require a pre-deployed agent
- - slower than local ones
- - difficult to manage when we are able to distribute PTCs over multiple testerman nodes (i.e. not yet)
-   for performance testing: typically, a PTC on a machine M should use the probe on the same machine,
-   and avoid the TACS that could be a bottleneck.
-But in most cases, we need to implement an additional local stub to transform data structs
-that won't serialize over Xa easily (at least with JSON encoding - pickle would be OK, but limited
-to python remote implementations) or to manage test adapters parameters (i.e. providing
-a stateful instance of the test adapter from the TE point of view).
+- code cleanup around local/remote probes: DONE
+Locally-implemented probes can be used as is by a pyagent, rendering them
+distribuable immediately.
+This implies these probes are implemented in Python, and are run using the
+same Python interpreter as the TE.
 
-So it could be possible to imagine that all probes are local only, but:
- - we are then stuck to Python for the implementation (not good)
- - even when we have testerman nodes (and thus distribuable local probes over the network, enabling
-   simulating entities behind NAT once again), we won't be able to have a PTC controlling 2 probes
-   on different machines (for instance a SIP GW simulator controlling RTP probes on a machine and a 
-   signaling SIP port on another one)
-A possibility could be the implementation of affinity policies and local optimizations so that
-a TE node can detect and use the probes on the same machine without going through the TACS.
-Embedded TACS in a TE node ? "TACS" routing ? 
+If you have technical constraints (other Python interpreter to use, such
+as Jython, Python for .NET, IronPython, or another implementation language),
+you can still implement remote probes only, based on the agent of your choice.
+In this case, you also have the possibility to develop "Remote Probe Stubs",
+which act as interceptors between the TE and the TACS, where you can perform
+low-level messages translations, or include some Python code in your implementation
+(the implemention is then split over the stub and the probe on your agent).
+
+Selection of remote or local probe implementation instances are only based on 
+the bound probe URI (probe:name for local ones, probe:name@agent for remote).
 
 
 - campaign management
@@ -57,25 +47,26 @@ Core features / TTCN3:
 Codecs:
 =======
 
-- XML codec
+- XML codec: DONE
+- SDP codec: DONE
+- RTSP codec: DONE (basic one)
 - BER codec, with plugin support to support things like TCAP, MAP, INAP
 - SIP codec
-- SDP codec
-- RTSP codec
 
 Probes:
 =======
 
-- HTTP probe (local ? really based on urllib or httplib so that transfer-encoding, redirect, etc are correctly managed)
-- RTSP probe
-- SUA probe (remote)
-- M3UA probe (remote)
-- LDAP probe (local ?)
-- SQL probe (mysql, posgresql, oracle, informix) (remote)
-- file watcher probe (remote)
-- directory watcher probe (remote)
-- SIP probe (remote, waiting for testerman nodes; then local, based on codec ?)
-- RTP probe (remote, waiting for testerman nodes; then local ?)
+- RTSP probe: DONE
+- HTTP probe: DONE
+- Enhanced HTTP probe, really based on urllib or httplib so that transfer-encoding, redirect, etc are correctly managed
+- SUA probe
+- M3UA probe
+- LDAP probe
+- SQL probe (mysql, posgresql, oracle, informix)
+- file watcher probe
+- directory watcher probe
+- SIP probe
+- RTP probe
 
 QTesterman:
 ===========
