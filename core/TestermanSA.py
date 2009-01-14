@@ -42,6 +42,8 @@ import TestermanAgentControllerClient as TACC
 import TestermanMessages as Messages
 import ProbeImplementationManager
 
+import threading
+
 ################################################################################
 # TRI constants
 ################################################################################
@@ -625,4 +627,26 @@ def createProbe(uri, type_):
 		raise Testerman.TestermanException("No registered factory for test adapter/probe type %s" % type_)
 	
 	return None
+
+
+################################################################################
+# action() management
+################################################################################
+
+_ActionLock = threading.RLock()
+_ActionEvent = threading.Event()
+
+def triSUTactionInformal(message, timeout, tc):
+	_ActionLock.acquire()
+	_ActionEvent.clear()
+	# Send a "signal" to the job subscribers to display a prompt
+	TestermanTCI.logActionRequested(message, timeout, tc)
+	# Wait
+	_ActionEvent.wait(timeout)
+	# Send a "signal clear" to the job subscribers to hide the prompt, if needed
+	TestermanTCI.logActionCleared(reason = "n/a", tc = tc)
+	_ActionLock.release()
+
+def _actionPerformedByUser():
+	_ActionEvent.set()
 

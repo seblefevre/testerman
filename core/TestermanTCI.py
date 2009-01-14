@@ -119,14 +119,16 @@ def setExcludedLogClasses(classes):
 	ExcludedLogClasses = classes
 
 def getExcludedLogClasses():
-	global ExcludedLogClasses
 	return ExcludedLogClasses
 
 def enableDebugLogs():
 	setExcludedLogClasses([])
 
 def disableLogs():
-	setExcludedLogClasses([ 'internal', 'system', 'event', 'user' ])
+	setExcludedLogClasses([ 'internal', 'system', 'event', 'user' ]) # 'action' is always enabled
+
+def enableLogs():
+	setExcludedLogClasses([ 'internal' ])
 
 
 ################################################################################
@@ -233,6 +235,12 @@ def logSystemSent(tsiPort, label, payload):
 
 def logSystemReceived(tsiPort, label, payload):
 	tliLog('system', toXml('system-received', { 'class': 'system', 'timestamp': time.time(), 'tsi-port': tsiPort }, '%s%s' % (testermanToXml(label, 'label'), testermanToXml(payload, 'payload'))))
+
+def logActionRequested(message, timeout, tc):
+	tliLog('action', toXml('action-requested', { 'class': 'action', 'timestamp': time.time(), 'timeout': timeout, 'tc': tc }, '%s' % (testermanToXml(message, 'message'))))
+
+def logActionCleared(reason, tc):
+	tliLog('action', toXml('action-cleared', { 'class': 'action', 'timestamp': time.time(), 'tc': tc, 'reason': reason }))
 
 def tliLog(logClass, xml):
 #	print "DEBUG| %s | %s" % (logClass, xml)

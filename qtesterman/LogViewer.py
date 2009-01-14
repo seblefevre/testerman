@@ -196,6 +196,9 @@ class WLogViewer(QWidget):
 		settings = QSettings()
 		self.useRawView = settings.value('logs/raws', QVariant(True)).toBool()
 
+		# Dialog box that may appear if an action is required by the user
+		self.actionRequiredDialog = None
+		
 		self.__createWidgets()
 		self.resize(QSize(800, 600))
 
@@ -312,6 +315,10 @@ class WLogViewer(QWidget):
 
 		# Summary connection on parser
 		self.connect(self.logParser, SIGNAL("testCaseStopped(QString, QDomElement)"), self.summary.onTestCaseStopped)
+
+		# Action management
+		self.connect(self.logParser, SIGNAL("actionRequired(QString, float)"), self.onActionRequired)
+		self.connect(self.logParser, SIGNAL("actionCleared()"), self.onActionCleared)
 
 		# Inter widget connections
 		self.connect(self.textualLogView, SIGNAL("messageSelected(QDomElement)"), self.templateView.setTemplates)
@@ -744,6 +751,23 @@ class WLogViewer(QWidget):
 		QWidget.closeEvent(self, event)
 #		event.accept()
 
+	def onActionRequired(self, message, timeout):
+		# Only display a user input in realtime mode
+		if self.isRealtimeMode():
+			self.actionRequiredDialog = QMessageBox(self)
+			self.actionRequiredDialog.addButton(QMessageBox.Ok)
+			self.actionRequiredDialog.setText(message)
+			self.actionRequiredDialog.setInformativeText("(or wait %.3fs)" % timeout)
+			self.actionRequiredDialog.setWindowTitle("User action requested")
+			if self.actionRequiredDialog.exec_() == QMessageBox.Ok:
+				getProxy().sendSignal(self.jobId, "action_performed")
+			self.actionRequiredDialog = None
+	
+	def onActionCleared(self):
+		if self.actionRequiredDialog:
+			self.actionRequiredDialog.reject()
+		self.actionRequiredDialog = None
+
 ###############################################################################
 # Textual Log View: item and treewidget
 ###############################################################################
@@ -922,9 +946,15 @@ class WTextualLogViewItem(QTreeWidgetItem):
 			result = self._domElement.attribute('result')
 			self._message = "ATS stopped, result " + result
 
+		# Actions
+		elif self._element == "action-requested":
+			self._message = "User action requested by TC %s: %s, timeout %s" % (self._domElement.attribute('tc'), self._domElement.firstChildElement('message').text(), self._domElement.attribute('timeout'))
+		elif self._element == "action-cleared":
+			self._message = "User action performed (or assumed to be performed)"
+	
 		# Unhandled events
 		else:
-			self._message = "Unhandled log self._element: %s" % self._element
+			self._message = "Unhandled log element: %s" % self._element
 
 		self.setText(0, self._timestamp)
 		self.setText(1, self._class)
@@ -1177,9 +1207,8 @@ class LogParser(QObject):
 		if eventType == "ats-started":
 			self.emit(SIGNAL("atsStarted(QDomElement)"), domElement)
 
-		if eventType == "ats-stopped":
+		elif eventType == "ats-stopped":
 			result = domElement.attribute('result')
-			self.message = "ATS stopped, result " + result
 			self.emit(SIGNAL("atsStopped(QString, QDomElement)"), QString(result), domElement)
 
 		elif eventType == "testcase-created":
@@ -1193,6 +1222,14 @@ class LogParser(QObject):
 		elif eventType == "testcase-stopped":
 			verdict = domElement.attribute('verdict')
 			self.emit(SIGNAL("testCaseStopped(QString, QDomElement)"), QString(verdict), domElement)
+
+		elif eventType == "action-requested":
+			timeout = float(domElement.attribute('timeout'))
+			message = domElement.firstChildElement('message').text()
+			self.emit(SIGNAL("actionRequired(QString, float)"), QString(message), timeout)
+
+		elif eventType == "action-cleared":
+			self.emit(SIGNAL("actionCleared()"))
 
 		# In any case, emit the raw signal
 		self.emit(SIGNAL('testermanEvent(QDomElement)'), domElement)

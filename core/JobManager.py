@@ -91,7 +91,8 @@ class Job(object):
 	SIGNAL_CANCEL = "cancel"
 	SIGNAL_KILL = "kill"
 	SIGNAL_RESUME = "resume"
-	SIGNALS = [ SIGNAL_KILL, SIGNAL_PAUSE, SIGNAL_RESUME, SIGNAL_CANCEL ]
+	SIGNAL_ACTION_PERFORMED = "action_performed"
+	SIGNALS = [ SIGNAL_KILL, SIGNAL_PAUSE, SIGNAL_RESUME, SIGNAL_CANCEL, SIGNAL_ACTION_PERFORMED ]
 
 	# Job states.
 	# Basic state machine: initializing -> waiting -> running -> complete
@@ -382,6 +383,10 @@ class AtsJob(Job):
 			elif sig == self.SIGNAL_RESUME and state == self.STATE_PAUSED and self._tePid:
 				os.kill(self._tePid, signal.SIGCONT)
 				self.setState(self.STATE_RUNNING)
+			
+			# action() implementation: the user performed the requested action
+			elif sig == self.SIGNAL_ACTION_PERFORMED and state == self.STATE_RUNNING and self._tePid:
+				os.kill(self._tePid, signal.SIGUSR1)
 			
 		except Exception, e:
 			getLogger().error("%s: unable to handle signal %s: %s" % (str(self), sig, str(e)))

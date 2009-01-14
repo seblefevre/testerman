@@ -280,6 +280,13 @@ def onUserInterruptSignal(sig, frame):
 signal.signal(signal.SIGINT, onUserInterruptSignal)
 
 ##
+# "action" management (SIGUSR1)
+def onActionPerformed(sig, frame):
+	Testerman._actionPerformedByUser()
+
+signal.signal(signal.SIGUSR1, onActionPerformed)
+
+##
 # Loads the input session
 ##
 inputSession = {}

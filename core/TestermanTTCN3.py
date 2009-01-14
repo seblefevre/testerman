@@ -24,6 +24,7 @@ import TestermanSA
 import TestermanPA
 import TestermanCD
 from TestermanTCI import *
+import TestermanTCI
 
 import binascii
 import re
@@ -2521,3 +2522,56 @@ def _isAtsCancelled():
 	but raise a TestermanCancelException instead.
 	"""
 	return _AtsCancelled
+
+################################################################################
+# action() management
+################################################################################
+
+def action(message, timeout = 5.0):
+	"""
+	Prompts the user to perform an external action.
+	If the user did not confirm he/she performed it within timeout,
+	we assume it was done and continue.
+	
+	Only returns when the user confirmed the action, or on timeout.
+	
+	Implementation note:
+	implemented as a "signal" sent through the logs to the log watchers,
+	the log analyzer interprets the log event and display a dialog box to the
+	user
+	when the user confirms the action, a signal "action_performed" is sent to the
+	job, leading to a SIGUSR1 for the TE process.
+	
+	
+	Only one action can be waited at the same time (other action() calls
+	are blocked until the previous one is complete).
+	
+	@type  message: unicode string
+	@param message: a message describing the action. Will be presented to the
+	                end-user
+	@type  timeout: float
+	@param timeout: the timeout before assuming the action has been performed,
+	                in s. This parameter does not exist in TTCN-3.
+	"""
+	TestermanSA.triSUTactionInformal(message, timeout, tc = getLocalContext().getTc())
+
+def _actionPerformedByUser():
+	TestermanSA._actionPerformedByUser()
+
+
+################################################################################
+# convenience functions: log level management
+################################################################################
+
+def enableDebugLogs():
+	TestermanTCI.enableDebugLogs()
+
+def disableDebugLogs():
+	TestermanTCI.enableLogs()
+
+def disableLogs():
+	TestermanTCI.disableLogs()
+
+def enableLogs():
+	TestermanTCI.enableLogs()
+
