@@ -453,18 +453,18 @@ class DocumentModel(QObject):
 		"""
 		Returns the document name.
 		This is extracted from the URL, depending on the scheme.
-		For local documents, this is the complete path.
-		For remote documents, this is the effective path, i.e. the path minus the /repository prefix.
-		For unsaved documents, this is the complete path.
+		For remote documents, this is the effective path, i.e. the path minus the /repository/ prefix.
+		For local documents, this is the filename without path followed by (local).
+		For unsaved documents, this is the document name followed by (local).
 		
 		@rtype: QString
 		@returns: the name of the document.
 		"""
 		if self.url:
 			if self.url.scheme() == 'testerman':
-				return self.url.path()[len('/repository'):]
+				return self.url.path()[len('/repository/'):]
 			else:
-				return self.url.path()
+				return "%s (local)" % self.url.path().split('/')[-1]
 		else:
 			return None
 	
