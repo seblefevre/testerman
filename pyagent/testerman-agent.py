@@ -40,8 +40,8 @@ def main():
 	parser.add_option("-p", "--port", dest = "controllerPort", metavar = "PORT", help = "set agent controller Xa port address to PORT (default: %default)", default = 40000, type="int")
 	parser.add_option("--deploy", dest = "probes", metavar = "PROBES", help = "automatically deploy PROBES on startup, format: name=type[,name=type]* (default: none)", default = "")
 	parser.add_option("--local", dest = "localIp", metavar = "ADDRESS", help = "set local IP address to ADDRESS for XA connection (default: system-dependent)", default = "")
-	parser.add_option("--probe-path", dest = "probePaths", metavar = "PATHS", help = "search for probe modules in PATHS, which is a comma-separated list of paths (default: %default)", default = "probes")
-	parser.add_option("--codec-path", dest = "codecPaths", metavar = "PATHS", help = "search for codec modules in PATHS, which is a comma-separated list of paths (default: %default)", default = "../codecs")
+	parser.add_option("--probe-path", dest = "probePaths", metavar = "PATHS", help = "search for probe modules in PATHS, which is a comma-separated list of paths (default: %default)", default = "plugins/probes")
+	parser.add_option("--codec-path", dest = "codecPaths", metavar = "PATHS", help = "search for codec modules in PATHS, which is a comma-separated list of paths (default: %default)", default = "plugins/codecs")
 
 	(options, args) = parser.parse_args()
 
