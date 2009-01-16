@@ -25,6 +25,7 @@
 
 import ProbeImplementationManager
 
+import glob
 import os
 import re
 import threading
@@ -96,10 +97,12 @@ class WatchingThread(threading.Thread):
 		while not self._stopEvent.isSet():
 			try:
 				for f in self._files:
-					try:
-						self._checkFile(f)
-					except Exception, e:
-						self._probe.getLogger().debug("Unable to watch file %s: %s" % (filename, str(e)))
+					# Glob it - enabling to poll for new files with unknown names in a dir
+					for filename in glob.glob(f):
+						try:
+							self._checkFile(filename)
+						except Exception, e:
+							self._probe.getLogger().debug("Unable to watch file %s: %s" % (filename, str(e)))
 			except Exception, e:
 				self._probe.getLogger().debug("Error while watching files: %s" % str(e))
 			self._stopEvent.wait(self._interval)

@@ -1,0 +1,110 @@
+# __METADATA__BEGIN__
+# <?xml version="1.0" encoding="utf-8" ?>
+# <metadata version="1.0">
+# <description>description</description>
+# <prerequisites>prerequisites</prerequisites>
+# <parameters>
+# </parameters>
+# </metadata>
+# __METADATA__END__
+##
+# Sample script, demonstrating (and basically testing)
+# the watcher.dir probe.
+#
+##
+
+TestermanTCI.enableDebugLogs()
+
+"""
+	type union DirWatcherCommand
+	{
+		any stopWatchingDirs,
+		StartWatchingDirs startWatchingDirs
+	}
+
+	type record StartWatchingDirs
+	{
+		set of charstring dirs, // dir names (wildcards accepted)
+		set of charstring patterns optional, // regexp patterns, defaulted to .*, match on entry name (without path)
+		float interval optional // delay in s between 2 dir pools, defaulted to 1.0
+	}
+	
+	type union DirWatcherEvent
+	{
+		EntryAttributes added, // when a new entry has appeared in the directory
+		EntryAttributes removed // when an existing entry has disappeared from the directory
+	}
+	
+	type record EntryAttributes
+	{
+		charstring dir, // the watched dir name that has changed
+		charstring name, // the entry name that matched a pattern
+		charstring matched_* // * is the name of a matched group, if provided in patterns
+	}
+	
+	type port DirWatcherPortType message
+	{
+		out DirWatcherCommand;
+		in DirWatcherEvent;
+	}
+"""
+
+class TC_DIR_WATCHER(TestCase):
+	"""
+	Sends a DESCRIBE request to a known server,
+	and expect a valid 200 OK response with some SDP describing at least one video media.
+	"""
+	def body(self, dirs = [ "/tmp" ], duration = 5.0):
+		port = self.mtc['port']
+		port_map(port, self.system['dir_to_watch'])
+
+		def m_startWatchingDirs(dirs, patterns = [ r'.*' ], interval = 1.0):
+			return ('startWatchingDirs', { 'dirs': dirs, 'patterns': patterns, 'interval': interval })
+		
+		def m_stopWatchingDirs():
+			return ('stopWatchingDirs', None)
+		
+		def mw_newEntry():
+			return ('added', { 'name': any() })
+
+		def mw_removedEntry():
+			return ('removed', { 'name': any() })
+
+		port.send(m_startWatchingDirs(dirs))
+		
+		# We have 5s to complete the testcase
+		t = Timer(duration, name = "Global watchdog")
+		t.start()
+		
+		alt([
+			[ port.RECEIVE(mw_newEntry()),
+				lambda: setverdict("pass"),
+				lambda: REPEAT,
+			],
+			[ port.RECEIVE(),
+				lambda: log("Received something else than expected"),
+				lambda: setverdict("fail"),
+				lambda: REPEAT,
+			],
+			[ t.TIMEOUT, 
+				lambda: setverdict("fail"),
+				lambda: stop()
+			],
+		])
+			
+
+
+##
+# Test Adapter Configurations
+##
+
+conf = TestAdapterConfiguration('local')
+conf.bindByUri('dir_to_watch', 'probe:dirwatcher01', 'watcher.dir')
+
+##
+# Control definition
+##
+
+useTestAdapterConfiguration('local')
+
+TC_DIR_WATCHER().execute(duration = 20.0)

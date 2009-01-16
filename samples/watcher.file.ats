@@ -24,17 +24,23 @@ TestermanTCI.enableDebugLogs()
 
 	type record StartWatchingFiles
 	{
-		record of charstring files, // filenames
-		record of charstring patterns optional, // regexp patterns, defaulted to .*, first match and single match per line
+		set of charstring files, // filenames (wildcards accepted)
+		set of charstring patterns optional, // regexp patterns, defaulted to .*, first match and single match per line
 		float interval optional // delay in s between 2 file pools, defaulted to 1.0
 	}
 	
-	type record NewLineEvent
+	type record FileWatcherEvent
 	{
 		charstring filename, // the watched filename that has changed
 		charstring line, // the complete line that matched a pattern
 		charstring matched_* // * is the name of a matched group, if provided in patterns
-	}	
+	}
+
+	type port FileWatcherPortType message
+	{
+		in FileWatcherCommand;
+		out FileWatcherEvent;
+	}
 """
 
 class TC_FILE_WATCHER(TestCase):
@@ -42,7 +48,7 @@ class TC_FILE_WATCHER(TestCase):
 	Sends a DESCRIBE request to a known server,
 	and expect a valid 200 OK response with some SDP describing at least one video media.
 	"""
-	def body(self, filenames = [ "/tmp/afile" ]):
+	def body(self, filenames = [ "/tmp/*" ], duration = 5.0):
 		port = self.mtc['port']
 		port_map(port, self.system['logs'])
 
@@ -58,7 +64,7 @@ class TC_FILE_WATCHER(TestCase):
 		port.send(m_startWatchingFiles(filenames, patterns = [ r'^hello .*$']))
 		
 		# We have 5s to complete the testcase
-		t = Timer(5.0, name = "Global watchdog")
+		t = Timer(duration, name = "Global watchdog")
 		t.start()
 		
 		alt([
@@ -90,4 +96,4 @@ conf.bindByUri('logs', 'probe:logwatcher01', 'watcher.file')
 
 useTestAdapterConfiguration('local')
 
-TC_FILE_WATCHER().execute()
+TC_FILE_WATCHER().execute(duration = 20.0)
