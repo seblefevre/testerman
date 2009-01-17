@@ -249,6 +249,120 @@ class TC_SIMPLE_1TON(TestCase):
 		
 		log("End of testcase reached.")
 
+class TC_SIMPLE_1TON_SUBSET(TestCase):
+	def body(self):
+		log("Testerman autotest: implicit MTC, multiple ptc, one to N connections")
+		
+		# Let's create some PTCs
+		ptc01 = self.create(name = "PTC01")
+		ptc02 = self.create(name = "PTC02")
+		ptc03 = self.create(name = "PTC03")
+		
+		# Let's connect some ports: p01 connected to p02, p03, p04
+		p01 = self.mtc['port']
+		p02 = ptc01['port']
+		p03 = ptc02['port']
+		p04 = ptc03['port']
+		connect(p01, p02)
+		connect(p01, p03)
+		connect(p01, p04)
+	
+		# Sending to a single component: p01 to p03 only
+		p01.send("message to p03", ptc02)
+		timer = Timer(1.0)
+		timer.start()
+		alt([
+			[ p02.RECEIVE(),
+				lambda: log("Received message on p02, failed"),
+				lambda: setverdict("fail"),
+			],
+			[ p03.RECEIVE("message to p03"),
+				lambda: alt([
+					[ p03.RECEIVE(),
+						lambda: log("Multiple messages received on p03"),
+						lambda: setverdict("fail"),
+					],
+					[ p02.RECEIVE(),
+						lambda: log("Received message on p02, failed"),
+						lambda: setverdict("fail"),
+					],
+					[ p04.RECEIVE(),
+						lambda: log("Received message on p04, failed"),
+						lambda: setverdict("fail"),
+					],
+					[ timer.TIMEOUT,
+						lambda: log("Nothing received on other ports - OK"),
+					],
+				])
+			],
+			[ p04.RECEIVE(),
+				lambda: log("Received message on p04, failed"),
+				lambda: setverdict("fail"),
+			],
+			[ timer.TIMEOUT,
+				lambda: log("Nothing received on any port"),
+				lambda: setverdict("fail"),
+			],
+		])
+		timer.stop()
+
+		# When sending something through p01 to ptc01, ptc02, so p04 (on ptc03) does not receive it
+
+		p01.send("message to p02+p03", [ ptc01, ptc02 ])
+		timer = Timer(1.0)
+		timer.start()
+		alt([
+			[ p02.RECEIVE("message to p02+p03"),
+				lambda: alt([
+					[ p02.RECEIVE(),
+						lambda: log("Multiple messages received on p02"),
+						lambda: setverdict("fail"),
+					],
+					[ p03.RECEIVE("message to p02+p03"),
+						lambda: setverdict("pass"),
+					],
+					[ p04.RECEIVE(),
+						lambda: log("Received message on p04, failed"),
+						lambda: setverdict("fail"),
+					],
+					[ timer.TIMEOUT,
+						lambda: log("Nothing received on p03"),
+						lambda: setverdict("fail"),
+					],
+				])
+			],
+			[ p03.RECEIVE("message to p02+p03"),
+				lambda: alt([
+					[ p03.RECEIVE(),
+						lambda: log("Multiple messages received on p03"),
+						lambda: setverdict("fail"),
+					],
+					[ p02.RECEIVE("message to p02+p03"),
+						lambda: setverdict("pass"),
+					],
+					[ p04.RECEIVE(),
+						lambda: log("Received message on p04, failed"),
+						lambda: setverdict("fail"),
+					],
+					[ timer.TIMEOUT,
+						lambda: log("Nothing received on p02"),
+						lambda: setverdict("fail"),
+					],
+				])
+			],
+			[ p04.RECEIVE(),
+				lambda: log("Received message on p04, failed"),
+				lambda: setverdict("fail"),
+			],
+			[ timer.TIMEOUT,
+				lambda: log("Nothing received on any port"),
+				lambda: setverdict("fail"),
+			],
+		])
+		timer.stop()
+		
+		log("End of testcase reached.")
+
 class BEHAVIOUR_SIMPLE_PTC(Behaviour):
 	def body(self):
 		"""
@@ -1066,6 +1180,25 @@ class TC_KILL_PTC_DONE(TestCase):
 		ptc.done()
 		setverdict('pass')
 
+class TC_ACTION(TestCase):
+	"""
+	Verifies that calling action() with timeout works.
+	"""
+	def body(self):
+		t = Timer(7.0)
+		t.start()
+		action("If you see me, click me", timeout = 5.0)
+		duration = t.read()
+		t.stop()
+		delta = 0.200 # 200ms of tolerance
+		if duration > (2.0 + delta):
+			log("Too long to perform action (implictly or not)")
+			self.setverdict('fail')
+		else:
+			self.setverdict('pass')
+	
+
+
 ##
 # Control definition
 ##
@@ -1075,6 +1208,7 @@ TestermanTCI.enableDebugLogs()
 TC_TIMER("Testerman autotest: timer management").execute()
 TC_SIMPLE_CONNECTION("Testerman autotest: basic").execute()
 TC_SIMPLE_1TON("Testerman autotest: 1 to N connections").execute()
+TC_SIMPLE_1TON_SUBSET("Testerman autotest: 1 to N connections, sending to selected components").execute()
 TC_SIMPLE_PTC("Testerman autotest: PTC behavior").execute()
 TC_ALIVE_AND_NONALIVE("Testerman autotest: alive vs non-alive test component").execute()
 TC_VALUE_EXTRACTION("Testerman autotest: template matching with extraction").execute()
@@ -1098,3 +1232,4 @@ TC_STOP_PTC_STOP_TESTCASE().execute()
 TC_KILL_PTC_DONE_EVENT().execute()
 TC_KILL_PTC_KILLED_EVENT().execute()
 TC_KILL_PTC_DONE().execute()
+TC_ACTION().execute()

@@ -786,8 +786,9 @@ class Port:
 		
 		@type  message: any structure
 		@param message: the message to send through this port
-		@type  sutAddress: string
-		@param sutAddress: an optional SUT address, the meaning is mapped-tsiPort-specific.
+		@type  to: string, or component instance, or list of component instances
+		@param to: an optional SUT address (string), the meaning is mapped-tsiPort-specific,
+		           or a single component, or a list of target components.
 		
 		@rtype: bool
 		@returns: True if the message has been sent (i.e. if the port has not been connected or mapped),
@@ -804,8 +805,9 @@ class Port:
 				self._mappedTsiPort.send(messageToSend, to)
 			else:
 				for port in self._connectedPorts:
-					logMessageSent(fromTc = str(self._tc), fromPort = self._name, toTc = str(port._tc), toPort = port._name, message = messageToLog)
-					port._enqueue(messageToSend, to)
+					if not to or port._tc == to or (isinstance(to, list) and port._tc in to):
+						logMessageSent(fromTc = str(self._tc), fromPort = self._name, toTc = str(port._tc), toPort = port._name, message = messageToLog)
+						port._enqueue(messageToSend, self)
 			return True
 		else:
 			return False
