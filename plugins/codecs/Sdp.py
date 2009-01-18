@@ -63,8 +63,8 @@ class SdpCodec(CodecManager.Codec):
 	def __init__(self):
 		CodecManager.Codec.__init__(self)
 		# Some default (encoding) properties
-		self.setProperty('version', '0')
-		self.setProperty('name', 'testerman SDP')
+		self.setDefaultProperty('version', '0')
+		self.setDefaultProperty('name', 'testerman SDP')
 	
 	def encode(self, template):
 		version = template.get('version', self['version'])

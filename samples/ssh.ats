@@ -26,7 +26,7 @@
 # These will become ATS parameters once they are implemented.
 ##
 
-TestermanTCI.enableDebugLogs()
+enable_debug_logs()
 
 """
 SSH templates: 
@@ -69,7 +69,7 @@ class TC_SSH(TestCase):
 			return { 'status': 0, 'output': output }
 
 		ssh = self.mtc['ssh']
-		port_map(ssh, self.system['ssh-target'])
+		port_map(ssh, self.system['ssh_target'])
 
 		# We have 5s to complete the testcase
 		t = Timer(5.0, name = "Global watchdog")
@@ -100,16 +100,16 @@ class TC_SSH(TestCase):
 ##
 
 conf = TestAdapterConfiguration('local')
-conf.bindByUri('ssh-target', 'probe:ssh', 'ssh', host = get_variable('PX_HOST'), username = get_variable('PX_USERNAME'), password = get_variable('PX_PASSWORD'))
+conf.bind('ssh_target', 'probe:ssh', 'ssh', host = get_variable('PX_HOST'), username = get_variable('PX_USERNAME'), password = get_variable('PX_PASSWORD'))
 
 conf = TestAdapterConfiguration('remote')
-conf.bindByUri('ssh-target', 'probe:ssh@localhost', 'ssh', host = get_variable('PX_HOST'), username = get_variable('PX_USERNAME'), password = get_variable('PX_PASSWORD'))
+conf.bind('ssh_target', 'probe:ssh@localhost', 'ssh', host = get_variable('PX_HOST'), username = get_variable('PX_USERNAME'), password = get_variable('PX_PASSWORD'))
 
 
 ##
 # Control definition
 ##
-useTestAdapterConfiguration('local')
+with_test_adapter_configuration('local')
 TC_SSH().execute()
-useTestAdapterConfiguration('remote')
+with_test_adapter_configuration('remote')
 TC_SSH().execute()

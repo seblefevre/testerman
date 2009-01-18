@@ -40,9 +40,15 @@ class RtspRequestCodec(CodecManager.Codec):
 	}
 	
 	Automatically computes the content-length if not provided.
-	
-	When decoded, all header names are transformed to lower caps.
+
+	Properties:
+	lower_case: if True, header names are transformed to lowercase. If not,
+              they are left as is. So take them into account when writing testcases.
 	"""
+	def __init__(self):
+		CodecManager.Codec.__init__(self)
+		self.setDefaultProperty('lower_case', False)
+	
 	def encode(self, template):
 		method = template.get('method')
 		uri = template['uri']
@@ -92,7 +98,10 @@ class RtspRequestCodec(CodecManager.Codec):
 				break # reached body
 			m = HEADERLINE_REGEXP.match(l)
 			if m:
-				ret['headers'][m.group('header').lower()] = m.group('value')
+				if self['lower_case']:
+					ret['headers'][m.group('header').lower()] = m.group('value')
+				else:
+					ret['headers'][m.group('header')] = m.group('value')
 			else:
 				raise Exception("Invalid header in message (%s)" % str(l))
 		
@@ -118,8 +127,14 @@ class RtspResponseCodec(CodecManager.Codec):
 	
 	Automatically computes the content-length if not provided.
 	
-	When decoded, all header names are transformed to lower caps.
+	Properties:
+	lower_case: if True, header names are transformed to lowercase. If not,
+              they are left as is. So take them into account when writing testcases.
 	"""
+	def __init__(self):
+		CodecManager.Codec.__init__(self)
+		self.setDefaultProperty('lower_case', False)
+	
 	def encode(self, template):
 		status = template['status']
 		reason = template['reason']
@@ -149,6 +164,16 @@ class RtspResponseCodec(CodecManager.Codec):
 		
 		return '\r\n'.join(ret)
 
+	def _getInsensitiveValue(self, headers, name):
+		"""
+		Case insensitive search on headers.
+		Returns None if not found.
+		"""
+		for key, val in headers.items():
+			if key.lower() == name:
+				return val
+		return None
+
 	def decode(self, data):
 		ret = {}
 		lines = data.split('\r\n')
@@ -168,13 +193,16 @@ class RtspResponseCodec(CodecManager.Codec):
 				break # reached body and its empty line
 			m = HEADERLINE_REGEXP.match(l)
 			if m:
-				ret['headers'][m.group('header').lower()] = m.group('value')
+				if self['lower_case']:
+					ret['headers'][m.group('header').lower()] = m.group('value')
+				else:
+					ret['headers'][m.group('header')] = m.group('value')
 			else:
 				raise Exception("Invalid header in message (%s)" % str(l))
 		
 		ret['body'] ="\r\n".join(lines[i:])
 		
-		contentLength = ret['headers'].get('content-length', None)
+		contentLength = self._getInsensitiveValue(ret['headers'], 'content-length')
 		if contentLength is not None:
 			cl = int(contentLength)
 			bl = len(ret['body'])

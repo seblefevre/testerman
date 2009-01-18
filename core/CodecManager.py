@@ -30,10 +30,15 @@ class Codec:
 	def __init__(self):
 		self._properties = {}
 	
-	def setProperty(self, name, value):
+	# Internal use only: called from the CodecManager
+	def _setProperty(self, name, value):
 		self._properties[name] = value
 	
+	##
 	# Provided for convenience
+	def setDefaultProperty(self, name, value):
+		self._properties[name] = value
+
 	def getProperty(self, name, defaultValue = None):
 		return self._properties.get(name, defaultValue)
 	
@@ -107,22 +112,26 @@ class CodecManager(object):
 			codecClass, properties = self._codecs[name]
 			c = codecClass()
 			for n, p in properties.items():
-				c.setProperty(n, p)
+				c._setProperty(n, p)
 			return c
 	
-	def encode(self, name, template):
+	def encode(self, name, template, **properties):
 		# NB: we instantiate a codec each type to be thread safe and parallel
 		codec = self._getCodecInstance(name)
 		if codec:
+			for k, v in properties.items():
+				codec._setProperty(k, v)
 			return codec.encode(template)
 		else:
 			# Unable to find the codec
 			return None
 
-	def decode(self, name, data):
+	def decode(self, name, data,  **properties):
 		# NB: we instantiate a codec each type to be thread safe and parallel
 		codec = self._getCodecInstance(name)
 		if codec:
+			for k, v in properties.items():
+				codec._setProperty(k, v)
 			return codec.decode(data)
 		else:
 			# Unable to find the codec
@@ -146,29 +155,33 @@ def alias(name, codec, **kwargs):
 def registerCodecClass(name, class_):
 	return instance().registerCodecClass(name, class_)
 
-def encode(name, template):
+def encode(name, template, **properties):
 	"""
 	@type  name: string
 	@param name: the codec name
 	@type  template: <any>
 	@param template: the template to encode. Should match the codec requirements.
+	@type  properties: keyword args of objects
+	@param properties: overriding properties for this encode call
 	
 	@throws Exception in case of an encoding error
 	
 	@rtype: buffer, or None
 	@returns: the encoded buffer, or None if the codec was not found.
 	"""
-	return instance().encode(name, template)
+	return instance().encode(name, template, **properties)
 
-def decode(name, data):
+def decode(name, data, **properties):
 	"""
 	@type  name: string
 	@param name: the codec name
 	@type  data: buffer string
 	@param data: the buffer to decode
+	@type  properties: keyword args of objects
+	@param properties: overriding properties for this decode call
 
 	@rtype: <any>, or None
 	@returns: the decoded message according to the codec, or None if the codec was not found.
 	"""
-	return instance().decode(name, data)
+	return instance().decode(name, data, **properties)
 

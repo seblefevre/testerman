@@ -1191,7 +1191,7 @@ class TC_ACTION(TestCase):
 		duration = t.read()
 		t.stop()
 		delta = 0.200 # 200ms of tolerance
-		if duration > (2.0 + delta):
+		if duration > (5.0 + delta):
 			log("Too long to perform action (implictly or not)")
 			self.setverdict('fail')
 		else:
@@ -1203,7 +1203,7 @@ class TC_ACTION(TestCase):
 # Control definition
 ##
 
-TestermanTCI.enableDebugLogs()
+enable_debug_logs()
 
 TC_TIMER("Testerman autotest: timer management").execute()
 TC_SIMPLE_CONNECTION("Testerman autotest: basic").execute()

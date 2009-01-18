@@ -71,6 +71,7 @@ class RtspClientProbe(ProbeImplementationManager.ProbeImplementation):
 		self.setDefaultParameter('transport', 'tcp')
 		self.setDefaultParameter('local_ip', '')
 		self.setDefaultParameter('local_port', 0)
+		self.setDefaultParameter('strict_mode', False)
 
 	# LocalProbe reimplementation)
 	def onTriMap(self):
@@ -97,8 +98,20 @@ class RtspClientProbe(ProbeImplementationManager.ProbeImplementation):
 				message['version'] = self['version']
 			if not message.has_key('headers'):
 				message['headers'] = {}
-			if not message['headers'].has_key('cseq'):
-				message['headers']['cseq'] = self.generateCSeq()
+			
+			cseq = None
+
+			# Non-strict mode: CSeq management: we add one if none is found
+			if not self['strict_mode']:
+				# Look for a CSeq
+				for k, v in message['headers'].items():
+					if k.lower() == 'cseq':
+						cseq = str(v)
+				if cseq is None:
+					# Generate and set a cseq
+					message['headers']['CSeq'] = self.generateCSeq()
+					cseq = str(message['headers']['CSeq'])
+
 			try:
 				encodedMessage = CodecManager.encode('rtsp.request', message)
 			except Exception, e:
@@ -112,7 +125,7 @@ class RtspClientProbe(ProbeImplementationManager.ProbeImplementation):
 			self._connection.send(encodedMessage)
 			self.logSentPayload(encodedMessage.split('\r\n')[0], encodedMessage)
 			# Now wait for a response asynchronously
-			self.waitResponse(cseq = str(message['headers']['cseq']))
+			self.waitResponse(cseq = cseq)
 		except Exception, e:
 			raise ProbeImplementationManager.ProbeException('Unable to send RTSP request: %s' % str(e))
 			
@@ -157,6 +170,7 @@ class RtspClientProbe(ProbeImplementationManager.ProbeImplementation):
 	
 	def reset(self):
 		if self._responseThread:
+			self.getLogger().debug("Stopping response thread...")
 			self._responseThread.stop()
 		self.disconnect()
 		self._responseThread = None
@@ -164,8 +178,8 @@ class RtspClientProbe(ProbeImplementationManager.ProbeImplementation):
 	def waitResponse(self, cseq):
 		"""
 		Creates a thread, wait for the response.
-		@type  cseq: string
-		@param cseq: the expected cseq in response
+		@type  cseq: string, or None
+		@param cseq: the expected CSeq in response. If None, let the userland checks it (strict mode)
 		"""
 		self._responseThread = ResponseThread(self, self._connection, cseq)
 		self._responseThread.start()
@@ -191,7 +205,7 @@ class ResponseThread(threading.Thread):
 					decodedMessage = None
 					try:
 						self._probe.getLogger().debug('data received (bytes %d), decoding attempt...' % len(buf))
-						decodedMessage = CodecManager.decode('rtsp.response', buf)
+						decodedMessage = CodecManager.decode('rtsp.response', buf, lower_case = (not self._probe['strict_mode']))
 					except Exception, e:
 						# Incomplete message. Wait for more data.
 						self._probe.getLogger().debug('unable to decode: %s' % str(e))
@@ -200,16 +214,30 @@ class ResponseThread(threading.Thread):
 					if decodedMessage:
 						# System log, always
 						self._probe.logReceivedPayload(buf.split('\r\n')[0], buf)
-						# Conditional enqueing
-						if decodedMessage['headers'].get('cseq', None) == self._cseq:
-							self._probe.getLogger().info('message decoded, enqueuing...')
+						
+						# Should we check the cseq locally ?
+						if self._cseq is None:
+							# Let the user check the cseq
+							self._probe.getLogger().info('message decoded, enqueuing without checking CSeq...')
 							self._probe.triEnqueueMsg(decodedMessage)
 							self._stopEvent.set()
 						else:
-							self._probe.getLogger().warning('Invalid cseq received. Not enqueuing, ignoring message')
-							buf = ''
-							decodedMessage = None
-							# Wait for a possible next message...
+							# Conditional enqueing - let's found the cseq
+							cseq = None
+							for k, v in decodedMessage['headers'].items():
+								# Stop on the first cseq header found
+								if k.lower() == 'cseq':
+									cseq = v
+									break
+							if cseq == self._cseq:
+								self._probe.getLogger().info('message decoded, CSeq matched, enqueuing...')
+								self._probe.triEnqueueMsg(decodedMessage)
+								self._stopEvent.set()
+							else:
+								self._probe.getLogger().warning('Invalid CSeq received. Not enqueuing, ignoring message')
+								buf = ''
+								decodedMessage = None
+								# Wait for a possible next message...
 
 					elif not read:
 						# Message not decoded, nothing to read anymore.

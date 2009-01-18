@@ -18,6 +18,10 @@
 # The main module that provides ATS with entry points to
 # TTCN-3 logic.
 #
+#
+# Usable, stable API for ATS:
+# - only function names in lower_case
+# - and not starting with a _
 ##
 
 import TestermanSA
@@ -53,7 +57,7 @@ none_ = VERDICT_NONE
 _GeneratorBaseId = 0
 _GeneratorBaseIdMutex = threading.RLock()
 
-def getNewId():
+def _getNewId():
 	"""
 	Generates a new unique ID.
 
@@ -244,7 +248,7 @@ class Timer:
 		self._defaultDuration = duration
 		self._TIMEOUT_EVENT = { 'event': 'timeout', 'timer': self }
 		if self._name is None:
-			self._name = "timer_%d" % getNewId()
+			self._name = "timer_%d" % _getNewId()
 		
 		self.TIMEOUT = _BranchCondition(_getSystemQueue(), self._TIMEOUT_EVENT)
 		getLocalContext().timers.append(self)
@@ -277,7 +281,7 @@ class Timer:
 		if duration is None:
 			raise TestermanTtcn3Exception("No duration set for this timer")
 
-		self._timerId = getNewId()
+		self._timerId = _getNewId()
 		_registerTimer(self._timerId, self)
 		TestermanPA.triStartTimer(self._timerId, duration)
 
@@ -375,7 +379,7 @@ class TestComponent:
 		"""
 		self._name = name
 		if not self._name:
-			self._name = "tc_%d" % getNewId()
+			self._name = "tc_%d" % _getNewId()
 
 		self._mutex = threading.RLock()
 
@@ -730,7 +734,7 @@ class Port:
 	def __init__(self, tc, name = None):
 		self._name = name
 		if not self._name:
-			self._name = "port_%d" % getNewId()
+			self._name = "port_%d" % _getNewId()
 		self._mutex = threading.RLock()
 
 		# The internal port's message queue
@@ -939,9 +943,9 @@ class TestCase:
 	"""
 	Main TestCase class, representing a TTCN-3 testcase.
 	"""
-	def __init__(self, title = '', idSuffix = None):
+	def __init__(self, title = '', id_suffix = None):
 		self._title = title
-		self._idSuffix = idSuffix
+		self._idSuffix = id_suffix
 		self._description = self.__doc__
 		self._mutex = threading.RLock()
 		self._name = self.__class__.__name__
@@ -1069,8 +1073,8 @@ class TestCase:
 
 			# Initialize static connections
 			# (and testerman bindings according to the system configuration)
-			if getCurrentTestAdapterConfiguration():
-				tsiPortList = getCurrentTestAdapterConfiguration()._getTsiPortList()
+			if _getCurrentTestAdapterConfiguration():
+				tsiPortList = _getCurrentTestAdapterConfiguration()._getTsiPortList()
 			else:
 				tsiPortList = []
 			TestermanSA.triExecuteTestCase(str(self), tsiPortList)
@@ -1549,7 +1553,7 @@ def alt(alternatives):
 	#  2.1 Pop the first message in its queue (if any)
 	#  2.2 Compare it to the templates contained in its associated alternative's conditions, once we checked that the guard was satisfied
 	#  2.3 If we have a template match (the first one for the list of alternatives)
-	#      - select the branch: execute the associated actions. If an action evaluates to STOP, stop executing further actions,
+	#      - select the branch: execute the associated actions. If an action evaluates to RETURN, stop executing further actions,
 	#        and leave the alt. If one evaluates to REPEAT, stop executing further actions, and repeat the alt() from start.
 	#        If we have no other actions to execute, leave the alt.
 	#      If this is a mismatch, do nothing, just compare to the next alternative's conditions.
@@ -1558,7 +1562,7 @@ def alt(alternatives):
 	# 
 	# The system queue is handled differently:
 	# - unmatched messages are not consumed, but kept in the queue. This is not the case for "userland ports".
-	# - REPEAT, STOP, are not supported for system queue events.
+	# - REPEAT, RETURN, are not supported for system queue events.
 
 	# Gets some basic things to intercept whenever we enter an alt, such as STOP_COMMAND and KILL_COMMAND
 	# through the system queue.	
@@ -1566,7 +1570,7 @@ def alt(alternatives):
 	for a in additionalInternalAlternatives:
 		alternatives.insert(0, a)
 	
-	logInternal("Entering alt():\n%s" % alternatives)
+#	logInternal("Entering alt():\n%s" % alternatives)
 	
 	# Step 1.
 	# Alternatives per port
@@ -1645,7 +1649,7 @@ def alt(alternatives):
 				
 			else:
 				# This is a normal port. We always consume the popped message, 
-				# support for STOP and REPEAT "keywords" in actions, etc.
+				# support for RETURN and REPEAT "keywords" in actions, etc.
 				message = None
 				port._lock()
 				if port._messageQueue:
@@ -1684,7 +1688,7 @@ def alt(alternatives):
 								if action == REPEAT:
 									repeat = True
 									break
-								elif action == STOP:
+								elif action == RETURN:
 									return
 							# Break the loop on guard-validated alternatives for this port
 							break
@@ -1708,8 +1712,8 @@ def alt(alternatives):
 def REPEAT():
 	return REPEAT
 
-def STOP():
-	return STOP
+def RETURN():
+	return RETURN
 
 
 ################################################################################
@@ -1759,18 +1763,34 @@ class TestAdapterConfiguration:
 	def __init__(self, name):
 		self._name = name
 		self._tac = TestermanSA.TestAdapterConfiguration(name = name)
-		registerAvailableTestAdapterConfiguration(name, self)
+		_registerAvailableTestAdapterConfiguration(name, self)
 	
 	def bindByUri(self, tsiPort, uri, type_, **kwargs):
+		return self._tac.bindByUri(tsiPort, uri, type_, **kwargs)
+
+	def bind(self, tsiPort, uri, type_, **kwargs):
+		"""
+		The "default" binding method: by URI
+		"""
 		return self._tac.bindByUri(tsiPort, uri, type_, **kwargs)
 	
 	def _getTsiPortList(self):
 		return self._tac.getTsiPortList()
 
-def registerAvailableTestAdapterConfiguration(name, tac):
-	_AvailableTestAdapterConfigurations[name] = tac
+def with_test_adapter_configuration(name):
+	"""
+	Testerman API function.
+	
+	Activates a Test Adapter Configuration:
+	this installs the bindings (and desinstalls the previous ones, if any).
+	"""
+	return useTestAdapterConfiguration(name)
 
 def useTestAdapterConfiguration(name):
+	"""
+	Activates a Test Adapter Configuration:
+	this installs the bindings (and desinstalls the previous ones, if any).
+	"""
 	global _CurrentTestAdapterConfiguration
 	if _CurrentTestAdapterConfiguration:
 		_CurrentTestAdapterConfiguration._tac._uninstall()
@@ -1781,7 +1801,10 @@ def useTestAdapterConfiguration(name):
 	else:
 		raise TestermanException("Unknown Test Adapter Configuration %s" % name)
 
-def getCurrentTestAdapterConfiguration():
+def _registerAvailableTestAdapterConfiguration(name, tac):
+	_AvailableTestAdapterConfigurations[name] = tac
+
+def _getCurrentTestAdapterConfiguration():
 	return _CurrentTestAdapterConfiguration	
 	
 	
@@ -2565,15 +2588,15 @@ def _actionPerformedByUser():
 # convenience functions: log level management
 ################################################################################
 
-def enableDebugLogs():
+def enable_debug_logs():
 	TestermanTCI.enableDebugLogs()
 
-def disableDebugLogs():
+def disable_debug_Logs():
 	TestermanTCI.enableLogs()
 
-def disableLogs():
+def disable_logs():
 	TestermanTCI.disableLogs()
 
-def enableLogs():
+def enable_logs():
 	TestermanTCI.enableLogs()
 

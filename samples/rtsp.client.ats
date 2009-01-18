@@ -19,7 +19,7 @@
 # to update the testcase (and the test adapter configuration).
 ##
 
-TestermanTCI.enableDebugLogs()
+enable_debug_logs()
 
 """
 	type record RtspRequest
@@ -92,7 +92,7 @@ class TC_RTSP_CLIENT(TestCase):
 		t.start()
 		
 		port.send({ 'method': 'DESCRIBE', 'uri': 'rtsp://mafreebox.freebox.fr/fbxtv_pub/stream?namespace=1&service=201&flavour=sd', 
-			'headers': {'accept': 'application/sdp'} })
+			'headers': {'Accept': 'application/sdp'} })
 		
 		# we should get a response - we expect a 200 OK with some SDP in it, with at least one video media stream.
 		
@@ -114,7 +114,45 @@ class TC_RTSP_CLIENT(TestCase):
 			],
 		])
 			
+class TC_RTSP_CLIENT_STRICT(TestCase):
+	"""
+	Sends a DESCRIBE request to a known server,
+	and expect a valid 200 OK response with some SDP describing at least one video media.
+	
+	Uses a rtsp.client probe configured for strict mode, i.e:
+		- CSeq are not managed by the probe, but must be implemented in the testcase itself,
+		- Headers are case sensitive (not transformed to lowercase)
+	"""
+	def body(self, uri = "/"):
+		port = self.mtc['port']
+		port_map(port, self.system['rtsp'])
 
+		# We have 5s to complete the testcase
+		t = Timer(5.0, name = "Global watchdog")
+		t.start()
+		
+		port.send({ 'method': 'DESCRIBE', 'uri': 'rtsp://mafreebox.freebox.fr/fbxtv_pub/stream?namespace=1&service=201&flavour=sd', 
+			'headers': {'Accept': 'application/sdp', 'CSeq': '10'} })
+		
+		# we should get a response - we expect a 200 OK with some SDP in it, with at least one video media stream.
+		
+		response = { 'status': 200, 'headers': {'Content-Type': 'application/sdp', 'CSeq': '10'}, 
+			'body': with_('sdp', { 'media': superset({ 'name_transport': pattern('^video .*')}) } )
+			}
+		
+		alt([
+			[ port.RECEIVE(response),
+				lambda: setverdict("pass"),
+			],
+			[ port.RECEIVE(),
+				lambda: log("Received something else than expected"),
+				lambda: setverdict("fail"),
+			],
+			[ t.TIMEOUT, 
+				lambda: setverdict("fail"),
+				lambda: stop()
+			],
+		])
 
 ##
 # Test Adapter Configurations
@@ -123,18 +161,18 @@ class TC_RTSP_CLIENT(TestCase):
 conf = TestAdapterConfiguration('free using local probe')
 # For the curious: transport = 'udp' is not yet implemented
 # The default port is 554. You may overwrite it here with a port = 80 or whatever
-conf.bindByUri('rtsp', 'probe:rtsp01', 'rtsp.client', host = 'mafreebox.freebox.fr', version = 'RTSP/1.0', transport = 'tcp')
+conf.bind('rtsp', 'probe:rtsp01', 'rtsp.client', host = 'mafreebox.freebox.fr', version = 'RTSP/1.0', transport = 'tcp')
 
 # Same test adapter, but using a remote probe
-conf = TestAdapterConfiguration('free using remote probe')
-conf.bindByUri('rtsp', 'probe:rtsp01@localhost', 'rtsp.client', host = 'mafreebox.freebox.fr', version = 'RTSP/1.0', transport = 'tcp')
+conf = TestAdapterConfiguration('free using remote probe, strict mode')
+conf.bind('rtsp', 'probe:rtsp01@localhost', 'rtsp.client', host = 'mafreebox.freebox.fr', version = 'RTSP/1.0', transport = 'tcp', strict_mode = True)
 
 ##
 # Control definition
 ##
 
-useTestAdapterConfiguration('free using local probe')
+with_test_adapter_configuration('free using local probe')
 TC_RTSP_CLIENT().execute()
 
-useTestAdapterConfiguration('free using remote probe')
-TC_RTSP_CLIENT().execute()
+with_test_adapter_configuration('free using remote probe, strict mode')
+TC_RTSP_CLIENT_STRICT().execute()

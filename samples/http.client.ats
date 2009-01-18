@@ -13,7 +13,7 @@
 #
 ##
 
-#TestermanTCI.enableDebugLogs()
+enable_debug_logs()
 
 """
 type record HttpRequest
@@ -83,10 +83,10 @@ class TC_HTTP_CLIENT(TestCase):
 ##
 
 conf = TestAdapterConfiguration('google')
-conf.bindByUri('web', 'probe:http01', 'http.client', host = "www.google.com", version = 'HTTP/1.0')
+conf.bind('web', 'probe:http01', 'http.client', host = "www.google.com", version = 'HTTP/1.0')
 
 conf = TestAdapterConfiguration('google via remote probe')
-conf.bindByUri('web', 'probe:http01@localhost', 'http.client', host = "www.google.com", version = 'HTTP/1.0')
+conf.bind('web', 'probe:http01@localhost', 'http.client', host = "www.google.com", version = 'HTTP/1.0')
 
 ##
 # Control definition
@@ -97,8 +97,8 @@ conf.bindByUri('web', 'probe:http01@localhost', 'http.client', host = "www.googl
 # for google, we'll need to set a target host in the HTTP headers,
 # otherwise we get a redirect.
 
-useTestAdapterConfiguration('google')
+with_test_adapter_configuration('google')
 TC_HTTP_CLIENT().execute(host = 'www.google.fr2')
 
-useTestAdapterConfiguration('google via remote probe')
+with_test_adapter_configuration('google via remote probe')
 TC_HTTP_CLIENT().execute(host = 'www.google.fr2')
