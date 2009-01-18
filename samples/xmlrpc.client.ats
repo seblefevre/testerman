@@ -1,0 +1,100 @@
+# __METADATA__BEGIN__
+# <?xml version="1.0" encoding="utf-8" ?>
+# <metadata version="1.0">
+# <description>description</description>
+# <prerequisites>prerequisites</prerequisites>
+# <parameters>
+# </parameters>
+# </metadata>
+# __METADATA__END__
+##
+# Sample script, demonstrating (and basically testing)
+# the xmlrpc.client probe.
+#
+# To run this test, you should run a pyagent with name 'localhost'
+# (or change the probe URI in test adapter configurations).
+# for instance, using ./pyagent.sh --name localhost
+#
+##
+
+enable_debug_logs()
+
+"""
+
+type union XmlRpcOperation
+{
+	anytype operation // dynamic choice according to the XML RPC API you're adressing
+}
+
+type union XmlRpcResponse
+{
+	Fault fault,
+	anytype response
+}
+
+type record Fault
+{
+	integer code,
+	charstring string
+}
+
+type port XmlRpcClientPortType message
+{
+	in  XmlRpcOperation;
+	out XmlRpcResponse;
+}
+"""
+
+class TC_XMLRPC_CLIENT(TestCase):
+	"""
+	This test requests the Testerman Server version using its Ws API,
+	implemented in XML-RPC.
+	It expects a version in format A.B. 
+	"""
+	def body(self):
+		xmlrpc = self.mtc['xmlrpc']
+		port_map(xmlrpc, self.system['testerman_server'])
+
+		# We have 5s to complete the testcase
+		t = Timer(5.0, name = "Global watchdog")
+		t.start()
+		
+		xmlrpc.send( ('getWsVersion', {}) )
+
+		# we should get a response
+		alt(
+		[
+			[ xmlrpc.RECEIVE(('response', pattern(r'[0-9]+\.[0-9]+'))),
+				lambda: setverdict("pass"),
+			],
+			[ xmlrpc.RECEIVE(),
+				lambda: log("Received something else than expected"),
+				lambda: setverdict("fail"),
+			],
+			[ t.TIMEOUT, 
+				lambda: setverdict("fail"),
+				lambda: stop()
+			],
+		]
+		)
+
+
+##
+# Test Adapter Configurations
+##
+
+conf = TestAdapterConfiguration('local')
+conf.bind('testerman_server', 'probe:xmlrpc', 'xmlrpc.client', server_url = 'http://localhost:8080')
+
+conf = TestAdapterConfiguration('remote')
+conf.bind('testerman_server', 'probe:xmlrpc@localhost', 'xmlrpc.client', server_url = 'http://localhost:8080')
+
+
+##
+# Control definition
+##
+with_test_adapter_configuration('local')
+TC_XMLRPC_CLIENT().execute()
+
+with_test_adapter_configuration('remote')
+TC_XMLRPC_CLIENT().execute()
