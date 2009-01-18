@@ -50,7 +50,7 @@ class RtspClientProbe(ProbeImplementationManager.ProbeImplementation):
 		charstring body,
 	}
 
-	type portRtspClientPortType
+	type port RtspClientPortType message
 	{
 		in RtspRequest;
 		out RtspResponse;

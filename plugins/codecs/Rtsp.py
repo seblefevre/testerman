@@ -30,14 +30,14 @@ class RtspRequestCodec(CodecManager.Codec):
 	"""
 	Encode/decode from to:
 	
-	type record RtspRequest
-	{
-		charstring method,
-		charstring uri,
-		charstring version optional, // default: RTSP/1.0
-		record { charstring <header name>* } headers optional, // default: {}
-		charstring body optional, // default: ''
-	}
+type record RtspRequest
+{
+	charstring method,
+	charstring uri,
+	charstring version optional, // default: RTSP/1.0
+	record { charstring <header name>* } headers optional, // default: {}
+	charstring body optional, // default: ''
+}
 	
 	Automatically computes the content-length if not provided.
 
@@ -48,11 +48,12 @@ class RtspRequestCodec(CodecManager.Codec):
 	def __init__(self):
 		CodecManager.Codec.__init__(self)
 		self.setDefaultProperty('lower_case', False)
+		self.setDefaultProperty('version', 'RTSP/1.0')
 	
 	def encode(self, template):
 		method = template.get('method')
 		uri = template['uri']
-		version = template.get('version', 'RTSP/1.0')
+		version = template.get('version', self['version'])
 		headers = template.get('headers', {})
 		body = template.get('body', '')
 		
@@ -116,14 +117,14 @@ class RtspResponseCodec(CodecManager.Codec):
 	"""
 	Encode/decode from to:
 	
-	type record RtspResponse
-	{
-		charstring version optional, // default: RSTP/1.0
-		integer status,
-		charstring reason,
-		record { charstring <header name>* } headers optional, // default: {}
-		charstring body optional, // default: ''
-	}
+type record RtspResponse
+{
+	charstring version optional, // default: RSTP/1.0
+	integer status,
+	charstring reason,
+	record { charstring <header name>* } headers optional, // default: {}
+	charstring body optional, // default: ''
+}
 	
 	Automatically computes the content-length if not provided.
 	
@@ -134,11 +135,12 @@ class RtspResponseCodec(CodecManager.Codec):
 	def __init__(self):
 		CodecManager.Codec.__init__(self)
 		self.setDefaultProperty('lower_case', False)
+		self.setDefaultProperty('version', 'RTSP/1.0')
 	
 	def encode(self, template):
 		status = template['status']
 		reason = template['reason']
-		version = template.get('version', 'RTSP/1.0')
+		version = template.get('version', self[version])
 		headers = template.get('headers', {})
 		body = template.get('body', '')
 		
