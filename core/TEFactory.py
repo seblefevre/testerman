@@ -24,6 +24,7 @@
 ##
 
 import ConfigManager
+import FileSystemManager
 import JobTools
 import Versions
 
@@ -33,6 +34,8 @@ import pickle
 import time
 import tokenize
 import StringIO
+import modulefinder
+import imp
 
 
 def getLogger():
@@ -446,5 +449,86 @@ def getDefaultSession(ats):
 		if m:
 			return m.getDefaultSessionDict()
 	return None
-	
 
+def getDependencyFilenames(ats, atsPath = None):
+	"""
+	Returns a list of (user) module filenames (including their own dependencies) the ATS depends on.
+
+	NB: this works only because user modules are files only, not packages.
+	"""
+	ret = []
+	# Bootstrap the deps (stored as (list of imported modules, path of the importing file) )
+	deps = [ (d, atsPath) for d in _getDirectDependencies(ats) ]
+	
+	analyzedDeps = []
+	
+	while len(deps):
+		dep, fromFilePath = deps.pop()
+		# Some non-userland files - not resolved to build the TE userland package
+		if dep in [ 'Testerman' ]:
+			continue
+
+		# Skip already analyzed deps (analyzed from this very path,
+		# since the same dep name, from different paths, may resolved to
+		# different things)
+		if (dep, fromFilePath) in analyzedDeps:
+			continue
+
+		getLogger().debug("Analyzing dependency %s..." % (dep))
+
+		# Ordered list of filenames within the docroot that could provide the dependency:
+		# (module path)
+		# - first search from the local file path, if provided,
+		# - then search from the userland module paths (limited to '/repository/' for now)
+		modulePaths = []
+		# First, try a local module (relative path) (same dir as the currently analyzed file)
+		if fromFilePath:
+			modulePaths.append(fromFilePath)
+		for modulePath in [ '/repository' ]:
+			modulePaths.append(modulePath)
+
+		getLogger().debug("Analyzing dependency %s, search path: %s..." % (dep, modulePaths))
+
+		found = None
+		depSource = None
+		for path in modulePaths:
+			depFilename = '%s/%s.py' % (path, dep.replace('.', '/'))
+			try:
+				depSource = FileSystemManager.instance().read(depFilename)
+			except Exception:
+				pass
+			if depSource is not None:
+				found = depFilename
+				break
+		if not found:
+			raise Exception('Missing module: %s is not available in the repository (search path: %s)' % (dep, modulePaths))
+
+		# OK, we found a file.
+		if not depFilename in ret:
+			ret.append(depFilename)
+
+		# Now, analyze it and add new dependencies to analyze
+		fromFilePath = '/'.join(depFilename.split('/')[:-1])
+		for d in _getDirectDependencies(depSource):
+			if not d in deps and d != dep:
+				deps.append((d, fromFilePath))
+
+		# Flag the dep as analyzed - from this path (since it may lead to another filename
+		# when evaluated from another path)
+		analyzedDeps.append((dep, fromFilePath))
+
+	return ret	
+
+def _getDirectDependencies(source):
+	"""
+	Returns a list of direct dependencies (source is an ATS/Module source code),
+	as a list of module names (not filenames !)
+	"""
+	mf = modulefinder.ModuleFinder()
+	fp = StringIO.StringIO(source)
+	mf.load_module('__main__', fp, '<string>', ("", "r", imp.PY_SOURCE))
+
+	ret = []	
+	for module in mf.any_missing():
+		ret.append(module)
+	return ret

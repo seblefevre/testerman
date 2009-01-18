@@ -27,6 +27,7 @@
 
 import ConfigManager
 import EventManager
+import FileSystemManager
 import TestermanMessages as Messages
 import TEFactory
 import Tools
@@ -415,6 +416,26 @@ class AtsJob(Job):
 
 		# Build the TE
 		# TODO: (maybe): shoud we add a "preparing/compiling" state ?
+		'''
+		getLogger().info("%s: resolving dependencies..." % str(self))
+		try:
+			# (Dirty) trick: ATSes that are not saved in the repository have no atspath on it.
+			# Unfortunately, there is no way to know if the ATS scheduled via Ws was on the
+			# repo or was only a local file.
+			# By default, we consider the atsPath to be /repository/ + the path indicated in
+			# the ATS name. So the name (constructed by the client) should follow some rules 
+			# to make it work correctly.
+			atsPath = '/%s/%s' % (ConfigManager.get('constants.repository'), '/'.join(self.getName().split('/')[:-1]))
+			deps = TEFactory.getDependencyFilenames(self._ats, atsPath)
+		except Exception, e:
+			getLogger().error("%s: unable to resolve dependencies: %s" % (str(self), str(e)))
+			self.setResult(25)
+			self.setState(self.STATE_ERROR)
+			return self.getResult()
+		
+		getLogger().info("%s: resolved deps:\n%s" % (str(self), deps))
+		'''
+
 		getLogger().info("%s: creating TE..." % str(self))
 		te = TEFactory.createTestExecutable(self.getName(), self._ats)
 		
@@ -450,7 +471,7 @@ class AtsJob(Job):
 			pass
 		# self._logFilename is relative to the docroot
 		self._logFilename = "%s/%s.log" % (baseDocRootDirectory, baseFilename)
-		# while logFilename is not
+		# whereas logFilename is not
 		logFilename = "%s/%s.log" % (baseDirectory, baseFilename)
 		teFilename = "%s/%s.testerman" % (baseDirectory, baseFilename)
 		try:
@@ -462,6 +483,31 @@ class AtsJob(Job):
 			self.setResult(20)
 			self.setState(self.STATE_ERROR)
 			return self.getResult()
+		
+		# Copy dependencies to the TE base dir
+		'''
+		getLogger().info("%s: preparing dependencies..." % (str(self)))
+		try:
+			for filename in deps:
+				# Target, local, absolute filename for the dep
+				targetFilename = '%s/%s' % (baseDirectory, filename)
+
+				r = FileSystemManager.instance().read(filename)
+				# Create required directory structure, if any
+				try:
+					os.makedirs(os.path.split(targetFilename)[0])
+				except:
+					pass
+
+				f = open(targetFilename, 'w')
+				f.write(r)
+				f.close()
+		except Exception, e:
+			getLogger().error('%s: unable to create dependency %s to "%s": %s' % (str(self), filename, targetFilename, str(e)))
+			self.setResult(20)
+			self.setState(self.STATE_ERROR)
+			return self.getResult()
+		'''
 
 		# Prepare input/output session files
 		baseSessionDirectory = ConfigManager.get('testerman.tmp_root')

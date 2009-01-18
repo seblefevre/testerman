@@ -469,7 +469,7 @@ class TestComponent:
 		logTestComponentStarted(id_ = str(self), behaviour = behaviour._name)
 		try:
 			getLocalContext().setTc(self)
-			behaviour.execute(**kwargs)
+			behaviour._execute(**kwargs)
 			# Push the local verdict to the testcase
 			self._updateTestCaseVerdict()
 
@@ -606,7 +606,7 @@ class TestComponent:
 
 	# TTCN-3 compliant interface
 
-	def log(self, msg):
+	def _log(self, msg):
 		logUser(tc = unicode(self), message = unicode(msg))
 
 	def alive(self):
@@ -903,29 +903,15 @@ class Behaviour:
 		"""
 		return self._ptc[name]
 	
-	def setverdict(self, verdict):
-		"""
-		Diversion to the PTC setverdict.
-		Provided for convenience - DEPRECATED.
-		"""
-		self._ptc._setverdict(verdict)
-	
-	def getverdict(self):
-		"""
-		Diversion to the PTC getverdict.
-		Provided for convenience - DEPRECATED.
-		"""
-		return self._ptc._getverdict()
-
-	def log(self, msg):
+	def _log(self, msg):
 		"""
 		Diversion to the associated PTC log.
 		"""
-		self._ptc.log(msg)
+		self._ptc._log(msg)
 
 	# body does not exist in the base class, but must be implemented in the user class.
 	
-	def execute(self, **kwargs):
+	def _execute(self, **kwargs):
 		"""
 		Executes the body part.
 		Or nothing if no body has been defined.
@@ -943,8 +929,10 @@ class TestCase:
 	"""
 	Main TestCase class, representing a TTCN-3 testcase.
 	"""
-	def __init__(self, title = '', id_suffix = None):
+	def __init__(self, title = None, id_suffix = None):
 		self._title = title
+		if not self._title:
+			self._title = ''
 		self._idSuffix = id_suffix
 		self._description = self.__doc__
 		self._mutex = threading.RLock()
@@ -1019,7 +1007,7 @@ class TestCase:
 		"""
 		return self._mtc._getverdict()
 
-	def setDescription(self, description):
+	def set_description(self, description):
 		"""
 		Sets an extended, possibly dynamic description for the testcase.
 		By default, the description is the testcase autodoc.
@@ -1088,7 +1076,7 @@ class TestCase:
 			logInternal("Testcase explicitely stop()'d")
 
 		except Exception:
-			self.setverdict(VERDICT_ERROR)
+			self._mtc._setverdict(VERDICT_ERROR)
 			log("Testcase stopped on error:\n%s" % getBacktrace())
 		
 		try:
@@ -1114,7 +1102,7 @@ class TestCase:
 
 		return self._mtc._getverdict()
 
-	def log(self, message):
+	def _log(self, message):
 		"""
 		Logging at testcase level is equivalent to logging at MTC level.
 		We only support logging of simple messages.
@@ -1122,7 +1110,7 @@ class TestCase:
 		@type  message: unicode/string
 		@param message: the message to log
 		"""
-		self._mtc.log(message)
+		self._mtc._log(message)
 
 
 ###############################################################################
@@ -1242,7 +1230,7 @@ def log(msg):
 	tc = getLocalContext().getTc()
 	if tc:
 		# Logging while a test component is executing (either mtc or ptc)
-		tc.log(msg)
+		tc._log(msg)
 	else:
 		# control part logging
 		logUser(msg)
@@ -2078,17 +2066,17 @@ class complement(ConditionTemplate):
 	The TTCN-3 equivalent is 'complement'.
 	Equivalent to not_(in_)
 	"""
-	def __init__(self, *template):
+	def __init__(self, *templates):
 		# template is a list of templates (wildcards accepted)
-		self._template = template
+		self._templates = templates
 	def match(self, message):
-		for element in self._template:
+		for element in self._templates:
 			(m, _) = templateMatch(message, element)
 			if m:
 				return False
 		return True
 	def __repr__(self):
-		return "(complements %s)" % unicode(self._template)
+		return "(complements %s)" % unicode(self._templates)
 
 class and_(ConditionTemplate):
 	"""
@@ -2136,14 +2124,14 @@ _AtsVariables = {}
 
 _VariableMutex = threading.RLock()
 
-def get_variable(name, defaultValue = None):
+def get_variable(name, default_value = None):
 	# Fallback to defaultValue for invalid variable names ?
-	ret = defaultValue
+	ret = default_value
 	_VariableMutex.acquire()
 	if name.startswith('PX_'):
-		ret = _SessionVariables.get(name, defaultValue)
+		ret = _SessionVariables.get(name, default_value)
 	elif name.startswith('P_') :
-		ret = _AtsVariables.get(name, defaultValue)
+		ret = _AtsVariables.get(name, default_value)
 	_VariableMutex.release()
 	return ret
 
