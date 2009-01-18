@@ -103,7 +103,7 @@ class TC_SIMPLE_CONNECTION(TestCase):
 	"""
 	def body(self):
 		log("Testerman autotest: implicit MTC, simple port communications")
-		self.setDescription("A description. Overriding the default one.")
+		self.set_description("A description. Overriding the default one.")
 		
 		# Let's define a PTC
 		ptc01 = self.create()

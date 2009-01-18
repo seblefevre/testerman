@@ -136,7 +136,7 @@ class TC_RTSP_CLIENT_STRICT(TestCase):
 		
 		# we should get a response - we expect a 200 OK with some SDP in it, with at least one video media stream.
 		
-		response = { 'status': 200, 'headers': {'Content-Type': 'application/sdp', 'CSeq': '10'}, 
+		response = { 'status': 200, 'headers': {'Content-Type': 'application/sdp', 'Cseq': '10'}, 
 			'body': with_('sdp', { 'media': superset({ 'name_transport': pattern('^video .*')}) } )
 			}
 		
