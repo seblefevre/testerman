@@ -384,7 +384,7 @@ sys.exit(ReturnCode)
 	return ''.join(te)
 
 	
-def createCommandLine(jobId, teFilename, logFilename, inputSessionFilename, outputSessionFilename):
+def createCommandLine(jobId, teFilename, logFilename, inputSessionFilename, outputSessionFilename, modulePaths):
 	"""
 	@rtype: a dict { 'executable': string, 'env': dict[string] of strings, 'args': list of strings }
 	@returns: the info needed to an execve or the like to execute the TE.
@@ -399,10 +399,10 @@ def createCommandLine(jobId, teFilename, logFilename, inputSessionFilename, outp
 	ret['executable'] = pythonInterpreter
 
 	#	Env
-	# User modules are in the repository, shared "administrative" modules are in server_path/modules
-	pythonPath = '%(root)s:%(docroot)s/%(repository)s:%(root)s/modules' % dict(
-		root = ConfigManager.get("testerman.server_path"), docroot = ConfigManager.get("testerman.document_root"),
-		repository = ConfigManager.get("constants.repository"))
+	# User modules are in the module paths, shared "administrative" modules are in server_path/modules
+	pythonPath = '%(root)s:%(root)s/modules:%(modulepaths)s' % dict(
+		root = ConfigManager.get("testerman.server_path"),
+		modulepaths = ':'.join(modulePaths))
 	libraryPath = '%(root)s:$LD_LIBRARY_PATH' % dict(root = ConfigManager.get("testerman.server_path"))
 	ret['env'] = { 'LD_LIBRARY_PATH': libraryPath, 'PYTHONPATH': pythonPath }
 

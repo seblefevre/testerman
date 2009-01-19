@@ -439,7 +439,7 @@ class WLogViewer(QWidget):
 	
 	def isJobCompleted(self):
 		if self.isRealtimeMode():
-			return self.jobState in [ 'complete', 'completed', 'killed', 'cancelled' ]
+			return self.jobState in [ 'complete', 'completed', 'killed', 'cancelled', 'error' ]
 		return True
 
 	def onSubscribedEvent(self, event):

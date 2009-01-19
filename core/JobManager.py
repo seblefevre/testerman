@@ -400,23 +400,33 @@ class AtsJob(Job):
 		The default ones are extracted (during the TE preparation) from the
 		metadata embedded within the ATS source.
 		
+		The TE execution tree is this one:
+		execution root:
+		%(docroot)/%(archives)/%(ats_name)/
+		contains:
+			%Y%m%d-%H%M%S_%(user).log : the execution logs
+			%Y%m%d-%H%M%S_%(user) : directory containing the TE package:
+				te_mtc.py : the main TE
+				repository/... : the (userland) modules the TE depends on
+				This directory is planned to be packaged to be executed on
+				any Testerman environment. (it may still evolve until so)
+		
+		The TE execution is performed from the directory containing the TE package.
+		The module search path is set to:
+		- first the path of the ATS (for local ATSes, defaulted to 'repository') as a docroot-path,
+		- then 'repository'
+		- then the Testerman system include paths
+		
 		@type  inputSession: dict[unicode] of unicode
 		@param inputSession: the override session parameters.
 		
 		@rtype: int
 		@returns: the TE return code
 		"""
-		# TODO: package dependencies (user modules) so that we can reexecute the *same* TE
-		# later.
 	
-		# Archives structure:
-		# for a given job name, we track the multiple executions.
-		# ie we create archives/<name>/ and we store the execution log in it.
-		# The log filename is formatted so that is it easy to get the execution datetime and the user who ran it.
-
 		# Build the TE
 		# TODO: (maybe): shoud we add a "preparing/compiling" state ?
-		'''
+
 		getLogger().info("%s: resolving dependencies..." % str(self))
 		try:
 			# (Dirty) trick: ATSes that are not saved in the repository have no atspath on it.
@@ -432,9 +442,7 @@ class AtsJob(Job):
 			self.setResult(25)
 			self.setState(self.STATE_ERROR)
 			return self.getResult()
-		
 		getLogger().info("%s: resolved deps:\n%s" % (str(self), deps))
-		'''
 
 		getLogger().info("%s: creating TE..." % str(self))
 		te = TEFactory.createTestExecutable(self.getName(), self._ats)
@@ -460,20 +468,25 @@ class AtsJob(Job):
 			return self.getResult()
 
 		getLogger().info("%s: preparing TE files..." % str(self))
-		# Generate a file name, dump the TE to it
-		baseFilename = "%s_%s" % (time.strftime("%Y%m%d-%H%M%S", time.localtime(time.time())), self.getUsername())
+		# relative path in $docroot
 		baseDocRootDirectory = os.path.normpath("/%s/%s" % (ConfigManager.get("constants.archives"), self.getName()))
-		# Absolute dir
+		# Corresponding absolute local path
 		baseDirectory = os.path.normpath("%s%s" % (ConfigManager.get("testerman.document_root"), baseDocRootDirectory))
+		# Base name for execution log and TE package dir
+		basename = "%s_%s" % (time.strftime("%Y%m%d-%H%M%S", time.localtime(time.time())), self.getUsername())
+		# TE package dir (absolute local path)
+		tePackageDirectory = "%s/%s" % (baseDirectory, basename)
 		try:
-			os.makedirs(baseDirectory)
+			os.makedirs(tePackageDirectory)
 		except:
 			pass
-		# self._logFilename is relative to the docroot
-		self._logFilename = "%s/%s.log" % (baseDocRootDirectory, baseFilename)
-		# whereas logFilename is not
-		logFilename = "%s/%s.log" % (baseDirectory, baseFilename)
-		teFilename = "%s/%s.testerman" % (baseDirectory, baseFilename)
+
+		# self._logFilename is relative to the docroot for a retrieval via Ws
+		self._logFilename = "%s/%s.log" % (baseDocRootDirectory, basename)
+		# whereas logFilename is an absolute local path (execution)
+		logFilename = "%s/%s.log" % (baseDirectory, basename)
+		# The TE bootstrap is in main_te.py
+		teFilename = "%s/main_te.py" % (tePackageDirectory)
 		try:
 			f = open(teFilename, 'w')
 			f.write(te)
@@ -485,20 +498,29 @@ class AtsJob(Job):
 			return self.getResult()
 		
 		# Copy dependencies to the TE base dir
-		'''
 		getLogger().info("%s: preparing dependencies..." % (str(self)))
 		try:
 			for filename in deps:
+				# filename is a docroot-path
 				# Target, local, absolute filename for the dep
-				targetFilename = '%s/%s' % (baseDirectory, filename)
+				targetFilename = '%s/%s' % (tePackageDirectory, filename)
 
 				r = FileSystemManager.instance().read(filename)
-				# Create required directory structure, if any
-				try:
-					os.makedirs(os.path.split(targetFilename)[0])
-				except:
-					pass
 
+				# Create required directory structure, with __init__.py file, if needed
+				currentdir = tePackageDirectory
+				for d in os.path.split(filename)[:-1]:
+					localdir = '%s/%s' % (currentdir, d)
+					currentdir = localdir
+					try:
+						os.mkdir(localdir)
+					except: 
+						pass
+					# Touch a __init__.py file
+					f = open('%s/__init__.py' % localdir, 'w')
+					f.close()
+
+				# Now we can copy the module
 				f = open(targetFilename, 'w')
 				f.write(r)
 				f.close()
@@ -507,7 +529,6 @@ class AtsJob(Job):
 			self.setResult(20)
 			self.setState(self.STATE_ERROR)
 			return self.getResult()
-		'''
 
 		# Prepare input/output session files
 		baseSessionDirectory = ConfigManager.get('testerman.tmp_root')
@@ -515,8 +536,8 @@ class AtsJob(Job):
 			os.makedirs(baseSessionDirectory)
 		except:
 			pass
-		inputSessionFilename = "%s/%s.input.session" % (baseSessionDirectory, baseFilename)
-		outputSessionFilename = "%s/%s.output.session"  % (baseSessionDirectory, baseFilename)
+		inputSessionFilename = "%s/%s.input.session" % (baseSessionDirectory, basename)
+		outputSessionFilename = "%s/%s.output.session"  % (baseSessionDirectory, basename)
 		# Create the actual input session:
 		# the default session, from metadata, overriden with user input session values.
 		# FIXME: should we accept user input parameters that are not defined in default parameters, i.e.
@@ -556,15 +577,17 @@ class AtsJob(Job):
 			return self.getResult()
 		
 		getLogger().info("%s: building TE command line..." % str(self))
+		# module paths relative to the TE package dir
+		modulePaths = [ atsPath[1:], 'repository' ] # we strip the leading / of the atspath
 		# Get the TE command line options
-		cmd = TEFactory.createCommandLine(jobId = self.getId(), teFilename = teFilename, logFilename = logFilename, inputSessionFilename = inputSessionFilename, outputSessionFilename = outputSessionFilename)
+		cmd = TEFactory.createCommandLine(jobId = self.getId(), teFilename = teFilename, logFilename = logFilename, inputSessionFilename = inputSessionFilename, outputSessionFilename = outputSessionFilename, modulePaths = modulePaths)
 		executable = cmd['executable']
 		args = cmd['args']
 		env = cmd['env']
 		
 		# Show a human readable command line for debug purposes
 		cmdLine = '%s %s' % ( ' '.join(['%s=%s' % (x, y) for x, y in env.items()]), ' '.join(args))
-		getLogger().info("%s: executing TE using:\n%s" % (str(self), cmdLine))
+		getLogger().info("%s: executing TE using:\n%s\nEnvironment variables:%s" % (str(self), cmdLine, '\n'.join(['%s=%s' % x for x in env.items()])))
 
 		# Fork and run it
 		try:
@@ -577,7 +600,8 @@ class AtsJob(Job):
 				(retcode, sig) = divmod(os.waitpid(pid, 0)[1], 256)
 				self._tePid = None
 			else:
-				# forked child: exec with the TE
+				# forked child: exec with the TE once moved to the correct dir
+				os.chdir(tePackageDirectory)
 				os.execve(executable, args, env)
 				# Done with the child.
 		except Exception, e:
