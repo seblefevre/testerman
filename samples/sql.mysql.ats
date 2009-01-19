@@ -1,0 +1,191 @@
+# __METADATA__BEGIN__
+# <?xml version="1.0" encoding="utf-8" ?>
+# <metadata version="1.0">
+# <description>description</description>
+# <prerequisites>prerequisites</prerequisites>
+# <parameters>
+# <parameter name="PX_USERNAME" default="root" type="string"><![CDATA[MySQL user with create/drop table rights on db]]></parameter>
+# <parameter name="PX_HOST" default="localhost" type="string"><![CDATA[MySQL server]]></parameter>
+# <parameter name="PX_DATABASE" default="mysql" type="string"><![CDATA[MySQL database]]></parameter>
+# <parameter name="PX_PASSWORD" default="" type="string"><![CDATA[Associated password]]></parameter>
+# </parameters>
+# </metadata>
+# __METADATA__END__
+##
+# Sample script, demonstrating (and basically testing)
+# the sql.mysql probe.
+#
+##
+
+enable_debug_logs()
+
+class TC_SQL_MYSQL(TestCase):
+	"""
+	Runs on SystemType {
+		MySqlPortType sql_server;
+	}
+
+	type charstring SqlRequest;
+	
+	type union Result
+	{
+		charstring error,
+		record of SqlResult result
+	}
+	
+	type record SqlResult
+	{
+		any <field name>* // according to your request 
+	}
+	
+	type port MySqlPortType message
+	{
+		in SqlRequest,
+		out SqlResult
+	}
+	
+	SqlResult is an empty set in case of non-SELECT requests.
+
+	In this testcase, we create a new table in the provided database,
+	then we perform some insert/select/delete from the table prior to dropping it.
+	
+	As a consequence, you should provide a connection to a DB with credentials that
+	allow all of this.
+	"""
+	def body(self, table_name = 'testerman_test_table'):
+		port = self.mtc['port']
+		port_map(port, self.system['sql_server'])
+
+		# Let's create a brand new table
+		port.send("CREATE TABLE %s (id INTEGER, name VARCHAR(40), value FLOAT)" % table_name)
+
+		t = Timer(2.0, name = "Watchdog")
+		t.start()
+		alt([
+			[ port.RECEIVE(('result', any_or_none())),
+			],
+			[ port.RECEIVE(),
+				lambda: log("Received something else than expected"),
+				lambda: setverdict("fail"),
+				lambda: stop()
+			],
+			[ t.TIMEOUT, 
+				lambda: setverdict("fail"),
+				lambda: stop()
+			],
+		])
+
+		# Let's insert some data
+		port.send("INSERT INTO %s (id, name, value) VALUES (0, 'first value', 10.0)" % table_name)
+		t.start()
+		alt([
+			[ port.RECEIVE(('result', any_or_none())),
+			],
+			[ t.TIMEOUT, 
+				lambda: setverdict("fail"),
+				lambda: stop()
+			],
+		])
+
+		port.send("INSERT INTO %s (id, name, value) VALUES (1, 'second \\'value\\'', 20.0)" % table_name)
+		t.start()
+		alt([
+			[ port.RECEIVE(('result', any_or_none())),
+			],
+			[ t.TIMEOUT, 
+				lambda: setverdict("fail"),
+				lambda: stop()
+			],
+		])
+		
+		# Let's query them
+		port.send("SELECT * FROM %s ORDER BY id" % table_name)
+		t.start()
+		alt([
+			[ port.RECEIVE(('result', [ any(), { 'id': 1, 'name': "second 'value'", 'value': 20.0 } ])),
+				lambda: log("SELECT is ok"),
+			],
+			[ port.RECEIVE(),
+				lambda: log("Received something else than expected"),
+				lambda: setverdict("fail"),
+			],
+			[ t.TIMEOUT, 
+				lambda: setverdict("fail"),
+			],
+		])
+		
+		# Let's modify an entry
+		port.send("UPDATE %s SET name='modified name' WHERE id=1" % table_name)
+		t.start()
+		alt([
+			[ port.RECEIVE(('result', any_or_none())),
+			],
+			[ t.TIMEOUT, 
+				lambda: setverdict("fail"),
+				lambda: stop()
+			],
+		])
+		# Let's query it
+		port.send("SELECT name FROM %s WHERE id=1" % table_name)
+		t.start()
+		alt([
+			[ port.RECEIVE(('result', [ { 'id': omit(), 'name': "modified name", 'value': omit() } ])), # A good opportunity to test omit()
+				lambda: log("UPDATE is ok"),
+			],
+			[ port.RECEIVE(),
+				lambda: log("Received something else than expected"),
+				lambda: setverdict("fail"),
+			],
+			[ t.TIMEOUT, 
+				lambda: setverdict("fail"),
+			],
+		])
+		
+		# Let's delete an entry
+		port.send("DELETE FROM %s WHERE id=0" % table_name)
+		t.start()
+		alt([
+			[ port.RECEIVE(('result', any_or_none())),
+			],
+			[ t.TIMEOUT, 
+				lambda: setverdict("fail"),
+				lambda: stop()
+			],
+		])
+
+		# Let's query them
+		port.send("SELECT * FROM %s ORDER BY id" % table_name)
+		t.start()
+		alt([
+			[ port.RECEIVE(('result', [ { 'id': 1 } ])),
+				lambda: log("DELETE is ok - end of testcase"),
+				lambda: setverdict("pass")
+			],
+			[ port.RECEIVE(),
+				lambda: log("Received something else than expected"),
+				lambda: setverdict("fail"),
+			],
+			[ t.TIMEOUT, 
+				lambda: setverdict("fail"),
+			],
+		])
+
+		# In any case,
+		# Drop the table
+		port.send("DROP TABLE %s" % table_name)
+
+
+##
+# Test Adapter Configurations
+##
+
+conf = TestAdapterConfiguration('mysql')
+conf.bind('sql_server', 'probe:mysql', 'sql.mysql', host = get_variable('PX_HOST'), database = get_variable('PX_DATABASE'), user = get_variable('PX_USERNAME'), password = get_variable('PX_PASSWORD'))
+
+##
+# Control definition
+##
+
+
+with_test_adapter_configuration('mysql')
+TC_SQL_MYSQL().execute()
