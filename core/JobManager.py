@@ -509,7 +509,7 @@ class AtsJob(Job):
 
 				# Create required directory structure, with __init__.py file, if needed
 				currentdir = tePackageDirectory
-				for d in os.path.split(filename)[:-1]:
+				for d in filter(lambda x: x, filename.split('/')[:-1]):
 					localdir = '%s/%s' % (currentdir, d)
 					currentdir = localdir
 					try:
@@ -517,6 +517,7 @@ class AtsJob(Job):
 					except: 
 						pass
 					# Touch a __init__.py file
+					getLogger().debug("Creating __init__.py in %s..." % localdir)
 					f = open('%s/__init__.py' % localdir, 'w')
 					f.close()
 
