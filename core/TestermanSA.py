@@ -334,7 +334,7 @@ class TestAdapterConfiguration(object):
 		if self._declaredBindings.has_key(tsiPort):
 			raise Testerman.TestermanException("Test system interface port %s is already bound to a Test Adapter." % tsiPort)
 		log("Declaring binding: test adapter %s for tsiPort %s..." % (uri, tsiPort))
-		self._declaredBindings[tsiPort] = { 'uri': uri, 'parameters': kwargs, 'type': type_ }
+		self._declaredBindings[tsiPort] = { 'uri': uri, 'properties': kwargs, 'type': type_ }
 	
 	def _install(self):
 		"""
@@ -349,9 +349,9 @@ class TestAdapterConfiguration(object):
 			log("Installing binding: test adapter %s for tsiPort %s..." % (binding['uri'], tsiPort))
 			probe = createProbe(binding['uri'], binding['type'])
 
-			for name, value in binding['parameters'].items():
-				log(u"Setting parameter %s to %s for test adapter %s..." % (name, unicode(value), probe.getUri()))
-				probe.setParameter(name, value)
+			for name, value in binding['properties'].items():
+				log(u"Setting property %s to %s for test adapter %s..." % (name, unicode(value), probe.getUri()))
+				probe.setProperty(name, value)
 			# Declare the binding in the current TTCN3 world
 			bind(tsiPort, probe)
 
@@ -415,7 +415,7 @@ class ProbeAdapter(ProbeImplementationManager.IProbeImplementationAdapter):
 		self._remote = False
 		self._uri = None
 		self._tsiPortId = None
-		self._parameters = {}
+		self._properties = {}
 
 	##
 	# For Probe manager
@@ -442,11 +442,11 @@ class ProbeAdapter(ProbeImplementationManager.IProbeImplementationAdapter):
 	def getUri(self):
 		return self._uri
 
-	def setParameter(self, name, value):
-		self._parameters[name] = value
+	def setProperty(self, name, value):
+		self._properties[name] = value
 
-	def getParameter(self, name, defaultValue = None):
-		return self._parameters.get(name, defaultValue)
+	def getProperty(self, name, defaultValue = None):
+		return self._properties.get(name, defaultValue)
 
 	def triEnqueueMsg(self, message, sutAddress = None):
 		Testerman.triEnqueueMsg(tsiPortId = self._tsiPortId, sutAddress = None, componentId = None, message = message)
@@ -563,7 +563,7 @@ class RemoteProbeAdapter(ProbeAdapter):
 			raise Testerman.TestermanException("Unable to use probe %s: not deployed, no type given, no autodeployment possible." % (uri))
 
 	def onTriExecuteTestCase(self):
-		TACC.instance().triExecuteTestCase(self.getUri(), self._parameters)
+		TACC.instance().triExecuteTestCase(self.getUri(), self._properties)
 	
 	def onTriSAReset(self):
 		TACC.instance().triSAReset(self.getUri())

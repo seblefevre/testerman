@@ -30,7 +30,7 @@ class ProbeImplementation:
 	"""
 	def __init__(self):
 		self.__adapter = None
-		self.__defaultParameters = {}
+		self.__defaultProperties = {}
 	
 	# Internal use only
 	def _setAdapter(self, adapter):
@@ -84,7 +84,7 @@ class ProbeImplementation:
 		backtrace.close()
 		return ret
 		
-	def _getParameter(self, name, defaultValue = None):
+	def _getProperty(self, name, defaultValue = None):
 		"""
 		Returns a probe parameter, or a default value if not set.
 		
@@ -96,13 +96,13 @@ class ProbeImplementation:
 		@rtype: object
 		@returns: the parameter value, or the default value if not set
 		"""
-		return self.__adapter.getParameter(name, self.__defaultParameters.get(name, None))
+		return self.__adapter.getProperty(name, self.__defaultProperties.get(name, None))
 
-	def setDefaultParameter(self, name, value):
-		self.__defaultParameters[name] = value
+	def setDefaultProperty(self, name, value):
+		self.__defaultProperties[name] = value
 
 	def __getitem__(self, name):
-		return self._getParameter(name)
+		return self._getProperty(name)
 
 	def logSentPayload(self, label, payload):
 		"""
@@ -215,7 +215,7 @@ class IProbeImplementationAdapter:
 	def getUri(self): pass
 	def getName(self): pass
 	def getType(self): pass
-	def setParameter(self, name, value): pass
+	def setProperty(self, name, value): pass
 
 	# IProbe part
 	def onSend(self, message, sutAddress): pass
@@ -228,7 +228,7 @@ class IProbeImplementationAdapter:
 	def logSentPayload(self, label, payload): pass
 	def logReceivedPayload(self, label, payload): pass
 	def getLogger(self): pass
-	def getParameter(self, name, defaultValue): pass
+	def getProperty(self, name, defaultValue): pass
 	def triEnqueueMsg(self, message, sutAddress = None): pass
 
 

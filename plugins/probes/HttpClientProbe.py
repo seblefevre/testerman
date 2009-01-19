@@ -57,13 +57,13 @@ class HttpClientProbe(ProbeImplementationManager.ProbeImplementation):
 		self._httpThread = None
 		self._httpConnection = None
 		# Default test adapter parameters
-		self.setDefaultParameter('maintain_connection', False)
-		self.setDefaultParameter('version', 'HTTP/1.0')
-		self.setDefaultParameter('auto_connect', False)
-		self.setDefaultParameter('protocol', 'http')
-		self.setDefaultParameter('host', 'localhost')
-		self.setDefaultParameter('port', 80)
-		self.setDefaultParameter('local_ip', '')
+		self.setDefaultProperty('maintain_connection', False)
+		self.setDefaultProperty('version', 'HTTP/1.0')
+		self.setDefaultProperty('auto_connect', False)
+		self.setDefaultProperty('protocol', 'http')
+		self.setDefaultProperty('host', 'localhost')
+		self.setDefaultProperty('port', 80)
+		self.setDefaultProperty('local_ip', '')
 
 	# LocalProbe reimplementation)
 	def onTriMap(self):

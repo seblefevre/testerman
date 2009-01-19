@@ -62,16 +62,16 @@ class RtspClientProbe(ProbeImplementationManager.ProbeImplementation):
 		self._responseThread = None
 		self._connection = None
 		self._cseq = 0
-		# Default test adapter parameters
-		self.setDefaultParameter('version', 'RTSP/1.0')
-		self.setDefaultParameter('auto_connect', False)
-		self.setDefaultParameter('maintain_connection', False)
-		self.setDefaultParameter('host', 'localhost')
-		self.setDefaultParameter('port', 554)
-		self.setDefaultParameter('transport', 'tcp')
-		self.setDefaultParameter('local_ip', '')
-		self.setDefaultParameter('local_port', 0)
-		self.setDefaultParameter('strict_mode', False)
+		# Default test adapter properties
+		self.setDefaultProperty('version', 'RTSP/1.0')
+		self.setDefaultProperty('auto_connect', False)
+		self.setDefaultProperty('maintain_connection', False)
+		self.setDefaultProperty('host', 'localhost')
+		self.setDefaultProperty('port', 554)
+		self.setDefaultProperty('transport', 'tcp')
+		self.setDefaultProperty('local_ip', '')
+		self.setDefaultProperty('local_port', 0)
+		self.setDefaultProperty('strict_mode', False)
 
 	# LocalProbe reimplementation)
 	def onTriMap(self):

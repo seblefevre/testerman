@@ -82,7 +82,7 @@ class XmlRpcClientProbe(ProbeImplementationManager.ProbeImplementation):
 	"""
 	def __init__(self):
 		ProbeImplementationManager.ProbeImplementation.__init__(self)
-		self.setDefaultParameter('server_url', 'http://localhost')
+		self.setDefaultProperty('server_url', 'http://localhost')
 	
 	def onTriMap(self):
 		pass

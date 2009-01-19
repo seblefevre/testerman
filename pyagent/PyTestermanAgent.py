@@ -61,14 +61,14 @@ class ProbeImplementationAdapter(ProbeImplementationManager.IProbeImplementation
 		self.__type = type_
 		self.__probeImplementation = probeImplementation
 		self.__probeImplementation._setAdapter(self)
-		self.__parameters = {}
+		self.__properties = {}
 
 	##
 	# IProbeImplementationAdapter
 	##
 
-	def setParameter(self, name, value):
-		self.__parameters[name] = value
+	def setProperty(self, name, value):
+		self.__properties[name] = value
 
 	def getUri(self):
 		return "probe:%s@%s" % (self.__name, self.__agent.getNodeName())
@@ -146,8 +146,8 @@ class ProbeImplementationAdapter(ProbeImplementationManager.IProbeImplementation
 		msg.setApplicationBody({'label': label, 'payload': payload}, profile = Messages.Message.CONTENT_TYPE_PYTHON_PICKLE)
 		return self.__agent.notify(msg)
 
-	def getParameter(self, name, defaultValue):
-		return self.__parameters.get(name, defaultValue)
+	def getProperty(self, name, defaultValue):
+		return self.__properties.get(name, defaultValue)
 
 	def getLogger(self):
 		return logging.getLogger('Agent.%s' % self.getName())
@@ -307,10 +307,10 @@ class Agent(Nodes.ConnectingNode):
 						probe.onTriSAReset()
 						self.response(transactionId, 200, "OK")
 					elif method == "TRI-EXECUTE-TESTCASE":
-						parameters = request.getApplicationBody()
-						if parameters:
-							for name, value in parameters.items():
-								probe.setParameter(name, value)
+						properties = request.getApplicationBody()
+						if properties:
+							for name, value in properties.items():
+								probe.setProperty(name, value)
 						probe.onTriExecuteTestCase()
 						self.response(transactionId, 200, "OK")
 					else:
