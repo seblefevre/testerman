@@ -2588,3 +2588,6 @@ def disable_logs():
 def enable_logs():
 	TestermanTCI.enableLogs()
 
+def define_codec_alias(name, codec, **kwargs):
+	TestermanCD.alias(name, codec, **kwargs)
+
