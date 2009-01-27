@@ -543,7 +543,7 @@ class Client(Nodes.ConnectingNode):
 				<property name="release_notes_url" value="/components/rn-1.0.0.txt />
 				<!-- ... -->
 			</update>
-		</update>
+		</updates>
 		
 		@type  component: string
 		@param component: the component identifier ("qtesterman", "pyagent", ...)
