@@ -125,10 +125,14 @@ class TcpPacketizerClientThread(threading.Thread):
 				self.socket.setblocking(False)
 				try:
 					self.socket.setsockopt(socket.SOL_TCP, socket.TCP_NODELAY, 1)
+				except:
+					# socket.SOL_TCP not defined in Jython (??)
+					pass
+				try:
 					# Warning: Python 2.3+
 					self.socket.settimeout(5.0)
 				except:
-					# socket.SOL_TCP not defined in Jython (??) + Python 2.2 degraded support
+					# Python 2.2 degraded support
 					pass
 
 				self.socket.connect(self.serverAddress)
@@ -181,18 +185,20 @@ class TcpPacketizerClientThread(threading.Thread):
 
 				# Sending queued messages
 				while not self.queue.empty():
-					try:
-						# Make sure we can send something. If not, keep the message for later attempt.
-						r, w, e = select.select([ ], [ self.socket ], [], 0.001)
-						if self.socket in w:
+					# Make sure we can send something. If not, keep the message for later attempt.
+					r, w, e = select.select([ ], [ self.socket ], [ self.socket ], 0.001)
+					if self.socket in e:
+						raise EOFError("Socket error when waiting for ready to write")
+					elif self.socket in w:	
+						try:
 							message = self.queue.get(False)
 							self.trace("Message to send...")
 							self.socket.send(message)
 							self.trace("Message sent.")
-					except Queue.Empty:
-						pass
-					except Exception, e:
-						self.trace("Unable to send message: " + str(e))
+						except Queue.Empty:
+							pass
+						except Exception, e:
+							self.trace("Unable to send message: " + str(e))
 
 			except EOFError, e:
 				self.trace("Disconnected by peer.")
