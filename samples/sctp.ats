@@ -1,0 +1,86 @@
+# __METADATA__BEGIN__
+# <?xml version="1.0" encoding="utf-8" ?>
+# <metadata version="1.0">
+# <description>description</description>
+# <prerequisites>prerequisites</prerequisites>
+# <parameters>
+# </parameters>
+# </metadata>
+# __METADATA__END__
+##
+# Sample script, demonstrating (and basically testing)
+# the sip codec.
+##
+
+#TestermanTCI.enableDebugLogs()
+
+class TC_SCTP(TestCase):
+	"""
+	"""
+	def body(self, server_address = "127.0.0.1:2904"):
+		a = self.mtc['a']
+		b = self.mtc['b']
+		port_map(a, self.system['client'])
+		port_map(b, self.system['server'])
+		
+		a.send("ping", server_address)
+		
+		t = Timer(name = "watchdog", duration = 1.0)
+		t.start()
+
+		alt([
+			[ b.RECEIVE("ping", sender = 'sender'),
+				lambda: log("Received a correct message from %s" % sender('sender')),
+				lambda: b.send("pong", sender('sender')),
+			],
+			[ b.RECEIVE(),
+				lambda: log("Received something else than expected"),
+				lambda: setverdict("fail"),
+				lambda: stop()
+			],
+			[ t.TIMEOUT,
+				lambda: setverdict("fail"),
+				lambda: stop()
+			]
+		])
+		
+		alt([
+			[ a.RECEIVE("pong", sender = 'sender'),
+				lambda: log("Received pong from %s" % sender('sender')),
+				lambda: setverdict('pass'),
+			],
+			[ a.RECEIVE(),
+				lambda: log("Received something else than expected"),
+				lambda: setverdict("fail"),
+				lambda: stop()
+			],
+			[ t.TIMEOUT,
+				lambda: setverdict("fail"),
+				lambda: stop()
+			]
+		])
+				
+
+
+##
+# Test Adapter Configurations
+##
+
+conf = TestAdapterConfiguration('localhost')
+conf.bind('client', 'probe:sctp01', 'sctp')
+conf.bind('server', 'probe:sctp02', 'sctp', listening_port = 2904)
+
+conf = TestAdapterConfiguration('localhost.remote')
+conf.bind('client', 'probe:sctp01@localhost', 'sctp')
+conf.bind('server', 'probe:sctp02@localhost', 'sctp', listening_port = 2904)
+
+
+##
+# Control definition
+##
+enable_debug_logs()
+useTestAdapterConfiguration('localhost')
+TC_SCTP().execute(server_address = "127.0.0.1:2904")
+
+useTestAdapterConfiguration('localhost.remote')
+TC_SCTP().execute(server_address = "127.0.0.1:2904")
