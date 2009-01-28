@@ -30,7 +30,7 @@ import os
 import sys
 import threading
 import time
-
+import logging
 
 
 VERSION = "0.0.1"
@@ -95,17 +95,14 @@ def prettyPrintDictList(header = [], distList = []):
 	return res
 
 
-
 class TestermanCliClient:
 	def __init__(self, serverUrl):
 		self.__client = TestermanClient.Client(name = "Testerman CLI Client", userAgent = getVersion(), serverUrl = serverUrl)
 		self.__jobCompleteEvent = threading.Event()
+		self.__client.setLogger(logging.getLogger('cli'))
 	
 	def log(self, txt):
-		TestermanClient.log('[cliclient] ' + txt)
-
-	def setDebug(self, debug):
-		self.__client.setDebug(debug)
+		logging.getLogger('cli').info(txt)
 
 	def startXc(self):
 		self.__client.startXc()
@@ -161,10 +158,13 @@ class TestermanCliClient:
 
 	def onNotification(self, notification, jobId = None):
 		if notification.getMethod() == "LOG":
-			print "%s | %s | %s" % (str(notification.getUri()), notification.getHeader('Log-Class'), notification.getBody())
+			self.log("%s | %s\n%s" % (str(notification.getUri()), notification.getHeader('Log-Class'), notification.getBody()))
 		elif notification.getMethod() == "JOB-EVENT":
-			print "%s | %s | %s" % (str(notification.getUri()), notification.getHeader('Job-Id'), notification.getHeader('Job-State'))
-			if jobId and notification.getHeader('Job-Id') == jobId and notification.getHeader('Reason') in [ 'stopped' ]:
+			state = notification.getApplicationBody()['state']
+			result = notification.getApplicationBody()['result']
+			id_ = notification.getApplicationBody()['id']
+			self.log("%s | state changed to %s" % (str(notification.getUri()), state))
+			if jobId and str(jobId) == str(id_) and result is not None:
 				self.__jobCompleteEvent.set()
 				self.__jobCompleteResult = notification.getApplicationBody()['result']
 
@@ -195,6 +195,7 @@ class TestermanCliClient:
 def main():
 	parser = optparse.OptionParser(version = getVersion())
 	parser.add_option("--debug", dest = "debug", action = "store_true", help = "turn debug mode on (default: %default)", default = False)
+	parser.add_option("--log-filename", dest = "logFilename", metavar = "FILE", help = "set log filename to FILE (default: none used)", default = None)
 	parser.add_option("-s", "--server", dest = "serverUrl", metavar = "URL", help = "use URL as Testerman serverURL (default: %default)", default = os.environ.get('TESTERMAN_SERVER', None) or "http://localhost:8080")
 	parser.add_option("-u", "--username", dest = "username", metavar = "USERNAME", help = "use USERNAME as Testerman user (default: %default)", default = os.environ.get('LOGNAME', None))
 
@@ -221,8 +222,14 @@ def main():
 		print "Error: missing server URL. You may use either -s, --server, or set the environment variable TESTERMAN_SERVER."
 		sys.exit(1)
 	
+	# Logger initialization
+	if options.debug:
+		level = logging.DEBUG
+	else:
+		level = logging.INFO
+	logging.basicConfig(level = level, format = '%(asctime)s.%(msecs)03d %(levelname)-8s %(name)-20s %(message)s', datefmt = '%Y%m%d %H:%M:%S', filename = options.logFilename)
+
 	client = TestermanCliClient(options.serverUrl)
-	client.setDebug(options.debug)
 	
 	try:
 		if options.atsFilename:
@@ -260,7 +267,6 @@ def main():
 			
 	except Exception, e:
 		print str(e)
-		print TestermanClient.getBacktrace()
 		return 1
 	
 
