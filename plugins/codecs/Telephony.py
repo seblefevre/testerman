@@ -95,7 +95,7 @@ CodecManager.registerCodecClass('tbcd', TbcdCodec)
 if __name__ == "__main__":
 	import binascii
 	
-	print "TBCD unit tests"
+	print "TBCD Codec unit tests"
 	print 80*'-'
 	samples = [
 		('\x21\xf3', "123"),
