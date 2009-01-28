@@ -154,8 +154,8 @@ def triSend(componentId, tsiPortId, sutAddress, message):
 	probe = ProbeBindings[tsiPortId]
 	try:
 		probe.onTriSend(message, sutAddress)
-	except Exception, e:
-		raise Testerman.TestermanException("Unable to send message through TSI port %s: " % tsiPortId + str(e))
+	except Exception:
+		raise Testerman.TestermanException("Unable to send message through TSI port '%s': %s " % (tsiPortId, TestermanTCI.getBacktrace()))
 
 	return TR_OK
 
@@ -449,7 +449,7 @@ class ProbeAdapter(ProbeImplementationManager.IProbeImplementationAdapter):
 		return self._properties.get(name, defaultValue)
 
 	def triEnqueueMsg(self, message, sutAddress = None):
-		Testerman.triEnqueueMsg(tsiPortId = self._tsiPortId, sutAddress = None, componentId = None, message = message)
+		Testerman.triEnqueueMsg(tsiPortId = self._tsiPortId, sutAddress = sutAddress, componentId = None, message = message)
 
 	def getLogger(self):
 		return TliLogger()
