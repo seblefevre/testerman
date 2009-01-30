@@ -2044,6 +2044,8 @@ class superset(ConditionTemplate):
 	def __init__(self, *templates):
 		self._templates = list(templates)
 	def match(self, message):
+		if not isinstance(message, list):
+			return False
 		for tmplt in self._templates:
 			ret = False
 			for e in message:
@@ -2060,6 +2062,8 @@ class superset(ConditionTemplate):
 		return "(superset of [%s])" % ', '.join([unicode(x) for x in self._templates])
 	def toMessage(self):
 		return ('superset', self._templates)
+	def value(self):
+		return self._templates
 
 class subset(ConditionTemplate):
 	"""
@@ -2069,6 +2073,8 @@ class subset(ConditionTemplate):
 	def __init__(self, *templates):
 		self._templates = list(templates)
 	def match(self, message):
+		if not isinstance(message, list):
+			return False
 		for e in message:
 			ret = False
 			for tmplt in self._templates:
@@ -2082,6 +2088,8 @@ class subset(ConditionTemplate):
 		return "(subset of [%s])" % ', '.join([unicode(x) for x in self._templates])
 	def toMessage(self):
 		return ('subset', self._templates)
+	def value(self):
+		return self._templates
 
 class contains(ConditionTemplate):
 	"""
@@ -2091,6 +2099,8 @@ class contains(ConditionTemplate):
 	def __init__(self, template):
 		self._template = template
 	def match(self, message):
+		if not isinstance(message, list):
+			return False
 		# At least one match
 		for element in message:
 			(m, _) = templateMatch(element, self._template)
