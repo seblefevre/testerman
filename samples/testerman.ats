@@ -935,6 +935,34 @@ class TC_TEMPLATE_WILDCARDS_OMIT(TestCase):
 		])
 		setverdict('pass')
 
+class TC_TEMPLATE_WILDCARDS_VALUE(TestCase):
+	"""
+	Verifies that we can send the same template containing
+	between/lower_than/greater_than in both receiving and sending.
+	between() enables random values generation.
+	"""
+	def body(self):
+		log("Starting basic condition valuation tests...")
+		p01 = self.mtc['port1']
+		p02 = self.mtc['port2']
+		connect(p01, p02)
+		
+		mw_template = { 'between': between(0, 10), 'greater': greater_than(4), 'lower': lower_than(5) }
+		t = Timer(name = "watchdog", duration = 1.0)
+		t.start()
+		p01.send(mw_template)
+		alt([
+			[ p02.RECEIVE(mw_template),
+				lambda: setverdict('pass'),
+			],
+			[ p02.RECEIVE(),
+				lambda: setverdict('fail'),
+			],
+			[ t.TIMEOUT,
+				lambda: setverdict('fail'),
+			],
+		])
+
 class TC_UNICODE(TestCase):
 	"""
 	Verifies that we can send unicode strings (and log them correctly).
@@ -1196,7 +1224,75 @@ class TC_ACTION(TestCase):
 			self.setverdict('fail')
 		else:
 			self.setverdict('pass')
-	
+
+class TC_ACTIVATE(TestCase):
+	"""
+	Verifies the activate/deactivate on default altsteps.
+	"""
+	def body(self):
+		port = self.mtc['port']
+		defaultTimer = Timer(name = "default", duration = 0.5)
+		t = Timer(name = "watchdog", duration = 1.0)
+		
+		def altstep_timer():
+			return [
+				[ defaultTimer.TIMEOUT,
+					lambda: setverdict('pass')
+				]
+			]
+		
+		activate(altstep_timer())
+		defaultTimer.start()
+		t.start()
+		
+		alt([
+			[ port.RECEIVE(),
+				lambda: log("oops, received something on an idle port"),
+				lambda: setverdict('fail'),
+				lambda: stop(),
+			],
+			[ t.TIMEOUT,
+				lambda: log("The watchdog timer expired; the default one should have expired before it"),
+				lambda: setverdict('fail'),
+				lambda: stop(),
+			]
+		])
+		
+class TC_DEACTIVATE(TestCase):
+	"""
+	Verifies the activate/deactivate on default altsteps.
+	"""
+	def body(self):
+		port = self.mtc['port']
+		defaultTimer = Timer(name = "default", duration = 0.5)
+		t = Timer(name = "watchdog", duration = 1.0)
+		
+		def altstep_timer():
+			return [
+				[ defaultTimer.TIMEOUT,
+					lambda: setverdict('fail')
+				]
+			]
+		
+		# Has been tested OK (normally)
+		default_altstep = activate(altstep_timer())
+		
+		# Now, deactivate it
+		deactivate(default_altstep)
+		defaultTimer.start()
+		t.start()
+
+		alt([
+			[ port.RECEIVE(),
+				lambda: log("oops, received something on an idle port"),
+				lambda: setverdict('fail'),
+				lambda: stop(),
+			],
+			[ t.TIMEOUT,
+				lambda: log("The watchdog timer expired, not hidden by the default altstep"),
+				lambda: setverdict('pass'),
+			]
+		])
 
 
 ##
@@ -1219,7 +1315,8 @@ TC_TEMPLATE_MATCH_LIST("Testerman autotest: list matching").execute()
 TC_TEMPLATE_WILDCARDS_CONTAINS("Testerman autotest: contains() matching mechanism").execute()
 TC_TEMPLATE_WILDCARDS_LENGTH("Testerman autotest: length() matching mechanism").execute()
 TC_TEMPLATE_WILDCARDS_NOT("Testerman autotest: not_() matching mechanism").execute()
-TC_TEMPLATE_WILDCARDS_OMIT("Testerman autotest: omit() matchin mechanism").execute()
+TC_TEMPLATE_WILDCARDS_OMIT("Testerman autotest: omit() matching mechanism").execute()
+TC_TEMPLATE_WILDCARDS_VALUE("Testerman autotest: simple matching mechanisms valuations").execute()
 
 TC_UNICODE("Testerman autotest: unicode support in messages (+ logs)").execute()
 TC_UNICODE_SESSION_PARAMETERS("Testerman autotest: unicode support in session parameters").execute()
@@ -1232,4 +1329,8 @@ TC_STOP_PTC_STOP_TESTCASE().execute()
 TC_KILL_PTC_DONE_EVENT().execute()
 TC_KILL_PTC_KILLED_EVENT().execute()
 TC_KILL_PTC_DONE().execute()
+
 TC_ACTION().execute()
+
+TC_ACTIVATE().execute()
+TC_DEACTIVATE().execute()

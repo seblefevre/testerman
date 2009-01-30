@@ -31,6 +31,7 @@ from TestermanTCI import *
 import TestermanTCI
 
 import binascii
+import random
 import re
 import threading
 import time
@@ -96,6 +97,9 @@ class TestermanContext:
 		self._values = {}
 		# Current matched senders for sender()
 		self._senders = {}
+		# Current activated default alternatives
+		self._defaultAlternatives = []
+		self._defaultAltsteps = {}
 	
 	def getValues(self):
 		return self._values
@@ -123,6 +127,35 @@ class TestermanContext:
 	
 	def setTestCase(self, testcase):
 		self._testcase = testcase
+	
+
+	def addDefaultAltstep(self, altstep):
+		altstepReference = "default_altstep_%s" % _getNewId()
+		self._defaultAltsteps[altstepReference] = altstep
+		# FIXME: need a real altstep-branch implementation.
+		# For now, we fallback to alternatives, which can be OK
+		# for activate(), but not sufficient for real altstep support in alt(),
+		# since we may execute a code block after the altstep already executed
+		# something it brings.
+		for alternative in altstep:
+			self._defaultAlternatives.append(alternative)
+		TestermanTCI.logInternal("Activated default altstep %s" % altstepReference)
+		return altstepReference
+
+	def removeDefaultAltstep(self, ref):
+		if not ref in self._defaultAltsteps:
+			TestermanTCI.logInternal("Unable to deactivate altstep %s: not activated" % ref)
+			return False
+		altstep = self._defaultAltsteps[ref]
+		for alternative in altstep:
+			# This 'if' should be useless.
+			if alternative in self._defaultAlternatives:
+				self._defaultAlternatives.remove(alternative)
+		TestermanTCI.logInternal("Default altstep %s deactivated" % ref)
+		return True
+	
+	def getDefaultAlternatives(self):
+		return self._defaultAlternatives
 	
 def getLocalContext():
 	"""
@@ -1558,6 +1591,10 @@ def alt(alternatives):
 	for a in additionalInternalAlternatives:
 		alternatives.insert(0, a)
 	
+	# Now add default alternatives from altstep activations
+	for a in getLocalContext().getDefaultAlternatives():
+		alternatives.append(a)
+	
 #	logInternal("Entering alt():\n%s" % alternatives)
 	
 	# Step 1.
@@ -1814,6 +1851,13 @@ class ConditionTemplate:
 	"""
 	def match(self, message):
 		return True
+	def value(self):
+		"""
+		Called when encoding a template; enables to use
+		matching mechanisms in sent messages, too.
+		However, may not be supported for all mechanisms.
+		"""
+		raise TestermanException("Matching mechanism %s cannot be valuated and used in a sent message." % self)
 
 ##
 # Terminal conditions
@@ -1830,6 +1874,8 @@ class greater_than(ConditionTemplate):
 			return False
 	def __repr__(self):
 		return "(>= %s)" % str(self._value)
+	def value(self):
+		return self._value
 
 class lower_than(ConditionTemplate):
 	def __init__(self, value):
@@ -1841,6 +1887,8 @@ class lower_than(ConditionTemplate):
 			return False
 	def __repr__(self):
 		return "(<= %s)" % str(self._value)
+	def value(self):
+		return self._value
 
 class between(ConditionTemplate):
 	def __init__(self, a, b):
@@ -1857,6 +1905,8 @@ class between(ConditionTemplate):
 			return False
 	def __repr__(self):
 		return "(between %s and %s)" % (str(self._a), str(self._b))
+	def value(self):
+		return random.randint(self._a, self._b)
 
 # Any
 class any(ConditionTemplate):
@@ -1877,6 +1927,8 @@ class any(ConditionTemplate):
 		return True
 	def __repr__(self):
 		return "(?)"
+	def value(self):
+		return None
 
 class any_or_none(ConditionTemplate):
 	"""
@@ -1892,6 +1944,8 @@ class any_or_none(ConditionTemplate):
 		return True
 	def __repr__(self):
 		return "(*)"
+	def value(self):
+		return None
 
 # Empty (list, string, dict)
 class empty(ConditionTemplate):
@@ -1907,6 +1961,8 @@ class empty(ConditionTemplate):
 			return False
 	def __repr__(self):
 		return "(empty)"
+	def value(self):
+		return None
 
 # String: regexp
 class pattern(ConditionTemplate):
@@ -1933,6 +1989,8 @@ class omit(ConditionTemplate):
 		return False
 	def __repr__(self):
 		return "(omitted)"
+	def value(self):
+		return None
 
 class equals_to(ConditionTemplate):
 	"""
@@ -2155,6 +2213,15 @@ def set_variable(name, value):
 # encoded message.
 
 def _encodeTemplate(template):
+	"""
+	Valuate a template:
+	- calls encoders,
+	- valuates matching mechanisms, if possible
+	- if it's a function, call it (0-arity)
+	"""
+	if callable(template):
+		template = template()
+	
 	if isinstance(template, CodecTemplate):
 		return template.encode()
 
@@ -2173,6 +2240,11 @@ def _encodeTemplate(template):
 	if isinstance(template, tuple):
 		return (template[0], _encodeTemplate(template[1]))
 	
+	try:
+		# if the template is a matching mechanism, we provide may provide a value
+		return template.value()
+	except:
+		pass
 	return template
 	
 
@@ -2571,6 +2643,34 @@ def action(message, timeout = 5.0):
 def _actionPerformedByUser():
 	TestermanSA._actionPerformedByUser()
 
+################################################################################
+# default alternative
+################################################################################
+
+def activate(altstep):
+	"""
+	Activate an altstep (which is a list of alternatives)
+	Returns a reference to the activated altstep so that it can be
+	deactivated later.
+	
+	Activation is valid for the whole TC.
+	@type  altstep: a list of alternatives
+	@param altstep: the default altstep to activate
+	
+	@rtype: object
+	@param: an internal representation of the altstep, suitable for a use in deactivate()
+	"""
+	return getLocalContext().addDefaultAltstep(altstep)
+
+def deactivate(altstep_ref):
+	"""
+	@type  altstep_ref: object
+	@param altstep_ref: the internal representation of an activated altstep, as returned by activate()
+	
+	@rtype: bool
+	@returns: True if deactivated, False otherwise (not activated before)
+	"""
+	return getLocalContext().removeDefaultAltstep(altstep_ref)
 
 ################################################################################
 # convenience functions: log level management
@@ -2591,3 +2691,5 @@ def enable_logs():
 def define_codec_alias(name, codec, **kwargs):
 	TestermanCD.alias(name, codec, **kwargs)
 
+
+random.seed()
