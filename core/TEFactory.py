@@ -224,8 +224,6 @@ def finalizeTe():
 	TestermanTCI.logInternal("finalizing...")
 	TestermanSA.finalize()
 	TestermanPA.finalize()
-	# Make sure all our process children are killed
-	TestermanPA.killChildren()
 	TestermanTCI.logInternal("finalized.")
 
 """)
@@ -378,6 +376,8 @@ try:
 except:
 	pass
 
+# Make sure all our process children are killed
+TestermanPA.killChildren()
 sys.exit(ReturnCode)
 """)
 	
