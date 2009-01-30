@@ -83,8 +83,9 @@ def encodeParameters(parameters):
 	The result is not padded.
 	"""
 	packer = xdrlib.Packer()
-	for p in parameters:
-		encodeParameter(p, packer)
+	if parameters:
+		for p in parameters:
+			encodeParameter(p, packer)
 	return packer.get_buffer()
 
 class Message:
@@ -165,8 +166,9 @@ class Message:
 	def __str__(self):
 		ret = []
 		ret.append('version %s, type %s, class %s' % (self.version, self.messageType, self.messageClass))
-		for p in self.parameters:
-			ret.append(str(p))
+		if self.parameters:
+			for p in self.parameters:
+				ret.append(str(p))
 		
 		return '\n'.join(ret)
 
