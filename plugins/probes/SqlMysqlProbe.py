@@ -47,6 +47,8 @@ class MySqlProbe(ProbeImplementationManager.ProbeImplementation):
 		out SqlResult
 	}
 	
+	SqlResult is an empty set in case of non-SELECT requests.
+	
 	
 	Properties:
 	host
