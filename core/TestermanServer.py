@@ -195,6 +195,14 @@ def main():
 	for (k, v) in items:
 		getLogger().info("Using %s = %s" % (str(k), str(v)))
 
+	# Now we can daemonize if needed
+	if options.daemonize:
+		if options.pidFilename:
+			getLogger().info("Daemonizing, using pid file %s..." % options.pidFilename)
+		else:
+			getLogger().info("Daemonizing...")
+		Tools.daemonize(pidFilename = options.pidFilename, displayPid = True)
+
 	try:
 		FileSystemManager.initialize()
 		EventManager.initialize() # Xc server, Ih server [TSE:CH], Il server [TSE:TL]
@@ -226,18 +234,10 @@ def main():
 
 	getLogger().info("Started.")
 
-	# Now we can daemonize if needed
-	if options.daemonize:
-		if options.pidFilename:
-			getLogger().info("Daemonizing, using pid file %s..." % options.pidFilename)
-		else:
-			getLogger().info("Daemonizing...")
-		Tools.daemonize(pidFilename = options.pidFilename, displayPid = True)
-
 	# The main loop
 	try:
 		while 1:
-			time.sleep(0.1)
+			time.sleep(1)
 	except KeyboardInterrupt:
 		getLogger().info("Shutting down Testerman Server...")
 

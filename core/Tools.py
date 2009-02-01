@@ -102,7 +102,7 @@ def getChildrenPids(pid):
 	return ret
 
 
-def daemonize(pidFilename = None, stdout = 0, stderr = 0, displayPid = False):
+def daemonize(pidFilename = None, stdout = None, stderr = None, displayPid = False):
 	"""
 	Daemonize.
 	If pidFilename is provided, used to cat the daemon PID.
@@ -139,21 +139,11 @@ def daemonize(pidFilename = None, stdout = 0, stderr = 0, displayPid = False):
 			print "Server started as daemon (pid %d)" % os.getpid()
 			print "Use kill -SIGINT %d to stop the server when needed." % os.getpid()
 
-		# Close file descriptors
-		maxfd = resource.getrlimit(resource.RLIMIT_NOFILE)[1]
-		if maxfd == resource.RLIM_INFINITY:
-			maxfd = 65535
-		for fd in range(0, maxfd):
-			# Only close TTYs, not files, etc
-			try:
-				os.ttyname(fd)
-			except:
-				continue
-			try:
-				os.close(fd)
-			except:
-				pass
-		
+		# UMask
+		os.umask(0)
+		# Workding dir
+		os.chdir("/")
+	
 		# We cat our pid to pidfile
 		# (before chaging dir so that relative pidfilenames are possible)
 		if pidFilename:
@@ -164,19 +154,31 @@ def daemonize(pidFilename = None, stdout = 0, stderr = 0, displayPid = False):
 			except:
 				pass
 
-		# UMask
-		os.umask(0)
-		# Workding dir
-		os.chdir("/")
-	
+		# Close file descriptors
+		maxfd = resource.getrlimit(resource.RLIMIT_NOFILE)[1]
+		if maxfd == resource.RLIM_INFINITY:
+			maxfd = 65536
+		for fd in range(0, maxfd):
+			# Only close TTYs, not files, etc
+			try:
+				os.ttyname(fd)
+			except Exception, e:
+				continue
+			try:
+				os.close(fd)
+			except Exception, e:
+				pass
+		
 		# Finally we redirect std fds
 		if hasattr(os, "devnull"):
 			devnull = os.devnull
 		else:
 			devnull = "/dev/null"
-		os.open(devnull, os.O_RDWR)
-		os.dup2(stdout, 1)
-		os.dup2(stderr, 2)
+		n = os.open(devnull, os.O_RDWR)
+		if stdout is not None: os.dup2(stdout, 1)
+		else: os.dup2(n, 1)
+		if stderr is not None: os.dup2(stderr, 2)
+		else: os.dup2(n, 2)
 		return os.getpid()
 
 	except Exception, e:

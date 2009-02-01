@@ -92,7 +92,6 @@ class XaServer(Nodes.ListeningNode):
 	def __init__(self, controller, xaAddress):
 		Nodes.ListeningNode.__init__(self, "TACS/Xa", "XaServer/%s" % Versions.getAgentControllerVersion())
 		self._controller = controller
-		self._debug = False
 		self.initialize(xaAddress)
 	
 	def getLogger(self):
@@ -288,7 +287,6 @@ class IaServer(Nodes.ListeningNode):
 	def __init__(self, controller, iaAddress):
 		Nodes.ListeningNode.__init__(self, "TACS/Ia", "IaServer/%s" % Versions.getAgentControllerVersion())
 		self._controller = controller
-		self._debug = False
 		self.initialize(iaAddress)
 	
 	def getLogger(self):
@@ -435,7 +433,6 @@ class Controller(object):
 	"""
 	
 	def __init__(self, xaAddress, iaAddress):
-		self._debug = False
 		self._mutex = threading.RLock()
 		self._xaServer = XaServer(self, xaAddress)
 		self._iaServer = IaServer(self, iaAddress)
@@ -906,6 +903,14 @@ def main():
 	getLogger().info("Agent interface    (Xa) listening on tcp://%s:%d" % (options.xaIp, options.xaPort))
 	getLogger().info("Internal interface (Ia) listening on tcp://%s:%d" % (options.iaIp, options.iaPort))
 
+	# Now we can daemonize if needed
+	if options.daemonize:
+		if options.pidFilename:
+			getLogger().info("Daemonizing, using pid file %s..." % options.pidFilename)
+		else:
+			getLogger().info("Daemonizing...")
+		Tools.daemonize(pidFilename = options.pidFilename, displayPid = True)
+
 	try:
 		controller = Controller(xaAddress = (options.xaIp, options.xaPort), iaAddress = (options.iaIp, options.iaPort))
 		controller.start()
@@ -919,14 +924,6 @@ def main():
 		return
 		
 	controller.getLogger().info("Started.")
-
-	# Now we can daemonize if needed
-	if options.daemonize:
-		if options.pidFilename:
-			getLogger().info("Daemonizing, using pid file %s..." % options.pidFilename)
-		else:
-			getLogger().info("Daemonizing...")
-		Tools.daemonize(pidFilename = options.pidFilename, displayPid = True)
 
 	try:
 		while 1:
