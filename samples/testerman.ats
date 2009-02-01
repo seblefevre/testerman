@@ -523,6 +523,32 @@ class TC_VALUE_EXTRACTION(TestCase):
 
 		log("End of testcase reached.")
 
+class TC_VALUE_EXTRACTION_SELECTIVE(TestCase):
+	def body(self):
+		log("Testerman autotest: template matching and selective value extraction")
+
+		p01 = self.mtc['port01']
+		p02 = self.mtc['port02']
+		connect(p01, p02)
+		
+		# The template match is performed with the new value() complete message extractor function.
+		# This avoids to incorporate in templates extractors, which are context-dependent.
+		p01.send( { 'field1': 'value1', 'field2': 'value2',  'list': [ 1, 2, 3, 4, 5, 6, 7 ], 'number': 10 } )
+		alt([
+			[ p02.RECEIVE({ 'field2': any(), 'list': [ 1, extract(any(), 'sel_val_1'), 3, any_or_none() ], 'number': extract(greater_than(9), 'sel_val_2') }),
+				lambda: log("Received selected value 1: %s " % value('sel_val_1')),
+				lambda: log("Received selected value 2: %s " % value('sel_val_2')),
+			],
+			[ p02.RECEIVE(),
+				lambda: setverdict("fail"),
+			],
+		])
+		
+		if value('sel_val_1') == 2 and value('sel_val_2') == 10:
+			setverdict('pass')
+
+		log("End of testcase reached.")
+
 class TC_CODEC(TestCase):
 	def body(self):
 		log("Testerman autotest: simple codec management in templates")
@@ -1308,6 +1334,7 @@ TC_SIMPLE_1TON_SUBSET("Testerman autotest: 1 to N connections, sending to select
 TC_SIMPLE_PTC("Testerman autotest: PTC behavior").execute()
 TC_ALIVE_AND_NONALIVE("Testerman autotest: alive vs non-alive test component").execute()
 TC_VALUE_EXTRACTION("Testerman autotest: template matching with extraction").execute()
+TC_VALUE_EXTRACTION_SELECTIVE("Testerman autotest: template matching with selective extraction").execute()
 TC_CODEC("Testerman autotest: simple codec management in templates").execute()
 
 TC_TEMPLATE_MATCH_GENERAL("Testerman autotest: template matching").execute()

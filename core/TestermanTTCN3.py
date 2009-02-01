@@ -2177,6 +2177,31 @@ class or_(ConditionTemplate):
 		return True
 	def __repr__(self):
 		return "(%s or %s)" % (unicode(self._templateA), unicode(self._templateB))
+
+################################################################################
+# Extractor 
+################################################################################
+
+class extract(ConditionTemplate):
+	"""
+	Partial value extractor.
+	Use value(name) to retrieve the associated value if matched.
+	"""
+	def __init__(self, template, value):
+		self._template = template
+		self._name = value
+	def match(self, message):
+		ret = self._template.match(message)
+		if ret:
+			_setValue(self._name, message)
+		return ret
+	def __repr__(self):
+		return str(self._template)
+	def value(self):
+		if hasattr(self._template, "value"):
+			return self._template.value()
+		else:
+			return self._template
 	
 ################################################################################
 # "Global" Variables Management
@@ -2410,7 +2435,7 @@ def _templateMatch(message, template):
 					logInternal("mistmatch: mismatched dict entry %s" % unicode(key))
 					result = False
 					# continue to traverse the dict to perform "maximum" message decoding
-			elif isinstance(tmplt, (omit, any_or_none, ifpresent)):
+			elif isinstance(tmplt, (omit, any_or_none, ifpresent)) or (isinstance(tmplt, extract) and isinstance(tmplt._template, (omit, any_or_none, ifpresent))):
 				# if the missing keys are omit(), that's ok.
 				logInternal("omit: omitted value not found, or optional value not found. Great.")
 				continue
@@ -2514,7 +2539,7 @@ def _templateMatch_list(message, template):
 	
 	# [] can only be matched by [], [ * ]
 	if not message:
-		if not template or (len(template) == 1 and isinstance(template[0], any_or_none)):
+		if not template or (len(template) == 1 and (isinstance(template[0], any_or_none) or (isinstance(template[0], extract) and isinstance(template[0]._template, any_or_none)))):
 #			logInternal("_templateMatch_list matched: [] against [] or [*]")
 			return (True, [])
 		else:
@@ -2528,7 +2553,7 @@ def _templateMatch_list(message, template):
 		
 	th, tt = (template[0], template[1:])
 	mh, mt = (message[0], message[1:])
-	if isinstance(th, any_or_none):
+	if isinstance(th, any_or_none) or (isinstance(th, extract) and isinstance(th._template, any_or_none)):
 		if not tt:
 #			logInternal("_templateMatch_list matched: %s against %s ([*])" % (unicode(message), unicode(template)))
 			return (True, message)
@@ -2672,15 +2697,15 @@ def activate(altstep):
 	"""
 	return getLocalContext().addDefaultAltstep(altstep)
 
-def deactivate(altstep_ref):
+def deactivate(id_):
 	"""
-	@type  altstep_ref: object
-	@param altstep_ref: the internal representation of an activated altstep, as returned by activate()
+	@type  id_: object
+	@param id_: the internal representation of an activated altstep, as returned by activate()
 	
 	@rtype: bool
 	@returns: True if deactivated, False otherwise (not activated before)
 	"""
-	return getLocalContext().removeDefaultAltstep(altstep_ref)
+	return getLocalContext().removeDefaultAltstep(id_)
 
 ################################################################################
 # convenience functions: log level management
