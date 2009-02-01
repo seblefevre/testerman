@@ -1691,6 +1691,8 @@ def alt(alternatives):
 						if condition.from_ and condition.from_ != from_:
 							logInternal("not matching condition: not received from the expected address (expected: %s, got: %s)" % (condition.from_, from_))
 							match = False
+							# In this case, we don't even attempt to decode the message. So we assign a default decoded one for logging purpose
+							decodedMessage = message
 						else:
 							(match, decodedMessage) = templateMatch(message, condition.template)
 						# Now handle the matching result
