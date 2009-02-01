@@ -21,6 +21,8 @@
 import TestermanMessages as Messages
 import TestermanNodes as Nodes
 
+import threading
+
 class TaccException(Exception): pass
 
 class DummyLogger:
@@ -47,6 +49,14 @@ class IaClient(Nodes.ConnectingNode):
 		self.probeNotificationCallback = None # on PROBE
 		self._logger = DummyLogger()
 		self._subscriptions =[]
+		self._mutex = threading.RLock()
+		self._connected = False
+	
+	def lock(self):
+		self._mutex.acquire()
+	
+	def unlock(self):
+		self._mutex.release()
 	
 	def setLogger(self, logger):
 		self._logger = logger
@@ -64,11 +74,28 @@ class IaClient(Nodes.ConnectingNode):
 		"""
 		Reimplemented from Nodes.ConnectingNode
 		
-		Automatic resubscriptions on reconnection.
+		Automatic resubscription on reconnection.
 		"""
-		for uri in self._subscriptions:
-			notification = Messages.Notification("SUBSCRIBE", uri, "Ia", "1.0")
-			self.sendNotification(channel, notification)
+		self.lock()
+		try:
+			for uri in self._subscriptions:
+				notification = Messages.Notification("SUBSCRIBE", uri, "Ia", "1.0")
+				self.sendNotification(channel, notification)
+		except:
+			pass
+		self._connected = True
+		self.unlock()
+	
+	def onDisconnection(self, channel):
+		self.lock()
+		self._connected = False
+		self.unlock()
+	
+	def isConnected(self):
+		self.lock()
+		ret = self._connected
+		self.unlock()
+		return ret
 	
 	def onRequest(self, channel, transactionId, request):
 		self.getLogger().warning("Unexpected request received, discarding.")
@@ -144,18 +171,30 @@ class IaClient(Nodes.ConnectingNode):
 		"""
 		Subscribes to events for an uri.
 		"""
-		if not uri in self._subscriptions:
-			notification = Messages.Notification("SUBSCRIBE", uri, "Ia", "1.0")
-			self.sendNotification(0, notification)
-			# keep track of the subscription to enable auto-subscription on reconnection
-			self._subscriptions.append(uri)
+		self.lock()
+		try:
+			if not uri in self._subscriptions:
+				if self._connected:
+					notification = Messages.Notification("SUBSCRIBE", uri, "Ia", "1.0")
+					self.sendNotification(0, notification)
+				# keep track of the subscription to enable auto-subscription on reconnection
+				self._subscriptions.append(uri)
+		except:
+			pass
+		self.unlock()
 		return True
 	
 	def unsubscribe(self, uri):
-		if uri in self._subscriptions:
-			notification = Messages.Notification("SUBSCRIBE", uri, "Ia", "1.0")
-			self.sendNotification(0, notification)
-			self._subscriptions.remove(uri)
+		self.lock()
+		try:
+			if uri in self._subscriptions:
+				if self._connected:
+					notification = Messages.Notification("SUBSCRIBE", uri, "Ia", "1.0")
+					self.sendNotification(0, notification)
+				self._subscriptions.remove(uri)
+		except:
+			pass
+		self.unlock()
 		return True
 
 	def lockProbe(self, probeUri):
@@ -175,8 +214,10 @@ class IaClient(Nodes.ConnectingNode):
 		response = self.executeRequest(0, request)
 		if response and response.getStatusCode() == 200:
 			# Keep track of the subscription
+			self.lock()
 			if not probeUri in self._subscriptions:
 				self._subscriptions.append(probeUri)
+			self.unlock()
 			return True
 		else:
 			return False
@@ -196,8 +237,10 @@ class IaClient(Nodes.ConnectingNode):
 		request.setHeader("Probe-Uri", probeUri)
 		response = self.executeRequest(0, request)
 		# Anyway, we remove the local subscription.
+		self.lock()
 		if probeUri in self._subscriptions:
 			self._subscriptions.remove(probeUri)
+		self.unlock()
 		if response and response.getStatusCode() == 200:
 			return True
 		else:

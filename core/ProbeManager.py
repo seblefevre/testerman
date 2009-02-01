@@ -49,6 +49,7 @@ class ProbeManager:
 		self._proxy.setProbeNotificationCallback(self._onProbeNotification)
 		self._proxy.initialize(address)
 		self._proxy.start()
+		getLogger().info("Initializing: subscribing to probes")
 		self._proxy.subscribe("system:probes")
 	
 	def finalize(self):
