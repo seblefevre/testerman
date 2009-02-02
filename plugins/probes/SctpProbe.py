@@ -25,10 +25,8 @@ import socket
 import sys
 import threading
 
-# WARNING: test only !!
-#IPPROTO_SCTP = socket.IPPROTO_TCP
 
-# socket does not contain this on all Python versions.
+# socket module does not contain this on all Python versions.
 try:
 	IPPROTO_SCTP = socket.IPPROTO_SCTP
 except:
@@ -49,9 +47,10 @@ class SctpProbe(ProbeImplementationManager.ProbeImplementation):
 	|| `listening_ip` || string || 0.0.0.0 || Listening IP address, if listening mode is activated (see below) ||
 	|| `listening_port` || integer || 0 || Set it to a non-zero port to start listening on mapping ||
 	|| `style` || string in 'tcp', 'udp' || 'tcp' || SCTP style: UDP (...) or TCP (stream)
-	|| `` || || ||
-	|| `` || || ||
-	|| `` || || ||
+
+	FFU (only datagram mode is supported for now - no context kept per peer address)
+	|| `size` || integer || 0 || Fixed-size packet strategy: if set to non-zero, only raises messages when `size` bytes have been received. All raised messages will hage this constant size. ||
+	|| `separator` || string || None || Separator-based packet strategy: if set no a character or a string, only raises messages when `separator` has been encountered; this separator is assumed to be a packet separator, and is not included in the raised message. May be useful for, for instance, \x00-based packet protocols. ||
 	
 	"""
 	def __init__(self):
@@ -67,7 +66,7 @@ class SctpProbe(ProbeImplementationManager.ProbeImplementation):
 		self.setDefaultProperty('listening_ip', '')
 		self.setDefaultProperty('style', 'tcp')
 		self.setDefaultProperty('timeout', 0)
-		self.setDefaultProperty('maxsize', 0)
+		self.setDefaultProperty('size', 0)
 		self.setDefaultProperty('separator', None)
 
 	# ProbeImplementation reimplementation
@@ -105,14 +104,28 @@ class SctpProbe(ProbeImplementationManager.ProbeImplementation):
 		except:
 			raise Exception("Invalid or missing SUT Address when sending a message")
 
+
 		# First look for an existing connection
 		conn = self._getConnection(addr)
 
-		if not conn:
-			conn = self._connect(addr)
-
-		# Now we can send our payload
-		self._send(conn, message)
+		if (isinstance(message, tuple) or isinstance(message, list)) and len(message) == 2:
+			cmd, _ = message
+			if cmd == "connectionRequest":
+				conn = self._connect(addr)
+			elif cmd == "disconnectionRequest":
+				self._disconnect(addr, "disconnected by local user")
+			else:
+				raise Exception("Unsupported request (%s)" % cmd)
+		
+		elif isinstance(message, basestring):
+			if not conn:
+				conn = self._connect(addr)
+			if conn:
+				# Now we can send our payload
+				self._send(conn, message)
+		
+		else:
+			raise Exception("Unsupported message type")
 	
 	def _lock(self):
 		self._mutex.acquire()
@@ -136,7 +149,12 @@ class SctpProbe(ProbeImplementationManager.ProbeImplementation):
 			conn = self._registerOutgoingConnection(sock, to)
 			# Connection notification ?
 		except Exception, e:
-			raise e
+			if self['enable_notifications']:
+				self.triEnqueueMsg(('connectionError', str(e)), "%s:%s" % to)
+			else:
+				raise e
+		if self['enable_notifications']:
+			self.triEnqueueMsg(('connectionConfirm', None), "%s:%s" % to)
 		return conn
 	
 	def _registerOutgoingConnection(self, sock, addr):
@@ -180,7 +198,9 @@ class SctpProbe(ProbeImplementationManager.ProbeImplementation):
 		self._unlock()
 
 		conn.socket.close()
-		# Disconnection notification ?
+		# Disconnection notification
+		if self['enable_notifications']:
+			self.triEnqueueMsg(('disconnectionNotification', reason), "%s:%s" % addr)
 	
 	def _disconnectIncomingConnections(self):
 		self._lock()
@@ -232,6 +252,7 @@ class SctpProbe(ProbeImplementationManager.ProbeImplementation):
 	def _stopPollingThread(self):
 		if self._pollingThread:
 			self._pollingThread.stop()
+			self._pollingThread = None
 
 	def _getListeningSockets(self):
 		sockets = []
@@ -257,6 +278,10 @@ class SctpProbe(ProbeImplementationManager.ProbeImplementation):
 			self.logReceivedPayload("SCTP data", data)
 			self.triEnqueueMsg(data, "%s:%s" % addr)
 
+	def _onIncomingConnection(self, sock, addr):
+		self._registerIncomingConnection(sock, addr)
+		if self['enable_notifications']:
+			self.triEnqueueMsg(('connectionNotification', None), "%s:%s" % addr)
 
 class PollingThread(threading.Thread):
 	"""
@@ -283,32 +308,37 @@ class PollingThread(threading.Thread):
 	def run(self):
 		# Main poll loop
 		while not self._stopEvent.isSet():
-			listening = self._probe._getListeningSockets()
-			active = self._probe._getActiveSockets()
-			rset = listening + active
-			
-			r, w, e = select.select(rset, [], [], 0.001)
-			for s in r:
-				try:
-					if s in listening:
-						self._probe.getLogger().debug("Accepting a new connection")
-						(sock, addr) = s.accept()
-						self._probe._registerIncomingConnection(sock, addr)
-						# Raise a new connection notification event - soon
-					else:
-						addr = s.getpeername()
-						self._probe.getLogger().debug("New data to read from %s" % str(addr))
-						data = s.recv(65535)
-						if not data:
-							self._probe.getLogger().debug("%s disconnected by peer" % str(addr))
-							self._probe._disconnect(addr, reason = "disconnected by peer")
+			try:
+				listening = self._probe._getListeningSockets()
+				active = self._probe._getActiveSockets()
+				rset = listening + active
+
+				r, w, e = select.select(rset, [], [], 0.001)
+				for s in r:
+					try:
+						if s in listening:
+							self._probe.getLogger().debug("Accepting a new connection")
+							(sock, addr) = s.accept()
+							self._probe._onIncomingConnection(sock, addr)
+							# Raise a new connection notification event - soon
 						else:
-							# New received message.
-							self._probe._feedData(addr, data)
-							
-				except Exception, e:
-					self._probe.getLogger().warning("exception while polling active/listening sockets: %s" % str(e))
+							addr = s.getpeername()
+							self._probe.getLogger().debug("New data to read from %s" % str(addr))
+							data = s.recv(65535)
+							if not data:
+								self._probe.getLogger().debug("%s disconnected by peer" % str(addr))
+								self._probe._disconnect(addr, reason = "disconnected by peer")
+							else:
+								# New received message.
+								self._probe._feedData(addr, data)
+
+					except Exception, e:
+						self._probe.getLogger().warning("exception while polling active/listening sockets: %s" % str(e))
 					
+			except Exception, e:
+				self._probe.getLogger().warning("exception while polling active/listening sockets: %s" % str(e))
+				# Avoid 100% CPU usage when select() raised an error
+				time.sleep(0.01)	
 
 
 ProbeImplementationManager.registerProbeImplementationClass('sctp', SctpProbe)

@@ -205,7 +205,7 @@ class TcpProbe(ProbeImplementationManager.ProbeImplementation):
 		self._unlock()
 
 		conn.socket.close()
-		# Disconnection notification ?
+		# Disconnection notification
 		if self['enable_notifications']:
 			self.triEnqueueMsg(('disconnectionNotification', reason), "%s:%s" % addr)
 	
@@ -336,31 +336,37 @@ class PollingThread(threading.Thread):
 	def run(self):
 		# Main poll loop
 		while not self._stopEvent.isSet():
-			listening = self._probe._getListeningSockets()
-			active = self._probe._getActiveSockets()
-			rset = listening + active
-			
-			r, w, e = select.select(rset, [], [], 0.001)
-			for s in r:
-				try:
-					if s in listening:
-						self._probe.getLogger().debug("Accepting a new connection")
-						(sock, addr) = s.accept()
-						self._probe._onIncomingConnection(sock, addr)
-						# Raise a new connection notification event - soon
-					else:
-						addr = s.getpeername()
-						self._probe.getLogger().debug("New data to read from %s" % str(addr))
-						data = s.recv(65535)
-						if not data:
-							self._probe.getLogger().debug("%s disconnected by peer" % str(addr))
-							self._probe._disconnect(addr, reason = "disconnected by peer")
+			try:
+				listening = self._probe._getListeningSockets()
+				active = self._probe._getActiveSockets()
+				rset = listening + active
+
+				r, w, e = select.select(rset, [], [], 0.001)
+				for s in r:
+					try:
+						if s in listening:
+							self._probe.getLogger().debug("Accepting a new connection")
+							(sock, addr) = s.accept()
+							self._probe._onIncomingConnection(sock, addr)
+							# Raise a new connection notification event - soon
 						else:
-							# New received message.
-							self._probe._feedData(addr, data)
-							
-				except Exception, e:
-					self._probe.getLogger().warning("exception while polling active/listening sockets: %s" % str(e))
+							addr = s.getpeername()
+							self._probe.getLogger().debug("New data to read from %s" % str(addr))
+							data = s.recv(65535)
+							if not data:
+								self._probe.getLogger().debug("%s disconnected by peer" % str(addr))
+								self._probe._disconnect(addr, reason = "disconnected by peer")
+							else:
+								# New received message.
+								self._probe._feedData(addr, data)
+
+					except Exception, e:
+						self._probe.getLogger().warning("exception while polling active/listening sockets: %s" % str(e))
+					
+			except Exception, e:
+				self._probe.getLogger().warning("exception while polling active/listening sockets: %s" % str(e))
+				# Avoid 100% CPU usage when select() raised an error
+				time.sleep(0.01)	
 					
 
 
