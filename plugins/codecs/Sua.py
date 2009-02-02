@@ -88,6 +88,17 @@ def encodeParameters(parameters):
 			encodeParameter(p, packer)
 	return packer.get_buffer()
 
+MessageClasses = {
+	0: ('MGMT (SUA Management)', {0: 'ERR', 1: 'NTFY'}),
+	2: ('SNM (Signalling Network Management)', {1: 'DUNA', 2: 'DAVA', 3: 'DAUD', 4: 'SCON', 5: 'DUPU', 6: 'DRST'}),
+	3: ('ASPSM (ASP State Maintenance)', {1: 'UP', 2: 'DOWN', 3: 'BEAT', 4: 'UP ACK', 5: 'DOWN ACK', 6: 'BEAT ACK'}),
+	4: ('ASPTM (ASP Traffic Maintenance)', {1: 'ACTIVE', 2: 'INACTIVE', 3: 'ACTIVE ACK', 4: 'INACTIVE ACK'}),
+	7: ('CL (Connectionless)', {1: 'CLDT', 2: 'CLDR'}),
+	8: ('CO (Connection-Oriented)', {1: 'CORE', 2: 'COAK', 3: 'COREF', 4: 'RELRE', 5: 'RELCO', 6: 'RESCO', 7: 'RESRE', 8: 'CODT', 9: 'CODA', 10: 'COERR', 11: 'COIT'}),
+	9: ('RKM (Routing Key Management)', {1: 'REG REQ', 2: 'REG RSP', 3: 'DEREG REQ', 4: 'DEREG RSP'}),
+}
+
+
 class Message:
 	def __init__(self):
 		self.version = None
@@ -111,7 +122,14 @@ class Message:
 		self.parameters = message.get('parameters', [])
 	
 	def toUserland(self):
-		return {'version': self.version, 'class': self.messageClass, 'type': self.messageType, 'parameters':self.parameters}
+		ret = {'version': self.version, 
+		'class': self.messageClass, 
+		'type': self.messageType, 'parameters': self.parameters,
+		}
+		(label, typeLabels) = MessageClasses.get(self.messageClass, ('Reserved/Unknown', {}))
+		ret['classLabel'] = label
+		ret['typeLabel'] = typeLabels.get(self.messageType, 'Reserved/Unknown')
+		return ret
 	
 	def _decode(self, unpacker, bytes):
 		"""
