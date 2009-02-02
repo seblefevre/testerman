@@ -24,6 +24,335 @@
 # Exceptions are documented with # Exception
 ##
 
+"""
+type record GenericParam {
+  charstring id optional, // the parameter name
+  charstring value optional // the parameter value
+}
+type set of GenericParam SemicolonParam_List;
+
+type SemicolonParam_List AmpersandParam_List;
+
+type SemicolonParam_List CommaParam_List;
+
+type record HostPort {
+  // "host" field changed to be optional: when tel-URI is used, it is
+  // sent in the userInfo field of SipUrl; in this case the hostPort
+  // field is present in SipUrl (mandatory field) but empty; hence both
+  // the host and portField fields of hostPort shall be omitted
+  charstring host optional, // hostname, IPv4 or IPv6
+  integer port optional // represented as an integer
+}
+
+type record UserInfo {
+  charstring user optional,
+  charstring password optional
+}
+
+type record SipUrl {
+  charstring scheme, // contains "sip:", "tel:", etc
+  UserInfo userInfo optional,
+  HostPort hostPort,
+  SemicolonParam_List urlParameters optional,
+  AmpersandParam_List headers optional
+}
+
+type record AcceptBody { // Not implemented in Testerman
+  charstring mediaRange,
+  SemicolonParam_List acceptParam optional
+}
+
+type set of AcceptBody AcceptBody_List; // Not implemented in Testerman
+
+type record AlertInfoBody { // Not implemented in Testerman
+  charstring url, // any URI
+  SemicolonParam_List genericParams optional
+}
+
+type set of AlertInfoBody AlertInfoBody_List; // Not implemented in Testerman
+
+type charstring CallidString;
+type set of CallidString CallidString_List;
+
+type record CallInfoBody { // NI in Testerman
+  charstring url, // any URI
+  SemicolonParam_List infoParams optional
+}
+
+type set of CallInfoBody CallInfoBody_List; // NI in Testerman
+
+type union Challenge { // NI in Testerman
+  CommaParam_List digestCln,
+  OtherAuth otherChallenge
+}
+
+// NameAddr is used in From, To : contains a SIP Url + optional quoted display
+// On encoding, always double-quoted and encoded to utf-8.
+// On decoding, double-quotes, if any, are removed, and decoded to unicode.
+type record NameAddr {
+  charstring displayName optional,
+  SipUrl sipUrl
+}
+
+type record ContactAddress {
+  NameAddr addressField,
+  SemicolonParam_List parameters optional
+}
+
+type set of ContactAddress ContactAddress_List;
+
+type charstring ContentCoding;
+
+type set of ContentCoding ContentCoding_List;
+
+// [20.7, 20.28; RFC2616 14.35 RFC2617 1.2]
+type union Credentials { // NI in Testerman
+  CommaParam_List digestResponse,
+  OtherAuth otherResponse
+}
+
+// [20.19, 20.23, 20.33]
+type charstring DeltaSec; // NI in Testerman
+// an external operation can handle this field
+// [20.18]
+type record ErrorInfoBody { // NI in Testerman
+  charstring uri, // any URI
+  SemicolonParam_List genericParams optional
+}
+
+// [20.18]
+type set of ErrorInfoBody ErrorInfoBody_List; // NI in Testerman
+
+// [20.3 RFC2616 14.4]
+type record LanguageBody { // NI in Testerman
+  charstring languageRange,
+  SemicolonParam_List acceptParam optional
+}
+
+// [20.3 RFC2616 14.4]
+type set of LanguageBody LanguageBody_List; // NI in Testerman
+
+// [20.13; RFC2616 14.12]
+type charstring LanguageTag;
+
+// [20.13; RFC2616 14.12]
+type set of LanguageTag LanguageTag_List;
+
+// [20.5]
+type set of charstring Method_List;
+
+// [20.29, 20.32, 20.37, 20.40]
+type charstring OptionTag;
+
+// [20.29, 20.32, 20.37, 20.40]
+type set of OptionTag OptionTag_List;
+
+// [20.7, 20.27, 20.28, 20.44  ; RFC2616 14.33, 14.47; RFC2617 1.2]
+type record OtherAuth { // NI in Testerman
+  charstring authScheme,
+  CommaParam_List authParams
+}
+
+type record Payload { // NI in Testerman
+  integer payloadlength,
+  charstring payloadvalue
+}
+
+// [20.30,20.34]
+type record RouteBody {
+  NameAddr nameAddr,
+  SemicolonParam_List parameters optional
+}
+
+// [20.30,20.34]
+type record of RouteBody RouteBody_List;
+
+// [20.42]
+type record SentProtocol {
+  charstring protocolName,
+  charstring protocolVersion,
+  charstring transport
+}
+
+// [20.42]
+type record ViaBody {
+  SentProtocol sentProtocol,
+  HostPort sentBy,
+  SemicolonParam_List parameters optional
+}
+
+// [20.35, 20.41; RFC2616 14.43]
+type charstring ServerVal;
+
+// [20.35, 20.41; RFC2616 14.43]
+type set of ServerVal ServerVal_List;
+
+// [20.38]
+type record TimeValue { // NI in Testerman
+  integer majorDigit, // represented as an integer
+  integer minorDigit optional // represented as an integer
+}
+
+// [20.43]
+type union WarnAgent { // NI in Testerman
+  HostPort hostPort,
+  charstring pseudonym
+}
+
+// [20.43]
+type record WarningValue { // NI in Testerman
+  integer warnCode, // represented as an integer
+  WarnAgent warnAgent,
+  charstring warnText
+}
+
+// [20.43]
+type set of WarningValue WarningValue_List;
+
+
+// [20.1, RFC2616 14.1]
+type record Accept {
+  FieldName fieldName(ACCEPT_E),
+  AcceptBody_List acceptArgs optional
+}
+
+// [20.2, RFC2616 14.3]
+type record AcceptEncoding {
+  FieldName fieldName(ACCEPT_ENCODING_E),
+  ContentCoding_List contentCoding optional
+}
+
+// [20.3, RFC2616 14.4]
+type record AcceptLanguage {
+  FieldName fieldName(ACCEPT_LANGUAGE_E),
+  LanguageBody_List languageBody optional
+}
+
+// [20.4]
+type record AlertInfo {
+  FieldName fieldName(ALERT_INFO_E),
+  AlertInfoBody_List alertInfoBody optional
+}
+
+// [20.5]
+type record Allow {
+  FieldName fieldName(ALLOW_E),
+  Method_List methods optional
+}
+
+// [20.6]
+type record AuthenticationInfo {
+  FieldName fieldName(AUTHENTICATION_INFO_E),
+  CommaParam_List ainfo
+}
+
+// [20.7 RFC2617 3.2.2]
+type record Authorization {
+  FieldName fieldName(AUTHORIZATION_E),
+  charstring body optional
+}
+
+// [20.8]
+type record CallId {
+  FieldName fieldName(CALL_ID_E) optional,
+  CallidString callid optional
+}
+
+// [20.9]
+type record CallInfo {
+  FieldName fieldName(CALL_INFO_E),
+  CallInfoBody_List callInfoBody optional
+}
+
+// [20.10]
+type record Contact {
+  FieldName fieldName(CONTACT_E),
+  ContactBody contactBody
+}
+
+// [20.11]
+type record ContentDisposition {
+  FieldName fieldName(CONTENT_DISPOSITION_E),
+  charstring dispositionType,
+  SemicolonParam_List dispositionParams optional
+}
+
+// [20.12 RFC2616 14.11]
+type record ContentEncoding {
+  FieldName fieldName(CONTENT_ENCODING_E),
+  ContentCoding_List contentCoding
+}
+
+// [20.13 RFC2616 14.12]
+type record ContentLanguage {
+  FieldName fieldName(CONTENT_LANGUAGE_E),
+  LanguageTag_List languageTag
+}
+
+// [20.14]
+type record ContentLength {
+  FieldName fieldName(CONTENT_LENGTH_E),
+  integer len // this field is represented as an integer
+}
+
+// [20.15]
+type record ContentType {
+  FieldName fieldName(CONTENT_TYPE_E),
+  charstring mediaType optional
+}
+
+// [20.16]
+type record CSeq {
+  FieldName fieldName(CSEQ_E),
+  integer seqNumber,
+  // this field is represented as an integer
+  charstring method
+}
+
+type record GenericHeader {
+  FieldName fieldName,
+	charstring fieldValue,
+	record of charstring rawValues,
+}
+
+type union MessageHeader {
+  Cseq CSeq,
+	ContentType ContentType,
+	...
+	GenericHeader <GenericName>,
+}
+
+type set of MessageHeader MessageHeaders;
+
+// Request-Line [7.1]
+type record RequestLine {
+  Method method,
+  SipUrl requestUri,
+  charstring sipVersion
+}
+
+// Status-Line [7.2]
+type record StatusLine {
+  charstring sipVersion,
+  integer statusCode,
+  charstring reasonPhrase
+}
+
+// Main templates to the codec
+type record Request {
+  RequestLine requestLine,
+  MessageHeaders messageHeaders,
+  charstring messageBody optional,
+}
+
+type record Response {
+  StatusLine statusLine,
+  MessageHeaders messsageHeaders,
+  charstring messageBody optional,
+}
+
+
+"""
 
 import CodecManager
 
@@ -51,7 +380,7 @@ HeaderBodyCodecs = {}
 # explained above, you may want to explicitly provide this identifier,
 # based on the received header in lower-case.
 KnownHeaderNames = {
-	'cseq': 'CSeq', # when receiving cseq, Cseq, cSeq, CSeq, or whatever, create a record named CSeq
+#	'cseq': 'CSeq', # when receiving cseq, Cseq, cSeq, CSeq, or whatever, create a record named CSeq
 }
 
 # The compact forms for header name. You shoud map it to its non-compact form
@@ -86,24 +415,16 @@ MultiValuedHeaders = [
 'Supported',
 'Unsupported',
 'Require',
+'ContentCoding',
+'CallInfo',
+'AlertInfo',
+'Language',
+'Accept',
 ]
 
-
-"""
-        type record GenericParam {
-          charstring id optional,
-          charstring paramValue optional
-        }
-        type set of GenericParam SemicolonParam_List;
-
-        type SemicolonParam_List AmpersandParam_List;
-
-        type SemicolonParam_List CommaParam_List;
-
-"""
 def encode_GenericParam(p):
-	if p.get('paramValue', None) is not None:
-		return "%s=%s" % (p['id'], p['paramValue'])
+	if p.get('value', None) is not None:
+		return "%s=%s" % (p['id'], p['value'])
 	else:
 		return p['id']
 def encode_SemicolonParam_List(p):
@@ -116,7 +437,7 @@ def encode_CommaParam_List(p):
 def decode_GenericParam(s):
 	try:
 		a, b = s.split('=', 1)
-		return { 'id': a, 'paramValue': b }
+		return { 'id': a, 'value': b }
 	except:
 		return { 'id': s }
 def decode_SemicolonParam_List(s):
@@ -126,58 +447,38 @@ def decode_AmpersandParam_List(s):
 def decode_CommaParam_List(s):
 	return map(decode_GenericParam, s.split(','))
 
-"""
-        // [20.10, 20.20, 20.30, 20.31, 20.34, 20.39, 20.42, 20.43]
-        type record HostPort {
-          // "host" field changed to be optional: when tel-URI is used, it is
-          // sent in the userInfo field of SipUrl; in this case the hostPort
-          // field is present in SipUrl (mandatory field) but empty; hence both
-          // the host and portField fields of hostPort shall be omitted
-          charstring host optional, // hostname, IPv4 or IPv6
-          integer portField optional // represented as an integer
-        }
-
-        // [20.10, 20.20, 20.30, 20.31, 20.34, 20.39]
-        type record UserInfo {
-          charstring userOrTelephoneSubscriber optional,
-          charstring password optional
-        }
-"""
 def encode_HostPort(p):
-	if p.get('portField', None):
-		return '%s:%s' % (p['host'], p['portField'])
+	if p.get('port', None):
+		return '%s:%s' % (p['host'], p['port'])
 	else:
 		return p['host']
 def decode_HostPort(s):
 	t = s.split(':')
 	if len(t) == 2:
-		return { 'host': t[0], 'portField': int(t[1]) }
+		return { 'host': t[0], 'port': int(t[1]) }
 	else:
 		return { 'host': s }
 
+##
+# UserInfo
+##
 def encode_UserInfo(p):
-	if p.get('userOrTelephoneSubscriber', None) is not None:
-		ret = p['userOrTelephoneSubscriber']
+	if p.get('user', None) is not None:
+		ret = p['user']
 		if p.get('password', None) is not None:
 			ret += ':%s' % p['password']
 		return ret
 	return ''
 def decode_UserInfo(s):
-	t = s.split(':')
+	t = s.split(':', 1)
 	if len(t) == 2:
-		return { 'userOrTelephoneSubscriber': t[0], 'password': t[1] }
+		return { 'user': t[0], 'password': t[1] }
 	else:
-		return { 'userOrTelephoneSubscriber': s }
+		return { 'user': s }
 
-"""
-        type record SipUrl {
-          charstring scheme, // contains "sip:"
-          UserInfo userInfo optional,
-          HostPort hostPort,
-          SemicolonParam_List urlParameters optional,
-          AmpersandParam_List headers optional
-        }
-"""
+##
+# SipUrl
+##
 def encode_SipUrl(p):
 	ret = p['scheme']
 	if 'userInfo' in p:
@@ -189,6 +490,7 @@ def encode_SipUrl(p):
 		ret += ';' + encode_SemicolonParam_List(p['urlParameters'])
 	# Headers ??
 	return ret
+
 def decode_SipUrl(s):
 	p = {}
 	t = s.split(':', 1)
@@ -204,87 +506,37 @@ def decode_SipUrl(s):
 		p['urlParameters'] = decode_SemicolonParam_List(tt[1])
 	return p
 
-"""
-        // [20.1, RFC2616 14.1]
-        type record AcceptBody {
-          charstring mediaRange,
-          SemicolonParam_List acceptParam optional
-        }
-
-        // [20.1, RFC2616 14.1]
-        type set of AcceptBody AcceptBody_List;
-"""
+##
+# Accept header
+##
 def decode_AcceptBody(s): raise NotImplemented
 def encode_AcceptBody(s): raise NotImplemented
 
-"""
-        // [10.14, 10.25, 10.34, 10.38, 10.43]
-        // type SipUrl AddrSpec;
-        // the absolute URI is not used AddrSpec type has been replaced by SipUrl
-        //      type union AddrSpec
-        //      {
-        //    SipUrl      sipUrl,
-        //    charstring    absoluteUri
-        //      }
-        // [20.4]
-        type record AlertInfoBody {
-          charstring url, // any URI
-          SemicolonParam_List genericParams optional
-        }
-
-        // [20.4]
-        type set of AlertInfoBody AlertInfoBody_List;
-"""
+##
+# Alert-Info header
+##
 def decode_AlertInfoBody(s): raise NotImplemented
 def encode_AlertInfoBody(p): raise NotImplemented
 
-"""
-        // [20.8]
-        type charstring CallidString;
-        // token ["@" token]
-        // [20.8]
-        type set of CallidString CallidString_List;
-
-        // [20.9]
-        type record CallInfoBody {
-          charstring url, // any URI
-          SemicolonParam_List infoParams optional
-        }
-
-        // [20.9]
-        type set of CallInfoBody CallInfoBody_List;
-"""
+##
+# Call-Info header
+##
 def decode_CallInfoBody(s): raise NotImplemented
 def encode_CallInfoBody(p): raise NotImplemented
 
-"""
-        // [20.27, 20.44, .......10.32, 10.48; RFC2616 14.33, 14.47; RFC2617 1.2]
-        type union Challenge {
-          CommaParam_List digestCln,
-          OtherAuth otherChallenge
-        }
-"""
+##
+# Challenger header
+##
 def decode_Challenge(s): raise NotImplemented
 def encode_Challenge(p): raise NotImplemented
 
-"""
-        // [20.10, 20.20, 20.30, 20.31, 20.34, 20.39]
-        type record NameAddr {
-          charstring displayName optional,
-          SipUrl addrSpec
-        }
-
-        // [20.10, 20.20, 20.31, 20.39]
-        type union Addr_Union {
-          NameAddr nameAddr,
-          SipUrl addrSpecUnion // STS: "Union" added to filed name to avoid dangerous name equivalence with 2nd NameAddr field
-        }
-"""
-# Exception: Addr_Union replaced by NameAddr directly. Everywhere.
+##
+# NameAddr (used in From, To header)
+##
 def encode_NameAddr(p):
 	if "displayName" in p:
-		return '"%s" <%s>' % (p['displayName'].encode('utf-8'), encode_SipUrl(p['addrSpec']))
-	return encode_SipUrl(p['addrSpec'])
+		return '"%s" <%s>' % (p['displayName'].encode('utf-8'), encode_SipUrl(p['sipUrl']))
+	return encode_SipUrl(p['sipUrl'])
 def decode_NameAddr(s):
 	url = s
 	m = re.match(r'(?P<display>.*)\<(?P<url>.*)\>', s)
@@ -294,35 +546,35 @@ def decode_NameAddr(s):
 		if display:
 			if display[0] == '"':
 				display = display[1:-1]
-			return { 'displayName': display.decode('utf-8'), 'addrSpec': decode_SipUrl(url) }
-	return { 'addrSpec': decode_SipUrl(url) }
+			return { 'displayName': display.decode('utf-8'), 'sipUrl': decode_SipUrl(url) }
+	return { 'sipUrl': decode_SipUrl(url) }
 
 def encode_FromTo(p):
 	"""
-	Similar to NameAddr, but may contain additional ;-parameters in p['params'].
+	Similar to NameAddr, but may contain additional ;-parameters in p['parameters'].
 	"""
 	ret = encode_NameAddr(p)
-	if 'params' in p:
+	if 'parameters' in p:
 		if 'displayName' in p:
-			ret += ';%s' % encode_SemicolonParam_List(p['params'])
+			ret += ';%s' % encode_SemicolonParam_List(p['parameters'])
 		else:
-			ret = "<%s>;%s" % (ret, encode_SemicolonParam_List(p['params']))
+			ret = "<%s>;%s" % (ret, encode_SemicolonParam_List(p['parameters']))
 	return ret
 
 def decode_FromTo(s):
 	"""
-	Similar to NameAddr, but may contain additional ;-parameters in p['params'].
+	Similar to NameAddr, but may contain additional ;-parameters in p['parameters'].
 	"""
 	ret = {}
 	m = re.match(r'(?P<display>.*)\<(?P<url>.*)\>(?P<params>.*)', s)
 	if m:
 		url = m.group('url')
-		ret['addrSpec'] = decode_SipUrl(url)
+		ret['sipUrl'] = decode_SipUrl(url)
 		params = m.group('params').strip()
 		if params.startswith(';'):
 			params = decode_SemicolonParam_List(params[1:])
 			if params:
-				ret['params'] = params
+				ret['parameters'] = params
 
 		display = m.group('display').strip()
 		if display:
@@ -333,30 +585,23 @@ def decode_FromTo(s):
 		# sip:something@something;branch=... -> ;branch is not an URI parameter
 		# while: <sip:something@something;branch=...>;branch=... will lead to one URI parameter and one FromTo param
 		t = s.split(';', 1)
-		ret['addrSpec'] = decode_SipUrl(t[0])
+		ret['sipUrl'] = decode_SipUrl(t[0])
 		if len(t) > 1:
 			if t[1]:
-				ret['params'] = decode_SemicolonParam_List(t[1])
+				ret['parameters'] = decode_SemicolonParam_List(t[1])
 	return ret
 
 
 HeaderBodyCodecs['From'] = (encode_FromTo, decode_FromTo)
 HeaderBodyCodecs['To'] = (encode_FromTo, decode_FromTo)
 
-"""
-        // [20.10]
-        type record ContactAddress {
-          Addr_Union addressField, # Exception -> NameAddr addressField
-          SemicolonParam_List contactParams optional
-        }
-
-        // [20.10]
-        type set of ContactAddress ContactAddress_List;
-"""
+##
+# ContactAddress
+##
 def encode_ContactAddress(p):
 	ret = "<%s>" % encode_NameAddr(p['addressField'])
-	if p.get('contactParams', []):
-		ret += ";%s" % encode_SemicolonParam_List(p['contactParams'])
+	if p.get('parameters', []):
+		ret += ";%s" % encode_SemicolonParam_List(p['parameters'])
 	return ret
 
 def decode_ContactAddress(s):
@@ -365,107 +610,20 @@ def decode_ContactAddress(s):
 		ret = { 'addressField': decode_NameAddr(m.group('address')) }
 		params = m.group('params')
 		if len(params) > 1 and params[0] == ';': # contains at least one char after the ;
-			ret['contactParams'] = decode_SemicolonParam_List(params[1:])
+			ret['parameters'] = decode_SemicolonParam_List(params[1:])
 		return ret
 	else:
 		raise Exception("Invalid Contact Address format: %s" % s)
 
 HeaderBodyCodecs['Contact'] = (encode_ContactAddress, decode_ContactAddress)
 
-"""
-	      // 1 or more elements
-        // [20.10]
-        type union ContactBody { # Exception -> not supported; contactAddresses directly generated in header.
-          charstring wildcard,
-          ContactAddress_List contactAddresses
-        }
-"""
-
-"""
-        // [20.2, 20.12; RFC2616 14.3, 14.11]
-        type charstring ContentCoding;
-
-        // [20.2, 20.12; RFC2616 14.3, 14.11]
-        type set of ContentCoding ContentCoding_List;
-"""
-# Native implementation
-
-"""        
-        // [20.7, 20.28; RFC2616 14.35 RFC2617 1.2]
-        type union Credentials {
-          CommaParam_List digestResponse,
-          OtherAuth otherResponse
-        }
-
-        // [20.19, 20.23, 20.33]
-        type charstring DeltaSec;
-        // an external operation can handle this field
-        // [20.18]
-        type record ErrorInfoBody {
-          charstring uri, // any URI
-          SemicolonParam_List genericParams optional
-        }
-
-        // [20.18]
-        type set of ErrorInfoBody ErrorInfoBody_List;
-
-        // [20.3 RFC2616 14.4]
-        type record LanguageBody {
-          charstring languageRange,
-          SemicolonParam_List acceptParam optional
-        }
-
-        // [20.3 RFC2616 14.4]
-        type set of LanguageBody LanguageBody_List;
-"""
-# Not yet implemented.
-
-"""
-        // [20.13; RFC2616 14.12]
-        type charstring LanguageTag;
-
-        // [20.13; RFC2616 14.12]
-        type set of LanguageTag LanguageTag_List;
-
-        // [20.5]
-        type set of charstring Method_List;
-
-        // [20.29, 20.32, 20.37, 20.40]
-        type charstring OptionTag;
-
-        // [20.29, 20.32, 20.37, 20.40]
-        type set of OptionTag OptionTag_List;
-"""
-# Native implementation
-
-"""
-        // [20.7, 20.27, 20.28, 20.44  ; RFC2616 14.33, 14.47; RFC2617 1.2]
-        type record OtherAuth {
-          charstring authScheme,
-          CommaParam_List authParams
-        }
-
-        type record Payload {
-          integer payloadlength,
-          charstring payloadvalue
-        }
-"""
-# Not yet implemented
-
-"""
-        // [20.30,20.34]
-        type record RouteBody {
-          NameAddr nameAddr,
-          SemicolonParam_List rrParam optional
-        }
-
-        // [20.30,20.34]
-        type record of RouteBody RouteBody_List;
-"""
+##
+# Route header
+##
 def encode_RouteBody(p):
 	ret = "<%s>" % encode_NameAddr(p['addressField'])
-	if p.get('rrParam', []):
-		ret += ";%s" % encode_SemicolonParam_List(p['rrParam'])
+	if p.get('parameters', []):
+		ret += ";%s" % encode_SemicolonParam_List(p['parameters'])
 	return ret
 
 def decode_RouteBody(s):
@@ -474,31 +632,16 @@ def decode_RouteBody(s):
 		ret = { 'nameAddr': decode_NameAddr(m.group('address')) }
 		params = m.group('params')
 		if len(params) > 1 and params[0] == ';': # contains at least one char after the ;
-			ret['rrParam'] = decode_SemicolonParam_List(params[1:])
+			ret['parameters'] = decode_SemicolonParam_List(params[1:])
 		return ret
 	else:
 		raise Exception("Invalid Route format: %s" % s)
 
 HeaderBodyCodecs['Route'] = (encode_RouteBody, decode_RouteBody)
 
-"""
-        // [20.42]
-        type record SentProtocol {
-          charstring protocolName,
-          charstring protocolVersion,
-          charstring transport
-        }
-
-        // [20.42]
-        type record ViaBody {
-          SentProtocol sentProtocol,
-          HostPort sentBy,
-          SemicolonParam_List viaParams optional
-        }
-
-        // [20.42]
-        type record of ViaBody ViaBody_List;
-"""
+##
+# Via header
+##
 def encode_SentProtocol(p):
 	return "%s/%s/%s" % (p['protocolName'], p['protocolVersion'], p['transport'])
 
@@ -509,8 +652,8 @@ def decode_SentProtocol(s):
 def encode_ViaBody(p):
 	# SIP/2.0/UDP 172.16.4.238:5060;branch=z9hG4bK8606A188A4651BD550F06BB83B25552C;rport
 	ret = "%s %s" % (encode_SentProtocol(p['sentProtocol']), encode_HostPort(p['sentBy']))
-	params = p.get('viaParams', [])
-	if p:
+	params = p.get('parameters', [])
+	if params:
 		ret += ";%s" % encode_SemicolonParam_List(params)
 	return ret
 
@@ -520,148 +663,14 @@ def decode_ViaBody(s):
 	c = b.split(';', 1)
 	ret['sentBy'] = decode_HostPort(c[0])
 	if len(c) > 1:
-		ret['viaParams'] = decode_SemicolonParam_List(c[1])
+		ret['parameters'] = decode_SemicolonParam_List(c[1])
 	return ret
 
 HeaderBodyCodecs['Via'] = (encode_ViaBody, decode_ViaBody)
 
-"""
-        // [20.35, 20.41; RFC2616 14.43]
-        type charstring ServerVal;
-
-        // [20.35, 20.41; RFC2616 14.43]
-        type set of ServerVal ServerVal_List;
-
-        // [20.38]
-        type record TimeValue {
-          integer majorDigit, // represented as an integer
-          integer minorDigit optional // represented as an integer
-        }
-
-        // [20.43]
-        type union WarnAgent {
-          HostPort hostPort,
-          charstring pseudonym
-        }
-
-        // [20.43]
-        type record WarningValue {
-          integer warnCode, // represented as an integer
-          WarnAgent warnAgent,
-          charstring warnText
-        }
-
-        // [20.43]
-        type set of WarningValue WarningValue_List;
-"""
-# Not yet implemented
-
-"""
-
-      } // end group TokensType
-      group HeaderFieldTypes // Header Fields
-      {
-        // [20.1, RFC2616 14.1]
-        type record Accept {
-          FieldName fieldName(ACCEPT_E),
-          AcceptBody_List acceptArgs optional
-        }
-
-        // [20.2, RFC2616 14.3]
-        type record AcceptEncoding {
-          FieldName fieldName(ACCEPT_ENCODING_E),
-          ContentCoding_List contentCoding optional
-        }
-
-        // [20.3, RFC2616 14.4]
-        type record AcceptLanguage {
-          FieldName fieldName(ACCEPT_LANGUAGE_E),
-          LanguageBody_List languageBody optional
-        }
-
-        // [20.4]
-        type record AlertInfo {
-          FieldName fieldName(ALERT_INFO_E),
-          AlertInfoBody_List alertInfoBody optional
-        }
-
-        // [20.5]
-        type record Allow {
-          FieldName fieldName(ALLOW_E),
-          Method_List methods optional
-        }
-
-        // [20.6]
-        type record AuthenticationInfo {
-          FieldName fieldName(AUTHENTICATION_INFO_E),
-          CommaParam_List ainfo
-        }
-
-        // [20.7 RFC2617 3.2.2]
-        type record Authorization {
-          FieldName fieldName(AUTHORIZATION_E),
-          //dbo:uses as a charstring
-          //Credentials body
-          charstring body optional
-        }
-
-        // [20.8]
-        type record CallId {
-          FieldName fieldName(CALL_ID_E) optional,
-          CallidString callid optional
-        }
-
-        // [20.9]
-        type record CallInfo {
-          FieldName fieldName(CALL_INFO_E),
-          CallInfoBody_List callInfoBody optional
-        }
-
-        // [20.10]
-        type record Contact {
-          FieldName fieldName(CONTACT_E),
-          ContactBody contactBody
-        }
-
-        // [20.11]
-        type record ContentDisposition {
-          FieldName fieldName(CONTENT_DISPOSITION_E),
-          charstring dispositionType,
-          SemicolonParam_List dispositionParams optional
-        }
-
-        // [20.12 RFC2616 14.11]
-        type record ContentEncoding {
-          FieldName fieldName(CONTENT_ENCODING_E),
-          ContentCoding_List contentCoding
-        }
-
-        // [20.13 RFC2616 14.12]
-        type record ContentLanguage {
-          FieldName fieldName(CONTENT_LANGUAGE_E),
-          LanguageTag_List languageTag
-        }
-
-        // [20.14]
-        type record ContentLength {
-          FieldName fieldName(CONTENT_LENGTH_E),
-          integer len // this field is represented as an integer
-        }
-
-        // [20.15]
-        type record ContentType {
-          FieldName fieldName(CONTENT_TYPE_E),
-          charstring mediaType optional
-        }
-
-        // [20.16]
-        type record CSeq {
-          FieldName fieldName(CSEQ_E),
-          integer seqNumber,
-          // this field is represented as an integer
-          charstring method
-        }
-"""
+##
+# CSeq header
+##
 def decode_CSeq(s):
 	a, b = s.split(' ')
 	seqNumber = int(a.strip())
@@ -671,7 +680,7 @@ def decode_CSeq(s):
 def encode_CSeq(p):
 	return "%s %s" % (p['seqNumber'], p['method'])
 
-HeaderBodyCodecs['CSeq'] = (encode_CSeq, decode_CSeq)
+HeaderBodyCodecs['Cseq'] = (encode_CSeq, decode_CSeq)
 
 def generic_header_body_coder(value):
 	return unicode(value).encode('utf-8')
@@ -688,23 +697,9 @@ def integer_header_body_decoder(value):
 HeaderBodyCodecs['MaxForwards'] = (integer_header_body_coder, integer_header_body_decoder)
 HeaderBodyCodecs['ContentLength'] = (integer_header_body_coder, integer_header_body_decoder)
 
-"""      group StartLineTypes {
-        // Request-Line [7.1]
-        type record RequestLine {
-          Method method,
-          SipUrl requestUri,
-          charstring sipVersion
-        }
-
-        // Status-Line [7.2]
-        type record StatusLine {
-          charstring sipVersion,
-          integer statusCode,
-          charstring reasonPhrase
-        }
-      } // end group StartLineTypes
-"""
-
+##
+# Request Line
+##
 def encode_RequestLine(p):
 	return "%s %s %s" % (p['method'], encode_SipUrl(p['requestUri']), p['sipVersion'])
 
@@ -712,6 +707,9 @@ def decode_RequestLine(s):
 	a, b, c = s.split(' ', 2)
 	return dict(method = a.strip(), requestUri = decode_SipUrl(b.strip()), sipVersion = c.strip())
 
+##
+# Status Line
+##
 def encode_StatusLine(p):
 	return "%s %s %s" % (p['sipVersion'], p['statusCode'], p['reasonPhrase'])
 
@@ -723,20 +721,6 @@ def decode_StatusLine(s):
 # Messages
 ##
 
-"""
-        type record Request {
-          RequestLine requestLine,
-          MessageHeader msgHeader,
-          charstring messageBody optional,
-          Payload payload optional
-        }
-        type record Response {
-          StatusLine statusLine,
-          MessageHeader msgHeader,
-          charstring messageBody optional,
-          Payload payload optional
-        }
-"""
 def fieldNameToName(name):
 	n = name.lower()
 	# Search compact names
@@ -817,21 +801,26 @@ def decodeMessage(s):
 
 		if name in headers:
 			# Already exists. Already a list ? if not, turns it to a list
-			v = headers[name]['value']
+			v = headers[name]['fieldValue']
 			if not isinstance(v, list):
-				headers[name]['value'] = [v]
+				headers[name]['fieldValue'] = [v]
 			if isinstance(value, list):
 				for val in value:
-					headers[name]['value'].append(val)
+					headers[name]['fieldValue'].append(val)
 			else:
-				headers[name]['value'].append(value)
+				headers[name]['fieldValue'].append(value)
+			# In any case, add the raw value as a list
+			headers[name]['rawValues'] += encodedValues
 		else:
 			# First header line - if the header is supposed to be multivalued,
 			# creates it as a list, always.
 			if name in MultiValuedHeaders:
-				headers[name] = { 'fieldName': fieldName, 'value': isinstance(value, list) and value or [ value ] }
+				headers[name] = { 'fieldName': fieldName, 'fieldValue': isinstance(value, list) and value or [ value ] }
 			else:
-				headers[name] = { 'fieldName': fieldName, 'value': value }
+				headers[name] = { 'fieldName': fieldName, 'fieldValue': value }
+
+			# In any case, add the raw value as a list
+			headers[name]['rawValues'] = encodedValues
 
 	i = 1
 	previousHeaderLine = None
@@ -876,7 +865,7 @@ def encodeMessage(p):
 		if name == 'ContentLength':
 			contentLengthWritten = True
 		fieldName = value['fieldName']
-		fieldValue = value['value']
+		fieldValue = value['fieldValue']
 		ret.append(encodeHeader(name, fieldName, fieldValue))
 	if not contentLengthWritten:
 		ret.append(encodeHeader('ContentLength', 'Content-Length', len(p.get('messageBody', ''))))
