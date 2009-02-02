@@ -1,0 +1,88 @@
+# __METADATA__BEGIN__
+# <?xml version="1.0" encoding="utf-8" ?>
+# <metadata version="1.0">
+# <description>description</description>
+# <prerequisites>prerequisites</prerequisites>
+# <parameters>
+# <parameter name="PX_PROBE_01" default="probe:tcp01@localhost" type="string"><![CDATA[]]></parameter>
+# <parameter name="PX_SERVER_PORT" default="2905" type="string"><![CDATA[]]></parameter>
+# <parameter name="PX_SERVER_IP" default="127.0.0.1" type="string"><![CDATA[]]></parameter>
+# <parameter name="PX_PROBE_02" default="probe:tcp02@localhost" type="string"><![CDATA[]]></parameter>
+# </parameters>
+# </metadata>
+# __METADATA__END__
+##
+# Sample script for Testerman
+#
+# This ATS demonstrates the tcp probe.
+#
+##
+
+		
+class TESTCASE_TRANSPORT_UDP(TestCase):
+	"""
+	In this sample,
+	p02 listens on a UDP port,
+	p01 sends some payload,
+	p02 replies
+	
+	As a consequence, can work with probes configured with or without enabled notifications.
+	"""
+	def body(self, server_ip_port = "127.0.0.1:60009"):		
+		p01 = self.mtc['udp01']
+		p02 = self.mtc['udp02']
+		port_map(p01, self.system['client'])
+		port_map(p02, self.system['server'])
+
+		# We have 2s to complete the testcase
+		t = Timer(2.0, name = "Global watchdog")
+		t.start()
+		
+		activate([
+			[ t.TIMEOUT, 
+				lambda: log("Global timeout. Test case failed."),
+				lambda: setverdict("fail"),
+				lambda: stop()
+			],
+		])
+
+		# We send a payload from p01 (automatic connection included)
+		p01.send("first payload", server_ip_port)
+		
+		# So we expect to get the message on p02 (and we discover the client address here)
+		p02.receive("first payload", sender = 'client')
+		client = sender('client')
+		# and we reply something, too
+		p02.send("first response", client)
+		
+		# Finally we expect the response message on p01
+		p01.receive("first response", from_ = server_ip_port),
+
+		t.stop()
+		self.setverdict("pass")
+
+
+##
+# Test Adapter Configurations
+##
+
+conf = TestAdapterConfiguration('local')
+conf.bindByUri('client', 'probe:udp01', 'udp')
+conf.bindByUri('server', 'probe:udp02', 'udp', listening_port = int(get_variable('PX_SERVER_PORT')), local_port = int(get_variable('PX_SERVER_PORT')))
+
+conf = TestAdapterConfiguration('remote')
+conf.bindByUri('client', 'probe:udp01@localhost', 'udp')
+conf.bindByUri('server', 'probe:udp02@localhost', 'udp', listening_port = int(get_variable('PX_SERVER_PORT')), local_port = int(get_variable('PX_SERVER_PORT')))
+
+##
+# Control definition
+##
+
+#enable_debug_logs()
+
+useTestAdapterConfiguration('local')
+TESTCASE_TRANSPORT_UDP(id_suffix = 'LOCAL').execute(server_ip_port = '%s:%s' % (get_variable('PX_SERVER_IP'), get_variable('PX_SERVER_PORT')))
+
+useTestAdapterConfiguration('remote')
+TESTCASE_TRANSPORT_UDP(id_suffix = 'REMOTE').execute(server_ip_port = '%s:%s' % (get_variable('PX_SERVER_IP'), get_variable('PX_SERVER_PORT')))
+
