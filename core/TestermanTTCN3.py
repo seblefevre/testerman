@@ -240,7 +240,6 @@ class StateManager:
 	def set(self, state):
 		self._state = state
 
-
 ################################################################################
 # Exceptions
 ################################################################################
@@ -1144,6 +1143,21 @@ class TestCase:
 		@param message: the message to log
 		"""
 		self._mtc._log(message)
+
+
+################################################################################
+# Some tools: Preamble & Postamble
+################################################################################
+
+# For now, they are simple aliases to TestCase.
+# However, their log and verdict interpretation will differ soon.
+# (especially for result reporting: failing a preamble won't mean the testcase
+# is failed)
+# These aliases enables to create the correct logic in ATSes right now
+# without using TestCase the way they are not meant to be used.
+class Preamble(TestCase): pass
+
+class Postamble(TestCase): pass
 
 
 ###############################################################################
