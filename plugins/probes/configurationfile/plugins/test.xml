@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<updates>
+	<update component="qtesterman" branch="stable" version="1.0.0" url="/qtesterman-1.0.0.tar">
+		<!-- optional properties -->
+		<!-- <property name="release_notes_url" value="/components/rn-1.0.0.txt /> -->
+	</update>
+</updates>
