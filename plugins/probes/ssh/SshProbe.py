@@ -48,11 +48,23 @@ type port SshPortType message
 	out SshResponse, ErrorResponse;
 }
 
+	Properties:
+	|| `host` || string || `'localhost'` || to host to connect onto to execute the commands
+	|| `username` || string || (None) || the username to use to log onto `host`to execute the commands
+	|| `password` || string || (None) || the `username`'s password on `host`
+	|| `timeout` || float || 5.0 || the maximum amount of time, in s, allowed to __start__ executing the command on `host`. Includes the SSH login sequence.
+	|| `convert_eol`|| boolean || True || if set to True, convert \r\n in output to \n. This way, the templates are compatible with ProbeExec.
+	
 	"""
 	def __init__(self):
 		ProbeImplementationManager.ProbeImplementation.__init__(self)
 		self._mutex = threading.RLock()
 		self._sshThread = None
+		self.setDefaultProperty('timeout', 5.0)
+		self.setDefaultProperty('username', None)
+		self.setDefaultProperty('password', None)
+		self.setDefaultProperty('host', 'localhost')
+		self.setDefaultProperty('convert_eol', True)
 
 	# ProbeImplementation reimplementation
 
@@ -213,6 +225,8 @@ class SshThread(threading.Thread):
 			
 		if status is not None:
 			# We stopped on command completion
+			if self._probe['convert_eol']:
+				output = output.replace('\r\n', '\n')
 			self._probe.triEnqueueMsg({ 'status': status, 'output': output })
 		# Otherwise, we stopped on cancel - nothing to raise.
 
