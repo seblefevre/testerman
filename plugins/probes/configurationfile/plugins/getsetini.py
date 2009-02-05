@@ -22,9 +22,19 @@
 #
 # Usage:
 # thisfile.py get <filename> <keypath>
+# thisfile.py del <filename> <keypath>
 # thisfile.py set <filename> <keypath> <value>
 #
-# where keypath of the form section/key (lowercase only)
+# where keypath of the form section/key (case insensitive)
+#
+# If multiple keys are found, only the value of the *last* of them is returned.
+# When setting or deleting a key that has multiple values, all of them are
+# updated/deleted.
+#
+# When creating a new key or section, the case provided in the keypath is
+# respected.
+# The search for a key to update or to get is case insensitive on both section
+# and key name.
 ##
 
 
@@ -209,6 +219,8 @@ class INIParser:
 			for (key, value) in k:
 				if key == "__name__":
 					continue
+				if value[0] is None:
+					continue
 				if self.__useSpace:
 					fp.write("%s = %s\n" % (value[1], value[0]))
 				else:
@@ -356,10 +368,15 @@ class INIParser:
 				# OK, so prior to start a new section, let's write new keys in the section we've just closed
 				if cursect:
 					# A section was closed, let's add new keys.
+					keyadded = False
 					for (option, value) in self.__sections[cursect].items():
 						# internal keys start with __, for instance __name__
 						if not option.startswith('__') and self.optionxform(option) not in writtenkeys: 
-							fp.write("%s=%s\n" % (option, value[0]))
+							if value[0] is not None:
+								fp.write("%s=%s\n" % (value[1], value[0]))
+								keyadded = True
+					if keyadded:
+						fp.write('\n')
 
 				# Now we start a new section:
 				# reset the written keys list for the section,
@@ -391,8 +408,13 @@ class INIParser:
 				if m.lastgroup == 'comments':
 					comments = m.group('comments')
 				if self.__sections[cursect].has_key(self.optionxform(m.group('option'))):
-					modifiedline = m.group('option') + m.group('s1') + m.group('vi') + m.group('s2') + \
-						self.__sections[cursect][self.optionxform(m.group('option'))][0] + comments + '\n'
+					value = self.__sections[cursect][self.optionxform(m.group('option'))][0]
+					if value is not None:
+						modifiedline = m.group('option') + m.group('s1') + m.group('vi') + m.group('s2') + \
+							value + comments + '\n'
+					else:
+						# Remove the option, i.e. remove the line.
+						modifiedline = ''
 					writtenkeys.append(self.optionxform(m.group('option')))
 
 			fp.write(modifiedline)
@@ -404,7 +426,8 @@ class INIParser:
 			for (option, value) in self.__sections[cursect].items():
 				# internal keys start with __, for instance __name__
 				if not option.startswith('__') and self.optionxform(option) not in writtenkeys: 
-					fp.write("%s=%s\n" % (option, value[0]))
+					if value[0] is not None:
+						fp.write("%s=%s\n" % (value[1], value[0]))
 		
 		# Finally we add new sections at the end of the file.
 		for section, options in self.__sections.items():
@@ -412,7 +435,8 @@ class INIParser:
 				fp.write("\n[%s]\n" % section)
 				for option, value in options.items():
 					if not option.startswith('__'):
-						fp.write("%s=%s\n" % (option, value[0]))
+						if value[0] is not None:
+							fp.write("%s=%s\n" % (value[1], value[0]))
 		
 		
 class GetSet:
@@ -431,8 +455,7 @@ class GetSet:
 		automatically creating the section or option key if
 		If the keypath selects more that one value, all values are updated.
 
-		Makes sure that we are able to create the file before modifying it.
-		In case of an error, rollback to the original file.
+		If value is None, the key is removed.
 
 		@type  filename: string
 		@param filename: the full path to the file to update
@@ -445,16 +468,18 @@ class GetSet:
 		@returns: True if OK, False otherwise.
 		"""
 		try:
-			section = '/'.join(keypath.split('/')[:-1]).lower()
-			key = keypath.split('/')[-1].lower()
+			section = '/'.join(keypath.split('/')[:-1])
+			key = keypath.split('/')[-1]
 
 			config = INIParser(comments = self.properties['comments'])
 			config.read([filename])
 			try:
-				config.set(section.lower(), key.lower(), value)
+				config.set(section, key, value)
 			except ConfigParser.NoSectionError:
-				config.add_section(section)
-				config.set(section.lower(), key.lower(), value)
+				# Do not add a section to remove a key in it :-)
+				if value is not None:
+					config.add_section(section)
+					config.set(section, key, value)
 
 			t = open(filename, "r")
 			skeleton = t.readlines()
@@ -522,6 +547,7 @@ if __name__ == '__main__':
 	def usage():
 		print"""Usage:
   %(name)s get <filename> <keypath>
+  %(name)s del <filename> <keypath>
   %(name)s set <filename> <keypath> <value>
 
   where keypath of the form section/key (lowercase only).""" % dict(name = sys.argv[0])
@@ -539,6 +565,14 @@ if __name__ == '__main__':
 				status = 0
 			else:
 				print "Unable to set value."
+				status = 1
+		elif op == 'del':
+			ret = getInstance().setValue(filename = sys.argv[2], keypath = sys.argv[3], value = None)
+			if ret:
+				print "Value deleted."
+				status = 0
+			else:
+				print "Unable to delete value."
 				status = 1
 		else:
 			value = getInstance().getValue(filename = sys.argv[2], keypath = sys.argv[3])
