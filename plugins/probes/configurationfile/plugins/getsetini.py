@@ -274,7 +274,13 @@ class INIParser:
 			lineno = lineno + 1
 			# comment or blank line?
 			line = line.strip()
-			if line == '' or line[0] in '#;':
+			if not line:
+				continue
+			discard = False
+			for c in self.__comments:
+				if line.startswith(c):
+					discard = True
+			if discard:
 				continue
 			else:
 				# is it a section header?
@@ -293,7 +299,6 @@ class INIParser:
 					raise ConfigParser.MissingSectionHeaderError(fpname, lineno, `line`)
 				# an option line?
 				else:
-
 					# Check if this is a key = value line
 					# option, spaces/tabs, : or =, spaces/tabs, value [ ;comments]
 					OPTWITHCOMMENTSCRE = re.compile(
@@ -302,18 +307,13 @@ class INIParser:
 						'(?P<value>.*)(?P<comments>\s+[%s].*)$' % '|'.join(self.__comments)
 						)
 
+					# First attempt: ignore comments
 					mo = OPTWITHCOMMENTSCRE.match(line)
 					if not mo:
 						mo = self.OPTCRE.match(line)
 
 					if mo:
 						optname, vi, optval = mo.group('option', 'vi', 'value')
-						if vi in ('=', ':') and ';' in optval:
-							# ';' is a comment delimiter only if it follows
-							# a spacing character
-							pos = optval.find(';')
-							if pos and optval[pos-1] in string.whitespace:
-								optval = optval[:pos]
 						optval = optval.strip()
 						# allow empty values
 						if optval == '""':
@@ -326,7 +326,7 @@ class INIParser:
 						# list of all bogus lines
 						if not e:
 							e = ConfigParser.ParsingError(fpname)
-						# e.append(lineno, `line`)
+#							e.append(lineno, `line`)
 		# if any parsing errors occurred, raise an exception
 		if e:
 			raise e
@@ -513,7 +513,9 @@ class GetSet:
 
 
 def getInstance():
-	return GetSet()
+	ret = GetSet()
+	# ret.setProperty('comments', [ ';', '//', '#' ])
+	return ret
 
 
 if __name__ == '__main__':
