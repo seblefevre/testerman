@@ -297,21 +297,22 @@ class Agent(Nodes.ConnectingNode):
 					if method == "TRI-SEND":
 						probe.onTriSend(request.getApplicationBody(), request.getHeader('SUT-Address'))
 						self.response(transactionId, 200, "OK")
-					elif method == "TRI-SA-RESET":
-						probe.onTriSAReset()
-						self.response(transactionId, 200, "OK")
 					elif method == "TRI-MAP":
 						probe.onTriMap()
 						self.response(transactionId, 200, "OK")
 					elif method == "TRI-UNMAP":
-						probe.onTriSAReset()
+						probe.onTriUnmap()
 						self.response(transactionId, 200, "OK")
 					elif method == "TRI-EXECUTE-TESTCASE":
+						# Set the probe properties
 						properties = request.getApplicationBody()
 						if properties:
 							for name, value in properties.items():
 								probe.setProperty(name, value)
 						probe.onTriExecuteTestCase()
+						self.response(transactionId, 200, "OK")
+					elif method == "TRI-SA-RESET":
+						probe.onTriSAReset()
 						self.response(transactionId, 200, "OK")
 					else:
 						self.response(transactionId, 505, "Not supported")
