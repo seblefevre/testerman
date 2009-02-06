@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 ##
 # This file is part of Testerman, a test automation system.
 # Copyright (c) 2008-2009 Sebastien Lefevre and other contributors
@@ -13,7 +14,6 @@
 ##
 
 ##
-# -*- coding: utf-8 -*-
 # A Testerman Node is a peer being able to send/receive testerman messages
 # 
 # This file provides a base node class that is responsible for
@@ -175,7 +175,9 @@ class TcpPacketizerClientThread(threading.Thread):
 	def __main_receive_send_loop(self):
 		while not self.stopEvent.isSet():
 			try:
-				r, w, e = select.select([ self.socket ], [ ], [], 0.001)
+				r, w, e = select.select([ self.socket ], [], [ self.socket ], 0.001)
+				if self.socket in e:
+					raise EOFError("Socket select error: disconnecting")
 				if self.socket in r:
 					read = self.socket.recv(65535)
 					if not read:
@@ -399,7 +401,9 @@ class TcpPacketizerServerThread(threading.Thread):
 			New internal method.
 			"""
 			while not self.stopEvent.isSet():
-				(r, w, e) = select.select([ self.socket ], [], [], 0.001)
+				(r, w, e) = select.select([ self.socket ], [], [ self.socket ], 0.001)
+				if self.socket in e:
+					raise EOFError("Socket select error: disconnecting")
 				if self.socket in r:
 					read = self.socket.recv(65535)
 					if not read:
@@ -411,10 +415,12 @@ class TcpPacketizerServerThread(threading.Thread):
 				while not self.queue.empty():
 					try:
 						# Make sure we can send something. If not, keep the message for later attempt.
-						r, w, e = select.select([ ], [ self.socket ], [], 0.001)
+						r, w, e = select.select([ ], [ self.socket ], [ self.socket ], 0.001)
+						if self.socket in e:
+							raise IOError("Socket select error when sending a message: disconnecting")
 						if self.socket in w:
 							message = self.queue.get(False)
-							self.trace("Message to send...")
+							self.trace("About to send a message...")
 							self.socket.send(message)
 							self.trace("Message sent.")
 					except Queue.Empty:
