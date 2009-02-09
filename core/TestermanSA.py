@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 ##
 # This file is part of Testerman, a test automation system.
 # Copyright (c) 2008-2009 Sebastien Lefevre and other contributors
@@ -13,7 +14,6 @@
 ##
 
 ##
-# -*- coding: utf-8 -*-
 # Testerman System Adapter implementation.
 #
 # Implements some of the SA-Provided TTCN-3 TRI interface:
@@ -43,6 +43,7 @@ import TestermanMessages as Messages
 import ProbeImplementationManager
 
 import threading
+import uuid
 
 ################################################################################
 # TRI constants
@@ -334,7 +335,14 @@ class TestAdapterConfiguration(object):
 		if self._declaredBindings.has_key(tsiPort):
 			raise Testerman.TestermanException("Test system interface port %s is already bound to a Test Adapter." % tsiPort)
 		log("Declaring binding: test adapter %s for tsiPort %s..." % (uri, tsiPort))
-		self._declaredBindings[tsiPort] = { 'uri': uri, 'properties': kwargs, 'type': type_ }
+		transient = False
+		u = Messages.Uri(uri)
+		if u.getUser() and u.getUser() == '_': # Wildcard for automatic, transient probe naming
+			u.setUser("%s-%s" % (type_, str(uuid.uuid1())))
+			transient = True
+			uri = str(u)
+
+		self._declaredBindings[tsiPort] = { 'uri': uri, 'properties': kwargs, 'type': type_, 'transient': transient }
 	
 	def _install(self):
 		"""
@@ -347,7 +355,7 @@ class TestAdapterConfiguration(object):
 		"""
 		for tsiPort, binding in self._declaredBindings.items():
 			log("Installing binding: test adapter %s for tsiPort %s..." % (binding['uri'], tsiPort))
-			probe = createProbe(binding['uri'], binding['type'])
+			probe = createProbe(binding['uri'], binding['type'], binding['transient'])
 
 			for name, value in binding['properties'].items():
 				log(u"Setting property %s to %s for test adapter %s..." % (name, unicode(value), probe.getUri()))
@@ -358,7 +366,7 @@ class TestAdapterConfiguration(object):
 	def _uninstall(self):
 		for tsiPort, binding in self._declaredBindings.items():
 			log("Uninstalling binding: test adapter %s for tsiPort %s..." % (binding['uri'], tsiPort))
-			unbind(tsiPort)
+			unbind(tsiPort)				
 
 def bind(tsiPortId, probe):
 	"""
@@ -383,6 +391,8 @@ def bind(tsiPortId, probe):
 		
 def unbind(tsiPortId):
 	if ProbeBindings.has_key(tsiPortId):
+		probe = ProbeBindings[tsiPortId]
+		probe.unbind()
 		del ProbeBindings[tsiPortId]
 
 
@@ -416,12 +426,19 @@ class ProbeAdapter(ProbeImplementationManager.IProbeImplementationAdapter):
 		self._uri = None
 		self._tsiPortId = None
 		self._properties = {}
+		self._transient = False
 
 	##
 	# For Probe manager
 	##
 	def bind(self, tsiPortId):
 		self._tsiPortId = tsiPortId
+	
+	def setTransient(self, transient):
+		self._transient = transient
+	
+	def unbind(self):
+		pass
 
 	def isRemote(self):
 		return self._remote
@@ -433,6 +450,7 @@ class ProbeAdapter(ProbeImplementationManager.IProbeImplementationAdapter):
 		"""
 		self._type = type_
 		self._uri = uri
+
 	##
 	# IProbeImplementationAdapter
 	##	
@@ -527,6 +545,11 @@ class RemoteStubAdapter(LocalProbeAdapter):
 		else:
 			raise Testerman.TestermanException("Unable to use probe %s: not deployed, no type given, no autodeployment possible." % (uri))
 
+	def unbind(self):
+		if self._transient:
+			# Auto undeploy
+			TACC.instance().undeployProbe(self._uri)
+
 class RemoteProbeAdapter(ProbeAdapter):
 	"""
 	Remote Probe Adapter, that forwards IProbe interface calls to
@@ -562,6 +585,11 @@ class RemoteProbeAdapter(ProbeAdapter):
 		else:
 			raise Testerman.TestermanException("Unable to use probe %s: not deployed, no type given, no autodeployment possible." % (uri))
 
+	def unbind(self):
+		if self._transient:
+			# Auto undeploy
+			TACC.instance().undeployProbe(self._uri)
+
 	def onTriExecuteTestCase(self):
 		TACC.instance().triExecuteTestCase(self.getUri(), self._properties)
 	
@@ -582,7 +610,7 @@ class RemoteProbeAdapter(ProbeAdapter):
 # Probe as plugins management
 ################################################################################
 
-def createProbe(uri, type_):
+def createProbe(uri, type_, transient = False):
 	"""
 	Instantiates a new Test Adapter (i.e. a Probe instance) with its adapter
 	from type_, uri.
@@ -608,7 +636,7 @@ def createProbe(uri, type_):
 	adapter = None
 	if u.getUser():
 		# The probe is remote. 
-		# We may look for additional stubs here
+		# We may look for additional stubs (interceptors) here
 		adapter = RemoteProbeAdapter()
 		# No need for a local implementation.
 	else:
@@ -621,6 +649,7 @@ def createProbe(uri, type_):
 	if adapter:
 		# May raise an exception if the attachment is not feasible (Stubs and remote probes)
 		adapter.attachToUri(uri, type_)
+		adapter.setTransient(transient)
 		return adapter
 	# Otherwise, nothing to do.
 	else:

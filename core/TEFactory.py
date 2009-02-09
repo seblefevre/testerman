@@ -217,13 +217,15 @@ def initializeTe(tacsIP, tacsPort):
 	TestermanTCI.logInternal("initializing: using TACS tcp://%s:%d" % (tacsIP, tacsPort))
 	TestermanSA.initialize((tacsIP, tacsPort))
 	TestermanPA.initialize()
+	Testerman._initialize()
 	scanPlugins(ProbePaths, "probe")
 	scanPlugins(CodecPaths, "codec")
 
 def finalizeTe():
 	TestermanTCI.logInternal("finalizing...")
-	TestermanSA.finalize()
+	Testerman._finalize()
 	TestermanPA.finalize()
+	TestermanSA.finalize()
 	TestermanTCI.logInternal("finalized.")
 
 """)

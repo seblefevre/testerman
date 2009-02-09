@@ -2751,5 +2751,10 @@ def enable_logs():
 def define_codec_alias(name, codec, **kwargs):
 	TestermanCD.alias(name, codec, **kwargs)
 
+def _finalize():
+	if _CurrentTestAdapterConfiguration:
+		_CurrentTestAdapterConfiguration._tac._uninstall()
 
-random.seed()
+def _initialize():
+	random.seed()
+
