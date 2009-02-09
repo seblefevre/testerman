@@ -27,7 +27,126 @@ import signal
 import subprocess
 import threading
 import sys
+import glob
+import re
+import struct
 
+##
+# Tools: get a whole process tree (as a flat list of pids)
+##
+
+def parseStatusFile_linux(filename):
+	pid_ = None
+	ppid_ = None
+	try:
+		f = open(filename)
+		lines = f.readlines()
+		f.close()
+		for line in lines:
+			if not pid_:
+				m = re.match(r'Pid:\s+(.*)', line)
+				if m:
+					pid_ = int(m.group(1))
+			elif not ppid_:
+				m = re.match(r'PPid:\s+(.*)', line)
+				if m:
+					ppid_ = int(m.group(1))
+			elif ppid_ and pid_:
+				break
+	except Exception, e:
+		pass
+	return (pid_, ppid_)
+
+def parseStatusFile_solaris(filename):
+	"""
+	according to /usr/include/sys/procfs.h
+	
+	typedef struct pstatus {
+        int     pr_flags;       /* flags (see below) */
+        int     pr_nlwp;        /* number of active lwps in the process */
+        pid_t   pr_pid;         /* process id */
+        pid_t   pr_ppid;        /* parent process id */
+	...
+	}
+	
+	int are 64 or 32 depending on the platform...
+	
+	This implementation only support 64 bit (for now).
+	"""
+	pid_ = None
+	ppid_ = None
+	try:
+		f = open(filename)
+		buf = f.read()
+		f.close()
+		
+		(_, _, pid_, ppid_) = struct.unpack('IIII', buf[:struct.calcsize('IIII')])
+	except:
+		pass
+	return (pid_, ppid_)
+
+def parseStatusFile(filename):
+	"""
+	Parse a /proc/<pid>/status file,
+	according to the current OS.
+	
+	@rtype: tuple of int 
+	@returns: pid, ppid (any of those may be None if not parsed)
+	
+	Supported:
+	- Linux 2.6.x
+	- Solaris
+	"""
+	if sys.platform in [ 'linux', 'linux2' ]:
+		return parseStatusFile_linux(filename)
+	elif sys.platform in [ 'sunos5' ]:
+		return parseStatusFile_solaris(filename)
+	else:
+		return (None, None)
+
+def getChildrenPids(pid):
+	"""
+	Retrieves all the children pids for a given pid, 
+	including the pid itself as the first element of the returned list of PIDs
+
+	Returns them as a list.
+	
+	WARNING: only Linux and Solaris-compatible for now,
+	as it relies on /proc/<pid>/status pseudo file.
+	
+	@type  pid: int
+	@param pid: the parent pid whose we should retrieve children
+	
+	@rtype: list of int
+	@returns: first the pid itself, then its children's pids
+	"""
+	pids = [] # a list of current (pid, ppid)
+	# Let's scan /proc/...
+	# No other way to do it ?
+	statusFilenames = glob.glob("/proc/[0-9]*/status")
+	for filename in statusFilenames:
+		try:
+			pid_, ppid_ = parseStatusFile(filename)
+			if pid_ and ppid_:
+				pids.append( (pid_, ppid_) )
+		except Exception, e:
+			pass
+	
+	# Now let's construct the tree for the looked up pid
+	ret = [ pid ]
+	ppids = [ pid ]
+	while ppids:
+		currentPpid = ppids.pop()
+		for (pid_, ppid_) in pids:
+			if ppid_ == currentPpid:
+				if pid_ not in ppids: ppids.append(pid_)
+				if pid_ not in ret: ret.append(pid_)
+	
+	return ret
+
+##
+# The Exec Probe
+##
 class ExecProbe(ProbeImplementationManager.ProbeImplementation):
 	"""
 
@@ -143,6 +262,7 @@ type port ExecPortType message
 			except Exception, e:
 				self.getLogger().error('Error while cancelling the pending execution thread: %s' % str(e))
 		# Nothing to do if no pending thread.
+		self.getLogger().debug('execThread is now %s' % self._execThread)
 
 	def executeCommand(self, command):
 		"""
@@ -184,6 +304,8 @@ class ExecThread(threading.Thread):
 		self._probe = probe
 		self._command = command
 		self._process = None
+		self._mutex = threading.RLock()
+		self._reportStatus = True
 		self._stoppedEvent = threading.Event()
 	
 	def run(self):
@@ -198,14 +320,38 @@ class ExecThread(threading.Thread):
 			self._probe.triEnqueueMsg('Internal execution error: %s' % str(e))
 		
 		self._process = None
-		self._probe.triEnqueueMsg({ 'status': status, 'output': output })
 
-		self._stoppedEvent.set()
 		self._probe._onExecThreadTerminated()
-			
+		if self.getReportStatus():
+			self._probe.triEnqueueMsg({ 'status': status, 'output': output })
+		self._stoppedEvent.set()
+
+	def getReportStatus(self):
+		self._mutex.acquire()
+		r = self._reportStatus
+		self._mutex.release()
+		return r
+	
+	def setReportStatus(self, r):
+		self._mutex.acquire()
+		self._reportStatus = r
+		self._mutex.release()
+		
 	def stop(self):
+		# When explicitely stopped, we should not send a status/output back.
 		if self._process:
-			os.kill(self._process.pid, signal.SIGKILL)
+			self.setReportStatus(False)
+			pid = self._process.pid
+			pids = getChildrenPids(pid)
+			self._probe.getLogger().info("Killing process %s (%s) on user demand..." % (pid, pids))
+			s = signal.SIGKILL
+			if sys.platform in [ 'win32', 'win64' ]:
+				s = signal.SIGTERM
+			for p in pids:
+				try:
+					os.kill(p, s)
+				except Exception, e:
+					self._probe.getLogger().warning("Unable to kill process %s: %s" % (pid, str(e))) 
 		# And we should wait for a notification indicating that the process
 		# has died...
 		# We wait at most 1s. Maybe the process was not killed
