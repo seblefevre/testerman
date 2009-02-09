@@ -47,6 +47,75 @@ def fileExists(f):
 	except:
 		return os.path.islink(f)
 
+##
+# Tools: get a whole process tree (as a flat list of pids)
+##
+
+def parseStatusFile_linux(filename):
+	pid_ = None
+	ppid_ = None
+	try:
+		f = open(filename)
+		lines = f.readlines()
+		f.close()
+		for line in lines:
+			if not pid_:
+				m = re.match(r'Pid:\s+(.*)', line)
+				if m:
+					pid_ = int(m.group(1))
+			elif not ppid_:
+				m = re.match(r'PPid:\s+(.*)', line)
+				if m:
+					ppid_ = int(m.group(1))
+			elif ppid_ and pid_:
+				break
+	except Exception, e:
+		pass
+	return (pid_, ppid_)
+
+def parseStatusFile_solaris(filename):
+	"""
+	according to /usr/include/sys/procfs.h
+	
+	typedef struct pstatus {
+        int     pr_flags;       /* flags (see below) */
+        int     pr_nlwp;        /* number of active lwps in the process */
+        pid_t   pr_pid;         /* process id */
+        pid_t   pr_ppid;        /* parent process id */
+	...
+	}
+	"""
+	pid_ = None
+	ppid_ = None
+	try:
+		f = open(filename)
+		buf = f.read()
+		f.close()
+		
+		(_, _, pid_, ppid_) = struct.unpack('IIII', buf[:struct.calcsize('IIII')])
+	except:
+		pass
+	return (pid_, ppid_)
+
+def parseStatusFile(filename):
+	"""
+	Parse a /proc/<pid>/status file,
+	according to the current OS.
+	
+	@rtype: tuple of int 
+	@returns: pid, ppid (any of those may be None if not parsed)
+	
+	Supported:
+	- Linux 2.6.x
+	- Solaris
+	"""
+	if sys.platform in [ 'linux', 'linux2' ]:
+		return parseStatusFile_linux(filename)
+	elif sys.platform in [ 'sunos5' ]:
+		return parseStatusFile_solaris(filename)
+	else:
+		return (None, None)
+
 def getChildrenPids(pid):
 	"""
 	Retrieves all the children pids for a given pid, 
@@ -54,7 +123,8 @@ def getChildrenPids(pid):
 
 	Returns them as a list.
 	
-	WARNING: only Linux-compatible for now, as it relies on /proc/<pid>/status pseudo file.
+	WARNING: only Linux and Solaris-compatible for now,
+	as it relies on /proc/<pid>/status pseudo file.
 	
 	@type  pid: int
 	@param pid: the parent pid whose we should retrieve children
@@ -68,22 +138,7 @@ def getChildrenPids(pid):
 	statusFilenames = glob.glob("/proc/[0-9]*/status")
 	for filename in statusFilenames:
 		try:
-			pid_ = None
-			ppid_ = None
-			f = open(filename)
-			lines = f.readlines()
-			f.close()
-			for line in lines:
-				if not pid_:
-					m = re.match(r'Pid:\s+(.*)', line)
-					if m:
-						pid_ = int(m.group(1))
-				elif not ppid_:
-					m = re.match(r'PPid:\s+(.*)', line)
-					if m:
-						ppid_ = int(m.group(1))
-				elif ppid_ and pid_:
-					break
+			pid_, ppid_ = parseStatusFile(filename)
 			if pid_ and ppid_:
 				pids.append( (pid_, ppid_) )
 		except:
