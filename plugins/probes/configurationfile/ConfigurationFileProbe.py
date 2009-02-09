@@ -188,10 +188,8 @@ def scanPlugins(paths, label):
 					m = m[:-3]
 				try:
 					plugin = __import__(m)
-					print "DEBUG: importing %s" % m
 					registerPlugin(plugin.SUPPORTED_CONF_FILE_FORMATS, plugin)
 				except Exception, e:
-					print "EXCEPTION while importing %s: %s" % (m, str(e))
 					ProbeImplementationManager.getLogger().warning("Unable to import %s %s: %s" % (m, label, str(e)))
 		except Exception, e:
 			ProbeImplementationManager.getLogger().warning("Unable to scan %s path for %ss: %s" % (path, label, str(e)))
