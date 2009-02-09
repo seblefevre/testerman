@@ -1681,7 +1681,16 @@ def alt(alternatives):
 					for action in actions:
 						# Minimal command management for internal messages
 						if callable(action):
-							action()
+							action = action()
+						if action == REPEAT:
+							repeat = True
+							break
+						elif action == RETURN:
+							return
+					if repeat:
+						# Break the loop on system messages
+						break
+
 				else:
 					# no match, nothing to do.
 					pass
