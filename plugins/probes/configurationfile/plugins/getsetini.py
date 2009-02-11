@@ -52,15 +52,19 @@ SUPPORTED_CONF_FILE_FORMATS = [ 'ini' ]
 class INIParser:
 	"""
 	This INIParser keeps the case of keys and section names.
-	Yet, when getting a section or key, you have to reference it in lowercase
-	only.
+	
+	When looking for a key value, case insensitive search on both key and section name.
+	
+	When rewriting the file, the original case is yet reused.
+	
+	Supports multiple key values.
 	
 	__sections is a dict[sectionnameinlowercase] = dict of options
-	a dict of options is a dict[optionameinlowercase] = (KeyRealNameWithCase, value)
+	a dict of options is a dict[optionameinlowercase] = [ (KeyRealNameWithCase, value) ]
 	"""
 	def __init__(self, useSpace = True, comments = [ ';', '#' ]):
 		# contains (dict of keys) indexed by the sectionamewithoutcase
-		# the dict of keys contains (keyWithCase, value) indexed by the keywithoutcase
+		# the dict of keys contains a list of (keyWithCase, value) indexed by the keywithoutcase
 		# For each section, the key __name__ contains the (sectionNameWithCase, sectionNameWithCase)
 		self.__sections = {} 
 		self.__useSpace = useSpace
@@ -81,7 +85,7 @@ class INIParser:
 		section = self.sectionxform(section)
 		if self.__sections.has_key(section):
 			raise ConfigParser.DuplicateSectionError(section)
-		self.__sections[section] = { '__name__' : (realsection, realsection) }
+		self.__sections[section] = { '__name__' : [ (realsection, realsection) ] }
 
 	def has_section(self, section):
 		"""Indicate whether the named section is present in the configuration.
@@ -103,7 +107,8 @@ class INIParser:
 		return opts.keys()
 
 	def read(self, filenames):
-		"""Read and parse a filename or a list of filenames.
+		"""
+		Read and parse a filename or a list of filenames.
 
 		Files that cannot be opened are silently ignored; this is
 		designed so that you can specify a list of potential
@@ -120,32 +125,11 @@ class INIParser:
 			self.__read(fp, filename)
 			fp.close()
 
-	def readfp(self, fp, filename=None):
-		"""Like read() but the argument must be a file-like object.
-
-		The `fp' argument must have a `readline' method.	Optional
-		second argument is the `filename', which if not given, is
-		taken from fp.name.	If fp has no `name' attribute, `<???>' is
-		used.
-
+	def get(self, section, option, index = 0):
 		"""
-		if filename is None:
-			try:
-				filename = fp.name
-			except AttributeError:
-				filename = '<???>'
-		self.__read(fp, filename)
-
-	def get(self, section, option, raw=0, vars=None):
-		"""Get an option value for a given section.
-
-		All % interpolations are expanded in the return values, based on the
-		defaults passed into the constructor, unless the optional argument
-		`raw' is true.	Additional substitutions may be provided using the
-		`vars' argument, which must be a dictionary whose contents overrides
-		any pre-existing defaults.
-
-		The section DEFAULT is special.
+		Returns the indexth value of an option in section.
+		
+		section and option are case-insensitive.
 		"""
 		section = self.sectionxform(section)
 		try:
@@ -154,32 +138,13 @@ class INIParser:
 			raise ConfigParser.NoSectionError(section)
 		option = self.optionxform(option)
 		try:
-			rawval = sectdict[option][0]
+			rawval = sectdict[option][index][0]
 		except KeyError:
+			raise ConfigParser.NoOptionError(option, section)
+		except IndexError:
 			raise ConfigParser.NoOptionError(option, section)
 
 		return rawval
-
-	def get_case_option_name(self, section, option):
-		"""
-		Get an option real name (with possible lower/uppercase).
-		option is in lowercase.
-		"""
-		section = self.sectionxform(section)
-		try:
-			sectdict = self.__sections[section].copy()
-		except KeyError:
-			raise ConfigParser.NoSectionError(section)
-		option = self.optionxform(option)
-		try:
-			rawval = sectdict[option][1]
-		except KeyError:
-			raise ConfigParser.NoOptionError(option, section)
-
-		return rawval
-
-	def __get(self, section, conv, option):
-		return conv(self.get(section, option))
 
 	def optionxform(self, optionstr):
 		return optionstr.lower()
@@ -196,36 +161,55 @@ class INIParser:
 			option = self.optionxform(option)
 			return self.__sections[section].has_key(option)
 
-	def set(self, section, option, value):
-		"""Set an option."""
+	def set(self, section, option, value, index = 0):
+		"""
+		Set the indexth option value to value.
+		Create the section/value if needed, append the value at the end if index > 
+		to the current number of values.
+		"""
 		section = self.sectionxform(section)
 		try:
 			sectdict = self.__sections[section]
 		except KeyError:
 			raise ConfigParser.NoSectionError(section)
-		cleanedoption = self.optionxform(option)
-		if sectdict.has_key(cleanedoption):
-			option = sectdict[cleanedoption][1] # we retrieve the real option label
-		sectdict[cleanedoption] = (value, option)
+		key = self.optionxform(option)
+		if not sectdict.has_key(key):
+			sectdict[key] = []
+		valuelist = sectdict[key]
+		
+		if index >= len(valuelist):
+			# Add a new value at the end
+			valuelist.append((value, option))
+		else:
+			# Replace a value
+			valuelist[index] = (value, valuelist[index][1])
 
 	def write(self, fp):
-		"""Write an .ini-format representation of the configuration state."""
+		"""
+		Write an .ini-format representation of the configuration state.
+		
+		This is not a rewrite, but a full file creation, from scratch.
+		
+		If you want to keep comments, etc, you should use
+		self.rewrite() instead
+		"""
 		s = self.sections()
 		s.sort()
 		for section in s:
-			fp.write("[" + self.__sections[section]['__name__'][1] + "]\n")
+			fp.write("[" + self.__sections[section]['__name__'][0][1] + "]\n")
 			sectdict = self.__sections[section]
 			k = sectdict.items()
 			k.sort()
-			for (key, value) in k:
-				if key == "__name__":
-					continue
-				if value[0] is None:
-					continue
-				if self.__useSpace:
-					fp.write("%s = %s\n" % (value[1], value[0]))
-				else:
-					fp.write("%s=%s\n" % (value[1], value[0]))
+			for valuelist in k:
+				for (key, value) in valuelist:
+					if key == "__name__":
+						continue
+					if value[0] is None:
+						continue
+					if self.__useSpace:
+						fp.write("%s = %s\n" % (value[1], value[0]))
+					else:
+						fp.write("%s=%s\n" % (value[1], value[0]))
 			fp.write("\n")
 
 	def remove_option(self, section, option):
@@ -303,7 +287,7 @@ class INIParser:
 					if self.__sections.has_key(sectname):
 						cursect = self.__sections[sectname]
 					else:
-						cursect = {'__name__': (mo.group('header'), mo.group('header'))}
+						cursect = {'__name__': [(mo.group('header'), mo.group('header'))]}
 						self.__sections[sectname] = cursect
 					# So sections can't start with a continuation line
 					optname = None
@@ -331,7 +315,10 @@ class INIParser:
 						# allow empty values
 						if optval == '""':
 							optval = ''
-						cursect[self.optionxform(optname)] = (optval, optname) # we backup the real optname, with case information
+						keyname = self.optionxform(optname)
+						if not cursect.has_key(keyname):
+							cursect[keyname] = [] # list of (value, realoptionname)
+						cursect[keyname].append((optval, optname)) # we backup the real optname, with case information
 					else:
 						# a non-fatal parsing error occurred.	set up the
 						# exception but keep going. the exception will be
@@ -339,23 +326,37 @@ class INIParser:
 						# list of all bogus lines
 						if not e:
 							e = ConfigParser.ParsingError(fpname)
-#							e.append(lineno, `line`)
+							e.append(lineno, `line`)
 		# if any parsing errors occurred, raise an exception
 		if e:
 			raise e
 
 	def rewrite(self, srclines, fp, useSpace = False):
 		"""
+		Rewrite a configuration file, updating/adding/deleting keys according to updated values
+		in the local model.
+		
+		If a value in the local is set to None, it is explicitly removed.
+		New keys found in the local model but not in the srclines are added at the end of
+		each sections, as
+		key=values
+		
+		Unchanged values result in an unchanged line (rewritten as is).
+		
 		srclines is a readlines()'d file that is used to template what we should write to fp.
 		fp the target file descriptor where we should write the target file.
-
-		Write current key and values in it:
-		- substituting skel values for existing keys,
-		- adding new key=values at the end of each sections.
 		"""
+		# This is basically a parsing (read) and immediate rewrite.
 		
-		writtenkeys = []
+		# Contains a list of key (lowercases) that have been written for the current section
+		# and their current write count, as dict[key] = count
+		# Enables to detect new keys or values to write
+		writtenkeys = {}
+		# Contains a list of written sections.
+		# Enables to detect new sections to write
 		writtensections = []
+		
+		# The current section name, in lowercase
 		cursect = None
 		
 		# We scan line per line, and make local replacements when needed.
@@ -369,20 +370,23 @@ class INIParser:
 				# OK, so prior to start a new section, let's write new keys in the section we've just closed
 				if cursect:
 					# A section was closed, let's add new keys.
-					keyadded = False
-					for (option, value) in self.__sections[cursect].items():
-						# internal keys start with __, for instance __name__
-						if not option.startswith('__') and self.optionxform(option) not in writtenkeys: 
-							if value[0] is not None:
-								fp.write("%s=%s\n" % (value[1], value[0]))
-								keyadded = True
-					if keyadded:
+					atLeastOneKeyAdded = False
+					for (option, valuelist) in self.__sections[cursect].items():
+						if option.startswith('__'):
+							continue
+						valuecount = writtenkeys.get(self.optionxform(option), 0)
+						for (value, caseOptionName) in valuelist[valuecount:]:
+							# internal keys start with __, for instance __name__
+							if value is not None:
+								fp.write("%s=%s\n" % (caseOptionName, value))
+								atLeastOneKeyAdded = True
+					if atLeastOneKeyAdded:
 						fp.write('\n')
 
 				# Now we start a new section:
 				# reset the written keys list for the section,
 				# store the current section name in cursect
-				writtenkeys = []
+				writtenkeys = {}
 				cursect = self.sectionxform(m.group('header'))
 				fp.write(modifiedline)
 				writtensections.append(cursect)
@@ -404,40 +408,66 @@ class INIParser:
 			if not m:
 				m = self.OPTCRE.match(modifiedline)
 			if m:
-				# OK, operate changes in place
+				# OK, perform changes in place
+				key = self.optionxform(m.group('option'))
+				
+				valuecount = writtenkeys.get(key, 0)
+				if not writtenkeys.has_key(key):
+					writtenkeys[key] = 0
+				writtenkeys[key] = valuecount + 1
+				
 				comments = ''
 				if m.lastgroup == 'comments':
 					comments = m.group('comments')
-				if self.__sections[cursect].has_key(self.optionxform(m.group('option'))):
-					value = self.__sections[cursect][self.optionxform(m.group('option'))][0]
-					if value is not None:
+				currentvalue = m.group('value').strip()
+				
+				if self.__sections[cursect].has_key(key) and len(self.__sections[cursect][key]) > valuecount:
+					value = self.__sections[cursect][key][valuecount][0]
+					if value == currentvalue:
+						# Do not change the line if the value is not different
+						pass
+					elif value is not None:
+						# value updated.
 						modifiedline = m.group('option') + m.group('s1') + m.group('vi') + m.group('s2') + \
 							value + comments + '\n'
 					else:
 						# Remove the option, i.e. remove the line.
 						modifiedline = ''
-					writtenkeys.append(self.optionxform(m.group('option')))
+					
 
 			fp.write(modifiedline)
 
 		# Now we parsed all lines in the file.
-		# Let's check thatt we don't have to add some key in the last known section
+		# Let's check that we don't have to add some key in the last known section
 		if cursect:
-			# A section was closed, let's add new keys.
-			for (option, value) in self.__sections[cursect].items():
+			# A section was closed, let's add new keys or new values
+			for (option, valuelist) in self.__sections[cursect].items():
 				# internal keys start with __, for instance __name__
-				if not option.startswith('__') and self.optionxform(option) not in writtenkeys: 
-					if value[0] is not None:
-						fp.write("%s=%s\n" % (value[1], value[0]))
+				if option.startswith('__'):
+					continue
+				else:
+					key = self.optionxform(option)
+					valuecount = writtenkeys.get(key, 0)
+					for (value, optionName) in valuelist[valuecount:]:
+						if value is not None:
+							fp.write("%s=%s\n" % (optionName, value))
 		
 		# Finally we add new sections at the end of the file.
 		for section, options in self.__sections.items():
 			if not section in writtensections:
 				fp.write("\n[%s]\n" % section)
-				for option, value in options.items():
-					if not option.startswith('__'):
-						if value[0] is not None:
-							fp.write("%s=%s\n" % (value[1], value[0]))
+
+				# Write the complete section
+				for (option, valuelist) in self.__sections[section].items():
+					# internal keys start with __, for instance __name__
+					if option.startswith('__'):
+						continue
+					else:
+						key = self.optionxform(option)
+						valuecount = writtenkeys.get(key, 0)
+						for (value, optionName) in valuelist[valuecount:]:
+							if value is not None:
+								fp.write("%s=%s\n" % (optionName, value))
 		
 		
 class GetSet:
@@ -468,19 +498,23 @@ class GetSet:
 		@rtype: boolean
 		@returns: True if OK, False otherwise.
 		"""
+		# Add a default index
+		if not re.match(r'.*/[0-9]+$', keypath):
+			keypath = '%s/0' % keypath
 		try:
-			section = '/'.join(keypath.split('/')[:-1])
-			key = keypath.split('/')[-1]
+			section = '/'.join(keypath.split('/')[:-2])
+			key = keypath.split('/')[-2]
+			index = int(keypath.split('/')[-1])
 
 			config = INIParser(comments = self.properties['comments'])
 			config.read([filename])
 			try:
-				config.set(section, key, value)
+				config.set(section, key, value, index)
 			except ConfigParser.NoSectionError:
 				# Do not add a section to remove a key in it :-)
 				if value is not None:
 					config.add_section(section)
-					config.set(section, key, value)
+					config.set(section, key, value, index)
 
 			t = open(filename, "r")
 			skeleton = t.readlines()
@@ -521,13 +555,17 @@ class GetSet:
 		@rtype: string
 		@returns: the value, if found, or None otherwise
 		"""
+		# Add a default index
+		if not re.match(r'.*/[0-9]+$', keypath):
+			keypath = '%s/0' % keypath
 		try:
-			section = '/'.join(keypath.split('/')[:-1]).lower()
-			key = keypath.split('/')[-1].lower()
+			section = '/'.join(keypath.split('/')[:-2])
+			key = keypath.split('/')[-2]
+			index = int(keypath.split('/')[-1])
 
 			config = INIParser(comments = self.properties['comments'])
 			config.read([filename])
-			value = config.get(section, key)
+			value = config.get(section, key, index)
 		except ConfigParser.NoSectionError:
 			return None
 		except ConfigParser.NoOptionError:
@@ -551,7 +589,7 @@ if __name__ == '__main__':
   %(name)s del <filename> <keypath>
   %(name)s set <filename> <keypath> <value>
 
-  where keypath of the form section/key (lowercase only).""" % dict(name = sys.argv[0])
+  where keypath of the form section/key[/index] (lowercase only).""" % dict(name = sys.argv[0])
 	
 	if len(sys.argv) < 3:
 		usage()
