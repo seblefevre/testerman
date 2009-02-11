@@ -68,6 +68,9 @@ class Restarter:
 		import os
 		import sys
 		args = [ Restarter.executable ] + Restarter.argv
+		if sys.platform in [ 'win32', 'win64' ]:
+			# we need to quote arguments containing spaces... why ?
+			args = map(lambda arg: (' ' in arg and not arg.startswith('"')) and '"%s"' % arg or arg, args)
 		os.chdir(Restarter.cwd)
 		os.execvpe(Restarter.executable, args, Restarter.env)
 		
