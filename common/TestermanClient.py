@@ -566,31 +566,35 @@ class Client(Nodes.ConnectingNode):
 		# Now, parse the updates metadata
 		import xml.dom.minidom
 		import operator
+		try:
 		
-		doc = xml.dom.minidom.parseString(updates)
-		rootNode = doc.documentElement
-		for node in rootNode.getElementsByTagName('update'):
-			c = None
-			branch = None
-			version = None
-			url = None
-			if node.attributes.has_key('component'):
-				c = node.attributes.get('component').value
-			if node.attributes.has_key('branch'):
-				branch = node.attributes.get('branch').value
-			if node.attributes.has_key('version'):
-				version = node.attributes.get('version').value
-			if node.attributes.has_key('url'):
-				url = node.attributes.get('url').value
-			
-			if c and c == component and url and version and branch in branches:
-				# Valid version detected. Add it to our return result
-				entry = {'version': version, 'branch': branch, 'url': url, 'properties': {}}
-				# Don't forget to add optional update properties
-				for p in node.getElementsByTagName('property'):
-					if p.attributes.has_key('name') and p.attribute.has_key('value'):
-						entry['properties'][p.attributes['name']] = p.attributes['value']
-				ret.append(entry)
+			doc = xml.dom.minidom.parseString(updates)
+			rootNode = doc.documentElement
+			for node in rootNode.getElementsByTagName('update'):
+				c = None
+				branch = None
+				version = None
+				url = None
+				if node.attributes.has_key('component'):
+					c = node.attributes.get('component').value
+				if node.attributes.has_key('branch'):
+					branch = node.attributes.get('branch').value
+				if node.attributes.has_key('version'):
+					version = node.attributes.get('version').value
+				if node.attributes.has_key('url'):
+					url = node.attributes.get('url').value
+
+				if c and c == component and url and version and branch in branches:
+					# Valid version detected. Add it to our return result
+					entry = {'version': version, 'branch': branch, 'url': url, 'properties': {}}
+					# Don't forget to add optional update properties
+					for p in node.getElementsByTagName('property'):
+						if p.attributes.has_key('name') and p.attribute.has_key('value'):
+							entry['properties'][p.attributes['name']] = p.attributes['value']
+					ret.append(entry)
+		except Exception, e:
+			self.getLogger().warning("Error while parsing update metadata file: %s" % str(e))
+			ret = []
 
 		# Sort the results
 		ret.sort(key = operator.itemgetter('version'))
