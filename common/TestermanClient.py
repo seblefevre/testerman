@@ -684,6 +684,31 @@ class Client(Nodes.ConnectingNode):
 			raise e
 		return False
 
+	def restartAgent(self, agentName):
+		"""
+		Restarts an agent whose name is agentName
+		"""
+		self.getLogger().debug("Restarting agent %s..." % (agentName))
+		try:
+			return self.__proxy.restartAgent(agentName)
+		except xmlrpclib.Fault, e:
+			self.getLogger().error("Restarting fault: " + str(e))
+			raise e
+		return False
+
+	def updateAgent(self, agentName, branch = None, version = None):
+		"""
+		Updates an agent to branch:version, or to latest version on branch,
+		or to latest version on its branch.
+		"""
+		self.getLogger().debug("Updating agent %s..." % (agentName))
+		try:
+			return self.__proxy.updateAgent(agentName, branch, version)
+		except xmlrpclib.Fault, e:
+			self.getLogger().error("Updating fault: " + str(e))
+			raise e
+		return False
+
 	##
 	# Server Management
 	##

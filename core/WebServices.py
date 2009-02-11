@@ -581,6 +581,52 @@ def getRegisteredAgents():
 	getLogger().info("<< getRegisteredAgents: %s agents returned" % str(len(res)))
 	return res
 
+def restartAgent(agentName):
+	"""
+	Restarts an agent whose uri is agent:agentName
+
+	@type  agentName: string
+	@param agentName: the name of the agent to restart (i.e. not its URI)
+	
+	@rtype: bool
+	@returns: True
+	"""
+	getLogger().info(">> restartAgent(%s)" % (agentName))
+	# Raises an error if needed
+	try:
+		ProbeManager.instance().restartAgent(agentName)
+	except Exception, e:
+		getLogger().info("<< restartAgent: Fault:\n" + str(e))
+		raise(e)
+	getLogger().info("<< restartAgent OK")
+	return True
+
+def updateAgent(agentName, branch = None, version = None):
+	"""
+	Requires an agent to update to version/branch (if provided), or to update to the
+	latest version of branch (if provided), or to update to the latest version
+	of its default branch (if no version/branch provided).
+
+	@type  agentName: string
+	@param agentName: the name of the agent to update (i.e. not its URI)
+	@type  branch: string
+	@param branch: a version branch (usually 'experimental', 'stable', ...)
+	@type  version: string
+	@param version: a valid version for the agent component
+	
+	@rtype: bool
+	@returns: True
+	"""
+	getLogger().info(">> updateAgent(%s)" % (agentName))
+	# Raises an error if needed
+	try:
+		ProbeManager.instance().updateAgent(agentName)
+	except Exception, e:
+		getLogger().info("<< updateAgent: Fault:\n" + str(e))
+		raise(e)
+	getLogger().info("<< updateAgent OK")
+	return True
+
 ################################################################################
 # Component management
 # TODO: must be managed as a file, with a specific metadata file if needed.

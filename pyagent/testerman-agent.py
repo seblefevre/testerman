@@ -113,6 +113,7 @@ def daemonize(pidFilename = None, stdout = None, stderr = None, displayPid = Fal
 
 
 def main():
+	Agent.Restarter.initialize()
 	# Make sure that the current directory is in PYTHON path (for probe/plugins)
 	sys.path.append(os.path.normpath(os.path.realpath(os.path.dirname(sys.modules[globals()['__name__']].__file__))))
 

@@ -191,6 +191,16 @@ class TestermanCliClient:
 		ret = self.__client.undeployProbe(agentName, probeName)
 		print str(ret)
 
+	def restartAgent(self, agentName):
+		print "Restarting agent..."
+		ret = self.__client.restartAgent(agentName)
+		print str(ret)
+
+	def updateAgent(self, agentName, branch = None, version = None):
+		print "Updating agent..."
+		ret = self.__client.updateAgent(agentName, branch, version)
+		print str(ret)
+
 
 def main():
 	parser = optparse.OptionParser(version = getVersion())
@@ -209,7 +219,9 @@ def main():
 	parser.add_option("--undeploy", dest = "undeployProbeName", metavar = "NAME", help = "undeploy a probe named NAME", default = None)
 	parser.add_option("--agent", dest = "deployAgentName", metavar = "NAME", help = "on agent named NAME", default = None)
 	parser.add_option("--type", dest = "deployProbeType", metavar = "TYPE", help = "with type TYPE (deploy only)", default = None)
-	
+
+	parser.add_option("--restart-agent", dest = "restartAgentName", metavar = "NAME", help = "restart agent named NAME", default = None)
+	parser.add_option("--update-agent", dest = "updateAgentName", metavar = "NAME", help = "update agent named NAME to the latest version in its branch", default = None)
 
 	parser.add_option("--list-probes", dest = "listProbes", action = "store_true", help = "list registered probes", default = False)
 
@@ -264,6 +276,12 @@ def main():
 
 		elif options.undeployProbeName and options.deployAgentName:
 			client.undeployProbe(options.deployAgentName, options.undeployProbeName)
+
+		elif options.restartAgentName:
+			client.restartAgent(options.restartAgentName)
+
+		elif options.updateAgentName:
+			client.updateAgent(options.updateAgentName)
 			
 	except Exception, e:
 		print str(e)

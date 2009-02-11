@@ -277,7 +277,7 @@ class IaClient(Nodes.ConnectingNode):
 		probeName = uri.getUser()
 		agentUri = "agent:%s" % uri.getDomain()
 		
-		request = Messages.Request("DEPLOY", "system:tacs", "Ia", "1.0")
+		request = Messages.Request("DEPLOY", str(agentUri), "Ia", "1.0")
 		request.setApplicationBody({'probe-name': probeName, 'probe-type': probeType})
 		request.setHeader('Agent-Uri', str(agentUri))
 		response = self.executeRequest(0, request)
@@ -297,7 +297,7 @@ class IaClient(Nodes.ConnectingNode):
 		probeName = uri.getUser()
 		agentUri = "agent:%s" % uri.getDomain()
 
-		request = Messages.Request("UNDEPLOY", "system:tacs", "Ia", "1.0")
+		request = Messages.Request("UNDEPLOY", str(agentUri), "Ia", "1.0")
 		request.setApplicationBody({'probe-name': probeName})
 		request.setHeader('Agent-Uri', str(agentUri))
 		response = self.executeRequest(0, request)
@@ -326,6 +326,24 @@ class IaClient(Nodes.ConnectingNode):
 		else:
 			return None
 	
+	def restartAgent(self, agentUri):
+		request = Messages.Request("RESTART", agentUri, "Ia", "1.0")
+		request.setHeader('Agent-Uri', str(agentUri))
+		response = self.executeRequest(0, request)
+		if response and response.getStatusCode() == 200:
+			return True
+		else:
+			return False
+
+	def updateAgent(self, agentUri):
+		request = Messages.Request("UPDATE", agentUri, "Ia", "1.0")
+		request.setHeader('Agent-Uri', str(agentUri))
+		response = self.executeRequest(0, request)
+		if response and response.getStatusCode() == 200:
+			return True
+		else:
+			return False
+
 	def getCounter(self, path):
 		return 0
 	#...

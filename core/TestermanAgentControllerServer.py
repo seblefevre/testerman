@@ -213,16 +213,29 @@ class XaServer(Nodes.ListeningNode):
 
 	# TACS -> Agents
 	
-	def kill(self, channel, uri):
-		req = Messages.Request(method = "KILL", uri = uri, protocol = "XA", version = Versions.getXaVersion())
+	def kill(self, channel, agentUri):
+		req = Messages.Request(method = "KILL", uri = agentUri, protocol = "XA", version = Versions.getXaVersion())
 		resp = self.executeRequest(channel, req)
 		if not resp:
 			raise XaException("Timeout while waiting for KILL response from agent %s" % req.getUri())
 		if resp.getStatusCode() != 200:
 			raise XaException("KILL from agent %s returned %d %s" % (req.getUri(), resp.getStatusCode(), resp.getReasonPhrase()))
 	
-	def restart(self, channel, uri):
-		raise XaException("agent RESTART not implemented yet")
+	def restart(self, channel, agentUri):
+		req = Messages.Request(method = "RESTART", uri = agentUri, protocol = "XA", version = Versions.getXaVersion())
+		resp = self.executeRequest(channel, req)
+		if not resp:
+			raise XaException("Timeout while waiting for RESTART response from agent %s" % req.getUri())
+		if resp.getStatusCode() != 200:
+			raise XaException("RESTART from agent %s returned %d %s" % (req.getUri(), resp.getStatusCode(), resp.getReasonPhrase()))
+
+	def update(self, channel, agentUri):
+		req = Messages.Request(method = "UPDATE", uri = agentUri, protocol = "XA", version = Versions.getXaVersion())
+		resp = self.executeRequest(channel, req)
+		if not resp:
+			raise XaException("Timeout while waiting for UPDATE response from agent %s" % req.getUri())
+		if resp.getStatusCode() != 200:
+			raise XaException("UPDATE from agent %s returned %d %s" % (req.getUri(), resp.getStatusCode(), resp.getReasonPhrase()))
 	
 	def deploy(self, channel, agentUri, probeName, probeType):
 		req = Messages.Request(method = "DEPLOY", uri = agentUri, protocol = "XA", version = Versions.getXaVersion())
@@ -275,6 +288,8 @@ class IaServer(Nodes.ListeningNode):
 	TE/TS -> Agent via TACS:
 	 R DEPLOY
 	 R UNDEPLOY
+	 R RESTART
+	 R UPDATE
 
 	TACS -> TE/TS:
 	 N PROBE
@@ -296,6 +311,7 @@ class IaServer(Nodes.ListeningNode):
 		self.getLogger().debug("New request received:\n%s" % str(request))
 		try:
 			method = request.getMethod()
+
 			# Probe-targeted requests
 			if method == "TRI-EXECUTE-TESTCASE":
 				# Forward the body as is, with possible parameters
@@ -342,6 +358,14 @@ class IaServer(Nodes.ListeningNode):
 				else:
 					resp = Messages.Response(404, "Not found")
 				self.sendResponse(channel, transactionId, resp)
+			elif method == "SUBSCRIBE": # Notification or Request ??
+				self._controller.subscribe(channel, request.getUri())
+				self.sendResponse(channel, transactionId, Messages.Response(200, "OK"))
+			elif method == "UNSUBSCRIBE": # Notification or Request ??
+				self._controller.unsubscribe(channel, request.getUri())
+				self.sendResponse(channel, transactionId, Messages.Response(200, "OK"))
+
+			# Agent-targeted requests
 			elif method == "DEPLOY":
 				probeInfo = request.getApplicationBody()
 				agentUri = request.getHeader('Agent-Uri')
@@ -352,11 +376,13 @@ class IaServer(Nodes.ListeningNode):
 				agentUri = request.getHeader('Agent-Uri')
 				self._controller.undeployProbe(agentUri = agentUri, probeName = probeInfo['probe-name'])
 				self.sendResponse(channel, transactionId, Messages.Response(200, "OK"))
-			elif method == "SUBSCRIBE": # Notification or Request ??
-				self._controller.subscribe(channel, request.getUri())
+			elif method == "RESTART":
+				agentUri = request.getHeader('Agent-Uri')
+				self._controller.restartAgent(agentUri = agentUri)
 				self.sendResponse(channel, transactionId, Messages.Response(200, "OK"))
-			elif method == "UNSUBSCRIBE": # Notification or Request ??
-				self._controller.unsubscribe(channel, request.getUri())
+			elif method == "UPDATE":
+				agentUri = request.getHeader('Agent-Uri')
+				self._controller.updateAgent(agentUri = agentUri)
 				self.sendResponse(channel, transactionId, Messages.Response(200, "OK"))
 			else:
 				raise IaException("Unsupported method", 505, "Not Supported")
@@ -824,7 +850,7 @@ class Controller(object):
 
 	def deployProbe(self, agentUri, probeName, probeType):
 		"""
-		Forwards a DEPLOY operation, expects a response.
+		Forwards a DEPLOY operation to an agent, expects a response.
 		"""
 		uri = str(agentUri)
 		agent = None
@@ -846,7 +872,7 @@ class Controller(object):
 
 	def undeployProbe(self, agentUri, probeName):
 		"""
-		Forwards a UNDEPLOY operation, expects a response.
+		Forwards a UNDEPLOY operation to an agent, expects a response.
 		"""
 		uri = str(agentUri)
 		agent = None
@@ -860,6 +886,40 @@ class Controller(object):
 			# Check that probeName is already deployed on this agent
 			# TODO (NB: the agent is able to check it locally, too)
 			self._xaServer.undeploy(channel = agent['channel'], agentUri = uri, probeName = probeName)
+		else:
+			raise TacsException("Agent %s not available on controller" % uri)
+
+	def restartAgent(self, agentUri):
+		"""
+		Forwards a RESTART operation to an agent, expects a response.
+		"""
+		uri = str(agentUri)
+		agent = None
+		self.getLogger().info("Restarting agent %s" % (uri))
+		self._lock()
+		if self._agents.has_key(uri):
+			agent = self._agents[uri]
+		self._unlock()
+		
+		if agent:
+			self._xaServer.restart(channel = agent['channel'], agentUri = uri)
+		else:
+			raise TacsException("Agent %s not available on controller" % uri)
+
+	def updateAgent(self, agentUri):
+		"""
+		Forwards a UPDATE operation to an agent, expects a response.
+		"""
+		uri = str(agentUri)
+		agent = None
+		self.getLogger().info("Requesting agent %s to update" % (uri))
+		self._lock()
+		if self._agents.has_key(uri):
+			agent = self._agents[uri]
+		self._unlock()
+		
+		if agent:
+			self._xaServer.update(channel = agent['channel'], agentUri = uri)
 		else:
 			raise TacsException("Agent %s not available on controller" % uri)
 

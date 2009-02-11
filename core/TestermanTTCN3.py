@@ -1558,7 +1558,7 @@ def alt(alternatives):
 	  They must be lambda or callable() to be executed only if the branch is selected.
 	
 	This implementation is not TTCN-3 compliant because:
-	- it does not take a snapshot at each iteration, meaning that messages may arrives on port2 just
+	- it does not take a snapshot at each iteration, meaning that messages may arrive on port2 just
 	  before analyzing it, while something arrives on port1 just after, leading to incorrect alt branching
 	  in the case of port1.RECEIVE() is before port2.RECEIVE() (in "order of appearance")
 	- altstep-branches are not implemented. Only timeout-, receiving-, killed-, done- branches are.

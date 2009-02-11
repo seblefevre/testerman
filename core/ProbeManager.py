@@ -119,7 +119,7 @@ class ProbeManager:
 		Undeploys a running probe whose uri is probe:probeName@agentName.
 		
 		@type  agentName: string
-		@param agentName: the name of the undeployed agent (i.e. not its URI)
+		@param agentName: the name of the deployed agent (i.e. not its URI)
 		@type  probeName: string
 		@param probeName: the name of the probe to undeploy
 		
@@ -128,6 +128,38 @@ class ProbeManager:
 		"""
 		probeUri = "probe:%s@%s" % (probeName, agentName)
 		return self._proxy.undeployProbe(probeUri)
+
+	def restartAgent(self, agentName):
+		"""
+		Restarts an agent whose uri is agent:agentName
+		
+		@type  agentName: string
+		@param agentName: the name of the agent to restart (i.e. not its URI)
+		
+		@rtype: bool
+		@returns: True if the restart request was correctly taken into account, False otherwise
+		"""
+		agentUri = "agent:%s" % (agentName)
+		return self._proxy.restartAgent(agentUri)
+
+	def updateAgent(self, agentName, branch = None, version = None):
+		"""
+		Requires an agent to update to version/branch (if provided), or to update to the
+		latest version of branch (if provided), or to update to the latest version
+		of its default branch (if no version/branch provided).
+		
+		@type  agentName: string
+		@param agentName: the name of the agent to update (i.e. not its URI)
+		@type  branch: string
+		@param branch: a version branch (usually 'experimental', 'stable', ...)
+		@type  version: string
+		@param version: a valid version for the agent component
+		
+		@rtype: bool
+		@returns: True if the restart request was correctly taken into account, False otherwise
+		"""
+		agentUri = "agent:%s" % (agentName)
+		return self._proxy.updateAgent(agentUri)
 
 
 TheProbeManager = None

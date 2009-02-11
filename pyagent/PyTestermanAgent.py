@@ -34,6 +34,46 @@ import logging
 VERSION = "1.0.0"
 
 ################################################################################
+# Restarter/Reinitializer facility
+################################################################################
+
+class Restarter:
+	"""
+	Static class that enables to restart a python program at any time.
+	
+	Usage:
+	call Restarter.initialize() as soon as your program is started, before 
+	any other operations (in particular argv consumption, chdir)
+	
+	call Restarter.restart() when you're ready to restart/reinitialize your script.
+	It will be executed with the same arguments, from the same path, with the same
+	environment as the original one.
+	"""
+	env = None
+	cwd = None
+	executable = None
+	argv = None
+	
+	def initialize():
+		import os
+		import sys
+		Restarter.env = os.environ
+		Restarter.argv = sys.argv
+		Restarter.executable = sys.executable
+		Restarter.cwd = os.getcwd()
+	
+	initialize = staticmethod(initialize)
+
+	def restart():
+		import os
+		import sys
+		args = [ Restarter.executable ] + Restarter.argv
+		os.chdir(Restarter.cwd)
+		os.execvpe(Restarter.executable, args, Restarter.env)
+		
+	restart = staticmethod(restart)
+
+################################################################################
 # The usual tools
 ################################################################################
 
@@ -277,10 +317,15 @@ class Agent(Nodes.ConnectingNode):
 					self.undeployProbe(name = probeInfo['probe-name'])
 					self.response(transactionId, 200, "OK")
 				elif method == "RESTART":
-					self.response(transactionId, 501, "Not implemented")
+					self.response(transactionId, 200, "OK")
+					self.getLogger().info("-- Unregistering --")
+					self.unregisterAgent()
+					self.getLogger().info("-- Restarting --")
+					Restarter.restart()
 				elif method == "KILL":
 					self.response(transactionId, 501, "Not implemented")
 				else:
+					self.getLogger().warning("Received unsupported agent method: %s" % method)
 					self.response(transactionId, 505, "Not supported")
 
 			elif uri.getScheme() == "probe":
@@ -435,6 +480,18 @@ class Agent(Nodes.ConnectingNode):
 
 		self.registered = True
 		self.getLogger().info("Agent %s registered" % self.getUri())
+
+	def unregisterAgent(self):
+		req = Messages.Request(method = "UNREGISTER", uri = self.getUri(), protocol = "Xa", version = "1.0")
+		response = self.request(req)
+		if not response:
+			raise Exception("Timeout")
+
+		if response.getStatusCode() != 200:
+			raise Exception("Unable to unregister: " + response.getReasonPhrase())
+
+		self.registered = False
+		self.getLogger().info("Agent %s unregistered" % self.getUri())
 		
 		
 		
