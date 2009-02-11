@@ -1,6 +1,12 @@
 This is QTesterman, a PyQt4-based GUI for Testerman.
 ================================================================================
 
+1.0.1:
+- Added: auto-update support, with self restart
+- Modified: qtesterman.py is now the main launcher, and should be used in
+  user shortcuts.
+
+
 
 1.0.0:
 - First release, based on a major contribution by Comverse - Netcentrex Converged IP Communications.

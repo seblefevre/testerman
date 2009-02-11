@@ -24,6 +24,49 @@
 from PyQt4.Qt import *
 
 ################################################################################
+# Restarter/Reinitializer facility
+################################################################################
+
+class Restarter:
+	"""
+	Static class that enables to restart a python program at any time.
+	
+	Usage:
+	call Restarter.initialize() as soon as your program is started, before 
+	any other operations (in particular argv consumption, chdir)
+	
+	call Restarter.restart() when you're ready to restart/reinitialize your script.
+	It will be executed with the same arguments, from the same path, with the same
+	environment as the original one.
+	"""
+	env = None
+	cwd = None
+	executable = None
+	argv = None
+	
+	def initialize():
+		import os
+		import sys
+		Restarter.env = os.environ
+		Restarter.argv = sys.argv
+		Restarter.executable = sys.executable
+		Restarter.cwd = os.getcwd()
+	
+	initialize = staticmethod(initialize)
+
+	def restart():
+		import os
+		import sys
+		args = [ Restarter.executable ] + Restarter.argv
+		if sys.platform in [ 'win32', 'win64' ]:
+			# we need to quote arguments containing spaces... why ?
+			args = map(lambda arg: (' ' in arg and not arg.startswith('"')) and '"%s"' % arg or arg, args)
+		os.chdir(Restarter.cwd)
+		os.execvpe(Restarter.executable, args, Restarter.env)
+		
+	restart = staticmethod(restart)
+
+################################################################################
 # Auto update management
 ################################################################################
 

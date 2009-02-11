@@ -25,6 +25,7 @@ from PyQt4.Qt import *
 
 import sys
 import base64
+import os.path
 import tarfile
 import time
 import xmlrpclib
@@ -268,7 +269,7 @@ class WInstallationDialog(QDialog):
 		self.urlComboBox.setMaximumWidth(250)
 
 		# Default: current directory
-		self.installationPathLineEdit = QLineEdit(QDir.currentPath())
+		self.installationPathLineEdit = QLineEdit(os.path.normpath(unicode(QDir.currentPath())))
 		self.installationPathLineEdit.setMinimumWidth(150)
 
 		layout = QVBoxLayout()
@@ -338,7 +339,7 @@ class WInstallationDialog(QDialog):
 	def browseDirectory(self):
 		path = QFileDialog.getExistingDirectory(self, "Installation directory", self.installationPathLineEdit.text())
 		if not path.isEmpty():
-			self.installationPathLineEdit.setText(path)
+			self.installationPathLineEdit.setText(os.path.normpath(unicode(path)))
 
 def main():
 	# OK, now we can create some Qt objects.
