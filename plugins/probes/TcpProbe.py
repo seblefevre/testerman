@@ -63,6 +63,7 @@ class TcpProbe(ProbeImplementationManager.ProbeImplementation):
 	|| `size` || integer || 0 || Fixed-size packet strategy: if set to non-zero, only raises messages when `size` bytes have been received. All raised messages will hage this constant size. ||
 	|| `separator` || string || None || Separator-based packet strategy: if set no a character or a string, only raises messages when `separator` has been encountered; this separator is assumed to be a packet separator, and is not included in the raised message. May be useful for, for instance, \x00-based packet protocols. ||
 	|| `enable_notifications` || boolean || False || If set, you may get connection/disconnection notification and connectionConfirm/Error notification messages || ||
+	|| `default_sut_address` || string (ip:port) || None || If set, used as a default SUT address if none provided by the user || ||
 	"""
 	def __init__(self):
 		ProbeImplementationManager.ProbeImplementation.__init__(self)
@@ -79,6 +80,7 @@ class TcpProbe(ProbeImplementationManager.ProbeImplementation):
 		self.setDefaultProperty('size', 0)
 		self.setDefaultProperty('separator', None)
 		self.setDefaultProperty('enable_notifications', False)
+		self.setDefaultProperty('default_sut_address', None)
 
 	# ProbeImplementation reimplementation
 	def onTriMap(self):
@@ -107,6 +109,20 @@ class TcpProbe(ProbeImplementationManager.ProbeImplementation):
 	def onTriSend(self, message, sutAddress):
 		# First implementation level: no notification/connection explicit management.
 		# We send a message. If not connected yet, connect first.
+
+		# First fallback if the user did not provide a SUT address:
+		# default SUT address (useful for outgoing connections)
+		if not sutAddress:
+			sutAddress = self['default_sut_address']
+		
+		# Second fallback, useful for servers with a single incoming connection
+		if not sutAddress:
+			self._lock()
+			conns = self._connections.values()
+			if len(conns) == 1:
+				# A single connection exist. Auto select it.
+				sutAddress = "%s:%s" % conns[0].peerAddress
+			self._unlock()
 
 		try:
 			# Split a ip:port to a (ip, port)
