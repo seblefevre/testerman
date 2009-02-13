@@ -505,7 +505,9 @@ class AtsJob(Job):
 				# Target, local, absolute filename for the dep
 				targetFilename = '%s/%s' % (tePackageDirectory, filename)
 
-				r = FileSystemManager.instance().read(filename)
+				depContent = FileSystemManager.instance().read(filename)
+				# Alter the content (additional includes, etc)
+				depContent = TEFactory.createDependency(depContent)
 
 				# Create required directory structure, with __init__.py file, if needed
 				currentdir = tePackageDirectory
@@ -521,9 +523,9 @@ class AtsJob(Job):
 					f = open('%s/__init__.py' % localdir, 'w')
 					f.close()
 
-				# Now we can copy the module
+				# Now we can dump the module
 				f = open(targetFilename, 'w')
-				f.write(r)
+				f.write(depContent)
 				f.close()
 		except Exception, e:
 			getLogger().error('%s: unable to create dependency %s to "%s": %s' % (str(self), filename, targetFilename, str(e)))

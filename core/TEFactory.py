@@ -462,13 +462,22 @@ def getDependencyFilenames(ats, atsPath = None):
 	# Bootstrap the deps (stored as (list of imported modules, path of the importing file) )
 	deps = [ (d, atsPath) for d in _getDirectDependencies(ats) ]
 	
+	# tuple (dep, fromPath)
 	analyzedDeps = []
+	# dep only
+	alreadyAnalyzedDeps = []
 	
 	while len(deps):
 		dep, fromFilePath = deps.pop()
 		# Some non-userland files - not resolved to build the TE userland package
-		if dep in [ 'Testerman' ]:
-			continue
+		# How can we detect standard Python includes ?
+		# fromFilePath starts with the "python home" ? something else ?
+		getLogger().debug("Analyzing dependency %s" % dep)
+
+		# Skip some 
+		#if dep in [ ]:
+		#	getLogger().info("Skipping dependency analysis: not userland (%s)" % dep)
+		#	continue
 
 		# Skip already analyzed deps (analyzed from this very path,
 		# since the same dep name, from different paths, may resolved to
@@ -476,7 +485,7 @@ def getDependencyFilenames(ats, atsPath = None):
 		if (dep, fromFilePath) in analyzedDeps:
 			continue
 
-		getLogger().debug("Analyzing dependency %s..." % (dep))
+		getLogger().debug("Analyzing dependency %s (from %s)..." % (dep, fromFilePath))
 
 		# Ordered list of filenames within the docroot that could provide the dependency:
 		# (module path)
@@ -511,13 +520,17 @@ def getDependencyFilenames(ats, atsPath = None):
 
 		# Now, analyze it and add new dependencies to analyze
 		fromFilePath = '/'.join(depFilename.split('/')[:-1])
-		for d in _getDirectDependencies(depSource):
-			if not d in deps and d != dep:
+		directDependencies = _getDirectDependencies(depSource)
+		getLogger().info('Direct dependencies for file %s (%s):\n%s' % (depFilename, 
+			fromFilePath, str(directDependencies)))
+		for d in directDependencies:
+			if not d in deps and not (d, fromFilePath) in analyzedDeps and d != dep:
 				deps.append((d, fromFilePath))
 
 		# Flag the dep as analyzed - from this path (since it may lead to another filename
 		# when evaluated from another path)
 		analyzedDeps.append((dep, fromFilePath))
+		alreadyAnalyzedDeps.append(dep)
 
 	return ret	
 
@@ -530,7 +543,38 @@ def _getDirectDependencies(source):
 	fp = StringIO.StringIO(source)
 	mf.load_module('__main__', fp, '<string>', ("", "r", imp.PY_SOURCE))
 
-	ret = []	
-	for module in mf.any_missing():
-		ret.append(module)
+	rawdeps = mf.any_missing()
+	directdeps = []
+	# Let's filter and retrieve only missing imports from __main__
+	# i.e. direct missing dependencies
+	for name in rawdeps:
+		mods = mf.badmodules[name].keys()
+		if '__main__' in mods:
+			directdeps.append(name)
+	
+	getLogger().info('Unresolved modules: %s' % str(directdeps))
+	
+	return directdeps
+
+def createDependency(dependencyContent):
+	"""
+	From a dependency content, modify it so that it can be
+	used by the TE.
+	
+	In particular, adds the import TestermanTTCN3 adapter lib,
+	so that the user does not need to take care of it.
+	
+	@type dependencyContent: utf-8 string
+	@param dependencyContent: the raw, untouched dependency as retrieved from the VFS
+	
+	@rtype: utf-8 string
+	@returns: the modified dependency content, ready to be dumped and used by the TE
+	"""
+	adapterModuleName = ConfigManager.get("testerman.te.python.ttcn3module")
+
+	ret = ''
+	ret += """# -*- coding: utf-8 -*-
+from %s import *
+""" % adapterModuleName
+	ret += dependencyContent
 	return ret
