@@ -29,9 +29,10 @@ import os
 import sys
 import threading
 import logging
+import cStringIO as StringIO
+import tarfile
 
-
-VERSION = "1.0.0"
+VERSION = "1.1.0"
 
 ################################################################################
 # Restarter/Reinitializer facility
@@ -86,8 +87,9 @@ def getLogger():
 def getVersion():
 	return VERSION
 
+
 ################################################################################
-# Probe interface / sample implementation
+# Probe Adaptation
 ################################################################################
 
 class ProbeException(Exception):
@@ -325,6 +327,17 @@ class Agent(Nodes.ConnectingNode):
 					self.unregisterAgent()
 					self.getLogger().info("-- Restarting --")
 					Restarter.restart()
+				elif method == "UPDATE":
+					self.getLogger().info("Updating...")
+					args = request.getApplicationBody()
+					if not args:
+						args = {}
+					# If a preferredVersion is provided, preferred branches, if provided, are ignored
+					preferredVersion = args.get('version', None)
+					preferredBranches = args.get('branches', [ 'stable' ])
+					ret = self.updateAgent(preferredBranches, preferredVersion)
+					self.getLogger().info("Update status: %s" % ret)
+					self.response(transactionId, 200, "OK")
 				elif method == "KILL":
 					self.response(transactionId, 501, "Not implemented")
 				else:
@@ -495,6 +508,205 @@ class Agent(Nodes.ConnectingNode):
 
 		self.registered = False
 		self.getLogger().info("Agent %s unregistered" % self.getUri())
+
+	def getFile(self, url):
+		"""
+		"""
+		self.getLogger().debug("Getting file %s..." % url)
+		req = Messages.Request(method = "GET", uri = "system:tacs", protocol = "Xa", version = "1.0")
+		req.setHeader('Path', url)
+		response = self.request(req)
+		if not response or response.getStatusCode() != 200:
+			self.getLogger().debug("Getting file %s: request timeout or non-OK response code" % url)
+			return None
+		
+		content = response.getApplicationBody()
+		return content
+
+	def getComponentVersions(self, component, branches = [ 'stable', 'testing', 'experimental' ]):
+		"""
+		Returns the available updates for a given component, with a basic filering on branches.
+		
+		Based on metadata stored into /updates.xml within the server's docroot:
+		
+		<updates>
+			<update component="componentname" branch="stable" version="1.0.0" url="/components/componentname-1.0.0.tar">
+				<!-- optional properties -->
+				<property name="release_notes_url" value="/components/rn-1.0.0.txt />
+				<!-- ... -->
+			</update>
+		</updates>
+		
+		@type  component: string
+		@param component: the component identifier ("qtesterman", "pyagent", ...)
+		@type  branches: list of strings in [ 'stable', 'testing', 'experimental' ], or None
+		@param branches: the acceptable branches. If None, all branches are considered.
+		
+		@rtype: list of dict{'version': string, 'branch': string, 'url': string, 'properties': dict[string] of strings}
+		@returns: versions info, as list ordered from the newer to the older. The url is a relative path from the docroot, suitable
+		          for a subsequent getFile() to get the update archive.
+		"""
+		updates = None
+		try:
+			updates = self.getFile("/updates.xml")
+		except:
+			self.getLogger().warning("Unable to retrieve update metata on TACS")
+			return []
+		if updates is None:
+			return []
+		
+		ret = []
+		# Now, parse the updates metadata
+		import xml.dom.minidom
+		import operator
+		try:
+		
+			doc = xml.dom.minidom.parseString(updates)
+			rootNode = doc.documentElement
+			for node in rootNode.getElementsByTagName('update'):
+				c = None
+				branch = None
+				version = None
+				url = None
+				if node.attributes.has_key('component'):
+					c = node.attributes.get('component').value
+				if node.attributes.has_key('branch'):
+					branch = node.attributes.get('branch').value
+				if node.attributes.has_key('version'):
+					version = node.attributes.get('version').value
+				if node.attributes.has_key('url'):
+					url = node.attributes.get('url').value
+
+				if c and c == component and url and version and (not branches or branch in branches):
+					# Valid version detected. Add it to our return result
+					entry = {'version': version, 'branch': branch, 'url': url, 'properties': {}}
+					# Don't forget to add optional update properties
+					for p in node.getElementsByTagName('property'):
+						if p.attributes.has_key('name') and p.attribute.has_key('value'):
+							entry['properties'][p.attributes['name']] = p.attributes['value']
+					ret.append(entry)
+		except Exception, e:
+			self.getLogger().warning("Error while parsing update metadata file: %s" % str(e))
+			ret = []
+
+		# Sort the results
+		ret.sort(key = operator.itemgetter('version'))
+		ret.reverse()
+		return ret
+
+	def installComponent(self, url, basepath):
+		"""
+		Downloads the component file referenced by url, and installs it in basepath.
+		
+		@type  url: string
+		@type  basepath: unicode string
+		@param url: the url of the coponent archive to download, relative to the docroot
+		"""
+		# We retrieve the archive
+		archive = self.getFile(url)
+		if not archive:
+			raise Exception("Archive file not found on server (%s)" % url)
+		
+		# We untar it into the current directory.
+		archiveFileObject = StringIO.StringIO(archive)
+		try:
+			tfile = tarfile.TarFile.open('any', 'r', archiveFileObject)
+			contents = tfile.getmembers()
+			# untar each file into the qtesterman directory
+
+			for c in contents:
+				# Let's remove the first level of directory ("patch -p1")
+				c.name = '/'.join(c.name.split('/')[1:])
+				if not c.name:
+					self.getLogger().warning("Invalid file in archive: not under a root folder")
+					continue
+				self.getLogger().debug("Unpacking %s into %s..." % (c.name, basepath))
+				tfile.extract(c, basepath)
+				# TODO: make sure to set write rights to allow future updates
+				# os.chmod("%s/%s" % (basepath, c), ....)
+			tfile.close()
+		except Exception, e:
+			archiveFileObject.close()
+			raise Exception("Error while unpacking the update archive:\n%s" % str(e))
+
+		archiveFileObject.close()
+
+	def updateAgent(self, preferredBranches = [ 'stable' ], preferredVersion = None):
+		"""
+		Updates the agent to preferredVersion (if provided), or to the latest version 
+		available in preferredBranches. If preferredBranches is not provided (empty or None),
+		all branches are taken into account.
+
+		@throws exceptions
+		@type  preferredBranches: list of strings
+		@param preferredBranches: the branches in which we should look for newer versions.
+		                          Not taken into account if a preferredVersion is provided.
+		@type  preferredVersion: string
+		@param preferredVersion: a preferred version to update to (format: A.B.C).
+
+		@rtype: bool
+		@returns: True if the component was updated. False otherwise.
+		"""
+		component = 'pyagent'
+		if preferredVersion:
+			branches = None
+		else:
+			branches = preferredBranches
+		currentVersion = VERSION
+		# basepath is "pyagent/..", where pyagent is the name of the folder contained in the component package.
+		basepath = os.path.normpath(os.path.realpath(os.path.dirname(sys.modules[globals()['__name__']].__file__)))
+	
+		# Get the current available updates	
+		updates = self.getComponentVersions(component, branches)
+		if not updates:
+			# No updates available - nothing to do
+			self.getLogger().info("No updates available on this server.")
+			return False
+		self.getLogger().info("Available updates:\n%s" % "\n".join([ "%s (%s)" % (x['version'], x['branch']) for x in updates]))
+
+		# Select the update to apply according to branches/preferredVersion
+		url = None
+		selectedVersion = None
+		selectedBranch = None
+		
+		if preferredVersion:
+			# Let's check if the version is available
+			v = filter(lambda x: x['version'] == preferredVersion, updates)
+			if v:
+				url = v[0]['url']
+				selectedVersion = v[0]['version'] # == preferredVersion
+				selectedBranch = v[0]['branch']
+				self.getLogger().info("Preferred version %s available. Updating." % preferredVersion)
+			else:
+				self.getLogger().warning("Preferred version %s not available as an update. Not updating." % preferredVersion)
+		else:
+			# No preferred version: take the most recent one in the selected branches
+			# Let's check if we have a better version than the current one
+			# Versions rules
+			# A.B.C < A+n.b.c
+			# A.B.C < A.B+n.c
+			# A.B.C < A.B.C+n
+			# (ie when comparing A.B.C and a.b.c, lexicographic order is ok)
+			if not currentVersion or (currentVersion < updates[0]['version']):
+				selectedVersion = updates[0]['version']
+				url = updates[0]['url']
+				selectedBranch = updates[0]['branch']
+				self.getLogger().info("New version available: %s, in branch %s. Updating." % (selectedVersion, selectedBranch))
+			else:
+				self.getLogger().info("No new version available. Not updating.")
+
+		# OK, now if we have selected a version, let's update.		
+		if url:
+			try:
+				self.installComponent(url, basepath)
+			except Exception, e:
+				raise Exception("Unable to install the update:\n%s\nContinuing with the current version." % str(e))
+	
+			self.getLogger().info("Agent updated from %s to %s (%s)" % (currentVersion, selectedVersion, selectedBranch))
+			return True
+		else:
+			return False # No newer version available, or preferred version not available
+
 		
 		
 		
@@ -507,7 +719,6 @@ def scanPlugins(paths, label):
 	for path in paths:
 		if not path in sys.path:
 			sys.path.append(path)
-	for path in paths:
 		try:
 			for m in os.listdir(path):
 				if m.startswith('__init__') or not (os.path.isdir(path + '/' + m) or m.endswith('.py')) or m.startswith('.'):
@@ -525,11 +736,11 @@ def scanPlugins(paths, label):
 # Main
 ################################################################################
 
-def initialize(probePaths = ["probes"], codecPaths = ["../codecs"]):
+def initialize(probePaths = ["plugins/probes"], codecPaths = ["plugins/codecs"]):
 	# CodecManager logging diversion
-	CodecManager.instance().setLogCallback(logging.getLogger("Agent.CD").debug)
+	CodecManager.instance().setLogCallback(logging.getLogger("Agent.Codec").debug)
 	# ProbeImplementationManager logging diversion
-	ProbeImplementationManager.setLogger(logging.getLogger("Agent"))
+	ProbeImplementationManager.setLogger(logging.getLogger("Agent.Probe"))
 	# Loading plugins: probes & codecs
 	currentDir = os.path.normpath(os.path.realpath(os.path.dirname(sys.modules[globals()['__name__']].__file__)))
 	scanPlugins(["%s/%s" % (currentDir, x) for x in codecPaths], label = "codec")

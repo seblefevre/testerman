@@ -28,6 +28,7 @@ import Versions
 
 import logging
 import optparse
+import posixpath
 import time
 import threading
 
@@ -70,12 +71,14 @@ class XaServer(Nodes.ListeningNode):
 	 R REGISTER
 	 R UNREGISTER
 	 N LOG
+	 R GET
 	
 	TACS -> Agent:
 	 R DEPLOY
 	 R UNDEPLOY
 	 R RESTART
 	 R KILL
+	 R UPDATE
 	
 	Probe -> TACS:
 	 N LOG
@@ -125,6 +128,16 @@ class XaServer(Nodes.ListeningNode):
 					self.sendResponse(channel, transactionId, Messages.Response(200, "OK"))
 				else:
 					raise XaException("Unsupported URI scheme for unregistration")
+
+			elif method == "GET":
+				filePath = request.getHeader('Path')
+				content = self._controller.getFile(filePath)
+				if content is not None:
+					response = Messages.Response(200, "OK")
+					response.setApplicationBody(content, response.CONTENT_TYPE_GZIP)
+					self.sendResponse(channel, transactionId, response)
+				else:
+					self.sendResponse(channel, transactionId, Messages.Response(404, "Not found"))
 			else:
 				raise XaException("Unsupported method", 505, "Not Supported")
 
@@ -458,12 +471,13 @@ class Controller(object):
 	
 	"""
 	
-	def __init__(self, xaAddress, iaAddress):
+	def __init__(self, xaAddress, iaAddress, documentRoot):
 		self._mutex = threading.RLock()
 		self._xaServer = XaServer(self, xaAddress)
 		self._iaServer = IaServer(self, iaAddress)
 		self._agents = {}
 		self._probes = {}
+		self._documentRoot = documentRoot
 
 		# The subscription mapping is a list of Ia channels per uri (probe:<id>, system:probes, ...).
 		self._subscriptions = {}
@@ -923,6 +937,27 @@ class Controller(object):
 		else:
 			raise TacsException("Agent %s not available on controller" % uri)
 
+
+	def getFile(self, path):
+		"""
+		Returns the content of a file indicated by path, from the document root.
+		"""
+		completePath = posixpath.normpath("%s/%s" % (self._documentRoot, path))
+		self.getLogger().info("Getting file %s (%s)" % (path, completePath))
+		if not completePath.startswith(self._documentRoot):
+			return None # Do not accept to send a file outside the document root.
+		
+		content = None
+		
+		try:
+			f = open(completePath)
+			content = f.read()
+			f.close()
+		except Exception, e:
+			self.getLogger().warning("Unable to send file %s: %s" % (path, str(e)))
+		
+		return content 
+		
 	##
 	# Technical callbacks
 	##
@@ -948,6 +983,7 @@ def main():
 	parser.add_option("--xa-port", dest = "xaPort", metavar = "PORT", help = "set listening Xa port to PORT (default: %default)", default = 40000, type="int")
 	parser.add_option("--log-filename", dest = "logFilename", metavar = "FILE", help = "set log filename to FILE (default: output to stdout)", default = None)
 	parser.add_option("--pid-filename", dest = "pidFilename", metavar = "FILE", help = "use FILE to dump the process PID when daemonizing (default: no pidfile)", default = None)
+	parser.add_option("-r", dest = "docRoot", metavar = "PATH", help = "set PATH as document root (default: %default)", default = "/tmp")
 
 	(options, args) = parser.parse_args()
 
@@ -972,7 +1008,7 @@ def main():
 		Tools.daemonize(pidFilename = options.pidFilename, displayPid = True)
 
 	try:
-		controller = Controller(xaAddress = (options.xaIp, options.xaPort), iaAddress = (options.iaIp, options.iaPort))
+		controller = Controller(xaAddress = (options.xaIp, options.xaPort), iaAddress = (options.iaIp, options.iaPort), documentRoot = options.docRoot)
 		controller.start()
 	except Exception, e:
 		print "Unable to start server: " + str(e)

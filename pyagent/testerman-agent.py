@@ -24,7 +24,6 @@ import PyTestermanAgent as Agent
 import optparse
 import sys
 import os
-import resource
 import time
 import logging
 
@@ -44,6 +43,7 @@ def daemonize(pidFilename = None, stdout = None, stderr = None, displayPid = Fal
 	@rtype: None
 	@returns: None
 	"""
+	import resource
 	try:
 		# First fork
 		pid = os.fork()
@@ -120,14 +120,16 @@ def main():
 	parser = optparse.OptionParser(version = "Testerman PyAgent %s" % Agent.getVersion())
 	parser.add_option("-c", "--controller", dest = "controllerIp", metavar = "ADDRESS", help = "set agent controller Xa IP address to ADDRESS (default: %default)", default = "127.0.0.1")
 	parser.add_option("--codec-path", dest = "codecPaths", metavar = "PATHS", help = "search for codec modules in PATHS, which is a comma-separated list of paths (default: %default)", default = "plugins/codecs")
-	parser.add_option("-d", dest = "daemonize", action = "store_true", help = "daemonize (default: do not daemonize)", default = False)
+	if not sys.platform in [ 'win32', 'win64']:
+		parser.add_option("-d", dest = "daemonize", action = "store_true", help = "daemonize (default: do not daemonize)", default = False)
 	parser.add_option("--debug", dest = "debug", action = "store_true", help = "turn debug mode on (default: %default)", default = False)
 	parser.add_option("--deploy", dest = "probes", metavar = "PROBES", help = "automatically deploy PROBES on startup, format: name=type[,name=type]* (default: none)", default = "")
 	parser.add_option("--local", dest = "localIp", metavar = "ADDRESS", help = "set local IP address to ADDRESS for XA connection (default: system-dependent)", default = "")
 	parser.add_option("--log-filename", dest = "logFilename", metavar = "FILE", help = "set log filename to FILE (default: none used)", default = None)
 	parser.add_option("--name", dest = "name", metavar = "NAME", help = "set agent name to NAME (default: automatically generated)", default = None)
 	parser.add_option("-p", "--port", dest = "controllerPort", metavar = "PORT", help = "set agent controller Xa port address to PORT (default: %default)", default = 40000, type="int")
-	parser.add_option("--pid-filename", dest = "pidFilename", metavar = "FILE", help = "use FILE to dump the process PID when daemonizing (default: no pidfile)", default = None)
+	if not sys.platform in [ 'win32', 'win64']:
+		parser.add_option("--pid-filename", dest = "pidFilename", metavar = "FILE", help = "use FILE to dump the process PID when daemonizing (default: no pidfile)", default = None)
 	parser.add_option("--probe-path", dest = "probePaths", metavar = "PATHS", help = "search for probe modules in PATHS, which is a comma-separated list of paths (default: %default)", default = "plugins/probes")
 
 	(options, args) = parser.parse_args()

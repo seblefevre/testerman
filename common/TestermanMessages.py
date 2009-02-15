@@ -23,6 +23,7 @@
 
 import re
 import base64
+import zlib
 import pickle
 import JSON
 #import urllib
@@ -96,6 +97,7 @@ class Message(object):
 	
 	CONTENT_TYPE_PYTHON_PICKLE = "application/x-python-pickle" # specific type
 	CONTENT_TYPE_JSON = "application/json" # Official one
+	CONTENT_TYPE_GZIP = "application/x-gzip"
 	
 	def __init__(self):
 		self.headers = {} # dict of str of unicode
@@ -130,8 +132,12 @@ class Message(object):
 			self.body = pickle.dumps(body)
 			self.setContentEncoding(self.ENCODING_UTF8)
 			self.setContentType(self.CONTENT_TYPE_PYTHON_PICKLE)
+		elif profile == self.CONTENT_TYPE_GZIP:
+			self.body = base64.encodestring(zlib.compress(body))
+			self.setContentEncoding(self.ENCODING_BASE64)
+			self.setContentType(self.CONTENT_TYPE_GZIP)
 		else:
-			raise Exception("Invalid application body encoding profile (%s)" % str(encodeAs))
+			raise Exception("Invalid application body encoding profile (%s)" % str(profile))
 	
 	def getBody(self):
 		return self.body
@@ -160,24 +166,31 @@ class Message(object):
 	def getApplicationBody(self):
 		"""
 		According to Content-Encoding and Content-Type, tries to decode the body.
-		If the encoding is not supported by this method, returns None.
+		Returns the raw body if the content encoding or type were unknown.
 		"""	
 		contentType = self.getContentType()
+		contentEncoding = self.getContentEncoding()
 		
 		# Raw body
 		body = self.getBody()
-		if self.getContentEncoding() == self.ENCODING_UTF8:
+		# First handle the encoding part
+		if contentEncoding == self.ENCODING_UTF8:
 			body = body.decode('utf-8')
+		elif contentEncoding == self.ENCODING_BASE64:
+			body = base64.decodestring(body)
 		
+		# Then turn the content type into something higher level
 		if contentType == self.CONTENT_TYPE_JSON:
 			ret = JSON.loads(self.getBody())
 			return ret
 		elif contentType == self.CONTENT_TYPE_PYTHON_PICKLE:
 			ret = pickle.loads(self.getBody())
 			return ret
+		elif contentType == self.CONTENT_TYPE_GZIP:
+			ret = zlib.decompress(body)
+			return ret
 		else:
 			# No application decoding, but encoding decoding done.
-			# returns a unicode string.
 			return body
 
 	def getTransactionId(self):
