@@ -418,7 +418,7 @@ class TestComponent:
 		# exposed Ports, indexed by their name (string)
 		self._ports = {}
 
-		# The parent testcase (also present in current contex(), so - useful ?)
+		# The parent testcase (also present in current local context(), so - useful ?)
 		self._testcase = None
 
 		# Taints this TC as MTC or not
@@ -442,6 +442,10 @@ class TestComponent:
 		# The associated branch conditions to use in alt
 		self.DONE = _BranchCondition(_getSystemQueue(), self._DONE_EVENT)
 		self.KILLED = _BranchCondition(_getSystemQueue(), self._KILLED_EVENT)
+		
+		# Filled when executing a behaviour
+		# Enables map/unmap operations from a PTC
+		self.system = None
 		
 		logTestComponentCreated(id_ = str(self))
 
@@ -500,7 +504,12 @@ class TestComponent:
 		"""
 		logTestComponentStarted(id_ = str(self), behaviour = behaviour._name)
 		try:
+			# Initialize the local context associated to this PTC
 			getLocalContext().setTc(self)
+			getLocalContext().setTestCase(self._testcase)
+			self.system = self._testcase.system
+			
+			# Execute the user code
 			behaviour._execute(**kwargs)
 			# Push the local verdict to the testcase
 			self._updateTestCaseVerdict()
@@ -2309,6 +2318,9 @@ def _encodeTemplate(template):
 	
 
 def _expandTemplate(template):
+	if callable(template):
+		template = template()
+
 	if isinstance(template, CodecTemplate):
 		return template.getTemplate()
 
