@@ -2,11 +2,19 @@ Testerman main developer/maintainer:
 Sebastien Lefevre <seb.lefevre@gmail.com>
 
 Contributors:
-Comverse Converged IP Communications (QTesterman):
- David Duquenoy, Cedric Legoux, Cyril Trouillet, Guillaume Yvon,
- Bernard Jannes, Gerald Vannier
+- Comverse Converged IP Communications (QTesterman):
+  David Duquenoy, Cedric Legoux, Cyril Trouillet, Guillaume Yvon,
+  Bernard Jannes, Gerald Vannier
+
 And hopefully more to come.
 
-Icons from the Oxygen Project (http://www.oxygen-icons.org).
 
+
+This project contains parts from the following other projects:
+
+- Icons from the Oxygen Project (http://www.oxygen-icons.org).
+- uuid.py from Python 2.5 standard library, included for compatibility
+  with Python 2.4. Distributed under the Python software license.
+- modified SimpleXMLRPCServer.py from Python 2.x standard library,
+  distributed under the Python software license.
 
