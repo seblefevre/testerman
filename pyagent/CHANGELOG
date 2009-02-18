@@ -1,0 +1,8 @@
+1.1.0:
+- First really usable version.
+- Added: support for update requests - use Xa to get new packages.
+- Added: support for restart requests (to call after an update
+  to take it into account)
+
+1.1.1:
+- Fixed: daemonization option should not be available under Windows.

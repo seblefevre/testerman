@@ -143,13 +143,14 @@ def main():
 	# Static initialization
 	Agent.initialize(probePaths = options.probePaths.split(','), codecPaths = options.codecPaths.split(','))
 
-	# Now we can daemonize if needed
-	if options.daemonize:
-		if options.pidFilename:
-			logging.getLogger('pyagent').info("Daemonizing, using pid file %s..." % options.pidFilename)
-		else:
-			logging.getLogger('pyagent').info("Daemonizing...")
-		daemonize(pidFilename = options.pidFilename, displayPid = True)
+	# Now we can daemonize if needed (and if supported)
+	if not sys.platform in [ 'win32', 'win64']:
+		if options.daemonize:
+			if options.pidFilename:
+				logging.getLogger('pyagent').info("Daemonizing, using pid file %s..." % options.pidFilename)
+			else:
+				logging.getLogger('pyagent').info("Daemonizing...")
+			daemonize(pidFilename = options.pidFilename, displayPid = True)
 
 	agent = Agent.Agent(name = options.name)
 	agent.initialize(controllerAddress = (options.controllerIp, options.controllerPort), localAddress = (options.localIp, 0))
