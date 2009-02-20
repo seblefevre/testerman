@@ -195,7 +195,7 @@ class TcpPacketizerClientThread(threading.Thread):
 						try:
 							message = self.queue.get(False)
 							self.trace("Message to send...")
-							self.socket.send(message)
+							self.socket.sendall(message)
 							self.trace("Message sent.")
 						except Queue.Empty:
 							pass
@@ -421,7 +421,7 @@ class TcpPacketizerServerThread(threading.Thread):
 						if self.socket in w:
 							message = self.queue.get(False)
 							self.trace("About to send a message...")
-							self.socket.send(message)
+							self.socket.sendall(message)
 							self.trace("Message sent.")
 					except Queue.Empty:
 						pass
