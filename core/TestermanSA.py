@@ -530,7 +530,7 @@ class RemoteStubAdapter(LocalProbeAdapter):
 		if info:
 			# Check type
 			if type_ and info['type'] != type_:
-				raise Testerman.TestermanException("Unable to use probe %s as %s: such a probe is deployed, but its type is %s" % (uri, self._type, info['type']))
+				raise Testerman.TestermanException("Unable to use probe %s as %s: such a probe is deployed, but its type is %s" % (uri, type_, info['type']))
 			# OK (discarded type or valid type)
 			self._uri = uri
 			self._type = type_
@@ -570,7 +570,7 @@ class RemoteProbeAdapter(ProbeAdapter):
 		if info:
 			# Check type
 			if type_ and info['type'] != type_:
-				raise Testerman.TestermanException("Unable to use probe %s as %s: such a probe is deployed, but its type is %s" % (uri, self._type, info['type']))
+				raise Testerman.TestermanException("Unable to use probe %s as %s: such a probe is deployed, but its type is %s" % (uri, type_, info['type']))
 			# OK (discarded type or valid type)
 			self._uri = uri
 			self._type = type_
