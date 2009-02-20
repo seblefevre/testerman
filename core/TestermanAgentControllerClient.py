@@ -123,16 +123,21 @@ class IaClient(Nodes.ConnectingNode):
 		self.probeNotificationCallback = cb
 
 	# High level functions callable from an IaClient
-	
-	def triSend(self, probeUri, message, sutAddress, profile = Messages.Message.CONTENT_TYPE_JSON):
+	# FIXME: temporarly set the default profile to PICKLE instead of CONTENT_TYPE_JSON 
+	# (binary payload encoding problems)
+	# OK will the agents are implemented in Python, which is the case for now.
+	def triSend(self, probeUri, message, sutAddress, profile = Messages.Message.CONTENT_TYPE_PYTHON_PICKLE):
 		request = Messages.Request("TRI-SEND", probeUri, "Ia", "1.0")
 		request.setHeader("SUT-Address", sutAddress)
 		request.setApplicationBody(message, profile)
 		response = self.executeRequest(0, request)
-		if response and response.getStatusCode() == 200:
-			return True
+		if response:
+			if response.getStatusCode() == 200:
+				return True
+			else:
+				raise TaccException("Error while sending a message through %s: %d %s\n%s" % (probeUri, response.getStatusCode(), response.getReasonPhrase(), response.getBody()))
 		else:
-			raise TaccException("Unable to send message through %s: %d %s\n%s" % (probeUri, response.getStatusCode(), response.getReasonPhrase(), response.getBody()))
+			raise TaccException("Timeout while sending a message through %s. Please check that the probe (or the hosting agent) still works and the TACS is still online." % (probeUri))
 	
 	def triSAReset(self, probeUri):
 		request = Messages.Request("TRI-SA-RESET", probeUri, "Ia", "1.0")
