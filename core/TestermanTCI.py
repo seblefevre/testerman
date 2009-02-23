@@ -156,9 +156,11 @@ def logUser(message, tc = None):
 def logInternal(message):
 	tliLog('internal', toXml('internal', { 'class': 'internal', 'timestamp': time.time() }, '<![CDATA[%s]]>' % message))
 	
-def logMessageSent(fromTc, fromPort, toTc, toPort, message):
+def logMessageSent(fromTc, fromPort, toTc, toPort, message, address = None):
+	if not address:
+		address = ''
 	try:
-		tliLog('event', toXml('message-sent', { 'class': 'event', 'timestamp': time.time(), 'from-tc': fromTc, 'from-port': fromPort, 'to-tc': toTc, 'to-port': toPort }, testermanToXml(message, 'message')))
+		tliLog('event', toXml('message-sent', { 'class': 'event', 'timestamp': time.time(), 'from-tc': fromTc, 'from-port': fromPort, 'to-tc': toTc, 'to-port': toPort }, '%s%s' % (testermanToXml(message, 'message'), testermanToXml(address, 'address'))))
 	except Exception, e:
 		ret = getBacktrace()
 		logUser(unicode(e) + u'\n' + unicode(ret))
