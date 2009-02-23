@@ -6,3 +6,8 @@
 
 1.1.1:
 - Fixed: daemonization option should not be available under Windows.
+
+1.1.2:
+- Fixed: large payloads over Xa are now correctly sent.
+- Modified: now use cPickle instead of pickle.
+- Fixed: some error conditions in tcp and sctp probes.
