@@ -179,7 +179,7 @@ class XaServer(Nodes.ListeningNode):
 		if not resp:
 			raise XaException("Timeout while waiting for TRI-SEND response from probe %s" % request.getUri())
 		if resp.getStatusCode() != 200:
-			raise XaException("TRI-SEND from probe %s returned %d %s" % (request.getUri(), resp.getStatusCode(), resp.getReasonPhrase()))
+			raise XaException("TRI-SEND from probe %s returned:\n%d %s\n%s" % (request.getUri(), resp.getStatusCode(), resp.getReasonPhrase(), resp.getBody()))
 
 	def triExecuteTestCase(self, channel, request):
 		"""

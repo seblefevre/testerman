@@ -135,7 +135,7 @@ class IaClient(Nodes.ConnectingNode):
 			if response.getStatusCode() == 200:
 				return True
 			else:
-				raise TaccException("Error while sending a message through %s: %d %s\n%s" % (probeUri, response.getStatusCode(), response.getReasonPhrase(), response.getBody()))
+				raise TaccException("Error while sending a message through %s:\n%d %s\nDetailled error:\n%s" % (probeUri, response.getStatusCode(), response.getReasonPhrase(), response.getBody()))
 		else:
 			raise TaccException("Timeout while sending a message through %s. Please check that the probe (or the hosting agent) still works and the TACS is still online." % (probeUri))
 	
