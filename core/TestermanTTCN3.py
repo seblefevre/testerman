@@ -846,12 +846,12 @@ class Port:
 
 			# Mapped port first.
 			if self._mappedTsiPort:
-				logMessageSent(fromTc = str(self._tc), fromPort = self._name, toTc = "system", toPort = self._mappedTsiPort._name, message = messageToLog)
+				logMessageSent(fromTc = str(self._tc), fromPort = self._name, toTc = "system", toPort = self._mappedTsiPort._name, message = messageToLog, address = to)
 				self._mappedTsiPort.send(messageToSend, to)
 			else:
 				for port in self._connectedPorts:
 					if not to or port._tc == to or (isinstance(to, list) and port._tc in to):
-						logMessageSent(fromTc = str(self._tc), fromPort = self._name, toTc = str(port._tc), toPort = port._name, message = messageToLog)
+						logMessageSent(fromTc = str(self._tc), fromPort = self._name, toTc = str(port._tc), toPort = port._name, message = messageToLog, address = to)
 						port._enqueue(messageToSend, self)
 			return True
 		else:
@@ -1234,7 +1234,7 @@ class TestSystemInterfacePort:
 		Called by triEnqueueMsg.
 		"""
 		for port in self._mappedPorts:
-			logMessageSent(fromTc = "system", fromPort = self._name, toTc = str(port._tc), toPort = port._name, message = message)
+			logMessageSent(fromTc = "system", fromPort = self._name, toTc = str(port._tc), toPort = port._name, message = message, address = sutAddress)
 			port._enqueue(message, sutAddress)
 
 	def send(self, message, sutAddress):
