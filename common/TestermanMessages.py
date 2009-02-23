@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 ##
 # This file is part of Testerman, a test automation system.
 # Copyright (c) 2008-2009 Sebastien Lefevre and other contributors
@@ -13,8 +14,7 @@
 ##
 
 ##
-# -*- coding: utf-8 -*-
-# Terterman message lib.
+# Testerman message lib.
 #
 # Provides a high-level class to encode/decode testerman messages
 # over most internal and external interfaces. 
@@ -24,9 +24,8 @@
 import re
 import base64
 import zlib
-import pickle
+import cPickle as pickle
 import JSON
-#import urllib
 
 # Message separator.
 # On reference perf tests, 8% faster when using \n instead of \r\n.
