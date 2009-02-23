@@ -24,6 +24,7 @@ import select
 import socket
 import sys
 import threading
+import time
 
 class Connection:
 	def __init__(self):
@@ -36,9 +37,9 @@ class TcpProbe(ProbeImplementationManager.ProbeImplementation):
 	"""
 	type union NotificationType
 	{
-		any connectionNotification, // new incoming connection established
+		record {} connectionNotification, // new incoming connection established
 		charstring disconnectionNotification, // contains a human readable reason to the disconnection
-		any connectionConfirm, // connection request OK
+		record {} connectionConfirm, // connection request OK
 		charstring connectionError, // contains a human readable error after a connection request
 	}
 	
@@ -165,6 +166,8 @@ class TcpProbe(ProbeImplementationManager.ProbeImplementation):
 		Creates an TCP connection to the to address (ip, port),
 		then registers the connection.
 		"""
+		self.getLogger().info("Connecting to %s..." % str(to))
+		conn = None
 		try:
 			sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM, socket.IPPROTO_TCP)
 			sock.bind((self['local_ip'], self['local_port']))
@@ -172,12 +175,15 @@ class TcpProbe(ProbeImplementationManager.ProbeImplementation):
 			sock.connect(to)
 			conn = self._registerOutgoingConnection(sock, to)
 		except Exception, e:
+			self.getLogger().info("Connection to %s failed: %s" % (str(to), str(e)))
 			if self['enable_notifications']:
 				self.triEnqueueMsg(('connectionError', str(e)), "%s:%s" % to)
 			else:
 				raise e
-		if self['enable_notifications']:
-			self.triEnqueueMsg(('connectionConfirm', None), "%s:%s" % to)
+		if conn and self['enable_notifications']:
+			self.triEnqueueMsg(('connectionConfirm', {}), "%s:%s" % to)
+		if conn:
+			self.getLogger().info("Connected to %s" % str(to))
 		return conn
 	
 	def _registerOutgoingConnection(self, sock, addr):
@@ -263,6 +269,7 @@ class TcpProbe(ProbeImplementationManager.ProbeImplementation):
 			self.getLogger().info("Stopping listening...")
 			self._listeningSocket.close()
 			self._listeningSocket = None
+			self.getLogger().info("Stopped listening")
 	
 	def _startPollingThread(self):
 		if not self._pollingThread:
@@ -275,7 +282,7 @@ class TcpProbe(ProbeImplementationManager.ProbeImplementation):
 			self._pollingThread = None
 
 	##
-	# Interface to be plugable on a PollingThread
+	# Interface to be pluggable on a PollingThread
 	##
 	def _getListeningSockets(self):
 		sockets = []
@@ -325,7 +332,7 @@ class TcpProbe(ProbeImplementationManager.ProbeImplementation):
 	def _onIncomingConnection(self, sock, addr):
 		self._registerIncomingConnection(sock, addr)
 		if self['enable_notifications']:
-			self.triEnqueueMsg(('connectionNotification', None), "%s:%s" % addr)
+			self.triEnqueueMsg(('connectionNotification', {}), "%s:%s" % addr)
 
 class PollingThread(threading.Thread):
 	"""

@@ -4,8 +4,8 @@
 # <description>description</description>
 # <prerequisites>prerequisites</prerequisites>
 # <parameters>
-# <parameter name="PX_SERVER_IP" default="127.0.0.1" type="string"><![CDATA[]]></parameter>
 # <parameter name="PX_SERVER_PORT" default="14001" type="string"><![CDATA[]]></parameter>
+# <parameter name="PX_SERVER_IP" default="127.0.0.1" type="string"><![CDATA[]]></parameter>
 # </parameters>
 # </metadata>
 # __METADATA__END__
@@ -39,13 +39,13 @@ class TESTCASE_TRANSPORT_SCTP(TestCase):
 			return ('disconnectionRequest', None)
 		
 		def connect_ok_event():
-			return ('connectionConfirm', any())
+			return ('connectionConfirm', any_or_none())
 
 		def new_connection_event():
-			return ('connectionNotification', any())
+			return ('connectionNotification', any_or_none())
 
 		def disconnection_event():
-			return ('disconnectionNotification', any())
+			return ('disconnectionNotification', any_or_none())
 
 		p01 = self.mtc['tcp01']
 		p02 = self.mtc['tcp02']

@@ -24,6 +24,7 @@ import select
 import socket
 import sys
 import threading
+import time
 
 
 # socket module does not contain this on all Python versions.
@@ -138,6 +139,8 @@ class SctpProbe(ProbeImplementationManager.ProbeImplementation):
 		Creates an SCTP connection to the to address (ip, port),
 		then registers the connection.
 		"""
+		self.getLogger().info("Connecting to %s..." % str(to))
+		conn = None
 		style = socket.SOCK_STREAM
 		if self['style'] == 'udp':
 			style = socket.SOCK_SEQPACKET
@@ -149,12 +152,15 @@ class SctpProbe(ProbeImplementationManager.ProbeImplementation):
 			conn = self._registerOutgoingConnection(sock, to)
 			# Connection notification ?
 		except Exception, e:
+			self.getLogger().info("Connection to %s failed: %s" % (str(to), str(e)))
 			if self['enable_notifications']:
 				self.triEnqueueMsg(('connectionError', str(e)), "%s:%s" % to)
 			else:
 				raise e
-		if self['enable_notifications']:
-			self.triEnqueueMsg(('connectionConfirm', None), "%s:%s" % to)
+		if conn and self['enable_notifications']:
+			self.triEnqueueMsg(('connectionConfirm', {}), "%s:%s" % to)
+		if conn:
+			self.getLogger().info("Connected to %s" % str(to))
 		return conn
 	
 	def _registerOutgoingConnection(self, sock, addr):
@@ -243,6 +249,7 @@ class SctpProbe(ProbeImplementationManager.ProbeImplementation):
 			self.getLogger().info("Stopping listening...")
 			self._listeningSocket.close()
 			self._listeningSocket = None
+			self.getLogger().info("Stopped listening")
 	
 	def _startPollingThread(self):
 		if not self._pollingThread:
@@ -281,7 +288,7 @@ class SctpProbe(ProbeImplementationManager.ProbeImplementation):
 	def _onIncomingConnection(self, sock, addr):
 		self._registerIncomingConnection(sock, addr)
 		if self['enable_notifications']:
-			self.triEnqueueMsg(('connectionNotification', None), "%s:%s" % addr)
+			self.triEnqueueMsg(('connectionNotification', {}), "%s:%s" % addr)
 
 class PollingThread(threading.Thread):
 	"""

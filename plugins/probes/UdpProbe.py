@@ -143,6 +143,9 @@ class UdpProbe(ProbeImplementationManager.ProbeImplementation):
 					sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
 					sock.bind((self['local_ip'], self['local_port']))
 					self._localSocket = sock
+				else:
+					# Reuse the local, not listening socket ??
+					sock = self._localSocket
 			except Exception, e:
 				self._unlock()
 				raise e
@@ -185,6 +188,7 @@ class UdpProbe(ProbeImplementationManager.ProbeImplementation):
 	
 	def _send(self, sock, data, addr):
 		self.logSentPayload("UDP data", data)
+		self.getLogger().info("Sending data from %s to %s" % (str(sock.getsockname()), str(addr)))
 		sock.sendto(data, addr)
 
 	def _startListening(self):
@@ -212,6 +216,7 @@ class UdpProbe(ProbeImplementationManager.ProbeImplementation):
 			except:
 				pass
 			self._listeningSocket = None
+			self.getLogger().info("Stopped listening")
 		self._unlock()
 	
 	def _startPollingThread(self):
