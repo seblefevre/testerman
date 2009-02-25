@@ -37,36 +37,24 @@ the bound probe URI (probe:name for local ones, probe:name@agent for remote).
 
 - campaign management
 
-- preamble/postamble formalism, to avoid the use of testcases for that purpose.
-
 Core features / TTCN3:
 ======================
 
-- default alternatives (i.e. activate/deactivate TTCN3 statements)
+- interleave ?
 
 Codecs:
 =======
 
-- XML codec: DONE
-- SDP codec: DONE
-- RTSP codec: DONE (basic one)
 - BER codec, with plugin support to support things like TCAP, MAP, INAP
-- SIP codec
 
 Probes:
 =======
 
-- RTSP probe: DONE
-- HTTP probe: DONE
 - Enhanced HTTP probe, really based on urllib or httplib so that transfer-encoding, redirect, etc are correctly managed
-- SUA probe
 - M3UA probe
 - LDAP probe
-- SQL probe (mysql, posgresql, oracle, informix)
-- file watcher probe
-- directory watcher probe
-- SIP probe
-- RTP probe
+- SQL probe (mysql (DONE), posgresql, oracle (DONE), informix)
+- SIP probe ? (current workaround: UDP + SIP codec)
 
 QTesterman:
 ===========
