@@ -95,7 +95,7 @@ type port SshPortType message
 		"""
 		self.getLogger().debug("onTriSend(%s, %s)" % (unicode(message), unicode(sutAddress)))
 
-		if not isinstance(message, tuple) and not len(message) == 2:
+		if not (isinstance(message, tuple) or isinstance(message, list)) and not len(message) == 2:
 			raise Exception("Invalid message format")
 		
 		cmd, value = message
