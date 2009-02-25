@@ -360,6 +360,7 @@ class AtsJob(Job):
 				# lead to a fork with another sid or process group, hence not receiving their parent's signal)
 				self.setState(self.STATE_KILLING)
 				for pid in Tools.getChildrenPids(self._tePid):
+					getLogger().info("Killing child process %s..." % pid)
 					try:
 						os.kill(pid, signal.SIGKILL)
 					except Exception, e:
