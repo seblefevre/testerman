@@ -113,6 +113,7 @@ class TcpPacketizerClientThread(threading.Thread):
 		self.socket = None
 		self.buf = ''
 		self.queue = Queue.Queue(0)
+		self.connected = False
 
 	def run(self):
 		self.trace("Tcp client started, connecting from %s to %s" % (str(self.localAddress), str(self.serverAddress)))
@@ -149,6 +150,7 @@ class TcpPacketizerClientThread(threading.Thread):
 #					raise Exception("Connection timed out. Attempting reconnection...")
 				# OK, we are connected. Let's raise our connection callback.
 				self.trace("Connected.")
+				self.connected = True
 				self.on_connection()
 				# Polling loop
 				self.__main_receive_send_loop()
@@ -156,10 +158,12 @@ class TcpPacketizerClientThread(threading.Thread):
 				try:
 #					self.trace("Exception while listening for events: " + str(e) + "\n" + getBacktrace())
 					self.trace("Trying to reconnect in %ds..." % self.reconnectInterval)
-					try:
-						self.on_disconnection()
-					except:
-						pass
+					if self.connected:
+						self.connected = False
+						try:
+							self.on_disconnection()
+						except:
+							pass
 					time.sleep(self.reconnectInterval)
 					self.socket.close()
 				except:
@@ -167,7 +171,9 @@ class TcpPacketizerClientThread(threading.Thread):
 
 		try:
 			self.socket.close()
-			self.on_disconnection()
+			if self.connected:
+				self.connected = False
+				self.on_disconnection()
 		except:
 			pass
 		self.trace("Tcp client stopped.")
@@ -194,9 +200,7 @@ class TcpPacketizerClientThread(threading.Thread):
 					elif self.socket in w:	
 						try:
 							message = self.queue.get(False)
-							self.trace("Message to send...")
 							self.socket.sendall(message)
-							self.trace("Message sent.")
 						except Queue.Empty:
 							pass
 						except Exception, e:
@@ -685,6 +689,13 @@ class ConnectingConnectorThread(TcpPacketizerClientThread, IConnector):
 		if callable(self._onConnectionCallback):
 			self._onConnectionCallback(0)
 
+	def on_disconnection(self):
+		"""
+		Reimplemented from TcpPacketizerServerThread
+		"""
+		if callable(self._onDisconnectionCallback):
+			self._onDisconnectionCallback(0)
+
 	def handle_packet(self, packet):
 		"""
 		Reimplemented from TcpPacketizerClientThread
@@ -811,8 +822,9 @@ class BaseNode(object):
 		if self.__name is None:
 			# Generates a unique name
 			self.__name = "%d.%s" % (os.getpid(), socket.getfqdn())
-		self.__adapterThread = self.AdapterThread()
-		self.__adapterThread2 = self.AdapterThread()
+		self.__adapterThread = None
+		self.__adapterThread2 = None
+		self.__started = False
 	
 	def __trace(self, txt):
 		self.trace("[TransactionManager] " + txt)
@@ -846,7 +858,6 @@ class BaseNode(object):
 
 	def __onResponse(self, channel, transactionId, message):
 		self.__adapterThread.postCallback(lambda: self.onResponse(channel, transactionId, message))
-#		self.onResponse(channel, transactionId, message)
 
 	def __onMessage(self, channel, message):
 		if message.isRequest():
@@ -908,16 +919,22 @@ class BaseNode(object):
 		return self.__name
 	
 	def start(self):
-		self.trace("Starting node %s..." % self.getNodeName())
-		self.__adapterThread.start()
-		self.__adapterThread2.start()
-		self._connector.start()
+		if not self.__started:
+			self.trace("Starting node %s..." % self.getNodeName())
+			self.__adapterThread = self.AdapterThread()
+			self.__adapterThread.start()
+			self.__adapterThread2 = self.AdapterThread()
+			self.__adapterThread2.start()
+			self._connector.start()
+			self.__started = True
 	
 	def stop(self):
-		self.trace("Stopping node %s..." % self.getNodeName())
-		self._connector.stop()
-		self.__adapterThread2.stop()
-		self.__adapterThread.stop()
+		if self.__started:
+			self.trace("Stopping node %s..." % self.getNodeName())
+			self._connector.stop()
+			self.__adapterThread2.stop()
+			self.__adapterThread.stop()
+			self.__started = False
 
 	def sendRequest(self, channel, request):
 		"""

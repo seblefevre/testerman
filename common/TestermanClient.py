@@ -54,18 +54,19 @@ class DummyLogger:
 
 class Client(Nodes.ConnectingNode):
 	"""
-	This class interfaces both Ws and Xc access.
+	This class interfaces both Ws and Xc accesses.
 	This is a Testerman Xc Client Node delegating Ws operations to an embedded XMLRPC proxy.
 	"""
 	def __init__(self, name, userAgent, serverUrl, localAddress = ('', 0)):
 		Nodes.ConnectingNode.__init__(self, name, userAgent)
 		self._logger = DummyLogger()
-		self._serverUrl = serverUrl
 		self._localAddress = localAddress
-		self.__proxy = xmlrpclib.ServerProxy(self._serverUrl, allow_none = True)
 		self.__mutex = threading.RLock()
 		self.__channel = None
 		self.__localSubscriptions = {}
+		self._serverUrl = None
+		self.__proxy = None
+		self.setServerUrl(serverUrl)
 	
 	def trace(self, txt):
 		"""
@@ -85,6 +86,18 @@ class Client(Nodes.ConnectingNode):
 	
 	def _unlock(self):
 		self.__mutex.release()
+	
+	def setServerUrl(self, url):
+		"""
+		Updates the current server url.
+		It does not stop or restart the Xc link automatically.
+		The caller should take care of that.
+		
+		@type  url: string
+		@param url: the new server url
+		"""
+		self._serverUrl = url
+		self.__proxy = xmlrpclib.ServerProxy(self._serverUrl, allow_none = True)
 	
 	def getServerUrl(self):
 		"""
@@ -115,10 +128,18 @@ class Client(Nodes.ConnectingNode):
 		"""
 		Starts the Xc interface: connects to Xc, listening for incoming notifications.
 		You must start it to be able to subscribe to events.
+		
+		@rtype: bool
+		@returns: True if the link has been started (may be not connected yet),
+		          False if we were unable to start the link (Ws interface error)
 		"""
-		xcAddress = self.getXcInterfaceAddress()
+		try:
+			xcAddress = self.getXcInterfaceAddress()
+		except:
+			return False
 		self.initialize((xcAddress['ip'], xcAddress['port']), self._localAddress)
 		self.start()
+		return True
 	
 	def stopXc(self):
 		"""
