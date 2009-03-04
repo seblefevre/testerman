@@ -1,5 +1,19 @@
-##
 # -*- coding: utf-8 -*-
+##
+# This file is part of Testerman, a test automation system.
+# Copyright (c) 2009 QTesterman contributors
+#
+# This program is free software; you can redistribute it and/or modify it under
+# the terms of the GNU General Public License as published by the Free Software
+# Foundation; either version 2 of the License, or (at your option) any later
+# version.
+# This program is distributed in the hope that it will be useful, but WITHOUT
+# ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
+# FOR A PARTICULAR PURPOSE.  See the GNU General Public License for more
+# details.
+##
+
+##
 # A plugin to display logs through an XSLT transformation.
 #
 ##
@@ -29,29 +43,29 @@ class WXsltLogView(Plugin.WReportView):
 	def __init__(self, parent = None):
 		Plugin.WReportView.__init__(self, parent)
 
-		settings = qt.QSettings()
-		self.xsltPath = settings.value('plugins/%s/xsltpath' % PLUGIN_ID, qt.QVariant(".")).toString()
+		settings = QSettings()
+		self.xsltPath = settings.value('plugins/%s/xsltpath' % PLUGIN_ID, QVariant(".")).toString()
 
 		# The log		
-		self.xml = qt.QString()
+		self.xml = QString()
 
 		self.__createWidgets()
 	
 	def __createWidgets(self):
-		layout = qt.QVBoxLayout()
+		layout = QVBoxLayout()
 		
 		# A button bar with selectable XSLT and save option ?
-		buttonLayout = qt.QHBoxLayout()
-		buttonLayout.addWidget(qt.QLabel("XSLT transformation:"))
-		self.transformationComboBox = qt.QComboBox()
+		buttonLayout = QHBoxLayout()
+		buttonLayout.addWidget(QLabel("XSLT transformation:"))
+		self.transformationComboBox = QComboBox()
 		buttonLayout.addWidget(self.transformationComboBox)
-		self.applyTransformationButton = qt.QPushButton("Apply")
+		self.applyTransformationButton = QPushButton("Apply")
 		buttonLayout.addWidget(self.applyTransformationButton)
-		self.refreshTransformationButton = qt.QPushButton("Refresh available transformations")
+		self.refreshTransformationButton = QPushButton("Refresh available transformations")
 		buttonLayout.addWidget(self.refreshTransformationButton)
 		buttonLayout.addStretch()
-		self.connect(self.applyTransformationButton, qt.SIGNAL('clicked()'), self.applyTransformation)
-		self.connect(self.refreshTransformationButton, qt.SIGNAL('clicked()'), self.refreshTransformationsList)
+		self.connect(self.applyTransformationButton, SIGNAL('clicked()'), self.applyTransformation)
+		self.connect(self.refreshTransformationButton, SIGNAL('clicked()'), self.refreshTransformationsList)
 
 		# We display XSLT transformation options only if we have the required librairies
 		try:
@@ -60,16 +74,16 @@ class WXsltLogView(Plugin.WReportView):
 			layout.addLayout(buttonLayout)
 		except ImportError:
 			log("Unable to import libxslt and libxml2 modules : XSLT report plugin cannot be loaded")
-			layout.addWidget(qt.QLabel("Unable to import libxslt and libxml2 modules : XSLT report plugin cannot be loaded"))
-			layout.addWidget(qt.QLabel("Please install libxml2 (and libxslt1 under unixes) python package(s) for your python/OS versions."))
+			layout.addWidget(QLabel("Unable to import libxslt and libxml2 modules : XSLT report plugin cannot be loaded"))
+			layout.addWidget(QLabel("Please install libxml2 (and libxslt1 under unixes) python package(s) for your python/OS versions."))
 
 		# The text view
-		self.textView = qt.QTextEdit()
+		self.textView = QTextEdit()
 		self.textView.setReadOnly(1)
-		font = qt.QFont("courier", 8)
+		font = QFont("courier", 8)
 		font.setFixedPitch(True)
 		self.textView.setFont(font)
-		self.textView.setLineWrapMode(qt.QTextEdit.NoWrap)
+		self.textView.setLineWrapMode(QTextEdit.NoWrap)
 		
 		layout.addWidget(self.textView)
 		
@@ -83,12 +97,12 @@ class WXsltLogView(Plugin.WReportView):
 		"""
 		self.transformationComboBox.clear()
 
-		settings = qt.QSettings()
-		self.xsltPath = settings.value('plugins/%s/xsltpath' % PLUGIN_ID, qt.QVariant(".")).toString()
+		settings = QSettings()
+		self.xsltPath = settings.value('plugins/%s/xsltpath' % PLUGIN_ID, QVariant(".")).toString()
 		
-		d = qt.QDir(self.xsltPath)
+		d = QDir(self.xsltPath)
 		d.setNameFilters([ "*.xsl", "*.xslt" ])
-		d.setSorting(qt.QDir.Name)
+		d.setSorting(QDir.Name)
 		for transfo in d.entryList():
 			self.transformationComboBox.addItem(transfo)
 
@@ -134,13 +148,13 @@ class WXsltLogView(Plugin.WReportView):
 
 	def onEvent(self, domElement):
 		# Accumulate the events into pure txt form.
-		domElement.save(qt.QTextStream(self.xml), 0)
+		domElement.save(QTextStream(self.xml), 0)
 	
 	def displayLog(self):
 		pass
 	
 	def clearLog(self):
-		self.xml = qt.QString()
+		self.xml = QString()
 		self.textView.clear()
 
 
@@ -153,13 +167,13 @@ class WXsltLogViewConfiguration(Plugin.WPluginConfiguration):
 		"""
 		The model is in the saved settings.
 		"""
-		self.xlstPathLineEdit = qt.QLineEdit()
+		self.xlstPathLineEdit = QLineEdit()
 		self.xlstPathLineEdit.setMinimumWidth(150)
-		self.browseDirectoryButton = qt.QPushButton("...")
-		self.connect(self.browseDirectoryButton, qt.SIGNAL('clicked()'), self.browseDirectory)
-		layout = qt.QVBoxLayout()
-		layout.addWidget(qt.QLabel("Search XSLT files (.xslt) in directory:"))
-		optionLayout = qt.QHBoxLayout()
+		self.browseDirectoryButton = QPushButton("...")
+		self.connect(self.browseDirectoryButton, SIGNAL('clicked()'), self.browseDirectory)
+		layout = QVBoxLayout()
+		layout.addWidget(QLabel("Search XSLT files (.xslt) in directory:"))
+		optionLayout = QHBoxLayout()
 		optionLayout.addWidget(self.xlstPathLineEdit)
 		optionLayout.addWidget(self.browseDirectoryButton)
 		layout.addLayout(optionLayout)
@@ -167,24 +181,24 @@ class WXsltLogViewConfiguration(Plugin.WPluginConfiguration):
 		self.setLayout(layout)
 
 	def browseDirectory(self):
-		xsltPath = qt.QFileDialog.getExistingDirectory(self, "XSLT files directory", self.xlstPathLineEdit.text())
+		xsltPath = QFileDialog.getExistingDirectory(self, "XSLT files directory", self.xlstPathLineEdit.text())
 		if not xsltPath.isEmpty():
 			self.xlstPathLineEdit.setText(os.path.normpath(unicode(xsltPath)))
 
 	def displayConfiguration(self):
 		path = "plugins/%s" % PLUGIN_ID
 		# Read the settings
-		settings = qt.QSettings()
-		xsltPath = settings.value(path + '/xsltpath', qt.QVariant(qt.QString(qt.QApplication.instance().get('qtestermanpath')))).toString()
+		settings = QSettings()
+		xsltPath = settings.value(path + '/xsltpath', QVariant(QString(QApplication.instance().get('qtestermanpath')))).toString()
 		self.xlstPathLineEdit.setText(xsltPath)
 
 	def saveConfiguration(self):
 		"""
 		Update the data model.
 		"""
-		settings = qt.QSettings()
+		settings = QSettings()
 		path = "plugins/%s" % PLUGIN_ID
-		settings.setValue(path + '/xsltpath', qt.QVariant(self.xlstPathLineEdit.text()))
+		settings.setValue(path + '/xsltpath', QVariant(self.xlstPathLineEdit.text()))
 		return True
 
 	def checkConfiguration(self):

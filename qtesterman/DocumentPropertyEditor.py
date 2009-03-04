@@ -1,43 +1,56 @@
-##
 # -*- coding: utf-8 -*-
+##
+# This file is part of Testerman, a test automation system.
+# Copyright (c) 2009 QTesterman contributors
 #
+# This program is free software; you can redistribute it and/or modify it under
+# the terms of the GNU General Public License as published by the Free Software
+# Foundation; either version 2 of the License, or (at your option) any later
+# version.
+# This program is distributed in the hope that it will be useful, but WITHOUT
+# ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
+# FOR A PARTICULAR PURPOSE.  See the GNU General Public License for more
+# details.
+##
+
+##
 # Widget: Document property editor
 #
 ##
 
-import PyQt4.Qt as qt
+from PyQt4.Qt import *
 import PyQt4.QtXml as QtXml
 import PyQt4.QtGui as qtItem
 
 from Base import *
 from CommonWidgets import *
 
-class WParameterTreeWidgetItem(qt.QTreeWidgetItem):
+class WParameterTreeWidgetItem(QTreeWidgetItem):
 	def __init__(self, parent, parameter):
 		"""
 		parameter is a dict[unicode] of unicode containing "name", "description", "previous-value", "type", "default"
 		
 		The initial name is used as a key for the model, so we save it in a safe place as soon as the item is created.
 		"""
-		qt.QTreeWidgetItem.__init__(self, parent)
+		QTreeWidgetItem.__init__(self, parent)
 		self.parameter = parameter
 		self.key = parameter['name']
 		self.columns = [ 'name', 'default', 'description', 'type', 'previous-value' ]
-		self.setFlags(qt.Qt.ItemIsEnabled | qt.Qt.ItemIsEditable | qt.Qt.ItemIsSelectable)
+		self.setFlags(Qt.ItemIsEnabled | Qt.ItemIsEditable | Qt.ItemIsSelectable)
 		#self.setSortingEnabled(1)
 		
 	def data(self, column, role):
 		name = self.columns[column]
-		if role == qt.Qt.DisplayRole:
-			return qt.QVariant(self.parameter[name])
-		if role == qt.Qt.EditRole:
-			return qt.QVariant(self.parameter[name])
-		return qt.QVariant()
+		if role == Qt.DisplayRole:
+			return QVariant(self.parameter[name])
+		if role == Qt.EditRole:
+			return QVariant(self.parameter[name])
+		return QVariant()
 
 	def setData(self, column, role, value):
 		val = unicode(value.toString())
 		name = self.columns[column]
-		if role == qt.Qt.EditRole:
+		if role == Qt.EditRole:
 			if name == 'name':
 				# Special constraint for the name
 				val = val.upper()
@@ -46,10 +59,10 @@ class WParameterTreeWidgetItem(qt.QTreeWidgetItem):
 			self.parameter[name] = val
 			# It doesn't seem normal to send this signal explicitly... It should be done by the
 			# treeWidget by itself, AFAIK.
-			self.treeWidget().emit(qt.SIGNAL('itemChanged(QTreeWidgetItem*, int)'), self, column)
+			self.treeWidget().emit(SIGNAL('itemChanged(QTreeWidgetItem*, int)'), self, column)
 
 
-class WParameterEditor(qt.QTreeWidget):
+class WParameterEditor(QTreeWidget):
 	"""
 	An editor of script metadata.parameters.
 
@@ -59,7 +72,7 @@ class WParameterEditor(qt.QTreeWidget):
 	This is not suitable for a session parameter instanciation.
 	"""
 	def __init__(self, propertyEditor, parent = None):
-		qt.QTreeWidget.__init__(self, parent)
+		QTreeWidget.__init__(self, parent)
 		# The metadataModel from which we display parameters
 		# Immediately updated on updated/deleted/add items.
 		# As a consequence the view is updated with the updated model, and we redisplay it this way.
@@ -79,32 +92,32 @@ class WParameterEditor(qt.QTreeWidget):
 		self.labels = [ 'name', 'default value', 'description' ]
 		self.setSortingEnabled(1)
 		# Default sort - should be read from the QSettings.
-		self.sortItems(0, qt.Qt.AscendingOrder)
+		self.sortItems(0, Qt.AscendingOrder)
 		self.setSelectionMode(qtItem.QAbstractItemView.ExtendedSelection)
-		labels = qt.QStringList()
+		labels = QStringList()
 		for l in self.labels:
 			labels.append(l)
 		self.setHeaderLabels(labels)
-		self.setContextMenuPolicy(qt.Qt.CustomContextMenu)
-		self.connect(self, qt.SIGNAL("customContextMenuRequested(const QPoint&)"), self.onPopupMenu)
+		self.setContextMenuPolicy(Qt.CustomContextMenu)
+		self.connect(self, SIGNAL("customContextMenuRequested(const QPoint&)"), self.onPopupMenu)
 
 		#self.dragStartPosition = None
 		self.setAcceptDrops(True)
 
 		# Check if we can paste a parameter
-		self.connect(qt.QApplication.clipboard(), qt.SIGNAL('dataChanged()'), self.onClipboardUpdated)
+		self.connect(QApplication.clipboard(), SIGNAL('dataChanged()'), self.onClipboardUpdated)
 
 	def __createActions(self):
 		self.deleteCurrentItemsAction = TestermanAction(self, "Delete selected", self.deleteCurrentItems)
-		self.deleteCurrentItemsAction.setShortcut(qt.QKeySequence.Delete)
-		self.deleteCurrentItemsAction.setShortcutContext(qt.Qt.WidgetShortcut)
+		self.deleteCurrentItemsAction.setShortcut(QKeySequence.Delete)
+		self.deleteCurrentItemsAction.setShortcutContext(Qt.WidgetShortcut)
 		self.addItemAction = TestermanAction(self, "Add new parameter", self.addItem)
 		self.copyItemsAction = TestermanAction(self, "Copy parameter(s)", self.copyItems)
-		self.copyItemsAction.setShortcut(qt.QKeySequence.Copy)
-		self.copyItemsAction.setShortcutContext(qt.Qt.WidgetShortcut)
+		self.copyItemsAction.setShortcut(QKeySequence.Copy)
+		self.copyItemsAction.setShortcutContext(Qt.WidgetShortcut)
 		self.pasteItemsAction = TestermanAction(self, "Paste copied parameter(s)", self.pasteItems)
-		self.pasteItemsAction.setShortcut(qt.QKeySequence.Paste)
-		self.pasteItemsAction.setShortcutContext(qt.Qt.WidgetShortcut)
+		self.pasteItemsAction.setShortcut(QKeySequence.Paste)
+		self.pasteItemsAction.setShortcutContext(Qt.WidgetShortcut)
 
 		# Don't forget to assign to the widget, too
 		self.addAction(self.deleteCurrentItemsAction)
@@ -117,25 +130,25 @@ class WParameterEditor(qt.QTreeWidget):
 		"""
 		items = self.selectedItems()
 		if not items:
-			return qt.QTreeWidget.mouseMoveEvent(self, e)
-		if not ( (e.buttons() & qt.Qt.LeftButton) ):#and (e.modifiers() & qt.Qt.ControlModifier) ):
-			return qt.QTreeWidget.mouseMoveEvent(self, e)
+			return QTreeWidget.mouseMoveEvent(self, e)
+		if not ( (e.buttons() & Qt.LeftButton) ):#and (e.modifiers() & Qt.ControlModifier) ):
+			return QTreeWidget.mouseMoveEvent(self, e)
 
 		#log("mouseEvent - dragging")
 		parameters = []
 		for item in items:
 			parameters.append(item.parameter)
-		drag = qt.QDrag(self)
+		drag = QDrag(self)
 		drag.setMimeData(objectsToMimeData(self.PARAMETERS_MIME, parameters))
-		dropAction = drag.start(qt.Qt.CopyAction)
-		return qt.QTreeWidget.mouseMoveEvent(self, e)
+		dropAction = drag.start(Qt.CopyAction)
+		return QTreeWidget.mouseMoveEvent(self, e)
 
 	def setModel(self, metadataModel):
 		"""
 		parameters is a domElement extracted from the XML metadata.
 		"""
 		# We disconnect before calling self.clear(), which emits an itemChanged... (sounds strange... buggy ?)
-		self.disconnect(self, qt.SIGNAL('itemChanged(QTreeWidgetItem*, int)'), self.onItemChanged)
+		self.disconnect(self, SIGNAL('itemChanged(QTreeWidgetItem*, int)'), self.onItemChanged)
 		self.clear()
 
 		# Synchronize the local parameters struct with the metadataModel.
@@ -150,7 +163,7 @@ class WParameterEditor(qt.QTreeWidget):
 		# We re-sort the items according to the current sorting parameters
 		self.sortItems(self.sortColumn(), self.header().sortIndicatorOrder())
 
-		self.connect(self, qt.SIGNAL('itemChanged(QTreeWidgetItem*, int)'), self.onItemChanged)
+		self.connect(self, SIGNAL('itemChanged(QTreeWidgetItem*, int)'), self.onItemChanged)
 
 	def onItemChanged(self, item, col):
 		"""
@@ -176,7 +189,7 @@ class WParameterEditor(qt.QTreeWidget):
 		self.selectParameterByName(newKey)
 
 	def createContextMenu(self):
-		contextMenu = qt.QMenu("Parameters", self)
+		contextMenu = QMenu("Parameters", self)
 		# The add Item if the first entry to avoid accidental param deletion
 		# (we have to explicitly down the mouse cursor to select the delete op)
 		contextMenu.addAction(self.addItemAction)
@@ -191,7 +204,7 @@ class WParameterEditor(qt.QTreeWidget):
 		return contextMenu
 
 	def onPopupMenu(self, pos):
-		self.createContextMenu().popup(qt.QCursor.pos())
+		self.createContextMenu().popup(QCursor.pos())
 
 	def deleteCurrentItems(self):
 		# We update the model only.
@@ -255,7 +268,7 @@ class WParameterEditor(qt.QTreeWidget):
 
 		The name is unique, so no ambiguity possible.
 		"""
-		items = self.findItems(name, qt.Qt.MatchExactly)
+		items = self.findItems(name, Qt.MatchExactly)
 		if len(items) > 0:
 			item = items[-1]
 			self.setCurrentItem(item)
@@ -268,7 +281,7 @@ class WParameterEditor(qt.QTreeWidget):
 #
 #		The name is unique, so no ambiguity possible.
 #		"""
-#		items = self.findItems(name, qt.Qt.MatchExactly)
+#		items = self.findItems(name, Qt.MatchExactly)
 #		if len(items) > 0:
 #			item = items[-1]
 #			self.setCurrentItem(item)
@@ -278,7 +291,7 @@ class WParameterEditor(qt.QTreeWidget):
 		Retrieve the copied items from the clipboard, and paste them.
 		Also select them once copied.
 		"""
-		parameters = mimeDataToObjects(self.PARAMETERS_MIME, qt.QApplication.clipboard().mimeData())
+		parameters = mimeDataToObjects(self.PARAMETERS_MIME, QApplication.clipboard().mimeData())
 		self.addItems(parameters)
 
 	def copyItems(self):
@@ -288,21 +301,17 @@ class WParameterEditor(qt.QTreeWidget):
 		parameters = []
 		for item in self.selectedItems():
 			parameters.append(item.parameter)
-		qt.QApplication.clipboard().setMimeData(objectsToMimeData(self.PARAMETERS_MIME, parameters))
+		QApplication.clipboard().setMimeData(objectsToMimeData(self.PARAMETERS_MIME, parameters))
 
 	def onClipboardUpdated(self):
-		# When shutting down, the module seems to be reset while some objects are still alive.
-		# This avoids an exception, nothing else.
-		if not qt:
-			return
-		c = qt.QApplication.clipboard()
+		c = QApplication.clipboard()
 		if c.mimeData().hasFormat(self.PARAMETERS_MIME):
 			self.pasteItemsAction.setEnabled(True)
 		else:
 			self.pasteItemsAction.setEnabled(False)
 
 
-class WDocumentPropertyEditor(qt.QWidget):
+class WDocumentPropertyEditor(QWidget):
 	"""
 	This composite widget manages the whole script metadata management.
 	It contains a WParameterEditor for the parameter part,
@@ -311,21 +320,21 @@ class WDocumentPropertyEditor(qt.QWidget):
 	This is a view over a DocumentModel.
 	"""
 	def __init__(self, parent = None):
-		qt.QWidget.__init__(self, parent)
+		QWidget.__init__(self, parent)
 		self.model = None # Document model
 		self.metadataModel = None # Metadata sub-model. Should be enough for this view, which should not manage other model's aspects.
 		self.__createWidgets()
 
 	def __createWidgets(self):
-		layout = qt.QVBoxLayout()
+		layout = QVBoxLayout()
 
-		buttonLayout = qt.QHBoxLayout()
-		self.descriptionButton = qt.QPushButton("Description...", self)
-		self.connect(self.descriptionButton, qt.SIGNAL("clicked()"), self.onDescriptionButtonTriggered)
+		buttonLayout = QHBoxLayout()
+		self.descriptionButton = QPushButton("Description...", self)
+		self.connect(self.descriptionButton, SIGNAL("clicked()"), self.onDescriptionButtonTriggered)
 		buttonLayout.addWidget(self.descriptionButton)
 
-		self.preprequisitesButton = qt.QPushButton("Prerequisites...", self)
-		self.connect(self.preprequisitesButton, qt.SIGNAL("clicked()"), self.onPrerequisitesButtonTriggered)
+		self.preprequisitesButton = QPushButton("Prerequisites...", self)
+		self.connect(self.preprequisitesButton, SIGNAL("clicked()"), self.onPrerequisitesButtonTriggered)
 		buttonLayout.addWidget(self.preprequisitesButton)
 		buttonLayout.addStretch()
 
@@ -340,14 +349,14 @@ class WDocumentPropertyEditor(qt.QWidget):
 	def setModel(self, documentModel):
 		# Disconnect signals on previous documentModel, if any
 		if self.model:
-			self.disconnect(self.model, qt.SIGNAL('metadataUpdated()'), self.onModelUpdated)
+			self.disconnect(self.model, SIGNAL('metadataUpdated()'), self.onModelUpdated)
 
 		self.model = documentModel
 		self.onModelUpdated()
 		# As a real view, we subscribe for the model update notifications (aspect: metadata)
 		# since we are not the single view to be able to edit it.
 		# (a SessionParameterEditor updates it, too)
-		self.connect(self.model, qt.SIGNAL('metadataUpdated()'), self.onModelUpdated)
+		self.connect(self.model, SIGNAL('metadataUpdated()'), self.onModelUpdated)
 
 	def onModelUpdated(self):
 		self.metadataModel = self.model.getMetadataModel()
@@ -362,24 +371,24 @@ class WDocumentPropertyEditor(qt.QWidget):
 	def onDescriptionButtonTriggered(self):
 		desc = self.metadataModel.getDescription()
 		dialog = WTextEditDialog(desc, "Script description", 0, self)
-		if dialog.exec_() == qt.QDialog.Accepted:
+		if dialog.exec_() == QDialog.Accepted:
 			desc = dialog.getText()
 			self.metadataModel.setDescription(unicode(desc))
 
 	def onPrerequisitesButtonTriggered(self):
 		prerequisites = self.metadataModel.getPrerequisites()
 		dialog = WTextEditDialog(prerequisites, "Script prerequisites", 0, self)
-		if dialog.exec_() == qt.QDialog.Accepted:
+		if dialog.exec_() == QDialog.Accepted:
 			prerequisites = dialog.getText()
 			self.metadataModel.setPrerequisites(unicode(prerequisites))
 
 
-class WDocumentPropertyEditorDock(qt.QDockWidget):
+class WDocumentPropertyEditorDock(QDockWidget):
 	"""
 	Observes the main documentTabWidget. When the tab is switched, trigger an update on the embedded WParameterEditor (for now).
 	"""
 	def __init__(self, documentTabWidget, parent):
-		qt.QDockWidget.__init__(self, parent)
+		QDockWidget.__init__(self, parent)
 		self.documentTabWidget = documentTabWidget
 		self.__createWidgets()
 
@@ -387,7 +396,7 @@ class WDocumentPropertyEditorDock(qt.QDockWidget):
 		self.setWindowTitle("Document properties")
 		self.propertyEditor = WDocumentPropertyEditor(self)
 		self.setWidget(self.propertyEditor)
-		self.connect(self.documentTabWidget, qt.SIGNAL("currentChanged(int)"), self.onDocumentTabWidgetChanged)
+		self.connect(self.documentTabWidget, SIGNAL("currentChanged(int)"), self.onDocumentTabWidgetChanged)
 
 	def onDocumentTabWidgetChanged(self, index):
 		documentModel = self.documentTabWidget.currentWidget().model

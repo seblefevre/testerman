@@ -19,7 +19,8 @@
 ##
 
 
-import PyQt4.Qt as qt
+from PyQt4.Qt import *
+
 import time
 import re
 
@@ -27,16 +28,11 @@ import Resources
 
 
 ################################################################################
-# Non-GUI related code
-################################################################################
-
-CLIENT_VERSION = "1.0.1"
-
-CLIENT_NAME = "QTesterman"
-
-################################################################################
 # Versioning
 ################################################################################
+
+CLIENT_VERSION = "1.1.0"
+CLIENT_NAME = "QTesterman"
 
 def getClientVersion():
 	return CLIENT_VERSION
@@ -55,30 +51,13 @@ def log(txt):
 	print "%s - " % formatTimestamp(time.time()) + txt
 
 ################################################################################
-# URI management
-################################################################################
-
-def urlParse(url):
-	"""
-	Returns a dict containing:
-	scheme, netloc, path.
-	Empty items are set to "".
-	"""
-	r = re.match(r'(?P<scheme>[a-zA-Z0-9_]+)://(?P<netloc>[a-zA-Z0-9-:\._@]*)(?P<path>/.*)', url)
-	if r:
-		return { "scheme": r.group("scheme"), "netloc": r.group("netloc"), "path": r.group("path") }
-	else:
-		return { "scheme": "", "netloc": "", "path": "" }
-
-
-################################################################################
 # Aliases
 ################################################################################
 
 def icon(resource):
-	return qt.QApplication.instance().icon(resource)
+	return QApplication.instance().icon(resource)
 
 def getProxy():
-	return qt.QApplication.instance().getProxy()
+	return QApplication.instance().client()
 
 

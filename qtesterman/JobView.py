@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 ##
 # This file is part of Testerman, a test automation system.
 # Copyright (c) 2008-2009 Sebastien Lefevre and other contributors
@@ -13,7 +14,6 @@
 ##
 
 ##
-# -*- coding: utf-8 -*-
 # A Job Queue widget, displaying the server's job queue,
 # enabling basic interaction with it:
 # - signal management (send them to a job)
@@ -297,6 +297,9 @@ class WJobView(QTreeView):
 		self._client = client
 		self._client.subscribe('system:jobs', self._onJobNotification)
 		self.refresh()
+
+	def getClient(self):
+		return self._client
 	
 	def _onJobNotification(self, notification):
 		"""
@@ -316,7 +319,10 @@ class WJobView(QTreeView):
 		self.model().updateJobInfo(jobInfo)
 	
 	def refresh(self):
-		queue = self._client.getJobQueue()
+		try:
+			queue = self._client.getJobQueue()
+		except:
+			queue = []
 		self.model().updateQueue(queue)
 		
 	def contextMenuEvent(self, event):

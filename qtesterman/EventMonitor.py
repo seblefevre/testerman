@@ -1,12 +1,24 @@
-##
 # -*- coding: utf-8 -*-
+##
+# This file is part of Testerman, a test automation system.
+# Copyright (c) 2009 QTesterman contributors
 #
-# Real-time event monitor Qt object and associated control widget.
-#
-# $Id$
+# This program is free software; you can redistribute it and/or modify it under
+# the terms of the GNU General Public License as published by the Free Software
+# Foundation; either version 2 of the License, or (at your option) any later
+# version.
+# This program is distributed in the hope that it will be useful, but WITHOUT
+# ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
+# FOR A PARTICULAR PURPOSE.  See the GNU General Public License for more
+# details.
 ##
 
-import PyQt4.Qt as qt
+##
+# Real-time event monitor Qt object and associated control widget.
+#
+##
+
+from PyQt4.Qt import *
 import PyQt4.QtXml as QtXml
 
 import time
@@ -15,7 +27,7 @@ import re
 from Base import *
 
 
-class EventMonitor(qt.QObject):
+class EventMonitor(QObject):
 	"""
 	This QObject can emit events formatted as qt signals when subscribed events arrive.
 
@@ -27,7 +39,7 @@ class EventMonitor(qt.QObject):
 	NB: these are "python" signals, without any () typing. (i.e. "subscribedEvent" instead of "subscribedEvent(Event)")
 	"""
 	def __init__(self, parent = None):
-		qt.QObject.__init__(self, parent)
+		QObject.__init__(self, parent)
 		self.subscribedUri = None
 
 	def subscribe(self, uri):
@@ -74,57 +86,57 @@ class EventMonitor(qt.QObject):
 		This bouncing function is only here because the monitoring thread is not a QObject.
 		"""
 		# We bounce the event to switch threads
-		self.emit(qt.SIGNAL("subscribedEvent"), event)
+		self.emit(SIGNAL("subscribedEvent"), event)
 
 
 ################################################################################
 # Event Monitor widget, for debug only
 ################################################################################
 
-class WEventMonitorDock(qt.QDockWidget):
+class WEventMonitorDock(QDockWidget):
 	"""
 	Dock wrapper over a WEventMonitor
 	"""
 	def __init__(self, parent):
-		qt.QDockWidget.__init__(self, parent)
+		QDockWidget.__init__(self, parent)
 		self.__createWidgets()
 
 	def __createWidgets(self):
 		self.setWidget(WEventMonitor(self))
 		self.setWindowTitle("Event Monitor")
 
-class WEventMonitor(qt.QWidget):
+class WEventMonitor(QWidget):
 	"""
 	Some controllers to control ans associated EventMonitor,
 	and a textbox to display events.
 	Used for debug/tests purposes only, useless for the actual purposes of QTesterman.
 	"""
 	def __init__(self, uri = 'system:ts', parent = None):
-		qt.QWidget.__init__(self, parent)
+		QWidget.__init__(self, parent)
 		self.eventMonitor = EventMonitor()
 		self.uri = uri
 		self.__createWidgets()
 
 	def __createWidgets(self):
-		layout = qt.QVBoxLayout()
+		layout = QVBoxLayout()
 
 		# A top bar with the URI to subscribe
-		topbar = qt.QHBoxLayout()
-		topbar.addWidget(qt.QLabel("URI to monitor:"))
-		self.uriLineEdit = qt.QLineEdit(self.uri)
+		topbar = QHBoxLayout()
+		topbar.addWidget(QLabel("URI to monitor:"))
+		self.uriLineEdit = QLineEdit(self.uri)
 		topbar.addWidget(self.uriLineEdit)
-		self.subscribeButton = qt.QPushButton('Subscribe')
-		self.connect(self.subscribeButton, qt.SIGNAL("clicked()"), self.subscribe)
+		self.subscribeButton = QPushButton('Subscribe')
+		self.connect(self.subscribeButton, SIGNAL("clicked()"), self.subscribe)
 		topbar.addWidget(self.subscribeButton)
 		layout.addLayout(topbar)
 
 		# A text edit to display incoming events
-		self.textEdit = qt.QTextEdit()
+		self.textEdit = QTextEdit()
 		self.textEdit.setReadOnly(1)
 		layout.addWidget(self.textEdit)
 		layout.setMargin(0)
 
-		self.connect(self.eventMonitor, qt.SIGNAL("subscribedEvent"), self.appendEvent)
+		self.connect(self.eventMonitor, SIGNAL("subscribedEvent"), self.appendEvent)
 
 		self.setLayout(layout)
 
@@ -134,12 +146,12 @@ class WEventMonitor(qt.QWidget):
 	def subscribe(self):
 		if self.eventMonitor.subscribe(unicode(self.uriLineEdit.text())):
 			self.subscribeButton.setText('Unsubscribe')
-			self.disconnect(self.subscribeButton, qt.SIGNAL("clicked()"), self.subscribe)
-			self.connect(self.subscribeButton, qt.SIGNAL("clicked()"), self.unsubscribe)
+			self.disconnect(self.subscribeButton, SIGNAL("clicked()"), self.subscribe)
+			self.connect(self.subscribeButton, SIGNAL("clicked()"), self.unsubscribe)
 
 	def unsubscribe(self):
 		if self.eventMonitor.unsubscribe():
 			self.subscribeButton.setText('Subscribe')
-			self.disconnect(self.subscribeButton, qt.SIGNAL("clicked()"), self.unsubscribe)
-			self.connect(self.subscribeButton, qt.SIGNAL("clicked()"), self.subscribe)
+			self.disconnect(self.subscribeButton, SIGNAL("clicked()"), self.unsubscribe)
+			self.connect(self.subscribeButton, SIGNAL("clicked()"), self.subscribe)
 

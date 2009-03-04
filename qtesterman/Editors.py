@@ -123,6 +123,10 @@ class WDocument(QWidget):
 		# Implemented in sub-classes only
 		pass
 
+	def goTo(self, line, col = 0):
+		# implemented in sub-classes
+		pass
+
 	def _saveLocally(self, filename):
 		"""
 		@type  filename: QString
@@ -382,6 +386,9 @@ class WModuleDocument(WDocument):
 	def updateModel(self):
 		self.model.setBody(self.editor.getCode())
 
+	def goTo(self, line, col = 0):
+		self.editor.goTo(line, col)
+
 	def replace(self):
 		"""
 		replace function
@@ -485,6 +492,9 @@ class WAtsDocument(WDocument):
 	def updateModel(self):
 		self.model.setBody(self.editor.getCode())
 		
+	def goTo(self, line, col = 0):
+		self.editor.goTo(line, col)
+
 	def replace(self):
 		"""
 		replace function
@@ -514,7 +524,7 @@ class WAtsDocument(WDocument):
 		if not self.verify(0):
 			return
 		session = None # Use the default parameters
-		res = getProxy().scheduleAts(self.model.getDocument(), unicode(self.model.getName()), QApplication.instance().get('ws.username'), session, at = time.time() + 1.0)
+		res = getProxy().scheduleAts(self.model.getDocument(), unicode(self.model.getName()), unicode(QApplication.instance().username()), session, at = time.time() + 1.0)
 		QApplication.instance().get('gui.statusbar').showMessage(res['message'])
 		if self.launchLog.isChecked():
 			logViewer = LogViewer.WLogViewer(parent = self)
@@ -537,7 +547,7 @@ class WAtsDocument(WDocument):
 			QApplication.instance().get('gui.statusbar').showMessage('Operation cancelled')
 			return
 
-		res = getProxy().scheduleAts(self.model.getDocument(), unicode(self.model.getName()), QApplication.instance().get('ws.username'), session)
+		res = getProxy().scheduleAts(self.model.getDocument(), unicode(self.model.getName()), unicode(QApplication.instance().username()), session)
 		QApplication.instance().get('gui.statusbar').showMessage(res['message'])
 		if self.launchLog.isChecked():
 			logViewer = LogViewer.WLogViewer(parent = self)
@@ -618,7 +628,7 @@ class WCampaignDocument(WDocument):
 	def run(self):
 		self.updateModel()
 		session = None # Use the default parameters
-		res = getProxy().scheduleCampaign(self.model.getDocument(), unicode(self.model.getName()), QApplication.instance().get('ws.username'), session)
+		res = getProxy().scheduleCampaign(self.model.getDocument(), unicode(self.model.getName()), unicode(QApplication.instance().username()), session)
 		QApplication.instance().get('gui.statusbar').showMessage(res['message'])
 		QMessageBox.information(self, getClientName(), res['message'], QMessageBox.Ok)
 
@@ -635,7 +645,7 @@ class WCampaignDocument(WDocument):
 			QApplication.instance().get('gui.statusbar').showMessage('Operation cancelled')
 			return
 
-		res = getProxy().scheduleCampaign(self.model.getDocument(), unicode(self.model.getName()), QApplication.instance().get('ws.username'), session)
+		res = getProxy().scheduleCampaign(self.model.getDocument(), unicode(self.model.getName()), unicode(QApplication.instance().username()), session)
 		QApplication.instance().get('gui.statusbar').showMessage(res['message'])
 		QMessageBox.information(self, getClientName(), res['message'], QMessageBox.Ok)
 
@@ -712,11 +722,17 @@ class WDocumentManager(QWidget):
 
 		elif url.scheme() == 'testerman':
 			log("Opening remote file: %s" % url.toString())
-			contents = getProxy().getFile(unicode(path))
-			info = getProxy().getFileInfo(unicode(path))
-			if not (contents and info):
-				log("Unable to open remote file: no content, no info")
+			try:
+				contents = getProxy().getFile(unicode(path))
+				info = getProxy().getFileInfo(unicode(path))
+			except:
+				contents = None
+				info = None
+
+			if (contents is None) or not info:
+				log("Unable to open remote file due to a transport or Ws error")
 				return False
+
 			fileTimestamp = info['timestamp']
 
 		else:
@@ -853,7 +869,7 @@ class WDocumentManager(QWidget):
 		documentModel = AtsModel(document, url, timestamp = fileTimestamp)
 		wdocument = WAtsDocument(documentModel, self.tab)
 		name = documentModel.getShortName()
-		tabIndex = self.tab.addTab(wdocument, icon(':/icons/ats.png'), name)
+		tabIndex = self.tab.addTab(wdocument, icon(':/icons/ats'), name)
 		self.tab.setTabToolTip(tabIndex, documentModel.getUrl().toString())
 		wdocument.setTabWidget(self.tab)
 		#We should not do this but it doesn't work without for the first tab.
@@ -867,7 +883,7 @@ class WDocumentManager(QWidget):
 		documentModel = CampaignModel(document, url, timestamp = fileTimestamp)
 		wdocument = WCampaignDocument(documentModel, self.tab)
 		name = documentModel.getShortName()
-		tabIndex = self.tab.addTab(wdocument, icon(':/icons/campaign.png'), name)
+		tabIndex = self.tab.addTab(wdocument, icon(':/icons/campaign'), name)
 		self.tab.setTabToolTip(tabIndex, documentModel.getUrl().toString())
 		wdocument.setTabWidget(self.tab)
 		# Set the focus on this tab
@@ -879,7 +895,7 @@ class WDocumentManager(QWidget):
 		documentModel = ModuleModel(document, url, timestamp = fileTimestamp)
 		wdocument = WModuleDocument(documentModel, self.tab)
 		name = documentModel.getShortName()
-		tabIndex = self.tab.addTab(wdocument, icon(':/icons/module.png'), name)
+		tabIndex = self.tab.addTab(wdocument, icon(':/icons/module'), name)
 		self.tab.setTabToolTip(tabIndex, documentModel.getUrl().toString())
 		wdocument.setTabWidget(self.tab)
 		# Set the focus on this tab
@@ -969,8 +985,8 @@ class WPythonCodeEditor(sci.QsciScintilla):
 		sci.QsciScintilla.__init__(self, parent)
 		
 		# Macro
-		self.learntKeystrockes = sci.QsciMacro(self)
-		self.learningKeystrockes = False
+		self.learntKeystrokes = sci.QsciMacro(self)
+		self.learningKeystrokes = False
 
 		# Lexer/Highlighter settings
 		lexer = sci.QsciLexerPython(self)
@@ -1046,6 +1062,7 @@ class WPythonCodeEditor(sci.QsciScintilla):
 		self.lastHighlight = None
 
 		self.connect(self, SIGNAL("linesChanged()"), self.onLinesChanged)
+		self.connect(self, SIGNAL("textChanged()"), self.onTextChanged)
 		
 		if text:
 			self.setText(text)
@@ -1078,11 +1095,8 @@ class WPythonCodeEditor(sci.QsciScintilla):
 		# to do : if CTRL is pressed, open a windows asking the default value of parameter : get(param_name, default_value)
 		mimeParameterType = "application/x-qtesterman-parameters"
 		if e.mimeData().hasFormat(mimeParameterType):
-			if (e.keyboardModifiers() & Qt.ControlModifier):
-				log("ctrl")
 			parameters = mimeDataToObjects(mimeParameterType, e.mimeData())
-			# only first parameter is inserted...
-			self.insert("get('" + parameters[0]['name'] + "')")
+			self.insert(", ".join("get_variable('%s')" % x['name'] for x in parameters))
 			e.acceptProposedAction()
 
 	def dragEnterEvent(self, e):
@@ -1123,24 +1137,24 @@ class WPythonCodeEditor(sci.QsciScintilla):
 		self.unindentAction.setShortcut(Qt.SHIFT + Qt.Key_Tab)
 		self.unindentAction.setShortcutContext(Qt.WidgetShortcut)
 		self.addAction(self.unindentAction)
-		# nedit-inspired keystrockes learner (aka "anonymous macro")
-		self.learnKeystrockesAction = TestermanAction(self, "Learn keystrockes", self.toggleLearnKeystrockes) 
-		self.learnKeystrockesAction.setShortcut(Qt.ALT + Qt.Key_K)
-		self.learnKeystrockesAction.setShortcutContext(Qt.WidgetShortcut)
-		self.addAction(self.learnKeystrockesAction)
-		self.replayKeystrockesAction = TestermanAction(self, "Replay keystrockes", self.replayKeystrockes) 
-		self.replayKeystrockesAction.setShortcut(Qt.CTRL + Qt.Key_K)
-		self.replayKeystrockesAction.setShortcutContext(Qt.WidgetShortcut)
-		self.replayKeystrockesAction.setEnabled(False)
-		self.addAction(self.replayKeystrockesAction)
+		# nedit-inspired keystrokes learner (aka "anonymous macro")
+		self.learnKeystrokesAction = TestermanAction(self, "Learn keystrokes", self.toggleLearnKeystrokes) 
+		self.learnKeystrokesAction.setShortcut(Qt.ALT + Qt.Key_K)
+		self.learnKeystrokesAction.setShortcutContext(Qt.WidgetShortcut)
+		self.addAction(self.learnKeystrokesAction)
+		self.replayKeystrokesAction = TestermanAction(self, "Replay keystrokes", self.replayKeystrokes) 
+		self.replayKeystrokesAction.setShortcut(Qt.CTRL + Qt.Key_K)
+		self.replayKeystrokesAction.setShortcutContext(Qt.WidgetShortcut)
+		self.replayKeystrokesAction.setEnabled(False)
+		self.addAction(self.replayKeystrokesAction)
 
 		self.menu.addAction(self.commentAction)
 		self.menu.addAction(self.uncommentAction)
 		self.menu.addAction(self.indentAction)
 		self.menu.addAction(self.unindentAction)
 		self.menu.addSeparator()
-		self.menu.addAction(self.learnKeystrockesAction)
-		self.menu.addAction(self.replayKeystrockesAction)
+		self.menu.addAction(self.learnKeystrokesAction)
+		self.menu.addAction(self.replayKeystrokesAction)
 		# WARNING: Adding this sub-menu makes the PythonCodeEditor not suitable for integration in any 
 		# widget, but only in WDocument.
 		if hasattr(self.parent(), "getEditorPluginActions"):
@@ -1171,11 +1185,11 @@ class WPythonCodeEditor(sci.QsciScintilla):
 		self.connect(self, SIGNAL("customContextMenuRequested (const QPoint&)"), self.onPopupMenu)
 		
 		# shortcut only actions
-#		self.autoCompletionAction = TesternamAction(self, "Auto completion", self.autoCompletion) 
-#		self.autoCompletionAction.setShortcut(Qt.CTRL + Qt.Key_Space)
-#		self.autoCompletionAction.setShortcutContext(Qt.WidgetShortcut)
-#		self.addAction(self.autoCompletionAction)
-#		self.callTipAction = TesternamAction(self, "Tool tip", self.showTip) 
+		self.autoCompletionAction = TestermanAction(self, "Auto completion", self.autoCompletion) 
+		self.autoCompletionAction.setShortcut(Qt.CTRL + Qt.Key_Space)
+		self.autoCompletionAction.setShortcutContext(Qt.WidgetShortcut)
+		self.addAction(self.autoCompletionAction)
+#		self.callTipAction = TestermanAction(self, "Tool tip", self.showTip) 
 #		self.callTipAction.setShortcut(Qt.CTRL + Qt.Key_Shift + Qt.Key_Space) #does not work... (ctrl + shift + space)
 #		self.callTipAction.setShortcutContext(Qt.WidgetShortcut)
 #		self.addAction(self.callTipAction)
@@ -1220,6 +1234,7 @@ class WPythonCodeEditor(sci.QsciScintilla):
 		l = self.lines() * 10
 		if l < 1000: l = 1000
 		self.setMarginWidth(1, "%d" % l)
+		self.outlineMaybeUpdated()
 
 	def wheelEvent(self, wheelEvent):
 		if not (wheelEvent.modifiers() & Qt.ControlModifier):
@@ -1273,6 +1288,7 @@ class WPythonCodeEditor(sci.QsciScintilla):
 		else:
 			self.setCursorPosition(currentLine, currentIndex)
 		self.endUndoAction()
+		self.outlineMaybeUpdated()
 
 	def multiLineUninsert(self, ch):
 		"""
@@ -1313,6 +1329,7 @@ class WPythonCodeEditor(sci.QsciScintilla):
 		else:
 			self.setCursorPosition(currentLine, currentIndex)
 		self.endUndoAction()
+		self.outlineMaybeUpdated()
 
 	def indent(self):
 		self.multiLineInsert('\t')
@@ -1326,22 +1343,22 @@ class WPythonCodeEditor(sci.QsciScintilla):
 	def uncomment(self):
 		self.multiLineUninsert('#')
 
-	def toggleLearnKeystrockes(self):
-		if self.learningKeystrockes:
-			self.learntKeystrockes.endRecording()
-			self.replayKeystrockesAction.setEnabled(True)
-			self.learningKeystrockes = False
-			self.learnKeystrockesAction.setText("Learn keystrockes")
-			QApplication.instance().get('gui.statusbar').showMessage("Keystrockes learnt.", 5000)
+	def toggleLearnKeystrokes(self):
+		if self.learningKeystrokes:
+			self.learntKeystrokes.endRecording()
+			self.replayKeystrokesAction.setEnabled(True)
+			self.learningKeystrokes = False
+			self.learnKeystrokesAction.setText("Learn keystrokes")
+			QApplication.instance().get('gui.statusbar').showMessage("Keystrokes learnt.", 5000)
 		else:
-			self.learntKeystrockes.clear()
-			self.learntKeystrockes.startRecording()
-			self.learningKeystrockes = True
-			self.learnKeystrockesAction.setText("Finish learn")
-			QApplication.instance().get('gui.statusbar').showMessage("Learn mode activated. Press %s to finish" % unicode(self.learnKeystrockesAction.shortcut().toString()) )
+			self.learntKeystrokes.clear()
+			self.learntKeystrokes.startRecording()
+			self.learningKeystrokes = True
+			self.learnKeystrokesAction.setText("Finish learn")
+			QApplication.instance().get('gui.statusbar').showMessage("Learn mode activated. Press %s to finish" % unicode(self.learnKeystrokesAction.shortcut().toString()) )
 
-	def replayKeystrockes(self):
-		self.learntKeystrockes.play()
+	def replayKeystrokes(self):
+		self.learntKeystrokes.play()
 
 	def autoCompletion(self):
 		self.autoCompleteFromAll()
@@ -1362,6 +1379,7 @@ class WPythonCodeEditor(sci.QsciScintilla):
 				indent = self.getLineIndentation()
 				self.insert(code.replace("\n", "\n" + indent))
 				self.endUndoAction()
+				self.outlineMaybeUpdated()
 				return True
 		return False
 
@@ -1430,12 +1448,14 @@ class WPythonCodeEditor(sci.QsciScintilla):
 
 	def onCursorPositionChanged(self, line, col):
 		QApplication.instance().get('gui.statusbar').setLineCol(line + 1, col + 1)
+		QApplication.instance().get('gui.outlineview').setLine(line + 1)
 
-	def goTo(self, line, col):
+	def goTo(self, line, col = 0):
 		if line is not None:
 			if col is None:
 				col = 0
 			self.setCursorPosition(line, col)
+			self.setFocus(Qt.OtherFocusReason)
 
 	def highlight(self, line, error = True):
 		"""
@@ -1461,6 +1481,14 @@ class WPythonCodeEditor(sci.QsciScintilla):
 			self.markerDeleteHandle(self.lastHighlight)
 			self.lastHighlight = None
 
+	def outlineMaybeUpdated(self):
+		"""
+		Call this whenever the outline may have been updated.
+		"""
+		QApplication.instance().get('gui.outlineview').updateModel(str(self.text().toUtf8()))
+
+	def onTextChanged(self):
+		QTimer.singleShot(500, self.autoCompletion)
 
 ################################################################################
 # Session Variable Management

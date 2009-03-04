@@ -1,6 +1,15 @@
 This is QTesterman, a PyQt4-based GUI for Testerman.
 ================================================================================
 
+1.1.0:
+- Added: outline view
+- Modified: better remote browser, with loading feedbacks
+
+TODO:
+- Added: support for file deletion in the remote browser
+- Added: server status indicator, with fast server switching
+- Modified: better settings dialog
+
 1.0.1:
 - Added: auto-update support, with self restart
 - Modified: qtesterman.py is now the main launcher, and should be used in

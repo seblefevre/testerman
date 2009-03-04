@@ -6,7 +6,7 @@
 # $Id$
 ##
 
-import PyQt4.Qt as qt
+from PyQt4.Qt import *
 
 import os.path
 
@@ -44,8 +44,8 @@ def deleteAssociatedFiles(path, force = False, selectAssociatedFiles = True):
 			if getProxy().fileExists(basedir + '/' + ats):
 				# We can propose to delete the associated ATS
 				checkBoxLabel = "Also delete associated ATS"
-			dialog = WDeleteFileConfirmation(label, (checkBoxLabel, selectAssociatedFiles), qt.QApplication.instance().get('gui.mainwindow'))
-			if dialog.exec_() == qt.QDialog.Accepted:
+			dialog = WDeleteFileConfirmation(label, (checkBoxLabel, selectAssociatedFiles), QApplication.instance().get('gui.mainwindow'))
+			if dialog.exec_() == QDialog.Accepted:
 				getProxy().removeFile(basedir + '/' + log)
 				if dialog.checkBoxChecked():
 					getProxy().removeFile(basedir + '/' + ats)
@@ -70,8 +70,8 @@ def deleteAssociatedFiles(path, force = False, selectAssociatedFiles = True):
 			if getProxy().fileExists(basedir + '/' + log):
 				# We can propose to delete the associated log.
 				checkBoxLabel = "Also delete associated log"
-			dialog = WDeleteFileConfirmation(label, (checkBoxLabel, selectAssociatedFiles), qt.QApplication.instance().get('gui.mainwindow'))
-			if dialog.exec_() == qt.QDialog.Accepted:
+			dialog = WDeleteFileConfirmation(label, (checkBoxLabel, selectAssociatedFiles), QApplication.instance().get('gui.mainwindow'))
+			if dialog.exec_() == QDialog.Accepted:
 				getProxy().removeFile(basedir + '/' + ats)
 				if dialog.checkBoxChecked():
 					getProxy().removeFile(basedir + '/' + log)
@@ -104,8 +104,8 @@ def deleteFile(path, force = False):
 		canDelete = True
 	else:
 		msg = "Are you sure you want to delete the file %s ?" % basename
-		ret = qt.QMessageBox.question(qt.QApplication.instance().get('gui.mainwindow'), getClientName(), msg, qt.QMessageBox.Yes | qt.QMessageBox.No)
-		canDelete = (ret == qt.QMessageBox.Yes)
+		ret = QMessageBox.question(QApplication.instance().get('gui.mainwindow'), getClientName(), msg, QMessageBox.Yes | QMessageBox.No)
+		canDelete = (ret == QMessageBox.Yes)
 
 	if canDelete:
 		ret = getProxy().removeFile(path)
@@ -114,7 +114,7 @@ def deleteFile(path, force = False):
 		else:
 			# Display an error message: cannot remove this folder: not empty.
 			msg = "Unable to remove this file: " + str(ret)
-			qt.QMessageBox.information(qt.QApplication.instance().get('gui.mainwindow'), getClientName(), msg)
+			QMessageBox.information(QApplication.instance().get('gui.mainwindow'), getClientName(), msg)
 			return 0
 	else:
 		return 0
@@ -135,8 +135,8 @@ def deleteDirectory(path, force = False):
 		canDelete = True
 	else:
 		msg = "Are you sure you want to delete the folder %s ?" % path
-		ret = qt.QMessageBox.question(qt.QApplication.instance().get('gui.mainwindow'), getClientName(), msg, qt.QMessageBox.Yes | qt.QMessageBox.No)
-		canDelete = (ret == qt.QMessageBox.Yes)
+		ret = QMessageBox.question(QApplication.instance().get('gui.mainwindow'), getClientName(), msg, QMessageBox.Yes | QMessageBox.No)
+		canDelete = (ret == QMessageBox.Yes)
 
 	if canDelete:
 		ret = getProxy().removeFile(path)
@@ -145,7 +145,7 @@ def deleteDirectory(path, force = False):
 		else:
 			# Display an error message: cannot remove this folder: not empty.
 			msg = "Cannot remove this folder: not empty."
-			qt.QMessageBox.information(qt.QApplication.instance().get('gui.mainwindow'), getClientName(), msg)
+			QMessageBox.information(QApplication.instance().get('gui.mainwindow'), getClientName(), msg)
 			return 0
 	else:
 		return 0

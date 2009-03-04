@@ -1,12 +1,24 @@
-##
 # -*- coding: utf-8 -*-
+##
+# This file is part of Testerman, a test automation system.
+# Copyright (c) 2009 QTesterman contributors
 #
-# Interface/Base class to create plugins
-#
-# $Id$
+# This program is free software; you can redistribute it and/or modify it under
+# the terms of the GNU General Public License as published by the Free Software
+# Foundation; either version 2 of the License, or (at your option) any later
+# version.
+# This program is distributed in the hope that it will be useful, but WITHOUT
+# ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
+# FOR A PARTICULAR PURPOSE.  See the GNU General Public License for more
+# details.
 ##
 
-import PyQt4.Qt as qt
+##
+# Interface/Base class to create plugins
+#
+##
+
+from PyQt4.Qt import *
 
 
 TYPE_CODE_WRITER = "code-writer"
@@ -16,7 +28,7 @@ TYPE_REPORT_VIEW = "report-view"
 # Base plugin configuration widget. The same for all plugin types.
 ###############################################################################
 
-class WPluginConfiguration(qt.QWidget):
+class WPluginConfiguration(QWidget):
 	"""
 	Plugin configuration widget.
 	
@@ -33,7 +45,7 @@ class WPluginConfiguration(qt.QWidget):
 	The saved configuration should be reloaded to be displayed in displayConfiguration.
 	"""
 	def __init__(self, parent = None):
-		qt.QWidget.__init__(self, parent)
+		QWidget.__init__(self, parent)
 	
 	def displayConfiguration(self):
 		"""
@@ -76,10 +88,10 @@ class WPluginConfiguration(qt.QWidget):
 # ReportView: ideal to develop log exporters
 ###############################################################################
 
-class WReportView(qt.QWidget):
+class WReportView(QWidget):
 	pluginType = TYPE_REPORT_VIEW
 	def __init__(self, parent = None):
-		qt.QWidget.__init__(self, parent)
+		QWidget.__init__(self, parent)
 
 	def clearLog(self):
 		"""
@@ -117,10 +129,10 @@ class WReportView(qt.QWidget):
 # code generators, ...
 ###############################################################################
 
-class CodeWriter(qt.QObject):
+class CodeWriter(QObject):
 	pluginType = TYPE_CODE_WRITER
 	def __init__(self, parent = None):
-		qt.QObject.__init__(self, parent)
+		QObject.__init__(self, parent)
 
 	def activate(self):
 		"""

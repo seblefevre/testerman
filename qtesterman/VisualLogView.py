@@ -1,6 +1,19 @@
-##
 # -*- coding: utf-8 -*-
+##
+# This file is part of Testerman, a test automation system.
+# Copyright (c) 2009 QTesterman contributors
 #
+# This program is free software; you can redistribute it and/or modify it under
+# the terms of the GNU General Public License as published by the Free Software
+# Foundation; either version 2 of the License, or (at your option) any later
+# version.
+# This program is distributed in the hope that it will be useful, but WITHOUT
+# ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
+# FOR A PARTICULAR PURPOSE.  See the GNU General Public License for more
+# details.
+##
+
+##
 # A graphical view of execution logs.
 # Almost compliant with TTCN-3 graphical representation.
 # 
@@ -8,18 +21,19 @@
 
 # TODO: reimplement paint() for each item instead of using a graphics item group
 
-import PyQt4.Qt as qt
+from PyQt4.Qt import *
+
 import time
 
 from CommonWidgets import *
 
-class GraphicsItemGroup(qt.QGraphicsItemGroup):
+class GraphicsItemGroup(QGraphicsItemGroup):
 	"""
 	Modified class to support additional pythonic associated data
 	(avoid the usage of QVariant with Python data)
 	"""
 	def __init__(self, parent = None):
-		qt.QGraphicsItemGroup.__init__(self, parent)
+		QGraphicsItemGroup.__init__(self, parent)
 		self.__data = {}
 
 	def setMyData(self, index, data):
@@ -36,20 +50,20 @@ class BoxedLabel(GraphicsItemGroup):
 	A label in a box. The label is centered in the box, with a margin on both sides.
 	(0,0) is the origin of the box.
 	"""
-	def __init__(self, label, bgcolor = qt.QColor(240, 240, 200, 192), pen = qt.QPen()):
+	def __init__(self, label, bgcolor = QColor(240, 240, 200, 192), pen = QPen()):
 		GraphicsItemGroup.__init__(self)
 		self.__createWidgets(label, bgcolor, pen)
 
 	def __createWidgets(self, text, bgcolor, pen):
 		# The label
-		label = qt.QGraphicsSimpleTextItem(text)
+		label = QGraphicsSimpleTextItem(text)
 		label.setZValue(100)
 
 		# Its "bounding" box
 		rect = label.boundingRect()
-		t = qt.QGraphicsRectItem(qt.QRectF(rect.x(), rect.y(), rect.width() + 20, rect.height()))
+		t = QGraphicsRectItem(QRectF(rect.x(), rect.y(), rect.width() + 20, rect.height()))
 		t.setPen(pen)
-		t.setBrush(qt.QBrush(bgcolor))
+		t.setBrush(QBrush(bgcolor))
 		t.setZValue(50)
 		self.addToGroup(t)
 		# We center the label in the box
@@ -61,31 +75,31 @@ class RightArrowBoxedLabel(GraphicsItemGroup):
 	A label into a wide arrow, directed to the right.
 	(0,0) is the top left origin of the visual item.
 	"""
-	def __init__(self, label, bgcolor = qt.QColor(240, 240, 200, 192), pen = qt.QPen()):
+	def __init__(self, label, bgcolor = QColor(240, 240, 200, 192), pen = QPen()):
 		GraphicsItemGroup.__init__(self)
 		self.__createWidgets(label, bgcolor, pen)
 
 	def __createWidgets(self, text, bgcolor, pen):
 		# The label
-		label = qt.QGraphicsSimpleTextItem(text)
+		label = QGraphicsSimpleTextItem(text)
 		label.setZValue(100)
 
 		rect = label.boundingRect()
 		# the bounding arrow. The arrow body width is adapter to the label height,
 		# and the final arrow is bevel pixel high and low its main body.
 		bevel = 5 # pixels
-		path = qt.QPainterPath()
-		path.lineTo(path.currentPosition() + qt.QPointF(rect.width() + 20 - bevel, 0))
-		path.lineTo(path.currentPosition() + qt.QPointF(0, -bevel))
-		path.lineTo(path.currentPosition() + qt.QPointF(2*bevel, bevel + rect.height() / 2.0))
-		path.lineTo(path.currentPosition() + qt.QPointF(-2*bevel, bevel + rect.height() / 2.0))
-		path.lineTo(path.currentPosition() + qt.QPointF(0, -bevel))
-		path.lineTo(path.currentPosition() + qt.QPointF(- (rect.width() + 20 - bevel), 0))
+		path = QPainterPath()
+		path.lineTo(path.currentPosition() + QPointF(rect.width() + 20 - bevel, 0))
+		path.lineTo(path.currentPosition() + QPointF(0, -bevel))
+		path.lineTo(path.currentPosition() + QPointF(2*bevel, bevel + rect.height() / 2.0))
+		path.lineTo(path.currentPosition() + QPointF(-2*bevel, bevel + rect.height() / 2.0))
+		path.lineTo(path.currentPosition() + QPointF(0, -bevel))
+		path.lineTo(path.currentPosition() + QPointF(- (rect.width() + 20 - bevel), 0))
 		path.closeSubpath()
 
-		box = qt.QGraphicsPathItem(path)
+		box = QGraphicsPathItem(path)
 		box.setPen(pen)
-		box.setBrush(qt.QBrush(bgcolor))
+		box.setBrush(QBrush(bgcolor))
 		box.setZValue(50)
 		self.addToGroup(box)
 		# We center the label in the box
@@ -98,31 +112,31 @@ class LeftArrowBoxedLabel(GraphicsItemGroup):
 	A label into a wide arrow, directed to the left.
 	(0,0) is the top left origin of the visual item.
 	"""
-	def __init__(self, label, bgcolor = qt.QColor(240, 240, 200, 192), pen = qt.QPen()):
+	def __init__(self, label, bgcolor = QColor(240, 240, 200, 192), pen = QPen()):
 		GraphicsItemGroup.__init__(self)
 		self.__createWidgets(label, bgcolor, pen)
 
 	def __createWidgets(self, text, bgcolor, pen):
 		# The label
-		label = qt.QGraphicsSimpleTextItem(text)
+		label = QGraphicsSimpleTextItem(text)
 		label.setZValue(100)
 
 		rect = label.boundingRect()
 		# the bounding arrow. The arrow body width is adapter to the label height,
 		# and the final arrow is bevel pixel high and low its main body.
 		bevel = 5 # pixels
-		path = qt.QPainterPath()
-		path.lineTo(path.currentPosition() + qt.QPointF(-(rect.width() + 20 - bevel), 0))
-		path.lineTo(path.currentPosition() + qt.QPointF(0, -bevel))
-		path.lineTo(path.currentPosition() + qt.QPointF(-2*bevel, bevel + rect.height() / 2.0))
-		path.lineTo(path.currentPosition() + qt.QPointF(2*bevel, bevel + rect.height() / 2.0))
-		path.lineTo(path.currentPosition() + qt.QPointF(0, -bevel))
-		path.lineTo(path.currentPosition() + qt.QPointF( (rect.width() + 20 - bevel), 0))
+		path = QPainterPath()
+		path.lineTo(path.currentPosition() + QPointF(-(rect.width() + 20 - bevel), 0))
+		path.lineTo(path.currentPosition() + QPointF(0, -bevel))
+		path.lineTo(path.currentPosition() + QPointF(-2*bevel, bevel + rect.height() / 2.0))
+		path.lineTo(path.currentPosition() + QPointF(2*bevel, bevel + rect.height() / 2.0))
+		path.lineTo(path.currentPosition() + QPointF(0, -bevel))
+		path.lineTo(path.currentPosition() + QPointF( (rect.width() + 20 - bevel), 0))
 		path.closeSubpath()
 
-		box = qt.QGraphicsPathItem(path)
+		box = QGraphicsPathItem(path)
 		box.setPen(pen)
-		box.setBrush(qt.QBrush(bgcolor))
+		box.setBrush(QBrush(bgcolor))
 		box.setZValue(50)
 		box.translate(rect.width() + 20 + bevel, 0)
 		self.addToGroup(box)
@@ -136,19 +150,19 @@ class RoundBoxedLabel(GraphicsItemGroup):
 	A label in a round box. The label is centered in the box, with a margin on both sides.
 	(0,0) is the origin of the box.
 	"""
-	def __init__(self, label, bgcolor = qt.QColor(240, 240, 200, 192), pen = qt.QPen()):
+	def __init__(self, label, bgcolor = QColor(240, 240, 200, 192), pen = QPen()):
 		GraphicsItemGroup.__init__(self)
 		self.__createWidgets(label, bgcolor, pen)
 
 	def __createWidgets(self, text, bgcolor, pen):
 		# The label
-		label = qt.QGraphicsSimpleTextItem(text)
+		label = QGraphicsSimpleTextItem(text)
 		label.setZValue(100)
 
 		# Its "bounding" box
 		rect = label.boundingRect()
 		bevel = 7 # pixels
-		path = qt.QPainterPath()
+		path = QPainterPath()
 		path.moveTo(rect.width() + 20 - bevel, 0)
 		path.arcTo(rect.width() + 20 - 2 * bevel, 0, 2*bevel, 2*bevel, 90, -90)
 		path.lineTo(rect.width() + 20, rect.height() - bevel)
@@ -159,9 +173,9 @@ class RoundBoxedLabel(GraphicsItemGroup):
 		path.arcTo(0, 0, 2*bevel, 2*bevel, -180, -90)
 		path.closeSubpath()
 
-		roundedBox = qt.QGraphicsPathItem(path)
+		roundedBox = QGraphicsPathItem(path)
 		roundedBox.setPen(pen)
-		roundedBox.setBrush(qt.QBrush(bgcolor))
+		roundedBox.setBrush(QBrush(bgcolor))
 		roundedBox.setZValue(50)
 
 		# We center the label in the box
@@ -192,11 +206,11 @@ class MessageArrow(GraphicsItemGroup):
 		Create a loopback arrow if fromX == toX.
 		fromLabel and toLabel, if available, are x-aligned (not centered) on fromX, toX right/left according to the arrow direction.
 		"""
-		self.mainPen = qt.QPen(qt.QColor(160, 160, 160))
+		self.mainPen = QPen(QColor(160, 160, 160))
 		self.mainPen.setWidth(2)
-		self.mainPen.setCapStyle(qt.Qt.RoundCap)
+		self.mainPen.setCapStyle(Qt.RoundCap)
 
-		self.label = qt.QGraphicsSimpleTextItem(label)
+		self.label = QGraphicsSimpleTextItem(label)
 
 		if fromX != toX:
 			# Directed arrow
@@ -216,7 +230,7 @@ class MessageArrow(GraphicsItemGroup):
 			self.addToGroup(self.label)
 
 			# The from/to labels are managed as tooltips.
-			toolTip = qt.QString("")
+			toolTip = QString("")
 			if fromLabel: toolTip += fromLabel
 			toolTip += " -> "
 			if toLabel: toolTip += toLabel
@@ -224,14 +238,14 @@ class MessageArrow(GraphicsItemGroup):
 
 			# Main line
 			# 2 is a margin from the extreme from/to - this makes the display cleaner, and avoir useless item collisions
-			line = qt.QGraphicsLineItem(sign*2, 0, toX - fromX  - sign*2, 0)
+			line = QGraphicsLineItem(sign*2, 0, toX - fromX  - sign*2, 0)
 			line.setPen(self.mainPen)
 			self.addToGroup(line)
 			# around the toX, we draw two diag lines
-			line = qt.QGraphicsLineItem(toX - fromX - sign*2, 0, toX - fromX - sign*2 -sign*5, -5)
+			line = QGraphicsLineItem(toX - fromX - sign*2, 0, toX - fromX - sign*2 -sign*5, -5)
 			line.setPen(self.mainPen)
 			self.addToGroup(line)
-			line = qt.QGraphicsLineItem(toX - fromX - sign*2, 0, toX - fromX - sign*2 -sign*5, 5)
+			line = QGraphicsLineItem(toX - fromX - sign*2, 0, toX - fromX - sign*2 -sign*5, 5)
 			line.setPen(self.mainPen)
 			self.addToGroup(line)
 		else:
@@ -239,10 +253,10 @@ class MessageArrow(GraphicsItemGroup):
 			# We draw a circle pie (?) with a final arrow. The circle arrow starts at (0, 0)
 			# The label is inserted at mid-height, with transparency, x-centered on 0.
 			radius = 10
-			path = qt.QPainterPath()
+			path = QPainterPath()
 			path.moveTo(radius, 0)
 			path.arcTo(0, 0, 2*radius, 2*radius, 90, -180)
-			circle = qt.QGraphicsPathItem(path)
+			circle = QGraphicsPathItem(path)
 			circle.setPen(self.mainPen)
 			circle.translate(-radius + 2, 0) # 2 is the margin from the main actor axis
 
@@ -253,42 +267,42 @@ class MessageArrow(GraphicsItemGroup):
 
 			sign = -1 # the final arrow is to the left
 			# around the toX/fromX, we draw two diag lines
-			line = qt.QGraphicsLineItem(0, 2*radius, 2 , 2*radius - 5)
+			line = QGraphicsLineItem(0, 2*radius, 2 , 2*radius - 5)
 			line.setPen(self.mainPen)
 			line.translate(2, 0) # 2 is the margin from the main actor axis
 			self.addToGroup(line)
-			line = qt.QGraphicsLineItem(0, 2*radius, 5, 2*radius + 3)
+			line = QGraphicsLineItem(0, 2*radius, 5, 2*radius + 3)
 			line.setPen(self.mainPen)
 			line.translate(2, 0) # 2 is the margin from the main actor axis
 			self.addToGroup(line)
 
 			# The from/to labels are managed as tooltips.
-			toolTip = qt.QString("")
+			toolTip = QString("")
 			if fromLabel: toolTip += fromLabel
 			toolTip += " -> "
 			if toLabel: toolTip += toLabel
 			self.setToolTip(toolTip)
 
 
-class TestCaseActor(qt.QGraphicsItemGroup):
+class TestCaseActor(QGraphicsItemGroup):
 	"""
 	Create an actor representation for the sequence diagram, i.e.
 	a box with a text in it, and a vertical line.
 	X-centered around the vertical line (on x = 0) in local coordinates.
 	"""
 	def __init__(self, name, parent = None, scene = None):
-		qt.QGraphicsItemGroup.__init__(self, parent, scene)
+		QGraphicsItemGroup.__init__(self, parent, scene)
 		self.__killed = False # actor killed: to life line anymore.
 		self.__createWidgets(name)
 
 	def __createWidgets(self, name):
-		self.mainFont = qt.QFont()
-		self.mainPen = qt.QPen(qt.QColor(160, 160, 160))
+		self.mainFont = QFont()
+		self.mainPen = QPen(QColor(160, 160, 160))
 		self.mainPen.setWidth(2)
-		self.mainPen.setCapStyle(qt.Qt.RoundCap)
+		self.mainPen.setCapStyle(Qt.RoundCap)
 
 		#print "DEBUG: creating actor %s" % name
-		self.titleText = qt.QGraphicsSimpleTextItem(name)
+		self.titleText = QGraphicsSimpleTextItem(name)
 		self.titleText.setZValue(10)
 #		self.titleText.setFont(self.mainFont)
 		rect = self.titleText.boundingRect()
@@ -296,15 +310,15 @@ class TestCaseActor(qt.QGraphicsItemGroup):
 		self.titleText.translate(- rect.width() / 2.0, 0)
 		self.addToGroup(self.titleText)
 
-		self.titleRect = qt.QGraphicsRectItem(qt.QRectF(rect.x(), rect.y(), rect.width() + 20, rect.height()))
-		self.titleRect.setBrush(qt.QBrush(qt.QColor(220, 220, 250)))
+		self.titleRect = QGraphicsRectItem(QRectF(rect.x(), rect.y(), rect.width() + 20, rect.height()))
+		self.titleRect.setBrush(QBrush(QColor(220, 220, 250)))
 		self.titleRect.setPen(self.mainPen)
 		self.titleRect.setZValue(0)
 		# X-centered on 0 (local coord)
 		self.titleRect.translate(- self.titleRect.boundingRect().width() / 2.0, 0)
 		self.addToGroup(self.titleRect)
 
-		self.mainLine = qt.QGraphicsLineItem(0, self.titleRect.boundingRect().height(), 0, 200)
+		self.mainLine = QGraphicsLineItem(0, self.titleRect.boundingRect().height(), 0, 200)
 		self.mainLine.setPen(self.mainPen)
 		self.mainLine.setZValue(0)
 		self.addToGroup(self.mainLine)
@@ -317,7 +331,7 @@ class TestCaseActor(qt.QGraphicsItemGroup):
 			if self.mainLine.line().y2() < toY:
 				self.mainLine.setLine(self.mainLine.line().x1(), self.mainLine.line().y1() , self.mainLine.line().x2(), toY)
 
-	def createStickerItem(self, text, yOffset, color = qt.QColor(240, 240, 200, 192)):
+	def createStickerItem(self, text, yOffset, color = QColor(240, 240, 200, 192)):
 		"""
 		Add a rectangle "sticker" text on the main line and return the item.
 		We have to move the created item to the scene coordinate corresponding to the scene position of the actor
@@ -336,7 +350,7 @@ class TestCaseActor(qt.QGraphicsItemGroup):
 
 		return group
 
-	def createRoundStickerItem(self, text, yOffset, color = qt.QColor(240, 240, 200, 192)):
+	def createRoundStickerItem(self, text, yOffset, color = QColor(240, 240, 200, 192)):
 		group = RoundBoxedLabel(text, bgcolor = color)
 		y = yOffset + 20
 		x = self.getSceneXAnchor() - group.boundingRect().width() / 2.0
@@ -348,7 +362,7 @@ class TestCaseActor(qt.QGraphicsItemGroup):
 
 		return group
 
-	def createRightArrowStickerItem(self, text, yOffset, color = qt.QColor(240, 240, 200, 192)):
+	def createRightArrowStickerItem(self, text, yOffset, color = QColor(240, 240, 200, 192)):
 		group = RightArrowBoxedLabel(text, bgcolor = color)
 		y = yOffset + 20
 		x = self.getSceneXAnchor() - group.boundingRect().width() / 2.0
@@ -360,7 +374,7 @@ class TestCaseActor(qt.QGraphicsItemGroup):
 
 		return group
 
-	def createLeftArrowStickerItem(self, text, yOffset, color = qt.QColor(240, 240, 200, 192)):
+	def createLeftArrowStickerItem(self, text, yOffset, color = QColor(240, 240, 200, 192)):
 		group = LeftArrowBoxedLabel(text, bgcolor = color)
 		y = yOffset + 20
 		x = self.getSceneXAnchor() - group.boundingRect().width() / 2.0
@@ -383,9 +397,9 @@ class TestCaseActor(qt.QGraphicsItemGroup):
 		"""
 		Return the X coordinate of an anchor for a message arrow, in the Scene coordinate
 		"""
-		return self.mapToScene(qt.QPointF(0, 0)).x()
+		return self.mapToScene(QPointF(0, 0)).x()
 
-class TestCaseScene(qt.QGraphicsScene):
+class TestCaseScene(QGraphicsScene):
 	"""
 	Manage only ONE testcase as a visual workflow.
 
@@ -393,7 +407,7 @@ class TestCaseScene(qt.QGraphicsScene):
 	The events must be provisionned timestamp-ordered, otherwise the automatic layout mechanism won't work correctly.
 	"""
 	def __init__(self, parent = None):
-		qt.QGraphicsScene.__init__(self)
+		QGraphicsScene.__init__(self)
 
 		# Some layout parameters
 		self.actorXMin = 150
@@ -413,12 +427,12 @@ class TestCaseScene(qt.QGraphicsScene):
 		self.__createWidgets()
 
 	def __createWidgets(self):
-		self.failedColor = qt.QColor(250, 220, 220, 192)
-		self.successColor = qt.QColor(220, 250, 220, 192)
-		self.startedColor = qt.QColor(200, 220, 250, 192)
-		self.timerStartedColor = qt.QColor(200, 220, 250, 192)
-		self.timerStoppedColor = qt.QColor(220, 250, 250, 192)
-		self.timerTimeoutColor = qt.QColor(200, 0, 200, 192)
+		self.failedColor = QColor(250, 220, 220, 192)
+		self.successColor = QColor(220, 250, 220, 192)
+		self.startedColor = QColor(200, 220, 250, 192)
+		self.timerStartedColor = QColor(200, 220, 250, 192)
+		self.timerStoppedColor = QColor(220, 250, 250, 192)
+		self.timerTimeoutColor = QColor(200, 0, 200, 192)
 
 	def __addActor(self, name):
 		"""
@@ -595,7 +609,7 @@ class TestCaseScene(qt.QGraphicsScene):
 		"""
 		if not self.__actors.has_key(actor):
 			# Control level or TestCase level / not attached to a Test Component
-			t = BoxedLabel(msg, bgcolor = qt.QColor(128, 128, 192, 192), pen = qt.QPen())
+			t = BoxedLabel(msg, bgcolor = QColor(128, 128, 192, 192), pen = QPen())
 			t.translate(0, yPos + 10)
 			return t
 		else:
@@ -623,7 +637,7 @@ class TestCaseScene(qt.QGraphicsScene):
 		return arrow
 
 
-class WClickableGraphicsView(qt.QGraphicsView):
+class WClickableGraphicsView(QGraphicsView):
 	"""
 	An enhanced QGraphicsView with signals when an item is selected.
 
@@ -631,9 +645,9 @@ class WClickableGraphicsView(qt.QGraphicsView):
 	itemSelected(QGraphicsItem)
 	"""
 	def __init__(self, parent = None):
-		qt.QGraphicsView.__init__(self, parent)
-		self.setRenderHint(qt.QPainter.Antialiasing)
-		self.setRenderHint(qt.QPainter.TextAntialiasing)
+		QGraphicsView.__init__(self, parent)
+		self.setRenderHint(QPainter.Antialiasing)
+		self.setRenderHint(QPainter.TextAntialiasing)
 
 	def mousePressEvent(self, event):
 		item = self.itemAt(event.pos())
@@ -642,13 +656,13 @@ class WClickableGraphicsView(qt.QGraphicsView):
 			# Crash if this is a text item... so we turned all QGraphicsTextItem into QGraphicsSimpleTextItem,
 			# no problem anymore. Looks like a problem with the focus flags of the QGraphicsTextItem.
 			# (after a google search)
-			self.emit(qt.SIGNAL("itemSelected(QGraphicsItem)"), item)
-#			if not isinstance(item, qt.QGraphicsTextItem.__class__):
-#				self.emit(qt.SIGNAL("itemSelected(QGraphicsItem)"), item)
+			self.emit(SIGNAL("itemSelected(QGraphicsItem)"), item)
+#			if not isinstance(item, QGraphicsTextItem.__class__):
+#				self.emit(SIGNAL("itemSelected(QGraphicsItem)"), item)
 
 	def wheelEvent(self, wheelEvent):
-		if not (wheelEvent.modifiers() & qt.Qt.ControlModifier):
-			return qt.QGraphicsView.wheelEvent(self, wheelEvent)
+		if not (wheelEvent.modifiers() & Qt.ControlModifier):
+			return QGraphicsView.wheelEvent(self, wheelEvent)
 		delta = wheelEvent.delta()
 		if delta > 0:
 			self.scale(1.5, 1.5)
@@ -678,7 +692,7 @@ class WVisualTestCaseView(WClickableGraphicsView):
 		Notice that control- and ats-level logs are not displayed in this widget
 		since we only focus on TestCases.
 		"""
-		self.connect(self, qt.SIGNAL('itemSelected(QGraphicsItem)'), self.onGraphicsItemSelected)
+		self.connect(self, SIGNAL('itemSelected(QGraphicsItem)'), self.onGraphicsItemSelected)
 		# A local testCaseScene is needed to avoid a GC if we only do self.setScene(TestCaseScene())
 		self.testCaseScene = TestCaseScene()
 		self.setScene(self.testCaseScene)
@@ -701,9 +715,9 @@ class WVisualTestCaseView(WClickableGraphicsView):
 				message = item.myData(0)
 			template = item.myData(1)
 			if template:
-				self.emit(qt.SIGNAL("templateMatchSelected(QDomElement, QDomElement)"), message, template)
+				self.emit(SIGNAL("templateMatchSelected(QDomElement, QDomElement)"), message, template)
 			else:
-				self.emit(qt.SIGNAL("messageSelected(QDomElement)"), message)
+				self.emit(SIGNAL("messageSelected(QDomElement)"), message)
 		except:
 			pass
 

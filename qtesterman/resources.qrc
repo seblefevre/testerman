@@ -5,20 +5,25 @@ pyrcc4 resources.qrc -o Resources.py
 -->
 	<!-- main application icons -->
 	<file alias="testerman.png">resources/semn.png</file>
+
+	<!-- server status -->
+	<file alias="server-ok">resources/user-online.png</file>
+	<file alias="server-warning">resources/warning.png</file>
+	<file alias="server-error">resources/window-close.png</file>
 	
 	<!-- browsers -->
 	<file alias="browser.png">resources/view-sidetree.png</file>
-	<file alias="ats.png">resources/application-x-m4.png</file>
-	<file alias="campaign.png">resources/folder-yellow.png</file>
-	<file alias="folder.png">resources/folder.png</file>
-	<file alias="log.png">resources/text-x-log.png</file>
-	<file alias="execution-log.png">resources/go-next-page.png</file>
-	<file alias="module.png">resources/text-x-python.png</file>
-	<file alias="archive.png">resources/application-x-archive.png</file>
-	<file alias="folder-archive.png">resources/folder-tar.png</file>
+	<file alias="ats">resources/application-x-m4.png</file>
+	<file alias="campaign">resources/folder-yellow.png</file>
+	<file alias="folder">resources/folder.png</file>
+	<file alias="execution-log">resources/go-next-page.png</file>
+	<file alias="module">resources/text-x-python.png</file>
+	<file alias="archive">resources/application-x-archive.png</file>
+	<file alias="revision">resources/document-open-recent.png</file>
 	<file alias="unknown.png">resources/x-office-document.png</file>
+	<file alias="folder-archive.png">resources/folder-tar.png</file>
 	<file alias="folder-virtual.png">resources/view-process-all.png</file>
-	<file alias="revision.png">resources/document-open-recent.png</file>
+	<file alias="log.png">resources/text-x-log.png</file>
 	
 	<!-- addons -->
 	<file alias="multiple-files.png">resources/document-multiple.png</file>
@@ -72,6 +77,17 @@ pyrcc4 resources.qrc -o Resources.py
 	<file alias="probe-manager.png">resources/view-process-all.png</file>
 	<file alias="agent.png">resources/user-offline.png</file>
 
+	<!-- outline -->
+	<file alias="testcase">resources/run.png</file>
+	<file alias="function">resources/arrow-right.png</file>
+	<file alias="method">resources/arrow-right-double.png</file>
+	<file alias="class">resources/view-process-all-tree.png</file>
+	<file alias="outline-view">resources/view-sidetree.png</file>
+
+</qresource>
+
+<qresource prefix="animations">
+	<file alias="loading-subtree">resources/animated-loading-grey.gif</file>
 </qresource>
 
 <qresource prefix="images">

@@ -1,11 +1,24 @@
-##
 # -*- coding: utf-8 -*-
-# Templates instance creator for editors
+##
+# This file is part of Testerman, a test automation system.
+# Copyright (c) 2009 QTesterman contributors
 #
-# $Id: TemplateManager.py,v 1.1 2008/11/26 16:24:26 dduquen Exp $
+# This program is free software; you can redistribute it and/or modify it under
+# the terms of the GNU General Public License as published by the Free Software
+# Foundation; either version 2 of the License, or (at your option) any later
+# version.
+# This program is distributed in the hope that it will be useful, but WITHOUT
+# ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
+# FOR A PARTICULAR PURPOSE.  See the GNU General Public License for more
+# details.
 ##
 
-import PyQt4.Qt as qt
+##
+# Templates instance creator for editors
+#
+##
+
+from PyQt4.Qt import *
 
 from Base import *
 
@@ -53,12 +66,12 @@ def xmlNodeToPythonStruct(node):
 	else:
 		return ("unsupported", node.nodeValue)
 
-class WTemplateInstanceCreationDialog(qt.QDialog):
+class WTemplateInstanceCreationDialog(QDialog):
 	"""
 	Form generated using template parameters
 	"""
 	def __init__(self, variables, templateName, templateDescription, parent = None):
-		qt.QDialog.__init__(self, parent)
+		QDialog.__init__(self, parent)
 		self.variables = variables
 		self.title = templateName
 		self.templateDescription = templateDescription
@@ -66,27 +79,27 @@ class WTemplateInstanceCreationDialog(qt.QDialog):
 
 	def __createWidgets(self):
 		self.setWindowTitle("Template writer - %s" % self.title)
-		layout = qt.QVBoxLayout()
+		layout = QVBoxLayout()
 		if self.templateDescription != "":
-			layout.addWidget(qt.QLabel(self.templateDescription))
+			layout.addWidget(QLabel(self.templateDescription))
 
-		variablesLayout = qt.QGridLayout()
+		variablesLayout = QGridLayout()
 		self.lineEdits = {}
 		i = 0
 		for variable in self.variables:
-			variablesLayout.addWidget(qt.QLabel(variable.name + (' * ' * int(variable.mandatory)) + ':'), i, 0)
-			self.lineEdits[variable.name] = qt.QLineEdit(variable.default)
+			variablesLayout.addWidget(QLabel(variable.name + (' * ' * int(variable.mandatory)) + ':'), i, 0)
+			self.lineEdits[variable.name] = QLineEdit(variable.default)
 			self.lineEdits[variable.name].setToolTip(variable.description)
 			variablesLayout.addWidget(self.lineEdits[variable.name], i, 1)
 			i += 1
 		layout.addLayout(variablesLayout)
 
 		# Buttons
-		self.okButton = qt.QPushButton("Ok")
-		self.connect(self.okButton, qt.SIGNAL("clicked()"), self.accept)
-		self.cancelButton = qt.QPushButton("Cancel")
-		self.connect(self.cancelButton, qt.SIGNAL("clicked()"), self.reject)
-		buttonLayout = qt.QHBoxLayout()
+		self.okButton = QPushButton("Ok")
+		self.connect(self.okButton, SIGNAL("clicked()"), self.accept)
+		self.cancelButton = QPushButton("Cancel")
+		self.connect(self.cancelButton, SIGNAL("clicked()"), self.reject)
+		buttonLayout = QHBoxLayout()
 		buttonLayout.addStretch()
 		buttonLayout.addWidget(self.okButton)
 		buttonLayout.addWidget(self.cancelButton)
@@ -99,9 +112,9 @@ class WTemplateInstanceCreationDialog(qt.QDialog):
 			if variable.mandatory and self.lineEdits[variable.name].text() == "":
 				notFilledMandatories.append(variable.name)
 		if len(notFilledMandatories) == 0:
-			qt.QDialog.accept(self)
+			QDialog.accept(self)
 		else:
-			qt.QMessageBox.information(self, getClientName(), "Please fill these field(s) : %s" % (", ".join(notFilledMandatories)))
+			QMessageBox.information(self, getClientName(), "Please fill these field(s) : %s" % (", ".join(notFilledMandatories)))
 
 	def getVariablesValues(self):
 		ret = {}
@@ -119,12 +132,12 @@ class TemplateWriterParam:
 		self.default = default
 		self.mandatory = mandatory
 
-class TemplateWriter(qt.QObject):
+class TemplateWriter(QObject):
 	"""
 	Manage a template, create its parameters window and generates resulting code
 	"""
 	def __init__(self, name, description = None, shortcut = None, xmlFile = "", params = [], content= [], parent = None):
-		qt.QObject.__init__(self, parent)
+		QObject.__init__(self, parent)
 		self.name = name
 		self.description = description
 		self.shortcut = shortcut
@@ -167,12 +180,12 @@ class TemplateWriter(qt.QObject):
 				return True
 		return False
 
-class TemplateManager(qt.QObject):
+class TemplateManager(QObject):
 	"""
 	Creates templateWriters from one or many xml files
 	"""
 	def __init__(self, xmlFiles, parent = None):
-		qt.QObject.__init__(self, parent)
+		QObject.__init__(self, parent)
 		self.templates = []
 		for xmlFile in xmlFiles:
 			self.xmlContent = None

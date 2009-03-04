@@ -1,11 +1,25 @@
-##
 # -*- coding: utf-8 -*-
+##
+# This file is part of Testerman, a test automation system.
+# Copyright (c) 2009 QTesterman contributors
+#
+# This program is free software; you can redistribute it and/or modify it under
+# the terms of the GNU General Public License as published by the Free Software
+# Foundation; either version 2 of the License, or (at your option) any later
+# version.
+# This program is distributed in the hope that it will be useful, but WITHOUT
+# ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
+# FOR A PARTICULAR PURPOSE.  See the GNU General Public License for more
+# details.
+##
+
+##
 # A plugin to create Testerman-compliant resources
 # from a file (either binary or text)
 #
 ##
 
-import PyQt4.Qt as qt
+from PyQt4.Qt import *
 
 import os
 import base64
@@ -103,7 +117,7 @@ def generateResource(filename, name, mode):
 	return ret
 
 # Resource creation dialog
-class WResourceCreationDialog(qt.QDialog):
+class WResourceCreationDialog(QDialog):
 	"""
 	Resource creation dialog.
 	
@@ -113,54 +127,54 @@ class WResourceCreationDialog(qt.QDialog):
 	
 	"""
 	def __init__(self, parent = None):
-		qt.QDialog.__init__(self, parent)
+		QDialog.__init__(self, parent)
 		self.__createWidgets()
 
 	def __createWidgets(self):
-		layout = qt.QVBoxLayout()
+		layout = QVBoxLayout()
 
-		layout.addWidget(qt.QLabel("File to embed:"))
+		layout.addWidget(QLabel("File to embed:"))
 
-		fileLayout = qt.QHBoxLayout()
-		self.filenameLineEdit = qt.QLineEdit()
+		fileLayout = QHBoxLayout()
+		self.filenameLineEdit = QLineEdit()
 		self.filenameLineEdit.setMinimumWidth(150)
-		self.browseButton = qt.QPushButton("...")
-		self.connect(self.browseButton, qt.SIGNAL('clicked()'), self.browseFile)
+		self.browseButton = QPushButton("...")
+		self.connect(self.browseButton, SIGNAL('clicked()'), self.browseFile)
 		fileLayout.addWidget(self.filenameLineEdit)
 		fileLayout.addWidget(self.browseButton)
 		
 		layout.addLayout(fileLayout)
 		
-		layout.addWidget(qt.QLabel("Resource Name/ID:"))
-		self.resourceNameLineEdit = qt.QLineEdit()
+		layout.addWidget(QLabel("Resource Name/ID:"))
+		self.resourceNameLineEdit = QLineEdit()
 		layout.addWidget(self.resourceNameLineEdit)
 		
-		bin = qt.QRadioButton("binary (raw)")
-		b64 = qt.QRadioButton("base64")
-		ascii = qt.QRadioButton("ascii")
-#		utf8 = qt.QRadioButton("utf-8")
+		bin = QRadioButton("binary (raw)")
+		b64 = QRadioButton("base64")
+		ascii = QRadioButton("ascii")
+#		utf8 = QRadioButton("utf-8")
 		bin.setChecked(True)
-		self.typeButtonGroup = qt.QButtonGroup()
+		self.typeButtonGroup = QButtonGroup()
 		self.typeButtonGroup.addButton(bin, 0)
 		self.typeButtonGroup.addButton(ascii, 1)
 #		self.typeButtonGroup.addButton(utf8, 2)
 		self.typeButtonGroup.addButton(b64, 3)
-		typeButtonLayout = qt.QVBoxLayout()
+		typeButtonLayout = QVBoxLayout()
 		typeButtonLayout.addWidget(bin)
 		typeButtonLayout.addWidget(b64)
 		typeButtonLayout.addWidget(ascii)
 #		typeButtonLayout.addWidget(utf8)
-		typeGroupBox = qt.QGroupBox("Embedding format")
+		typeGroupBox = QGroupBox("Embedding format")
 		typeGroupBox.setLayout(typeButtonLayout)
 		
 		layout.addWidget(typeGroupBox)
 
 		# Buttons
-		self.okButton = qt.QPushButton("Ok")
-		self.connect(self.okButton, qt.SIGNAL("clicked()"), self.accept)
-		self.cancelButton = qt.QPushButton("Cancel")
-		self.connect(self.cancelButton, qt.SIGNAL("clicked()"), self.reject)
-		buttonLayout = qt.QHBoxLayout()
+		self.okButton = QPushButton("Ok")
+		self.connect(self.okButton, SIGNAL("clicked()"), self.accept)
+		self.cancelButton = QPushButton("Cancel")
+		self.connect(self.cancelButton, SIGNAL("clicked()"), self.reject)
+		buttonLayout = QHBoxLayout()
 		buttonLayout.addStretch()
 		buttonLayout.addWidget(self.okButton)
 		buttonLayout.addWidget(self.cancelButton)
@@ -169,7 +183,7 @@ class WResourceCreationDialog(qt.QDialog):
 		self.setLayout(layout)
 
 	def browseFile(self):
-		filename = qt.QFileDialog.getOpenFileName(self, "Resource filename", self.filenameLineEdit.text())
+		filename = QFileDialog.getOpenFileName(self, "Resource filename", self.filenameLineEdit.text())
 		if not filename.isEmpty():
 			self.filenameLineEdit.setText(os.path.normpath(unicode(filename)))
 		
@@ -210,9 +224,9 @@ class WResourceCodeWriterConfiguration(Plugin.WPluginConfiguration):
 		"""
 		The model is in the saved settings.
 		"""
-		layout = qt.QVBoxLayout()
-		paramLayout = qt.QGridLayout()
-#		paramLayout.addWidget(qt.QLabel("Templates file path:"), 0, 0)
+		layout = QVBoxLayout()
+		paramLayout = QGridLayout()
+#		paramLayout.addWidget(QLabel("Templates file path:"), 0, 0)
 #		paramLayout.addWidget(self.templatesPathLineEdit, 0, 1)
 		layout.addLayout(paramLayout)
 
@@ -221,14 +235,14 @@ class WResourceCodeWriterConfiguration(Plugin.WPluginConfiguration):
 	def displayConfiguration(self):
 		path = "plugins/%s" % PLUGIN_ID
 		# Read the settings
-		settings = qt.QSettings()
+		settings = QSettings()
 		# No settings to read for now
 
 	def saveConfiguration(self):
 		"""
 		Update the data model.
 		"""
-		settings = qt.QSettings()
+		settings = QSettings()
 		path = "plugins/%s" % PLUGIN_ID
 		# No settings to save for now
 		return True

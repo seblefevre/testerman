@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 ##
 # This file is part of Testerman, a test automation system.
 # Copyright (c) 2008-2009 Sebastien Lefevre and other contributors
@@ -13,7 +14,6 @@
 ##
 
 ##
-# -*- coding: utf-8 -*-
 # Job manager: main job management widget (state, control).
 # Calls log viewers when needed.
 #
@@ -36,9 +36,11 @@ class ViewController(QObject):
 	"""
 	def __init__(self, parent = None):
 		QObject.__init__(self, parent)
+		
 	
 	def addView(self, view):
 		self.connect(view, SIGNAL('showLog(int)'), self.showLog)
+		self.connect(QApplication.instance(), SIGNAL('testermanServerUpdated(QUrl)'), view.refresh)
 	
 	def showLog(self, jobId):
 		"""

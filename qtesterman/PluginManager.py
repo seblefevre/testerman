@@ -1,14 +1,26 @@
-##
 # -*- coding: utf-8 -*-
+##
+# This file is part of Testerman, a test automation system.
+# Copyright (c) 2009 QTesterman contributors
 #
+# This program is free software; you can redistribute it and/or modify it under
+# the terms of the GNU General Public License as published by the Free Software
+# Foundation; either version 2 of the License, or (at your option) any later
+# version.
+# This program is distributed in the hope that it will be useful, but WITHOUT
+# ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
+# FOR A PARTICULAR PURPOSE.  See the GNU General Public License for more
+# details.
+##
+
+##
 # An interface to qtesterman plugins.
 #
 # Provides everything to instantiate and register plugin classes.
 #
-# $Id$
 ##
 
-import PyQt4.Qt as qt
+from PyQt4.Qt import *
 
 import sys
 import os
@@ -68,7 +80,7 @@ def scanPlugins():
 	"""
 	# Get the absolute plugin path, regarless from where qtesterman was called.
 	# We assume that this PluginManager module is in the qtesterman dir.
-	qtestermanpath = qt.QApplication.instance().get('qtestermanpath')
+	qtestermanpath = QApplication.instance().get('qtestermanpath')
 	path = qtestermanpath + "/plugins"
 	# We also make sure that plugins can access to basic qtesterman modules, regardless of the
 	# current working dir and the way we invoked qtesterman.py
@@ -105,8 +117,8 @@ def getPluginClass(pluginId):
 	if PluginClasses.has_key(pluginId):
 		ret = PluginClasses[pluginId]
 		# Add	activation status
-		settings = qt.QSettings()
-		ret['activated'] = settings.value('plugins/activated/' + ret['plugin-id'], qt.QVariant(True)).toBool()
+		settings = QSettings()
+		ret['activated'] = settings.value('plugins/activated/' + ret['plugin-id'], QVariant(True)).toBool()
 		return ret
 	return None
 
@@ -123,9 +135,9 @@ def getPluginClasses(pluginType = None):
 		ret = filter(lambda x: x['type'] == pluginType, ret)
 
 	# Add	activation status
-	settings = qt.QSettings()
+	settings = QSettings()
 	for p in ret:
-		p['activated'] = settings.value('plugins/activated/' + p['plugin-id'], qt.QVariant(True)).toBool()
+		p['activated'] = settings.value('plugins/activated/' + p['plugin-id'], QVariant(True)).toBool()
 	
 	ret.sort()
 	return ret

@@ -39,6 +39,7 @@ import EventMonitor
 import RemoteBrowsers
 import DocumentPropertyEditor
 import PluginManager
+import OutlineView
 
 
 # Editors contains a reference to QScintilla.
@@ -50,20 +51,50 @@ except Exception, e:
 	log(str(e))
 	pass
 
+class QTestermanClient(QObject, TestermanClient.Client):
+	"""
+	QObjectization of a TestermanClient.Client class.
+	Emits signals when connected/disconnected from Xc interface.
+	"""
+	def __init__(self, userAgent, serverUrl, parent = None):
+		QObject.__init__(self, parent)
+		TestermanClient.Client.__init__(self, "qtesterman", "QTesterman/" + getClientVersion(), serverUrl)
+	
+	def onConnection(self, channel):
+		"""
+		Reimplemented from TestermanClient.Client
+		"""
+		TestermanClient.Client.onConnection(self, channel)
+		self.emit(SIGNAL("xcConnected()"))
+
+	def onDisconnection(self, channel):
+		"""
+		Reimplemented from TestermanClient.Client
+		"""
+		TestermanClient.Client.onDisconnection(self, channel)
+		self.emit(SIGNAL("xcDisconnected()"))
+	
+
 ################################################################################
 # Specialized QApplication
 ################################################################################
 
-class TestermanClientApplication(QApplication):
+class QTestermanApplication(QApplication):
 	"""
-	TestermanClient application: a QApplication with;
-	- some minor addons:
-	 - application-wide variable managements (get/set)
-	 - icon proxy
-	- a method to get and set a Testerman URL.
+	TestermanClient application:
+	a QApplication that embeds a plain Python TestermanClient to offer
+	a more Qt-like interface,
+	and with additional addons:
+	- application-wide variable managements (get/set)
+	- icon proxy
+	
+	The Testerman-client facet provides:
+	- a way to switch server
+	- emit signals when the server has been updated, connected, disconnected
 	
 	emits:
-	testermanServerUpdated(QString url)
+	testermanServerUpdated(QUrl url)
+	testermanXcInterf
 	"""
 	def __init__(self, args):
 		QApplication.__init__(self, args)
@@ -74,10 +105,13 @@ class TestermanClientApplication(QApplication):
 		self.__iconsCache = {}
 		# The embedded testerman client
 		self.__testermanClient = None
+		self._username = None
+		self._xcConnected = False
 
 	def icon(self, resource):
 		"""
-		Gets a new icon. Retrieved from cache if the resource does not exist yet.
+		Gets a new icon. 
+		Retrieved from cache if the resource does not exist yet.
 
 		@type  resource: string/unicode
 		@param resource: the resource identifier ("resource:/....ico", etc)
@@ -90,41 +124,124 @@ class TestermanClientApplication(QApplication):
 		return self.__iconsCache[resource]
 
 	def get(self, key, default = None):
-		if self.__vars.has_key(key):
-			return self.__vars[key]
-		else:
-			return default
+		"""
+		Returns the value of an application variable.
+		@type  key: string
+		@param key: the name of the variable
+		
+		@rtype: object
+		@returns: the value associated to the variable, or the default
+		          value if not set.
+		"""
+		return self.__vars.get(key, default)
 
-	def set(self, key, val):
-		self.__vars[key] = val
+	def set(self, key, value):
+		"""
+		Sets an application variable.
+		
+		@type  key: string
+		@param key: the name of the variable
+		@type  value: object
+		@param value: the value to assign to the application variable
+		"""
+		self.__vars[key] = value
 
-	def getProxy(self):
+	def client(self):
+		"""
+		Returns the embedded TestermanClient.
+		@rtype: TestermanClient.Client instance
+		@returns: the embedded Testerman client.
+		"""
 		return self.__testermanClient
 
-	def setTestermanServer(self, url):
+	def setUsername(self, username):
 		"""
-		Sets the testerman server, prepares the proxy.
-
-		Returns True if the server has been updated. False otherwise.
-		"""
-		log("Setting Server to %s" % str(url))
-		if not url.startswith('http://'):
-			log("Invalid Testerman Server URL %s (must start with http://)" % url)
-			return False
-
-		self.set('ws.url', url)
-
-		if self.__testermanClient:
-			self.__testermanClient.stopXc()
-			self.__testermanClient = None
-
-		self.__testermanClient = TestermanClient.Client("qtesterman", "QTesterman/" + getClientVersion(), serverUrl = url)
-		self.__testermanClient.startXc()
+		Sets the username to use for Testerman server interactions.
 		
-		# Let's emit our signal
-		self.emit(SIGNAL('testermanServerUpdated(QString)'), QString(url))
+		@type  username: QString
+		@param username: the username
+		"""
+		self._username = username
 
-		return True
+	def username(self):
+		"""
+		@rtype: QString
+		@returns: the current username for the session
+		"""
+		return self._username
+
+	def getServerUrl(self):
+		"""
+		Returns the current server URL.
+		
+		@rtype: QUrl
+		@returns: the curent server URL
+		"""
+		return self.get('server.url', None)
+		
+	def setServerUrl(self, url):
+		"""
+		Sets the Testerman server, url.
+		Automatically tries to connect to its Xc interface.
+		
+		@type  url: QUrl
+		@param url: the new server url
+		
+		If the new url is the same as the current one, a reconnection occurs.
+		
+		emit:
+		testermanServerUpdated(QUrl url)
+
+		You should expect a xcConnectionUpdated(QString state) signal regarding
+		the Xc interface.
+		"""
+		log("Setting Server to %s" % url.toString())
+		
+		self.set('server.url', url)
+
+		# Translated to string, for the plain underlying Python TestermanClient.Client class
+		serverUrl = "http://%s:%s" % (url.host(), url.port(8080))
+
+		if not self.__testermanClient:
+			self.__testermanClient = QTestermanClient("QTesterman/" + getClientVersion(), serverUrl = serverUrl, parent = self)
+			self.connect(self.__testermanClient, SIGNAL("xcConnected()"), self.onXcConnected)
+			self.connect(self.__testermanClient, SIGNAL("xcDisconnected()"), self.onXcDisconnected)
+		else:	
+			self.__testermanClient.stopXc()
+			self.__testermanClient.setServerUrl(serverUrl)
+
+		# Reference this last used url in persistent settings
+		settings = QSettings()		
+		lasturl = settings.setValue('connection/lasturl', QVariant(url.toString()))
+
+		# Let's emit our signal
+		self.emit(SIGNAL('testermanServerUpdated(QUrl)'), url)
+
+		# Finally, starts the Xc interface
+		ret = self.__testermanClient.startXc()
+		if not ret:
+			self.emit(SIGNAL('testermanConnectionError()'))
+		else:
+			self.emit(SIGNAL('testermanConnectionValidated()'))
+
+	def onXcConnected(self):
+		"""
+		Forwards the signal as a higher-level signal.
+		"""
+		self.emit(SIGNAL('testermanXcConnected()'))
+		log("Connected to Xc")
+		self._xcConnected = True
+	
+	def onXcDisconnected(self):
+		"""
+		Forwards the signal as a higher-level signal.
+		"""
+		self.emit(SIGNAL('testermanXcDisconnected()'))
+		log("Disconnected from Xc")
+		self._xcConnected = False
+	
+	def isXcConnected(self):
+		return self._xcConnected
 
 ################################################################################
 # About Dialog
@@ -200,7 +317,7 @@ class WConnectionDialog(QDialog):
 		layout = QVBoxLayout()
 		layout.setMargin(0)
 
-		# A Splash image
+		# A Banner
 		splash = QLabel()
 		pixmap = QPixmap(":images/splash-banner.png")#.scaled(QSize(500, 300), Qt.IgnoreAspectRatio, Qt.SmoothTransformation)
 		splash.setPixmap(pixmap)
@@ -232,31 +349,147 @@ class WConnectionDialog(QDialog):
 			self.connectionSettings.updateModel()
 			QDialog.accept(self)
 
+
+################################################################################
+# Server Status Widget
+################################################################################
+
+class WServerStatusIndicator(QWidget):
+	"""
+	This widget displays a visual indicator regarding the server connection
+	(Xc interface + basic Ws status).
+	Enables fast server switching, too.
+	
+	The status is 3-state:
+	- error: Ws interface failed. The server was not reachable at the time we switched to it.
+	- warning: Xc interface not connected. We keep retrying to connect to it. 
+	  In the meanwhile, real time logs and notifications won't be available.
+	- ok: Xc interface up and running. This implies Ws is OK, too.
+	
+	Valid transitions:
+	error -> ok
+	warning -> error
+	warning -> ok (Xc recovered)
+	ok -> warning (Xc dropped)
+	
+	In particular, error -> warning is not possible.
+	FIXME: we should manage a "Ws connection state" correctly, with regular retries if needed.
+	Going from error to warning is quite possible when rediscovering a server that
+	announces an Xc address that is still not reachable from the client (or due to firewalls).
+	TODO: embed this Ws state management within the TestermanClient.Client, QTestermanClient,
+	or QTestermanApplication
+
+	
+	NB: for now, the TestermanClient does not pool for Ws link check regularly.
+	That's why we won't go from error to ok or warning without an explicit resynchronisation
+	attempt by the user.
+	"""
+	def __init__(self, parent = None):
+		QWidget.__init__(self, parent)
+		# A label with the server url,
+		# an icon indicating the status (connected/disconnected/reconnecting...)
+
+		layout = QHBoxLayout()
+		layout.setMargin(0)
+				
+		self._okPixmap = QApplication.instance().icon(':icons/server-ok').pixmap(16)
+		self._warningPixmap = QApplication.instance().icon(':icons/server-warning').pixmap(16)
+		self._errorPixmap = QApplication.instance().icon(':icons/server-error').pixmap(16)
+
+		self._state = None
+
+		self._statusLabel = QLabel(self)
+		layout.addWidget(self._statusLabel)
+		self.setLayout(layout)
+
+		self.setContextMenuPolicy(Qt.DefaultContextMenu)
+		
+		self.connect(QApplication.instance(), SIGNAL('testermanXcConnected()'), self.onConnected)
+		self.connect(QApplication.instance(), SIGNAL('testermanXcDisconnected()'), self.onDisconnected)
+		self.connect(QApplication.instance(), SIGNAL('testermanServerUpdated(QUrl)'), self.onServerUpdated)
+		self.connect(QApplication.instance(), SIGNAL('testermanConnectionError()'), self.onServerError)
+		
+		self.synchronizeOnServerStatus()
+	
+	def onServerUpdated(self, url):
+		self._statusLabel.setToolTip("Current server: %s" % url.toString())
+	
+	def onConnected(self):
+		self._statusLabel.setPixmap(self._okPixmap)
+		self._state = 'ok'
+
+	def onDisconnected(self):
+		if self._state in [ 'ok' ]:
+			self._state = 'warning'
+			self._statusLabel.setPixmap(self._warningPixmap)
+
+	def onServerError(self):
+		self._state = 'error'
+		self._statusLabel.setPixmap(self._errorPixmap)
+		
+	def synchronizeOnServerStatus(self):
+		if QApplication.instance().isXcConnected():
+			self.onConnected()
+		else:
+			self.onDisconnected()
+		self.onServerUpdated(QApplication.instance().getServerUrl())
+
+	def contextMenuEvent(self, event):
+		"""
+		Displays a fast server switching menu.
+		"""
+		menu = QMenu(self)
+		fastSwitchMenu = menu.addMenu("Switch to server")
+	
+		currentUrl = QApplication.instance().getServerUrl()
+		# Current known servers
+		settings = QSettings()
+		urllist = settings.value('connection/urllist', QVariant(QStringList(QString('http://localhost:8080')))).toStringList()
+		for stringUrl in urllist:
+			url = QUrl(stringUrl)
+			if url != currentUrl:
+				fastSwitchMenu.addAction(stringUrl, lambda url=url: QApplication.instance().setServerUrl(url))
+
+		# View resynchronizations (normally automatic once reconnected)
+		menu.addAction("Resynchronize", lambda: QApplication.instance().setServerUrl(currentUrl))
+		menu.popup(event.globalPos())
+		
+
 ################################################################################
 # Main window, with docks support
 ################################################################################
 
 class WMainStatusBar(QStatusBar):
+	"""
+	The status bar contains several section:
+	- the default one, for information messages
+	- the current file location (url)
+	- the current cursor position (line col)
+	- the server status
+	
+	"""
 	def __init__(self, parent = None):
 		QStatusBar.__init__(self, parent)
 		self.__createWidgets()
 
 	def __createWidgets(self):
-		self.fileLocation = QLabel(self)
-		self.fileLocation.setMargin(4)
-		self.addPermanentWidget(self.fileLocation)
-		self.lineColLabel = QLabel(self)
-		self.lineColLabel.setMargin(2)
-		self.addPermanentWidget(self.lineColLabel)
+		self._fileLocation = QLabel(self)
+		self._fileLocation.setMargin(4)
+		self.addPermanentWidget(self._fileLocation)
+		self._lineColLabel = QLabel(self)
+		self._lineColLabel.setMargin(2)
+		self.addPermanentWidget(self._lineColLabel)
+		self._serverStatusIndicator = WServerStatusIndicator(self)
+		self.addPermanentWidget(self._serverStatusIndicator)
 
 	def setLineCol(self, line, col):
-		self.lineColLabel.setText("line %d col %d" % (line, col))
+		self._lineColLabel.setText("l:%d c:%d" % (line, col))
 
 	def setFileLocation(self, url):
 		if url:
-			self.fileLocation.setText(url.toString())
+			self._fileLocation.setText(url.toString())
 		else:
-			self.fileLocation.setText('(never saved yet)')
+			self._fileLocation.setText('(never saved yet)')
 
 
 class WMainWindow(QMainWindow):
@@ -350,46 +583,57 @@ class WMainWindow(QMainWindow):
 		return somethingReopened
 
 	def __createWidgets(self):
-		# The central things
-		self.emit(SIGNAL("nextInitializationStep(QString&)"), QString("Initializing main window..."))
-		self.setWindowTitle(getClientName() + ' ' + getClientVersion())
-		self.setWindowIcon(icon(':/icons/testerman.png'))
+		try:
+			# The central things
+			self.emit(SIGNAL("nextInitializationStep(QString&)"), QString("Initializing main window..."))
+			self.setWindowTitle(getClientName() + ' ' + getClientVersion())
+			self.setWindowIcon(icon(':/icons/testerman.png'))
 
-		self.emit(SIGNAL("nextInitializationStep(QString&)"), QString("Initializing document manager..."))
-		self.documentManager = Editors.WDocumentManager(self)
-		self.setCentralWidget(self.documentManager)
+			self.emit(SIGNAL("nextInitializationStep(QString&)"), QString("Initializing document manager..."))
+			self.documentManager = Editors.WDocumentManager(self)
+			self.setCentralWidget(self.documentManager)
 
-		# Acceptable docks
-#		self.emit(SIGNAL("nextInitializationStep(QString&)"), QString("Initializing event monitoring manager..."))
-#		self.eventMonitorDock = EventMonitor.WEventMonitorDock(self)
-#		self.eventMonitorDock.setObjectName("eventMonitorDock")
-#		self.addDockWidget(Qt.BottomDockWidgetArea, self.eventMonitorDock)
+			# Acceptable docks
+	#		self.emit(SIGNAL("nextInitializationStep(QString&)"), QString("Initializing event monitoring manager..."))
+	#		self.eventMonitorDock = EventMonitor.WEventMonitorDock(self)
+	#		self.eventMonitorDock.setObjectName("eventMonitorDock")
+	#		self.addDockWidget(Qt.BottomDockWidgetArea, self.eventMonitorDock)
 
-		self.emit(SIGNAL("nextInitializationStep(QString&)"), QString("Initializing remote browsers..."))
-		self.repositoryBrowserDock = RemoteBrowsers.WRepositoryBrowsingDock(self)
-		self.repositoryBrowserDock.setObjectName("repositoryBrowserDock")
-		self.addDockWidget(Qt.LeftDockWidgetArea, self.repositoryBrowserDock)
+			self.emit(SIGNAL("nextInitializationStep(QString&)"), QString("Initializing remote browsers..."))
+			self.repositoryBrowserDock = RemoteBrowsers.WRepositoryBrowsingDock(self)
+			self.repositoryBrowserDock.setObjectName("repositoryBrowserDock")
+			self.addDockWidget(Qt.LeftDockWidgetArea, self.repositoryBrowserDock)
 
-		self.emit(SIGNAL("nextInitializationStep(QString&)"), QString("Initializing property editor..."))
-		self.documentPropertyEditorDock = DocumentPropertyEditor.WDocumentPropertyEditorDock(self.documentManager.tab, self)
-		self.documentPropertyEditorDock.setObjectName("scriptPropertyEditorDock") # this scriptPropertyEditorDock name is kept for settings compatibility
-		self.addDockWidget(Qt.LeftDockWidgetArea, self.documentPropertyEditorDock)
+			self.emit(SIGNAL("nextInitializationStep(QString&)"), QString("Initializing property editor..."))
+			self.documentPropertyEditorDock = DocumentPropertyEditor.WDocumentPropertyEditorDock(self.documentManager.tab, self)
+			self.documentPropertyEditorDock.setObjectName("scriptPropertyEditorDock") # this scriptPropertyEditorDock name is kept for settings compatibility
+			self.addDockWidget(Qt.LeftDockWidgetArea, self.documentPropertyEditorDock)
 
-		self.emit(SIGNAL("nextInitializationStep(QString&)"), QString("Initializing job manager..."))
-		self.jobManagerDock = JobManager.WJobManagerDock(self)
-		self.jobManagerDock.setObjectName("jobManagerDock")
-		self.addDockWidget(Qt.RightDockWidgetArea, self.jobManagerDock)
+			self.emit(SIGNAL("nextInitializationStep(QString&)"), QString("Initializing job manager..."))
+			self.jobManagerDock = JobManager.WJobManagerDock(self)
+			self.jobManagerDock.setObjectName("jobManagerDock")
+			self.addDockWidget(Qt.RightDockWidgetArea, self.jobManagerDock)
 
-		self.emit(SIGNAL("nextInitializationStep(QString&)"), QString("Initializing probe manager..."))
-		self.probeManagerDock = ProbeManager.WProbeManagerDock(self)
-		self.probeManagerDock.setObjectName("probeManagerDock")
-		self.addDockWidget(Qt.RightDockWidgetArea, self.probeManagerDock)
+			self.emit(SIGNAL("nextInitializationStep(QString&)"), QString("Initializing probe manager..."))
+			self.probeManagerDock = ProbeManager.WProbeManagerDock(self)
+			self.probeManagerDock.setObjectName("probeManagerDock")
+			self.addDockWidget(Qt.RightDockWidgetArea, self.probeManagerDock)
 
-		# Status bar
-		self.statusBar = WMainStatusBar()
-		self.setStatusBar(self.statusBar)
-		QApplication.instance().set("gui.statusbar", self.statusBar)
-		self.statusBar.showMessage("Welcome to Testerman.", 5000)
+			self.emit(SIGNAL("nextInitializationStep(QString&)"), QString("Initializing outline view..."))
+			self.outlineViewDock = OutlineView.WOutlineViewDock(self.documentManager.tab, self)
+			self.outlineViewDock.setObjectName("outlineViewDock")
+			self.addDockWidget(Qt.RightDockWidgetArea, self.outlineViewDock)
+			QApplication.instance().set("gui.outlineview", self.outlineViewDock.getOutlineView())
+
+			# Status bar
+			self.statusBar = WMainStatusBar()
+			self.setStatusBar(self.statusBar)
+			QApplication.instance().set("gui.statusbar", self.statusBar)
+			self.statusBar.showMessage("Welcome to Testerman.", 5000)
+		except Exception, e:
+			log("Warning: unable to create a widget: %s" % str(e))
+			import TestermanNodes
+			log(TestermanNodes.getBacktrace())
 
 	def createActions(self):
 		"""
@@ -436,6 +680,10 @@ class WMainWindow(QMainWindow):
 		self.toggleProbeManagerWindowAction.setShortcut("Ctrl+Shift+M")
 		self.toggleProbeManagerWindowAction.setIcon(icon(':/icons/probe-manager.png'))
 		self.toggleProbeManagerWindowAction.setToolTip("Show/hide probe manager")
+		self.toggleOutlineWindowAction = self.outlineViewDock.toggleViewAction()
+		self.toggleOutlineWindowAction.setShortcut("Ctrl+Shift+O")
+		self.toggleOutlineWindowAction.setIcon(icon(':/icons/outline-view'))
+		self.toggleOutlineWindowAction.setToolTip("Show/hide outline")
 
 		self.toggleFullScreenAction = TestermanAction(self, "&Toggle Full Screen mode", self.toggleFullScreen, "Toggle Full Screen mode")
 		self.toggleFullScreenAction.setShortcut("Ctrl+Shift+F")
@@ -469,6 +717,7 @@ class WMainWindow(QMainWindow):
 		self.windowToolBar.addAction(self.toggleRepositoryWindowAction)
 		self.windowToolBar.addAction(self.toggleDocumentPropertyWindowAction)
 		self.windowToolBar.addAction(self.toggleProbeManagerWindowAction)
+		self.windowToolBar.addAction(self.toggleOutlineWindowAction)
 
 		self.toggleWindowToolBarAction = self.windowToolBar.toggleViewAction()
 
@@ -550,8 +799,8 @@ class WMainWindow(QMainWindow):
 		"""
 		Some confirmation before actually quitting.
 		"""
-		if QApplication.instance().getProxy():
-			QApplication.instance().getProxy().stopXc()
+		if QApplication.instance().client():
+			QApplication.instance().client().stopXc()
 		QApplication.instance().closeAllWindows()
 
 	def closeEvent(self, event):
@@ -566,7 +815,7 @@ class WMainWindow(QMainWindow):
 					event.ignore()
 					return
 		self.writeSettings()
-		getProxy().finalize()
+		QApplication.instance().client().finalize()
 		event.accept()
 
 	def readSettings(self):
@@ -635,16 +884,19 @@ class WMainWindow(QMainWindow):
 		- if force = False, show it only if it was not acknoledged before, and
 		  propose to ack it.
 		"""
-		motd = "/components/MOTD"
-		content = getProxy().getFile(motd)
-		if not content:
-			return
-		info = getProxy().getFileInfo(motd)
-		if not info:
+		motd = "/MOTD"
+		try:
+			content = QApplication.instance().client().getFile(motd)
+			info = QApplication.instance().client().getFileInfo(motd)
+		except:
+			content = None
+			info = None
+		
+		if (content is None) or not info:
 			return
 
 		if force:
-			# Display the file
+			# Display the file without condition
 			dialog = WMessageOfTheDayDialog(content, displayCheckBox = False, parent = self)
 			dialog.exec_()
 		else:
@@ -736,7 +988,7 @@ Please install the appropriate package for your Linux/Unix distribution or downl
 	if acceptUnstableUpdates:
 		branches.append('testing')
 		branches.append('experimental')
-	if AutoUpdate.updateComponent(proxy = QApplication.instance().getProxy(), basepath = QApplication.instance().get('basepath'), component = "qtesterman", currentVersion = getClientVersion(), branches = branches):
+	if AutoUpdate.updateComponent(proxy = QApplication.instance().client(), basepath = QApplication.instance().get('basepath'), component = "qtesterman", currentVersion = getClientVersion(), branches = branches):
 		# Update done. Restart ?
 		AutoUpdate.Restarter.restart()
 	log("Updates checked.")
@@ -789,7 +1041,7 @@ def runLogAnalyzer(logFilename):
 def run():
 	AutoUpdate.Restarter.initialize()
 
-	app = TestermanClientApplication([])
+	app = QTestermanApplication([])
 
 	# Some basic initialization
 	app.set('interface.ex.sourceip', '0.0.0.0')

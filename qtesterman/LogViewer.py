@@ -1,9 +1,21 @@
-##
 # -*- coding: utf-8 -*-
+##
+# This file is part of Testerman, a test automation system.
+# Copyright (c) 2009 QTesterman contributors
 #
+# This program is free software; you can redistribute it and/or modify it under
+# the terms of the GNU General Public License as published by the Free Software
+# Foundation; either version 2 of the License, or (at your option) any later
+# version.
+# This program is distributed in the hope that it will be useful, but WITHOUT
+# ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
+# FOR A PARTICULAR PURPOSE.  See the GNU General Public License for more
+# details.
+##
+
+##
 # Log & events viewer widgets and associated stuff.
 #
-# $Id$
 ##
 
 from PyQt4.Qt import *
@@ -998,8 +1010,8 @@ class WTextualLogView(QTreeWidget):
 	def __init__(self, parent = None):
 		QTreeWidget.__init__(self, parent)
 		self.currentHiddenLogClasses = [ "internal", "discarded" ]
-		settings = qt.QSettings()
-		self.trackingActivated = settings.value('logs/autotracking', qt.QVariant(True)).toBool()
+		settings = QSettings()
+		self.trackingActivated = settings.value('logs/autotracking', QVariant(True)).toBool()
 		self.__createWidgets()
 		self.__createActions()
 

@@ -1,5 +1,5 @@
-##
 # -*- coding: utf-8 -*-
+##
 #
 # Remote browsers, triggering appropriate actions when needed.
 #
@@ -29,7 +29,7 @@ class ViewController(QObject):
 	
 	def addView(self, view):
 		self.connect(view, SIGNAL('openUrl(const QUrl&)'), self.openUrl)
-		self.connect(view, SIGNAL('showReferredByFiles(const QUrl&)'), self.displayReferencingFiles)
+		self.connect(QApplication.instance(), SIGNAL('testermanServerUpdated(QUrl)'), view.refresh)
 	
 	def openUrl(self, url):
 		log("Ready to open URL: " + unicode(url.toString()))
@@ -37,7 +37,7 @@ class ViewController(QObject):
 		if url.path().endsWith('.log'):
 			self.showLog(url)
 		else:
-			qt.QApplication.instance().get('gui.documentmanager').openUrl(url)
+			QApplication.instance().get('gui.documentmanager').openUrl(url)
 
 	def showLog(self, url):
 		"""
@@ -48,17 +48,6 @@ class ViewController(QObject):
 		logViewer.openUrl(url)
 		logViewer.show()
 
-	def displayReferencingFiles(self, url):
-		"""
-		Displays the files referencing the module.
-		"""
-		path = unicode(url.path().toString())
-		ret = getProxy().getReferencingFiles(path)
-		ret.sort()
-		dialog = WTextEditDialog(text = '\n'.join(ret), readOnly = True, title = "Files referencing module %s: %d file(s)" % (path, len(ret)), fixedFont = True, parent = self)
-		dialog.exec_()
-
-
 ################################################################################
 # A Dock bridging views and a controller
 ################################################################################
@@ -66,21 +55,21 @@ class ViewController(QObject):
 class WRepositoryBrowsingDock(QDockWidget):
 	def __init__(self, parent):
 		QDockWidget.__init__(self, parent)
-		self.connect(self, SIGNAL("nextInitializationStep(QString&)"), qt.QApplication.instance().get('gui.splash').showMessage)
+		self.connect(self, SIGNAL("nextInitializationStep(QString&)"), QApplication.instance().get('gui.splash').showMessage)
 		self.__createWidgets()
 
 	def __createWidgets(self):
 		self.controller = ViewController(self)
 		
 		self.setWindowTitle("Remote browsing")
-		self.tab = qt.QTabWidget(self)
-		self.emit(SIGNAL("nextInitializationStep(QString&)"), qt.QString("Initializing remote browsers (repository)..."))
-		self.repositoryTree = ServerFileSystemView.WServerFileSystemView('/repository', self.tab)
+		self.tab = QTabWidget(self)
+		self.emit(SIGNAL("nextInitializationStep(QString&)"), QString("Initializing remote browsers (repository)..."))
+		self.repositoryTree = ServerFileSystemView.WServerFileSystemTreeWidget('/repository', self.tab)
 		self.repositoryTree.setClient(getProxy())
 		self.controller.addView(self.repositoryTree)
 		self.tab.addTab(self.repositoryTree, 'Repository')
-		self.emit(SIGNAL("nextInitializationStep(QString&)"), qt.QString("Initializing remote browsers (archives)..."))
-		self.archivesTree = ServerFileSystemView.WServerFileSystemView('/archives', self.tab)
+		self.emit(SIGNAL("nextInitializationStep(QString&)"), QString("Initializing remote browsers (archives)..."))
+		self.archivesTree = ServerFileSystemView.WServerFileSystemTreeWidget('/archives', self.tab)
 		self.archivesTree.setClient(getProxy())
 		self.controller.addView(self.archivesTree)
 		self.tab.addTab(self.archivesTree, 'Archives')
