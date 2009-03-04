@@ -1015,10 +1015,16 @@ class BaseNode(object):
 			self.__trace("%d === timeout on synchronous request, purging" % transactionId)
 			return None
 
+	def isStarted(self):
+		# To mutex-protect
+		return self.__started
+
 	def sendNotification(self, channel, notification):
 		"""
 		Sends a notification.
 		"""
+		if not self.isStarted():
+			return
 		# Generate a req ID (useless for notification ?)
 		transactionId = self.__getNewTransactionId()
 		notification.setHeader("Transaction-Id", transactionId)

@@ -343,10 +343,6 @@ class Client(Nodes.ConnectingNode):
 		@rtype: None
 		@returns: None
 		"""	
-		# If Xc is not connected, does nothing ?
-		# if not self.__channel:
-		# 	return
-
 		self._lock()
 		if not self.__localSubscriptions.has_key(uri):
 			self.__localSubscriptions[uri] = []
