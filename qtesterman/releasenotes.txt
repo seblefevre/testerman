@@ -1,29 +1,23 @@
 This is QTesterman, a PyQt4-based GUI for Testerman.
 ================================================================================
 
-1.1.0:
-- Added: outline view
-- Modified: better remote browser, with loading feedbacks
 
+1.1.0:
+- Added: experimental outline view, very basic, incomplete, doomed to evolve
+- Added: basic chat component, single channel
+- Added: server status indicator, with fast server switching
+- Modified: better remote browser, with asynchronous loading
 TODO:
 - Added: support for file deletion in the remote browser
-- Added: server status indicator, with fast server switching
 - Modified: better settings dialog
+
 
 1.0.1:
 - Added: auto-update support, with self restart
+- Added: support for initial session parameters (ATS run parameters)
 - Modified: qtesterman.py is now the main launcher, and should be used in
   user shortcuts.
 
 
-
 1.0.0:
 - First release, based on a major contribution by Comverse - Netcentrex Converged IP Communications.
-- Missing features:
-  - "Remove file" interface
-  - Remote file system monitoring
-  - Versioned files (revisions) management
-  - Auto-update
-  - Server switch clean handling
-  - Initial session parameter passing (only default ones are taken into account)
-  - ...

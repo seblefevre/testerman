@@ -77,15 +77,18 @@ class BaseWidgetItem(QTreeWidgetItem):
 			name = "/"
 		self.setText(0, name)
 		self.setText(1, 'unknown')
-	
+
 	def getUrl(self):
 		"""
 		Overridable.
 		By default, returns an url based on the filepath.
+		
+		@rtype: QUrl
+		@returns: the url of the object
 		"""
 		serverIp, serverPort = self.treeWidget().getClient().getServerAddress()
 		url = "testerman://%s:%d%s" % (serverIp, serverPort, self._path)
-		return url
+		return QUrl(url)
 
 class AsyncFetchingThread(QThread):
 	"""
@@ -520,9 +523,8 @@ class WServerFileSystemTreeWidget(QTreeWidget):
 	##
 	def _open(self, item):
 		url = item.getUrl()
-		if url:
-			print "DEBUG: opening url %s..." % url
-			self.emit(SIGNAL('openUrl(const QUrl&)'), QUrl(url))
+		print "DEBUG: opening url %s..." % url.toString()
+		self.emit(SIGNAL('openUrl(const QUrl&)'), url)
 
 
 # Basic test

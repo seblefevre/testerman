@@ -320,7 +320,7 @@ class Client(Nodes.ConnectingNode):
 		return res
 
 	##
-	# Subscription management
+	# Xc management (subscription, event notifications, ...)
 	##
 
 	def getXcInterfaceAddress(self):
@@ -394,6 +394,16 @@ class Client(Nodes.ConnectingNode):
 				return
 
 		self._unlock()
+
+	def notify(self, method, uri, body, headers = {}):
+		"""
+		Sends a notification through Xc. Useful for chat sessions, for instance.
+		"""
+		notification = Messages.Notification(method, uri, "XC", "1.0")
+		for n, v in headers.items():
+			notification.setHeader(n, v)
+		notification.setApplicationBody(body)
+		self.sendNotification(self.__channel, notification)
 
 	def onNotification(self, channel, notification):
 		"""

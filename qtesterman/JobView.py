@@ -267,7 +267,6 @@ class JobQueueTreeModel(QAbstractItemModel):
 		return itemDict['state']	
 
 			
-
 class WJobView(QTreeView):
 	"""
 	@emits: showLog(int jobId)

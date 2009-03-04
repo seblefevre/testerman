@@ -84,6 +84,9 @@ pyrcc4 resources.qrc -o Resources.py
 	<file alias="class">resources/view-process-all-tree.png</file>
 	<file alias="outline-view">resources/view-sidetree.png</file>
 
+	<!-- chat-room -->
+	<file alias="chat-room">resources/view-process-users.png</file>
+
 </qresource>
 
 <qresource prefix="animations">

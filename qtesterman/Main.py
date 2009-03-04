@@ -40,6 +40,7 @@ import RemoteBrowsers
 import DocumentPropertyEditor
 import PluginManager
 import OutlineView
+import ChatView
 
 
 # Editors contains a reference to QScintilla.
@@ -173,7 +174,7 @@ class QTestermanApplication(QApplication):
 		"""
 		return self._username
 
-	def getServerUrl(self):
+	def serverUrl(self):
 		"""
 		Returns the current server URL.
 		
@@ -329,7 +330,7 @@ class WServerStatusIndicator(QWidget):
 			self.onConnected()
 		else:
 			self.onDisconnected()
-		self.onServerUpdated(QApplication.instance().getServerUrl())
+		self.onServerUpdated(QApplication.instance().serverUrl())
 
 	def contextMenuEvent(self, event):
 		"""
@@ -338,7 +339,7 @@ class WServerStatusIndicator(QWidget):
 		menu = QMenu(self)
 		fastSwitchMenu = menu.addMenu("Switch to server")
 	
-		currentUrl = QApplication.instance().getServerUrl()
+		currentUrl = QApplication.instance().serverUrl()
 		# Current known servers
 		settings = QSettings()
 		urllist = settings.value('connection/urllist', QVariant(QStringList(QString('http://localhost:8080')))).toStringList()
@@ -634,6 +635,11 @@ class WMainWindow(QMainWindow):
 			self.addDockWidget(Qt.RightDockWidgetArea, self.outlineViewDock)
 			QApplication.instance().set("gui.outlineview", self.outlineViewDock.getOutlineView())
 
+			self.emit(SIGNAL("nextInitializationStep(QString&)"), QString("Initializing chat component..."))
+			self.chatViewDock = ChatView.WChatViewDock(self)
+			self.chatViewDock.setObjectName("chatViewDock")
+			self.addDockWidget(Qt.LeftDockWidgetArea, self.chatViewDock)
+
 			# Status bar
 			self.statusBar = WMainStatusBar()
 			self.setStatusBar(self.statusBar)
@@ -680,7 +686,7 @@ class WMainWindow(QMainWindow):
 		self.toggleProcessWindowAction.setIcon(icon(':/icons/job-manager.png'))
 		self.toggleRepositoryWindowAction = self.repositoryBrowserDock.toggleViewAction()
 		self.toggleRepositoryWindowAction.setShortcut("Ctrl+Shift+B")
-		self.toggleRepositoryWindowAction.setIcon(icon(':/icons/browser.png'))
+		self.toggleRepositoryWindowAction.setIcon(icon(':/icons/browser'))
 		self.toggleRepositoryWindowAction.setToolTip("Show/hide Testerman repository browser")
 		self.toggleDocumentPropertyWindowAction = self.documentPropertyEditorDock.toggleViewAction()
 		self.toggleDocumentPropertyWindowAction.setShortcut("Ctrl+Shift+K")
@@ -694,6 +700,10 @@ class WMainWindow(QMainWindow):
 		self.toggleOutlineWindowAction.setShortcut("Ctrl+Shift+O")
 		self.toggleOutlineWindowAction.setIcon(icon(':/icons/outline-view'))
 		self.toggleOutlineWindowAction.setToolTip("Show/hide outline")
+		self.toggleChatWindowAction = self.chatViewDock.toggleViewAction()
+		self.toggleChatWindowAction.setShortcut("Ctrl+Shift+C")
+		self.toggleChatWindowAction.setIcon(icon(':/icons/chat-room'))
+		self.toggleChatWindowAction.setToolTip("Show/hide chat room")
 
 		self.toggleFullScreenAction = TestermanAction(self, "&Toggle Full Screen mode", self.toggleFullScreen, "Toggle Full Screen mode")
 		self.toggleFullScreenAction.setShortcut("Ctrl+Shift+F")
@@ -728,6 +738,7 @@ class WMainWindow(QMainWindow):
 		self.windowToolBar.addAction(self.toggleDocumentPropertyWindowAction)
 		self.windowToolBar.addAction(self.toggleProbeManagerWindowAction)
 		self.windowToolBar.addAction(self.toggleOutlineWindowAction)
+		self.windowToolBar.addAction(self.toggleChatWindowAction)
 
 		self.toggleWindowToolBarAction = self.windowToolBar.toggleViewAction()
 
@@ -755,6 +766,8 @@ class WMainWindow(QMainWindow):
 		self.windowsMenu.addAction(self.toggleRepositoryWindowAction)
 		self.windowsMenu.addAction(self.toggleDocumentPropertyWindowAction)
 		self.windowsMenu.addAction(self.toggleProbeManagerWindowAction)
+		self.windowsMenu.addAction(self.toggleOutlineWindowAction)
+		self.windowsMenu.addAction(self.toggleChatWindowAction)
 		self.windowsMenu.addSeparator()
 		self.windowsMenu.addAction(self.toggleMainToolbarAction)
 		self.windowsMenu.addAction(self.toggleWindowToolBarAction)
