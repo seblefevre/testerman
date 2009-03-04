@@ -101,7 +101,7 @@ class AsyncFetchingThread(QThread):
 
 class AsyncExpander(QObject):
 	"""
-	Wrapper class over a TreeWidgetItem, enabling
+	Decorator class over a TreeWidgetItem, enabling
 	to turn it into a lazy expanding node, fetching
 	children asynchronously calling the fetcher command,
 	which returns a list of unparented nodes.
@@ -129,13 +129,12 @@ class AsyncExpander(QObject):
 		Overriden from the QTreeWidgetItem class.
 		Displays a loading icon when expanding
 		"""
-		print "DEBUG: async expansion"
 		self._item.takeChildren()
 		# Display a loading item
 		self._loading()
 		# Call our feeder
 		self.fetchingThread = AsyncFetchingThread(self)
-		self.fetchingThread.connect(self.fetchingThread, SIGNAL("finished()"), self._childItemFetched)
+		self.fetchingThread.connect(self.fetchingThread, SIGNAL("finished()"), self._childItemsFetched)
 		self.fetchingThread.start()
 	
 	def _loading(self):
@@ -161,7 +160,7 @@ class AsyncExpander(QObject):
 		del self.loadingItem
 		del self.loadingAnimation
 	
-	def _childItemFetched(self):
+	def _childItemsFetched(self):
 		"""
 		Called when the fetching is over. Removes the loading indicator,
 		adds the fetched items.
@@ -363,7 +362,7 @@ class WServerFileSystemTreeWidget(QTreeWidget):
 
 		self._client = None
 		
-		self.setWindowIcon(icon(':/icons/browser.png'))
+		self.setWindowIcon(icon(':/icons/browser'))
 		self.setWindowTitle('Remote browser')
 		self.setHeaderLabels([ 'name', 'type' ])
 		self.header().setResizeMode(0, QHeaderView.Stretch)
@@ -386,9 +385,7 @@ class WServerFileSystemTreeWidget(QTreeWidget):
 		We can only expand items subclassing ExpandableWidgetItem.
 		We decorate them with the asynchronous expander.
 		"""
-		print "DEBUG: onItemExpanded.."
 		AsyncExpander(item, item.fetchChildItems).expand()
-		print "DEBUG: onItemExpanded done."
 
 	def contextMenuEvent(self, event):
 		item = self.itemAt(event.pos())
@@ -442,7 +439,6 @@ class WServerFileSystemTreeWidget(QTreeWidget):
 			path = self._path
 		try:
 			l = self.getClient().getDirectoryListing(path)
-			time.sleep(0.500)
 		except Exception, e:
 			l = []
 

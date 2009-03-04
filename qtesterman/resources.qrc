@@ -12,7 +12,7 @@ pyrcc4 resources.qrc -o Resources.py
 	<file alias="server-error">resources/window-close.png</file>
 	
 	<!-- browsers -->
-	<file alias="browser.png">resources/view-sidetree.png</file>
+	<file alias="browser">resources/view-sidetree.png</file>
 	<file alias="ats">resources/application-x-m4.png</file>
 	<file alias="campaign">resources/folder-yellow.png</file>
 	<file alias="folder">resources/folder.png</file>
@@ -21,9 +21,9 @@ pyrcc4 resources.qrc -o Resources.py
 	<file alias="archive">resources/application-x-archive.png</file>
 	<file alias="revision">resources/document-open-recent.png</file>
 	<file alias="unknown.png">resources/x-office-document.png</file>
-	<file alias="folder-archive.png">resources/folder-tar.png</file>
-	<file alias="folder-virtual.png">resources/view-process-all.png</file>
-	<file alias="log.png">resources/text-x-log.png</file>
+	<file alias="folder-archive">resources/folder-tar.png</file>
+	<file alias="folder-virtual">resources/view-process-all.png</file>
+	<file alias="log">resources/text-x-log.png</file>
 	
 	<!-- addons -->
 	<file alias="multiple-files.png">resources/document-multiple.png</file>

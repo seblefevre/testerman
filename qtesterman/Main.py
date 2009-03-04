@@ -85,7 +85,7 @@ class QTestermanApplication(QApplication):
 	a QApplication that embeds a plain Python TestermanClient to offer
 	a more Qt-like interface,
 	and with additional addons:
-	- application-wide variable managements (get/set)
+	- application-wide variable management (get/set)
 	- icon proxy
 	
 	The Testerman-client facet provides:
@@ -94,7 +94,10 @@ class QTestermanApplication(QApplication):
 	
 	emits:
 	testermanServerUpdated(QUrl url)
-	testermanXcInterf
+	testermanXcConnected() # Xc connected
+	testermanXcDisconnected() # Xc disconnected
+	testermanWsUnavailable() # Ws unreachable
+	testermanWsAvailable() # Ws works
 	"""
 	def __init__(self, args):
 		QApplication.__init__(self, args)
@@ -220,9 +223,9 @@ class QTestermanApplication(QApplication):
 		# Finally, starts the Xc interface
 		ret = self.__testermanClient.startXc()
 		if not ret:
-			self.emit(SIGNAL('testermanConnectionError()'))
+			self.emit(SIGNAL('testermanWsUnavailable()'))
 		else:
-			self.emit(SIGNAL('testermanConnectionValidated()'))
+			self.emit(SIGNAL('testermanWsAvailable()'))
 
 	def onXcConnected(self):
 		"""
@@ -242,112 +245,6 @@ class QTestermanApplication(QApplication):
 	
 	def isXcConnected(self):
 		return self._xcConnected
-
-################################################################################
-# About Dialog
-################################################################################
-
-class WAboutDialog(QDialog):
-	"""
-	Simple about dialog with a graphical banner.
-	"""
-	def __init__(self, parent): # the parent is the main window
-		QDialog.__init__(self, parent)
-		self.__createWidgets()
-
-	def __createWidgets(self):
-		self.setWindowTitle("About " + getClientName())
-		self.setWindowIcon(icon(':icons/testerman.png'))
-
-		text = """QTesterman %s
-
-This software is licensed under the General Public License 2.0.
-
-Maintainer:
-Sebastien Lefevre <seb.lefevre@gmail.com>
-
-Contributors:
-Comverse - Converged IP Commmunications
-
-Thanks to Trolltech and Riverbank Computing""" % (getClientVersion())
-
-		layout = QVBoxLayout()
-		layout.setMargin(0)
-
-		# A Splash image
-		splash = QLabel()
-		pixmap = QPixmap(":images/splash-banner.png")#.scaled(QSize(500, 300), Qt.IgnoreAspectRatio, Qt.SmoothTransformation)
-		splash.setPixmap(pixmap)
-		layout.addWidget(splash)
-
-		# The label
-		label = QLabel()
-		label.setText(text)
-		label.setAlignment(Qt.AlignCenter)
-
-		layout.addWidget(label)
-
-		# Buttons
-		buttonLayout = QHBoxLayout()
-		self.okButton = QPushButton("Close", self)
-		self.connect(self.okButton, SIGNAL("clicked()"), self.accept)
-		buttonLayout.addStretch()
-		buttonLayout.addWidget(self.okButton)
-		buttonLayout.setMargin(4)
-
-		layout.addLayout(buttonLayout)
-		self.setLayout(layout)
-
-################################################################################
-# Connection Dialog
-################################################################################
-
-class WConnectionDialog(QDialog):
-	"""
-	Popup on startup: splash screen + connection to Testerman server
-	"""
-	def __init__(self, parent): # the parent is the main window
-		QDialog.__init__(self, parent)
-		self.__createWidgets()
-
-	def __createWidgets(self):
-		self.setWindowTitle("Testerman login")
-		self.setWindowIcon(icon(':icons/testerman.png'))
-		
-		layout = QVBoxLayout()
-		layout.setMargin(0)
-
-		# A Banner
-		splash = QLabel()
-		pixmap = QPixmap(":images/splash-banner.png")#.scaled(QSize(500, 300), Qt.IgnoreAspectRatio, Qt.SmoothTransformation)
-		splash.setPixmap(pixmap)
-		layout.addWidget(splash)
-
-		# WConnectionSetting part
-		self.connectionSettings = WConnectionSettings(self)
-		layout.addWidget(self.connectionSettings)
-		
-		# Buttons
-		buttonLayout = QHBoxLayout()
-		self.okButton = QPushButton("Login", self)
-		self.connect(self.okButton, SIGNAL("clicked()"), self.accept)
-		self.cancelButton = QPushButton("Cancel", self)
-		self.connect(self.cancelButton, SIGNAL("clicked()"), self.reject)
-		buttonLayout.addStretch()
-		buttonLayout.addWidget(self.okButton)
-		buttonLayout.addWidget(self.cancelButton)
-		buttonLayout.setMargin(4)
-
-		layout.addLayout(buttonLayout)
-		self.setLayout(layout)
-
-	def accept(self):
-		"""
-		QDialog reimplementation.
-		"""
-		if self.connectionSettings.checkModel():
-			self.connectionSettings.updateModel()
-			QDialog.accept(self)
 
 
 ################################################################################
@@ -407,7 +304,7 @@ class WServerStatusIndicator(QWidget):
 		self.connect(QApplication.instance(), SIGNAL('testermanXcConnected()'), self.onConnected)
 		self.connect(QApplication.instance(), SIGNAL('testermanXcDisconnected()'), self.onDisconnected)
 		self.connect(QApplication.instance(), SIGNAL('testermanServerUpdated(QUrl)'), self.onServerUpdated)
-		self.connect(QApplication.instance(), SIGNAL('testermanConnectionError()'), self.onServerError)
+		self.connect(QApplication.instance(), SIGNAL('testermanWsUnavailable()'), self.onServerError)
 		
 		self.synchronizeOnServerStatus()
 	
@@ -453,20 +350,127 @@ class WServerStatusIndicator(QWidget):
 		# View resynchronizations (normally automatic once reconnected)
 		menu.addAction("Resynchronize", lambda: QApplication.instance().setServerUrl(currentUrl))
 		menu.popup(event.globalPos())
-		
+
 
 ################################################################################
-# Main window, with docks support
+# About Dialog
+################################################################################
+
+class WAboutDialog(QDialog):
+	"""
+	Simple about dialog with a graphical banner.
+	"""
+	def __init__(self, parent): # the parent is the main window
+		QDialog.__init__(self, parent)
+		self.__createWidgets()
+
+	def __createWidgets(self):
+		self.setWindowTitle("About " + getClientName())
+		self.setWindowIcon(icon(':icons/testerman.png'))
+
+		text = """QTesterman %s
+
+This software is licensed under the General Public License 2.0.
+
+Maintainer:
+Sebastien Lefevre <seb.lefevre@gmail.com>
+
+Contributors:
+Comverse - Converged IP Commmunications
+
+Thanks to Trolltech and Riverbank Computing""" % (getClientVersion())
+
+		layout = QVBoxLayout()
+		layout.setMargin(0)
+
+		# A Splash image
+		splash = QLabel()
+		pixmap = QPixmap(":images/splash-banner.png")#.scaled(QSize(500, 300), Qt.IgnoreAspectRatio, Qt.SmoothTransformation)
+		splash.setPixmap(pixmap)
+		layout.addWidget(splash)
+
+		# The label
+		label = QLabel()
+		label.setText(text)
+		label.setAlignment(Qt.AlignCenter)
+
+		layout.addWidget(label)
+
+		# Buttons
+		buttonLayout = QHBoxLayout()
+		self.okButton = QPushButton("Close", self)
+		self.connect(self.okButton, SIGNAL("clicked()"), self.accept)
+		buttonLayout.addStretch()
+		buttonLayout.addWidget(self.okButton)
+		buttonLayout.setMargin(4)
+
+		layout.addLayout(buttonLayout)
+		self.setLayout(layout)
+
+
+################################################################################
+# Connection Dialog
+################################################################################
+
+class WConnectionDialog(QDialog):
+	"""
+	Displayed on startup: banner + prompt to enter a server url + login
+	"""
+	def __init__(self, parent): # the parent is the main window
+		QDialog.__init__(self, parent)
+		self.__createWidgets()
+
+	def __createWidgets(self):
+		self.setWindowTitle("Testerman login")
+		self.setWindowIcon(icon(':icons/testerman.png'))
+		
+		layout = QVBoxLayout()
+		layout.setMargin(0)
+
+		# A Banner
+		splash = QLabel()
+		pixmap = QPixmap(":images/splash-banner.png")#.scaled(QSize(500, 300), Qt.IgnoreAspectRatio, Qt.SmoothTransformation)
+		splash.setPixmap(pixmap)
+		layout.addWidget(splash)
+
+		# WConnectionSetting part
+		self.connectionSettings = WConnectionSettings(self)
+		layout.addWidget(self.connectionSettings)
+		
+		# Buttons
+		buttonLayout = QHBoxLayout()
+		self.okButton = QPushButton("Login", self)
+		self.connect(self.okButton, SIGNAL("clicked()"), self.accept)
+		self.cancelButton = QPushButton("Cancel", self)
+		self.connect(self.cancelButton, SIGNAL("clicked()"), self.reject)
+		buttonLayout.addStretch()
+		buttonLayout.addWidget(self.okButton)
+		buttonLayout.addWidget(self.cancelButton)
+		buttonLayout.setMargin(4)
+
+		layout.addLayout(buttonLayout)
+		self.setLayout(layout)
+
+	def accept(self):
+		"""
+		QDialog reimplementation.
+		"""
+		if self.connectionSettings.checkModel():
+			self.connectionSettings.updateModel()
+			QDialog.accept(self)
+
+
+################################################################################
+# Main Status Bar
 ################################################################################
 
 class WMainStatusBar(QStatusBar):
 	"""
-	The status bar contains several section:
+	The status bar contains several sections:
 	- the default one, for information messages
 	- the current file location (url)
 	- the current cursor position (line col)
-	- the server status
-	
+	- the server status indicator (with fast server switching support)
 	"""
 	def __init__(self, parent = None):
 		QStatusBar.__init__(self, parent)
@@ -474,7 +478,7 @@ class WMainStatusBar(QStatusBar):
 
 	def __createWidgets(self):
 		self._fileLocation = QLabel(self)
-		self._fileLocation.setMargin(4)
+		self._fileLocation.setMargin(2)
 		self.addPermanentWidget(self._fileLocation)
 		self._lineColLabel = QLabel(self)
 		self._lineColLabel.setMargin(2)
@@ -483,14 +487,18 @@ class WMainStatusBar(QStatusBar):
 		self.addPermanentWidget(self._serverStatusIndicator)
 
 	def setLineCol(self, line, col):
-		self._lineColLabel.setText("l:%d c:%d" % (line, col))
+		self._lineColLabel.setText("Line: %d Col: %d" % (line, col))
 
 	def setFileLocation(self, url):
 		if url:
 			self._fileLocation.setText(url.toString())
 		else:
-			self._fileLocation.setText('(never saved yet)')
+			self._fileLocation.setText('')
 
+
+################################################################################
+# Main window, with docks support
+################################################################################
 
 class WMainWindow(QMainWindow):
 	"""
@@ -545,8 +553,9 @@ class WMainWindow(QMainWindow):
 
 	def saveOpenUrls(self):
 		"""
-		Save into the application settings the currently open URLs.
-		Also includes URLs that were not successfully reopenend this time but that we should try to reopen on next startup.
+		Saves the currently open URLs into the application settings.
+		Also includes URLs that were not successfully reopened
+		this time but that we should try to reopen on next startup.
 		"""
 		urlList = QStringList()
 		for url in self.previousUrlsToRetry:
@@ -630,6 +639,7 @@ class WMainWindow(QMainWindow):
 			self.setStatusBar(self.statusBar)
 			QApplication.instance().set("gui.statusbar", self.statusBar)
 			self.statusBar.showMessage("Welcome to Testerman.", 5000)
+
 		except Exception, e:
 			log("Warning: unable to create a widget: %s" % str(e))
 			import TestermanNodes
@@ -999,6 +1009,8 @@ Please install the appropriate package for your Linux/Unix distribution or downl
 	# Finally, run the main window
 	mainWindow = WMainWindow()
 	splash.finish(mainWindow) # The splashscreen will automatically hide after the main window is shown
+	# Process queued events during initialization
+	app.processEvents()
 
 	log("Main Window created.")
 	app.connect(app, SIGNAL("lastWindowClosed()"), mainWindow.quit)
