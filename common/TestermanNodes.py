@@ -27,6 +27,8 @@
 # Layered structures:
 # Network level:
 # - send/receive packets (stream + packetizer)
+# - passive keep-alive mechanism (regularly send a KA packet, incoming 
+#   inactivity timeout to detect dropped connections)
 # - provided by TcpPacketizerServerThread and TcpPacketizerClientThread.
 # - must be reimplemented to provide several callbacks implementations.
 # - these classes are not testerman-tainted and may be reused anywhere else.
@@ -61,6 +63,8 @@ import Queue
 import SocketServer
 import time
 import os
+
+KEEP_ALIVE_PDU = ''
 
 ################################################################################
 # Tools
@@ -100,7 +104,7 @@ class TcpPacketizerClientThread(threading.Thread):
 
 	terminator = '\x00'
 
-	def __init__(self, server_address, local_address = ('', 0), reconnection_interval = 1.0):
+	def __init__(self, server_address, local_address = ('', 0), reconnection_interval = 1.0, inactivity_timeout = 30.0, keep_alive_interval = 20.0):
 		"""
 		The callback is called on new event: callback(event)
 		"""
@@ -114,6 +118,10 @@ class TcpPacketizerClientThread(threading.Thread):
 		self.buf = ''
 		self.queue = Queue.Queue(0)
 		self.connected = False
+		self.inactivity_timeout = inactivity_timeout
+		self.last_activity_timestamp = time.time() # incoming activity only
+		self.keep_alive_interval = keep_alive_interval
+		self.last_keep_alive_timestamp = time.time()
 
 	def run(self):
 		self.trace("Tcp client started, connecting from %s to %s" % (str(self.localAddress), str(self.serverAddress)))
@@ -156,7 +164,6 @@ class TcpPacketizerClientThread(threading.Thread):
 				self.__main_receive_send_loop()
 			except Exception, e:
 				try:
-#					self.trace("Exception while listening for events: " + str(e) + "\n" + getBacktrace())
 					self.trace("Trying to reconnect in %ds..." % self.reconnectInterval)
 					if self.connected:
 						self.connected = False
@@ -179,24 +186,40 @@ class TcpPacketizerClientThread(threading.Thread):
 		self.trace("Tcp client stopped.")
 
 	def __main_receive_send_loop(self):
+		self.last_keep_alive_timestamp = time.time()
+		self.last_activity_timestamp = time.time()
 		while not self.stopEvent.isSet():
 			try:
+				# Check if we have incoming data
 				r, w, e = select.select([ self.socket ], [], [ self.socket ], 0.001)
 				if self.socket in e:
 					raise EOFError("Socket select error: disconnecting")
-				if self.socket in r:
+				elif self.socket in r:
 					read = self.socket.recv(65535)
 					if not read:
 						raise EOFError("Nothing to read on read event: disconnecting")
+					self.last_activity_timestamp = time.time()
 					self.buf = ''.join([self.buf, read]) # faster than += r
 					self.__on_incoming_data()
 
-				# Sending queued messages
+				# Check inactivity timeout 
+				elif self.inactivity_timeout:
+					if time.time() - self.last_activity_timestamp > self.inactivity_timeout:
+						raise EOFError("Inactivity timeout: disconnecting")
+
+				# Send (queue) a Keep-Alive if needed
+				if self.keep_alive_interval:
+					if time.time() - self.last_keep_alive_timestamp > self.keep_alive_interval:
+						self.last_keep_alive_timestamp = time.time()
+						self.trace("Sending Keep Alive")
+						self.send_packet(KEEP_ALIVE_PDU)
+
+				# Send queued messages
 				while not self.queue.empty():
 					# Make sure we can send something. If not, keep the message for later attempt.
 					r, w, e = select.select([ ], [ self.socket ], [ self.socket ], 0.001)
 					if self.socket in e:
-						raise EOFError("Socket error when waiting for ready to write")
+						raise EOFError("Socket select error when sending a message: disconnecting")
 					elif self.socket in w:	
 						try:
 							message = self.queue.get(False)
@@ -205,6 +228,9 @@ class TcpPacketizerClientThread(threading.Thread):
 							pass
 						except Exception, e:
 							self.trace("Unable to send message: " + str(e))
+					else:
+						# Not ready. Will perform a new attempt on next main loop iteration
+						break
 
 			except EOFError, e:
 				self.trace("Disconnected by peer.")
@@ -221,7 +247,10 @@ class TcpPacketizerClientThread(threading.Thread):
 	def __on_incoming_data(self):
 		pdus = self.buf.split(self.terminator)
 		for pdu in pdus[:-1]:
-			self.handle_packet(pdu)
+			if not pdu == KEEP_ALIVE_PDU:
+				self.handle_packet(pdu)
+			else:
+				self.trace("Received Keep Alive")
 		self.buf = pdus[-1]
 
 	def stop(self):
@@ -266,7 +295,7 @@ class TcpPacketizerClientThread(threading.Thread):
 		"""
 		pass
 
-	def trace(self, message):
+	def trace(self, txt):
 		"""
 		Called whenever a debug trace should be dumped.
 		"""
@@ -293,18 +322,20 @@ class TcpPacketizerServerThread(threading.Thread):
 	class ListeningServer(SocketServer.ThreadingMixIn, SocketServer.TCPServer):
 		"""
 		This inner class just redirects some high-level events to the
-		TcpPcketizerServerThread instance.
+		TcpPacketizerServerThread instance.
 		
 		Contains a timeout'd handler to enable graceful shutdown of the server when needed.
 		"""
 		allow_reuse_address = True
 
 		terminator = '\x00'
-		def __init__(self, listening_address, request_handler, manager):
+		def __init__(self, listening_address, request_handler, manager, inactivity_timeout = 30.0, keep_alive_interval = 20.0):
 			SocketServer.TCPServer.__init__(self, listening_address, request_handler)
 			self.manager = manager
 			self.mutex = threading.RLock()
 			self.clients = {} # client object per client_address
+			self.inactivity_timeout = inactivity_timeout
+			self.keep_alive_interval = keep_alive_interval
 		
 		def handle_packet(self, client, packet):
 			self.manager.handle_packet(client.client_address, packet)
@@ -375,6 +406,8 @@ class TcpPacketizerServerThread(threading.Thread):
 			self.buf = ''
 			self.queue = Queue.Queue(0)
 			self.socket = None
+			self.last_activity_timestamp = time.time()
+			self.last_keep_alive_timestamp = time.time()
 			# The BaseRequestHandler.__init__ calls handle(); 
 			# thus members should be initialized first.
 			SocketServer.BaseRequestHandler.__init__(self, request, client_address, server)
@@ -404,36 +437,54 @@ class TcpPacketizerServerThread(threading.Thread):
 			"""
 			New internal method.
 			"""
+			self.last_keep_alive_timestamp = time.time()
+			self.last_activity_timestamp = time.time()
 			while not self.stopEvent.isSet():
-				(r, w, e) = select.select([ self.socket ], [], [ self.socket ], 0.001)
+				# Check if we have incoming data
+				r, w, e = select.select([ self.socket ], [], [ self.socket ], 0.001)
 				if self.socket in e:
 					raise EOFError("Socket select error: disconnecting")
-				if self.socket in r:
+				elif self.socket in r:
 					read = self.socket.recv(65535)
 					if not read:
 						raise EOFError("Nothing to read on read event: disconnecting")
+					self.last_activity_timestamp = time.time()
 					self.buf = ''.join([self.buf, read]) # faster than += r
 					self.__on_incoming_data()
 
-				# Sending queued messages
+				# Check inactivity timeout 
+				elif self.server.inactivity_timeout:
+					if time.time() - self.last_activity_timestamp > self.server.inactivity_timeout:
+						raise EOFError("Inactivity timeout: disconnecting")
+
+				# Send (queue) a Keep-Alive if needed
+				if self.server.keep_alive_interval:
+					if time.time() - self.last_keep_alive_timestamp > self.server.keep_alive_interval:
+						self.last_keep_alive_timestamp = time.time()
+						self.trace("Sending Keep Alive")
+						self.send_packet(KEEP_ALIVE_PDU)
+
+				# Send queued messages
 				while not self.queue.empty():
 					try:
 						# Make sure we can send something. If not, keep the message for later attempt.
 						r, w, e = select.select([ ], [ self.socket ], [ self.socket ], 0.001)
 						if self.socket in e:
 							raise IOError("Socket select error when sending a message: disconnecting")
-						if self.socket in w:
+						elif self.socket in w:
 							message = self.queue.get(False)
-							self.trace("About to send a message...")
 							self.socket.sendall(message)
-							self.trace("Message sent.")
+						else:
+							self.trace("Not ready to send a queued message. Will try again on next iteration.")
+							# Not ready. Will perform a new attempt on next main loop iteration
+							break
 					except Queue.Empty:
 						pass
 					except IOError, e:
 						self.trace("IOError while sending a packet to client (%s) - disconnecting" % str(e))
 						self.stop()
 					except Exception, e:
-						self.trace("Unable to send message: " + str(e))
+						self.trace("Unable to send message: %s" % str(e))
 
 		def __on_incoming_data(self):
 			"""
@@ -443,8 +494,10 @@ class TcpPacketizerServerThread(threading.Thread):
 			# Let's check if we can consume them, i.e. PDUs/packets are available.
 			pdus = self.buf.split(self.terminator)
 			for pdu in pdus[:-1]:
-				self.handle_packet(pdu)
-
+				if not pdu == KEEP_ALIVE_PDU:
+					self.handle_packet(pdu)
+				else:
+					self.trace("Received Keep Alive")
 			self.buf = pdus[-1]
 
 		def send_packet(self, packet):
@@ -481,14 +534,14 @@ class TcpPacketizerServerThread(threading.Thread):
 			self.server.trace("[tcphandler] %s %s" % (str(self.client_address), txt))
 
 
-	def __init__(self, listeningAddress):
+	def __init__(self, listening_address, inactivity_timeout = 30.0, keep_alive_interval = 20.0):
 		threading.Thread.__init__(self)
 		self.stopEvent = threading.Event()
-		self.listeningAddress = listeningAddress
-		self.server = self.ListeningServer(self.listeningAddress, self.TcpPacketizerRequestHandler, self)
+		self.listening_address = listening_address
+		self.server = self.ListeningServer(self.listening_address, self.TcpPacketizerRequestHandler, self, inactivity_timeout, keep_alive_interval)
 
 	def run(self):
-		self.trace("Tcp server started, listening on %s" % (str(self.listeningAddress)))
+		self.trace("Tcp server started, listening on %s" % (str(self.listening_address)))
 		while not self.stopEvent.isSet():
 			self.server.handle_request_with_timeout(0.1)
 		self.server.stop()
@@ -499,7 +552,7 @@ class TcpPacketizerServerThread(threading.Thread):
 	
 	def send_packet(self, client_address, packet):
 		self.server.send_packet(client_address, packet)
-
+	
 	##
 	# To reimplement
 	##
@@ -603,7 +656,7 @@ class IConnector:
 		Returns the local address (address, port)
 		"""
 		return ('', 0)
-
+	
 class ListeningConnectorThread(TcpPacketizerServerThread, IConnector):
 	"""
 	A IConnector implementation as a listening server.
@@ -615,8 +668,8 @@ class ListeningConnectorThread(TcpPacketizerServerThread, IConnector):
 	 setMessageCallback(cb(channel, TestermanMessages.Message))
 	 setTracer(cb(string))
 	"""	
-	def __init__(self, listeningAddress):
-		TcpPacketizerServerThread.__init__(self, listeningAddress)
+	def __init__(self, listeningAddress, inactivityTimeout = 30.0):
+		TcpPacketizerServerThread.__init__(self, listeningAddress, inactivityTimeout)
 		IConnector.__init__(self)
 		self._contact = listeningAddress
 

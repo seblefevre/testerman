@@ -15,6 +15,23 @@
 ##
 
 ##
+# Testerman Agent Controller Server (TACS)
+#
+# Interfaces the agent+probes on behalf of TEs and the Testerman Server (TS)
+# The TS accesses the TACS through interface Ia'.
+# The TEs access the TACS through interface Ia.
+# Ia and Ia' only differs by the set of possible commands/notifications.
+#
+#
+# Some Ia commands may be targetted towards the TACS itself (locking, subscription,
+# management, stats).
+# Some others are forwarded to the Agent.
+# Some others are forwared to the Probe.
+# The target that should logically handle the request is designated in the request URI.
+# Additional infrastructure-related parameters are set in request headers.
+# Logical/application parameters are in the body itself.
+# 
+#
 # Back-to-back implementation: new Xa transactions are created on Ia requests.
 #
 # Error-management strategies: exception-based, not functional. Enables better error messages.
