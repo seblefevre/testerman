@@ -143,7 +143,7 @@ class WRawLogView(QWidget):
 		settings.setValue('lastVisitedDirectory', QVariant(directory))
 		try:
 			f = open(filename, 'w')
-			f.write(unicode(self.textEdit.toPlainText()).encode('utf-8'))
+			f.write(self.textEdit.toPlainText())
 			f.close()
 			QMessageBox.information(self, getClientName(), "Execution log saved successfully.", QMessageBox.Ok)
 			return True

@@ -476,7 +476,7 @@ class WSciFind(QWidget):
 		self.connect(self.nextButton, SIGNAL('clicked()'), lambda:self.onNextClicked(True))
 		layout.addWidget(self.nextButton)
 		self.previousButton = QPushButton("Previous", self)
-		self.previousButton.setShortcut('Ctrl+F3')		
+		self.previousButton.setShortcut('Shift+F3')		
 		self.connect(self.previousButton, SIGNAL('clicked()'), lambda:self.onNextClicked(False))
 		layout.addWidget(self.previousButton)
 		self.setLayout(layout)
@@ -486,7 +486,6 @@ class WSciFind(QWidget):
 
 	def getFocus(self):
 		self.findLineEdit.selectAll()
-#		self.findLineEdit.grabKeyboard()
 		self.findLineEdit.setFocus(Qt.OtherFocusReason)
 
 	def getAction(self):
@@ -715,11 +714,8 @@ class WMixedTemplateView(QSplitter):
 	def __createWidget(self):
 		self.templateViewLeft = WTemplateView(self)
 		self.templateViewRight = WTemplateView(self)
-#		layout = QHBoxLayout()
 		self.addWidget(self.templateViewLeft)
 		self.addWidget(self.templateViewRight)
-#		layout.setMargin(0)
-#		self.setLayout(layout)
 
 	def setTemplates(self, template1, template2 = None):
 		self.templateViewLeft.setTemplate(template1)
@@ -780,13 +776,61 @@ def getPrintableString(data):
 	return filter(lambda x: x in string.printable, data)
 
 
+class QTemplateWidgetItem(QTreeWidgetItem):
+	"""
+	A message/template item to use in a WTemplateView tree.
+	
+	Contains 3 pieces of information:
+	- a name  (col 0)
+	- a value (col 1)
+	- a type  (col 2)
+	"""
+	def __init__(self, parent = None):
+		QTreeWidgetItem.__init__(self, parent)
+		self.setText(2, '') # by default, the type is unspecified
+		self.setExpanded(True)
+		self.setTextAlignment(1, Qt.AlignTop)
+		self._binaryValue = None
+	
+	def setName(self, name):
+		self.setText(0, name)
+	
+	def setType(self, type_):
+		self.setText(2, type_)
+	
+	def setBinaryValue(self, value):
+		"""
+		@type  value: QByteArray
+		"""
+		self.setValue("(contains binary data)") # actually, this is "contains non-utf-8 data"
+		self._binaryValue = value
+		self.setType('octetstring')
+	
+	def getBinaryValue(self):
+		"""
+		@rtype: QByteArray
+		"""
+		return self._binaryValue
+	
+	def getValue(self):
+		return self.text(1)
+	
+	def setValue(self, value):
+		self.setText(1, value)
+	
+	def hasBinaryValue(self):
+		if self._binaryValue:
+			return True
+		else:
+			return False
+
 class WTemplateView(QTreeWidget):
 	"""
-	This widget vizualise a template/message.
+	This widget vizualises a template/message.
 	Two columns: name, value (no type in Testerman).
 	Everything is expanded by default.
 
-	this is the base widget to build a template/message comparator.
+	This is the base widget to build a template/message comparator.
 	"""
 	def __init__(self, parent = None):
 		QTreeWidget.__init__(self, parent)
@@ -795,19 +839,15 @@ class WTemplateView(QTreeWidget):
 
 	def __createWidgets(self):
 		self.setRootIsDecorated(1)
-		self.labels = [ 'name', 'value' ]
-		labels = QStringList()
-		for l in self.labels:
-			labels.append(l)
-		self.setHeaderLabels(labels)
-		self.setSortingEnabled(1)
+		self.setHeaderLabels([ 'name', 'value', 'type' ])
+		self.setSortingEnabled(True)
 		self.header().setSortIndicator(0, Qt.AscendingOrder)
-		self.header().setClickable(1)
+		self.header().setClickable(True)
 		self.connect(self, SIGNAL("itemActivated(QTreeWidgetItem*, int)"), self.onItemActivated)
 
 	def setTemplate(self, templateElement):
 		"""
-		templateElement is a QDocElement.
+		@type templateElement: QDomElement
 
 		It correspond to <message>...</message> or <template>...</template>
 		with a sub element for each value.
@@ -821,42 +861,79 @@ class WTemplateView(QTreeWidget):
 		self.resizeColumnToContents(0)
 		self.sortItems(self.sortColumn(), Qt.AscendingOrder)
 
-	def __createItem(self, parent, element):
-		class QTemplateWidgetItem(QTreeWidgetItem):
-			def __init__(self, parent = None):
-				QTreeWidgetItem.__init__(self, parent)
-				self.binaryData = None
+	def __createItem(self, parent, element, suggestedName = None):
+		"""
+		Recursive function to create a tree of QTemplateWidgetItem.
+		
+		@type  element: QDomElement
+		@param element: the element to turn into a node
+		@type  parent: QTemplateWidgetItem or QTreeWidget
+		@param parent: the parent of the node to create
+		@type  suggestedName: string
+		@param suggestedName: an optional name overriding the one autodetecting from the element
+		
+		@rtype: QTemplateWidgetItem
+		@returns: a node, with children if needed.
+		"""
 
-		item = QTemplateWidgetItem(parent)
-		item.setText(0, element.tagName())
-		item.setExpanded(1)
-		item.setTextAlignment(1, Qt.AlignTop)
+		tag = element.tagName()
 
+		# Special handling for list, since we should override their child node names		
+		if tag == 'l': # list
+			parent.setType('list')
+			child = element.firstChildElement()
+			count = 0
+			while not child.isNull():
+				self.__createItem(parent, child, '(%s)' % count)
+				child = child.nextSiblingElement()
+				count += 1
+			return parent
+
+		# All other are treated the same way
+		elif tag == 'r': # record/dict
+			parent.setType('record')
+			item = parent
+		elif tag == 'f': # field in a record
+			name = element.attribute('n') # name of the field
+			item = QTemplateWidgetItem(parent)
+			item.setName(name)		
+		elif tag == 'i': # item in a list
+			name = suggestedName
+			item = QTemplateWidgetItem(parent)
+			item.setName(name)		
+		elif tag == 'c': # choice/union
+			parent.setType('choice')
+			name = element.attribute('n') # name of the choice
+			item = QTemplateWidgetItem(parent)
+			item.setName(name)		
+			
+		else: # Default behaviour - also for compatibility with previous log format (v1)
+			name = tag
+			item = QTemplateWidgetItem(parent)
+			item.setName(name)		
+
+		# Now, do we have some structured elements as a child ?
 		if element.firstChildElement().isNull():
-			# Leaf node
+			# No - this is a leaf node
 			if element.attribute("encoding") == "base64":
-				display = "(contains binary data)"
-				item.binaryData = QByteArray(base64.decodestring(element.text()))
+				item.setBinaryValue(QByteArray(base64.decodestring(element.text())))
 			else:
-				display = element.text()
-
-			item.setText(1, display)
-			return item
-		# Intermediate node.
-		# Child SHOULD be created in a correct order so that comparison is easy for the human.
-		child = element.firstChildElement()
-		while not child.isNull():
-			self.__createItem(item, child)
-			child = child.nextSiblingElement()
+				item.setValue(element.text())
+		else:
+			# We have a structure node below (normally only one - lists have been handled above)
+			child = element.firstChildElement()
+			while not child.isNull():
+				self.__createItem(item, child)
+				child = child.nextSiblingElement()
 
 		return item
 
 	def onItemActivated(self, item, col):
 		try:
-			if item.binaryData:
-				dialog = WValueDialog(data = item.binaryData, binary = True, parent = self)
+			if item.hasBinaryValue():
+				dialog = WValueDialog(data = item.getBinaryValue(), binary = True, parent = self)
 			else:
-				dialog = WValueDialog(data = item.text(1), binary = False, parent = self)
+				dialog = WValueDialog(data = item.getValue(), binary = False, parent = self)
 			dialog.exec_()
 
 		except Exception, e:

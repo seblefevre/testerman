@@ -293,10 +293,12 @@ class WServerStatusIndicator(QWidget):
 		self._okPixmap = QApplication.instance().icon(':icons/server-ok').pixmap(16)
 		self._warningPixmap = QApplication.instance().icon(':icons/server-warning').pixmap(16)
 		self._errorPixmap = QApplication.instance().icon(':icons/server-error').pixmap(16)
+		self._undefinedPixmap = QApplication.instance().icon(':icons/server-undefined').pixmap(16)
 
 		self._state = None
 
 		self._statusLabel = QLabel(self)
+		self._statusLabel.setPixmap(self._undefinedPixmap)
 		layout.addWidget(self._statusLabel)
 		self.setLayout(layout)
 

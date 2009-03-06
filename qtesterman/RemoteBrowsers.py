@@ -56,7 +56,7 @@ def deleteExecutionLog(url, deleteTestExecutable = True):
 	"""
 	Deletes an execution log and its associated TE.
 
-	@type  url: QUrl
+	@type  path: QUrl
 	@param url: the url of the file to delete
 	@type  deleteTestExecutable: bool
 	@param deleteTestExecutable: delete associated TE package

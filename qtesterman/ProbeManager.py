@@ -37,7 +37,7 @@ class ViewController(QObject):
 		QObject.__init__(self, parent)
 	
 	def addView(self, view):
-		self.connect(QApplication.instance(), SIGNAL('testermanServerUpdated(QUrl)'), lambda: view.refresh)
+		self.connect(QApplication.instance(), SIGNAL('testermanServerUpdated(QUrl)'), view.refresh)
 
 ################################################################################
 # A Dock bridging views and a controller

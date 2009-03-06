@@ -83,22 +83,30 @@ class WChatView(QWidget):
 			username = notification.getHeader('Username')
 			self.displayUserMessage(username, msg)
 	
+	def getDateTime(self):
+		"""
+		Returns a formatted time to display with each message.
+		"""
+		return '<span style="font-size: small">(%s)</span>' % QDateTime.currentDateTime().toString('hh:mm:ss')
+	
 	def displayUserMessage(self, username, msg):
-		
 		if username == QApplication.instance().username():
 			prefix = '<span style="color: purple; font-weight: bold">%s</span>' % username
 		else:
 			prefix = '<b>%s</b>' % username
 		content = msg.replace('\r', '').replace('\n', '<br>').replace('\t', 4*'&nbsp;')
-		text = '%s: %s' % (prefix, content)
+		date = self.getDateTime()
+		text = '%s %s: %s' % (date, prefix, content)
 		self._mainView.append(text)
 	
 	def displaySystemEvent(self, msg):
-		text = '<i>%s</i>' % msg
+		date = self.getDateTime()
+		text = '%s <i>%s</i>' % (date, msg)
 		self._mainView.append(text)
 	
 	def displayUserEvent(self, msg):
-		text = '<b>%s</b>' % msg
+		date = self.getDateTime()
+		text = '%s <b>%s</b>' % (date, msg)
 		self._mainView.append(text)
 	
 	def onInputEntered(self):

@@ -26,6 +26,7 @@ from PyQt4.Qt import *
 import time
 
 from CommonWidgets import *
+import Base
 
 class GraphicsItemGroup(QGraphicsItemGroup):
 	"""
@@ -44,31 +45,319 @@ class GraphicsItemGroup(QGraphicsItemGroup):
 			return self.__data[index]
 		return None
 
+class GraphicsItem(QGraphicsItem):
+	"""
+	Modified class to support additional pythonic associated data
+	(avoid the usage of QVariant with Python data)
+	"""
+	def __init__(self, parent = None):
+		QGraphicsItem.__init__(self, parent)
+		self.__data = {}
 
-class BoxedLabel(GraphicsItemGroup):
+	def setMyData(self, index, data):
+		self.__data[index] = data
+
+	def myData(self, index):
+		return self.__data.get(index, None)
+
+
+class BoxedLabel(GraphicsItem):
 	"""
 	A label in a box. The label is centered in the box, with a margin on both sides.
 	(0,0) is the origin of the box.
+	
+	Used for basic logs.
 	"""
-	def __init__(self, label, bgcolor = QColor(240, 240, 200, 192), pen = QPen()):
-		GraphicsItemGroup.__init__(self)
-		self.__createWidgets(label, bgcolor, pen)
+	def __init__(self, label, bgcolor = QColor(240, 240, 200, 192)):
+		GraphicsItem.__init__(self)
+		self._bgColor = bgcolor
+		self._fontPen = QPen()
+		pen = QPen(QColor(160, 160, 160))
+		pen.setWidth(2)
+		pen.setCapStyle(Qt.RoundCap)
+		self._pen = pen
+		self._font = QFont()
 
-	def __createWidgets(self, text, bgcolor, pen):
-		# The label
-		label = QGraphicsSimpleTextItem(text)
-		label.setZValue(100)
+		self._label = None
+		self._boundingRect = None
+		self._verticalMargin = 0
+		self._horizontalMargin = 10
+		self.setLabel(label)
 
-		# Its "bounding" box
-		rect = label.boundingRect()
-		t = QGraphicsRectItem(QRectF(rect.x(), rect.y(), rect.width() + 20, rect.height()))
-		t.setPen(pen)
-		t.setBrush(QBrush(bgcolor))
-		t.setZValue(50)
-		self.addToGroup(t)
-		# We center the label in the box
-		label.translate((t.boundingRect().width() - rect.width()) / 2.0, 0)
-		self.addToGroup(label)
+	def boundingRect(self):
+		return self._boundingRect
+
+	def setLabel(self, label):
+		self._label = label
+		# Update bounding rect
+		fm = QFontMetrics(self._font)
+		br = fm.boundingRect(self._label)
+		# Add some spaces around the text
+		br.setWidth(br.width() + 2*self._horizontalMargin)
+		br.setHeight(br.height() + 2*self._verticalMargin)
+		self._boundingRect = QRectF(br)
+
+	def paint(self, painter, option, widget = None):		
+		painter.setPen(self._pen)
+		painter.setFont(self._font)
+		painter.setBrush(QBrush(self._bgColor))
+		painter.drawRect(self.boundingRect())
+		painter.setPen(self._fontPen)
+		painter.drawText(self.boundingRect(), Qt.AlignCenter, self._label)
+
+class RoundedBoxedLabel(BoxedLabel):
+	"""
+	Used to identify started behaviour
+	"""
+	def __init__(self, label, bgcolor = QColor(240, 240, 200, 192)):
+		BoxedLabel.__init__(self, label, bgcolor)
+
+	def paint(self, painter, option, widget = None):		
+		painter.setPen(self._pen)
+		painter.setFont(self._font)
+		painter.setBrush(QBrush(self._bgColor))
+		painter.drawRoundedRect(self.boundingRect(), 7.0, 7.0)
+		painter.setPen(self._fontPen)
+		painter.drawText(self.boundingRect(), Qt.AlignCenter, self._label)
+
+class HexaBoxedLabel(BoxedLabel):
+	"""
+	Used to verdict assignment notification.
+	"""
+	def __init__(self, label, bgcolor = QColor(240, 240, 200, 192)):
+		BoxedLabel.__init__(self, label, bgcolor)
+		self._points = []
+		self.updatePolyline()
+	
+	def updatePolyline(self):
+		h = self.boundingRect().height()
+		w = self.boundingRect().width()
+		x = self.boundingRect().x()
+		y = self.boundingRect().y()
+		self._points = []
+		self._points.append(QPoint(x + self._horizontalMargin, y))
+		self._points.append(QPoint(x + w - self._horizontalMargin, y))
+		self._points.append(QPoint(x + w, y + h/2))
+		self._points.append(QPoint(x + w - self._horizontalMargin, y + h))
+		self._points.append(QPoint(x + self._horizontalMargin, y + h))
+		self._points.append(QPoint(x, y + h/2))
+		self._polygon = QPolygon(self._points)
+	
+	def paint(self, painter, option, widget = None):		
+		painter.setPen(self._pen)
+		painter.setFont(self._font)
+		painter.setBrush(QBrush(self._bgColor))
+		painter.drawPolygon(self._polygon)
+		painter.setPen(self._fontPen)
+		painter.drawText(self.boundingRect(), Qt.AlignCenter, self._label)
+
+
+class StartedTimerItem(GraphicsItem):
+	"""
+	A kind of hourglass with the label of the started timer to its left.
+	      ____
+	      \  /
+	timer  \/___
+	       /\
+				/__\
+
+	"""
+	def __init__(self, label, bgcolor = QColor(240, 240, 200, 192)):
+		GraphicsItem.__init__(self)
+		self._bgColor = bgcolor
+		pen = QPen(QColor(160, 160, 160))
+		pen.setWidth(1)
+		pen.setCapStyle(Qt.RoundCap)
+		self._pen = pen
+		self._fontPen = QPen()
+		self._font = QFont()
+
+		self._label = None
+		self._boundingRect = None
+		self._hourglassHeight = 30
+		self._hourglassWidth = 20
+		self._horizontalMargin = -2 # space between the label and the hourglass
+		self.setLabel(label)
+		self.updatePolyline()
+
+	def boundingRect(self):
+		return self._boundingRect
+
+	def updatePolyline(self):
+		w = self.boundingRect().width()
+		h = self.boundingRect().height()
+		x = self.boundingRect().x()
+		y = self.boundingRect().y()
+		self._points = []
+		self._points.append(QPoint(x + w, y + h/2))
+		self._points.append(QPoint(x + w - self._hourglassWidth, y + h/2)) # hourglass center
+		self._points.append(QPoint(x + w - self._hourglassWidth/2, y)) # top right
+		self._points.append(QPoint(x + w - self._hourglassWidth*1.5, y)) # top left
+		self._points.append(QPoint(x + w - self._hourglassWidth/2, y + h)) # bottom right
+		self._points.append(QPoint(x + w - self._hourglassWidth*1.5, y + h)) # bottom left
+		self._points.append(QPoint(x + w - self._hourglassWidth, y + h/2)) # back to hourglass center
+		self._polygon = QPolygon(self._points)
+
+	def setLabel(self, label):
+		self._label = label
+		# Update bounding rect
+		fm = QFontMetrics(self._font)
+		br = fm.boundingRect(self._label)
+		# Add some space for the hourglass to the right of the label
+		br.setWidth(br.width() + self._hourglassWidth*1.5 + self._horizontalMargin)
+		br.setHeight(max(br.height(), self._hourglassHeight))
+		self._boundingRect = QRectF(br)
+
+	def paint(self, painter, option, widget = None):		
+		painter.setPen(self._pen)
+		painter.setFont(self._font)
+		painter.setBrush(QBrush(self._bgColor))
+		painter.drawPolyline(self._polygon)
+		painter.setPen(self._fontPen)
+		painter.drawText(self.boundingRect(), Qt.AlignVCenter, self._label)
+
+
+class StoppedTimerItem(GraphicsItem):
+	"""
+	A kind of hourglass with the label of the started timer to its left.
+	      
+	      \  /
+	timer  \/___
+	       /\
+				/  \
+
+	"""
+	def __init__(self, label, bgcolor = QColor(240, 240, 200, 192)):
+		GraphicsItem.__init__(self)
+		self._bgColor = bgcolor
+		pen = QPen(QColor(160, 160, 160))
+		pen.setWidth(1)
+		pen.setCapStyle(Qt.RoundCap)
+		self._pen = pen
+		self._fontPen = QPen()
+		self._font = QFont()
+
+		self._label = None
+		self._boundingRect = None
+		self._hourglassHeight = 30
+		self._hourglassWidth = 20
+		self._horizontalMargin = -2 # space between the label and the hourglass
+		self.setLabel(label)
+		self._lines = []
+		self.updateLines()
+
+	def boundingRect(self):
+		return self._boundingRect
+
+	def updateLines(self):
+		w = self.boundingRect().width()
+		h = self.boundingRect().height()
+		x = self.boundingRect().x()
+		y = self.boundingRect().y()
+		self._lines = []
+		self._lines.append(QLine(x + w - self._hourglassWidth/2, y, x + w - self._hourglassWidth*1.5, y + h)) # top right -> bottom left
+		self._lines.append(QLine(x + w - self._hourglassWidth*1.5, y, x + w - self._hourglassWidth/2, y + h)) # top left -> bottom right
+		self._lines.append(QLine(x + w - self._hourglassWidth, y + h/2, x + w, y + h/2)) # center -> TC line
+
+	def setLabel(self, label):
+		self._label = label
+		# Update bounding rect
+		fm = QFontMetrics(self._font)
+		br = fm.boundingRect(self._label)
+		# Add some space for the hourglass to the right of the label
+		br.setWidth(br.width() + self._hourglassWidth*1.5 + self._horizontalMargin)
+		br.setHeight(max(br.height(), self._hourglassHeight))
+		self._boundingRect = QRectF(br)
+
+	def paint(self, painter, option, widget = None):		
+		painter.setPen(self._pen)
+		painter.setFont(self._font)
+		painter.setBrush(QBrush(self._bgColor))
+		painter.drawLines(self._lines)
+		painter.setPen(self._fontPen)
+		painter.drawText(self.boundingRect(), Qt.AlignVCenter, self._label)
+
+
+class TimeoutTimerItem(StoppedTimerItem):
+	"""
+	A kind of hourglass with the label of the started timer to its left.
+	      
+	      \  /
+	timer  \/__\
+	       /\  /
+				/  \
+
+	"""
+	def __init__(self, label, bgcolor = QColor(240, 240, 200, 192)):
+		StoppedTimerItem.__init__(self, label, bgcolor)
+
+	def updateLines(self):
+		w = self.boundingRect().width()
+		h = self.boundingRect().height()
+		x = self.boundingRect().x()
+		y = self.boundingRect().y()
+		self._lines = []
+		self._lines.append(QLine(x + w - self._hourglassWidth/2, y, x + w - self._hourglassWidth*1.5, y + h)) # top right -> bottom left
+		self._lines.append(QLine(x + w - self._hourglassWidth*1.5, y, x + w - self._hourglassWidth/2, y + h)) # top left -> bottom right
+		self._lines.append(QLine(x + w - self._hourglassWidth, y + h/2, x + w, y + h/2)) # center -> TC line
+		self._lines.append(QLine(x + w - self._hourglassWidth/3, y + h/2 - self._hourglassWidth/3, x + w, y + h/2)) # top arrow -> TC line
+		self._lines.append(QLine(x + w - self._hourglassWidth/3, y + h/2 + self._hourglassWidth/3, x + w, y + h/2)) # bottom arrow -> TC line
+		
+
+class StoppedTcItem(GraphicsItem):
+	"""
+	Used to mark a stopped TC: a circle with a cross in it.
+	The verdict is provided below.
+	"""
+	def __init__(self, label, bgcolor = QColor(240, 240, 200, 192)):
+		GraphicsItem.__init__(self)
+		self._bgColor = bgcolor
+		pen = QPen(QColor(160, 160, 160))
+		pen.setWidth(1)
+		pen.setCapStyle(Qt.RoundCap)
+		self._pen = pen
+		self._fontPen = QPen()
+		self._font = QFont()
+
+		self._label = None
+		self._boundingRect = None
+		self._diameter = 30.0
+		self._verticalMargin = 1.0 # space between the label and the circle above it
+		self.setLabel(label)
+		self.updateLines()
+
+	def boundingRect(self):
+		return self._boundingRect
+
+	def updateLines(self):
+		w = self.boundingRect().width()
+		x = self.boundingRect().x()
+		y = self.boundingRect().y()
+		self._circleCenter = QPointF(x + w/2.0, y + self._diameter/2.0)
+		self._lines = []
+		offset = 0.7*self._diameter/2.0  # 0.7 = sqrt(2)/2
+		self._lines.append(QLine(self._circleCenter.x() - offset, self._circleCenter.y() - offset, self._circleCenter.x() + offset, self._circleCenter.y() + offset))
+		self._lines.append(QLine(self._circleCenter.x() + offset, self._circleCenter.y() - offset, self._circleCenter.x() - offset, self._circleCenter.y() + offset))
+
+	def setLabel(self, label):
+		self._label = label
+		# Update bounding rect
+		fm = QFontMetrics(self._font)
+		br = fm.boundingRect(self._label)
+		# Add some space for the circle above the label
+		br.setWidth(max(br.width(), self._diameter))
+		br.setHeight(self._diameter + self._verticalMargin + br.height())
+		self._boundingRect = QRectF(br)
+
+	def paint(self, painter, option, widget = None):		
+		painter.setPen(self._pen)
+		painter.setFont(self._font)
+		painter.setBrush(QBrush(self._bgColor))
+		painter.drawEllipse(self._circleCenter, self._diameter/2.0, self._diameter/2.0)
+		painter.drawLines(self._lines)
+		painter.setPen(self._fontPen)
+		painter.drawText(self.boundingRect(), Qt.AlignBottom | Qt.AlignHCenter, self._label)
+
 
 class RightArrowBoxedLabel(GraphicsItemGroup):
 	"""
@@ -145,44 +434,6 @@ class LeftArrowBoxedLabel(GraphicsItemGroup):
 		self.addToGroup(label)
 
 
-class RoundBoxedLabel(GraphicsItemGroup):
-	"""
-	A label in a round box. The label is centered in the box, with a margin on both sides.
-	(0,0) is the origin of the box.
-	"""
-	def __init__(self, label, bgcolor = QColor(240, 240, 200, 192), pen = QPen()):
-		GraphicsItemGroup.__init__(self)
-		self.__createWidgets(label, bgcolor, pen)
-
-	def __createWidgets(self, text, bgcolor, pen):
-		# The label
-		label = QGraphicsSimpleTextItem(text)
-		label.setZValue(100)
-
-		# Its "bounding" box
-		rect = label.boundingRect()
-		bevel = 7 # pixels
-		path = QPainterPath()
-		path.moveTo(rect.width() + 20 - bevel, 0)
-		path.arcTo(rect.width() + 20 - 2 * bevel, 0, 2*bevel, 2*bevel, 90, -90)
-		path.lineTo(rect.width() + 20, rect.height() - bevel)
-		path.arcTo(rect.width() + 20 - 2 * bevel, rect.height() - 2*bevel, 2*bevel, 2*bevel, 0, -90)
-		path.lineTo(bevel, rect.height())
-		path.arcTo(0, rect.height() - 2*bevel, 2*bevel, 2*bevel, -90, -90)
-		path.lineTo(0, bevel)
-		path.arcTo(0, 0, 2*bevel, 2*bevel, -180, -90)
-		path.closeSubpath()
-
-		roundedBox = QGraphicsPathItem(path)
-		roundedBox.setPen(pen)
-		roundedBox.setBrush(QBrush(bgcolor))
-		roundedBox.setZValue(50)
-
-		# We center the label in the box
-		label.translate((roundedBox.boundingRect().width() - rect.width()) / 2.0, 0)
-
-		self.addToGroup(roundedBox)
-		self.addToGroup(label)
 
 
 class MessageArrow(GraphicsItemGroup):
@@ -350,17 +601,65 @@ class TestCaseActor(QGraphicsItemGroup):
 
 		return group
 
-	def createRoundStickerItem(self, text, yOffset, color = QColor(240, 240, 200, 192)):
-		group = RoundBoxedLabel(text, bgcolor = color)
+	def createRoundedStickerItem(self, text, yOffset, color = QColor(240, 240, 200, 192)):
+		item = RoundedBoxedLabel(text, bgcolor = color)
 		y = yOffset + 20
-		x = self.getSceneXAnchor() - group.boundingRect().width() / 2.0
-		group.translate(x, y)
-
+		x = self.getSceneXAnchor() - item.boundingRect().width() / 2.0
+		item.translate(x, y)
 		# main line growth, if needed
 		if y > self.mainLine.line().y2():
 			self.expandMainLine( y - self.mainLine.line().y2() + 20 )
+		return item
 
-		return group
+	def createHexaStickerItem(self, text, yOffset, color = QColor(240, 240, 200, 192)):
+		item = HexaBoxedLabel(text, bgcolor = color)
+		y = yOffset + 20
+		x = self.getSceneXAnchor() - item.boundingRect().width() / 2.0
+		item.translate(x, y)
+		# main line growth, if needed
+		if y > self.mainLine.line().y2():
+			self.expandMainLine( y - self.mainLine.line().y2() + 20 )
+		return item
+
+	def createStartedTimerStickerItem(self, text, yOffset, color = QColor(240, 240, 200, 192)):
+		item = StartedTimerItem(text, bgcolor = color)
+		y = yOffset + 20
+		x = self.getSceneXAnchor() - item.boundingRect().width() # align it against the TC line
+		item.translate(x, y)
+		# main line growth, if needed
+		if y > self.mainLine.line().y2():
+			self.expandMainLine( y - self.mainLine.line().y2() + 20 )
+		return item
+
+	def createStoppedTimerStickerItem(self, text, yOffset, color = QColor(240, 240, 200, 192)):
+		item = StoppedTimerItem(text, bgcolor = color)
+		y = yOffset + 20
+		x = self.getSceneXAnchor() - item.boundingRect().width() # align it against the TC line
+		item.translate(x, y)
+		# main line growth, if needed
+		if y > self.mainLine.line().y2():
+			self.expandMainLine( y - self.mainLine.line().y2() + 20 )
+		return item
+
+	def createTimeoutTimerStickerItem(self, text, yOffset, color = QColor(240, 240, 200, 192)):
+		item = TimeoutTimerItem(text, bgcolor = color)
+		y = yOffset + 20
+		x = self.getSceneXAnchor() - item.boundingRect().width() # align it against the TC line
+		item.translate(x, y)
+		# main line growth, if needed
+		if y > self.mainLine.line().y2():
+			self.expandMainLine( y - self.mainLine.line().y2() + 20 )
+		return item
+
+	def createStoppedStickerItem(self, text, yOffset, color = QColor(240, 240, 200, 192)):
+		item = StoppedTcItem(text, bgcolor = color)
+		y = yOffset + 20
+		x = self.getSceneXAnchor() - item.boundingRect().width() / 2.0
+		item.translate(x, y)
+		# main line growth, if needed
+		if y > self.mainLine.line().y2():
+			self.expandMainLine( y - self.mainLine.line().y2() + 20 )
+		return item
 
 	def createRightArrowStickerItem(self, text, yOffset, color = QColor(240, 240, 200, 192)):
 		group = RightArrowBoxedLabel(text, bgcolor = color)
@@ -490,22 +789,21 @@ class TestCaseScene(QGraphicsScene):
 
 		try:
 			# TC events
-			print "DEBUG: element is (%s)" % element
 			if element == "tc-created":
 				actor = domElement.attribute("id")
 				self.__addActor(actor)
 				print "Added actor %s" % repr(actor)
 			elif element == "tc-started":
 				actor = domElement.attribute("id")
-				behaviour = domElement.firstChildElement("behaviour").text()
-				itemToAdd = self.__actors[actor].createRoundStickerItem("[" + behaviour + "]", y, self.startedColor)
+				behaviour = domElement.attribute("behaviour")
+				itemToAdd = self.__actors[actor].createRoundedStickerItem(behaviour, y, self.startedColor)
 			elif element == "tc-stopped":
 				actor = domElement.attribute("id")
 				verdict = domElement.attribute("verdict")
 				color = self.failedColor
 				if verdict == "pass":
 					color = self.successColor
-				itemToAdd = self.__actors[actor].createRoundStickerItem(verdict, y, color)
+				itemToAdd = self.__actors[actor].createStoppedStickerItem(verdict, y, color)
 			elif element == "tc-killed":
 				actor = domElement.attribute("id")
 				self.__actors[actor].setKilled(y)
@@ -514,15 +812,16 @@ class TestCaseScene(QGraphicsScene):
 			elif element == "timer-started":
 				actor = domElement.attribute("tc")
 				timerId = domElement.attribute("id")
-				itemToAdd = self.__actors[actor].createStickerItem("<" + timerId + " started>", y, self.timerStartedColor)
+				duration = domElement.attribute("duration")
+				itemToAdd = self.__actors[actor].createStartedTimerStickerItem("%s (%s)" % (timerId, duration), y, self.timerStartedColor)
 			elif element == "timer-stopped":
 				actor = domElement.attribute("tc")
 				timerId = domElement.attribute("id")
-				itemToAdd = self.__actors[actor].createStickerItem("<" + timerId + " stopped>", y, self.timerStoppedColor)
+				itemToAdd = self.__actors[actor].createStoppedTimerStickerItem(timerId, y, self.timerStoppedColor)
 			elif element == "timer-expiry":
 				actor = domElement.attribute("tc")
 				timerId = domElement.attribute("id")
-				itemToAdd = self.__actors[actor].createStickerItem(">" + timerId + " timeout<", y, self.timerTimeoutColor)
+				itemToAdd = self.__actors[actor].createTimeoutTimerStickerItem(timerId, y, self.timerTimeoutColor)
 
 			# TestCase events
 			elif element == "verdict-updated":
@@ -531,7 +830,7 @@ class TestCaseScene(QGraphicsScene):
 				color = self.failedColor
 				if verdict == "pass":
 					color = self.successColor
-				itemToAdd = self.__actors[actor].createStickerItem("<<" + verdict + ">>", y, color)
+				itemToAdd = self.__actors[actor].createHexaStickerItem(verdict, y, color)
 			
 			# Message events
 			elif element == "message-sent":
@@ -576,11 +875,11 @@ class TestCaseScene(QGraphicsScene):
 				itemToAdd = self.createUserLogItem(actor, msg, y)
 
 		except KeyError, e:
-			log("WARNING: unable to add visual event, possibly missed actor creation event (%s)" % str(e))
+			log("WARNING: unable to add visual event, possibly missed actor creation event (%s)" % getBacktrace())
 			itemToAdd = None
 
 		except Exception, e:
-			log("WARNING: unable to add visual event (%s)" % str(e))
+			log("WARNING: unable to add visual event (%s)" % getBacktrace())
 			itemToAdd = None
 
 		if itemToAdd:
@@ -609,7 +908,7 @@ class TestCaseScene(QGraphicsScene):
 		"""
 		if not self.__actors.has_key(actor):
 			# Control level or TestCase level / not attached to a Test Component
-			t = BoxedLabel(msg, bgcolor = QColor(128, 128, 192, 192), pen = QPen())
+			t = BoxedLabel(msg, bgcolor = QColor(128, 128, 192, 192))
 			t.translate(0, yPos + 10)
 			return t
 		else:

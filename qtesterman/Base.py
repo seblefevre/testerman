@@ -50,6 +50,10 @@ def formatTimestamp(timestamp):
 def log(txt):
 	print "%s - " % formatTimestamp(time.time()) + txt
 
+def getBacktrace():
+	import TestermanNodes
+	return TestermanNodes.getBacktrace()
+
 ################################################################################
 # Aliases
 ################################################################################

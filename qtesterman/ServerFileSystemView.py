@@ -523,8 +523,9 @@ class WServerFileSystemTreeWidget(QTreeWidget):
 	##
 	def _open(self, item):
 		url = item.getUrl()
-		print "DEBUG: opening url %s..." % url.toString()
-		self.emit(SIGNAL('openUrl(const QUrl&)'), url)
+		if url:
+			print "DEBUG: opening url %s..." % url.toString()
+			self.emit(SIGNAL('openUrl(const QUrl&)'), url)
 
 
 # Basic test

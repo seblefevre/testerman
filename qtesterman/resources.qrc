@@ -10,6 +10,7 @@ pyrcc4 resources.qrc -o Resources.py
 	<file alias="server-ok">resources/user-online.png</file>
 	<file alias="server-warning">resources/warning.png</file>
 	<file alias="server-error">resources/window-close.png</file>
+	<file alias="server-undefined">resources/user-offline.png</file>
 	
 	<!-- browsers -->
 	<file alias="browser">resources/view-sidetree.png</file>
