@@ -2048,6 +2048,8 @@ class not_(ConditionTemplate):
 	def match(self, message):
 		(m, _) = templateMatch(message, self._template)
 		return not m
+	def toMessage(self):
+		return ('(not)', self._template)
 	def __repr__(self):
 		return "(not %s)" % str(self._template) # a recursive str(template) is needed - here it will work only for simple types/comparators.
 
@@ -2095,7 +2097,7 @@ class superset(ConditionTemplate):
 	def __repr__(self):
 		return "(superset of [%s])" % ', '.join([unicode(x) for x in self._templates])
 	def toMessage(self):
-		return ('superset', self._templates)
+		return ('(superset)', self._templates)
 	def value(self):
 		return self._templates
 
@@ -2121,7 +2123,7 @@ class subset(ConditionTemplate):
 	def __repr__(self):
 		return "(subset of [%s])" % ', '.join([unicode(x) for x in self._templates])
 	def toMessage(self):
-		return ('subset', self._templates)
+		return ('(subset)', self._templates)
 	def value(self):
 		return self._templates
 
@@ -2141,6 +2143,8 @@ class contains(ConditionTemplate):
 			if m:
 				return True
 		return False
+	def toMessage(self):
+		return ('(contains)', self._template)
 	def __str__(self):
 		return "(contains %s)" % unicode(self._template)
 

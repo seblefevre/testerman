@@ -26,9 +26,8 @@ import TestermanMessages as Messages
 import TestermanNodes as Nodes
 
 import base64
-import string
+import cgi
 import sys
-import threading
 import time
 
 # These global variables are set during the TE initialization,
@@ -254,9 +253,23 @@ def tliLog(logClass, xml):
 # Main Testerman log format: XML serializer
 ################################################################################
 
-def testermanToXml(obj, simpleElement = None):
+"""
+V2 log format:
+
+|| TTCN-3 type || Testerman representation || XML representation ||
+|| union       || Python couple ('choiceName', value) || <choice name="choiceName">value</choice> ||
+|| record of/set of || Python list [value0, value1, ...] || <list><item>value0</item><item>value1</item></list> ||
+|| record      || Python dict {'fieldName': value} || <record><field name="fieldName">value</field></record> ||
+
+a XER-like encoding used to be used, but it was not possible to encode fancy field names in records, such as "COUNT(*)", "1.2.5423.12.19", etc.
+
+Octetstrings are encoded in base64, and the element that contains it gets an additional encoding="base64" attribute.
+
+"""
+
+def testermanToXml(obj, element):
 	"""
-	Serializes a Testerman structure to an XML representation.
+	Serializes a Testerman structure to an XML representation in an element named element
 	
 	Valid structures are:
 	- simple types (strings, buffers, numerics, boolean)
@@ -266,14 +279,23 @@ def testermanToXml(obj, simpleElement = None):
 	
 	@type  obj: python object
 	@param obj: the structure to serialize
-	@type  simpleElement: string, or None
-	@param simpleElement: if present, the function results to a string that contains
-	       the element. This is mainly useful (if not mandatory) for simple types, so
-	       that the element can contain a correct encoding attribute. Ignored for non-simple types.
+	@type  element: string
+	@param element: the name of the element to build.
 
 	@rtype: unicode
 	@returns: the XML encoded string representing the structure.
 	          Notice that no character encoding is applied (unicode).
+	"""
+	(value, encoding) = _testermanToXml(obj)
+	if encoding:
+		return u'<%s encoding="%s">%s</%s>' % (element, encoding, value, element)
+	else:
+		return u'<%s>%s</%s>' % (element, value, element)
+
+def _testermanToXml(obj):
+	"""
+	@rtype: (unicode, string)
+	@returns: a tuple (data, encoding), encoding is None if none was applied.
 	"""
 	# Tries to apply the 'to message' transformation (useful for template proxies)
 	try:
@@ -282,39 +304,36 @@ def testermanToXml(obj, simpleElement = None):
 		pass
 	
 	if isinstance(obj, list):
-		# The internally working object is a lis - faster than a string for concat ops.
-		ret = []
-		count = 0
-		for subobj in obj:
-			ret.append(testermanToXml(subobj, '_%d' % count))
-			count += 1
-		if simpleElement:
-			return u'<%s>%s</%s>' % (simpleElement, ''.join(ret), simpleElement)
-		else:
-			return u''.join(ret)
+		# The internally working object is a list - faster than a string for concat ops.
+		ret = [ '<l>' ]
+		for item in obj:
+			ret.append(testermanToXml(item, 'i'))
+		ret.append('</l>')
+		return (u''.join(ret), None)
 	
 	if isinstance(obj, tuple):
 		if not len(obj) == 2:
-			# ignore it - invalid structure
-			if simpleElement:
-				return u'<%s />' % simpleElement
-			else:
-				return u''
-		# Make sure this is a valid element name
-		element = convertToElement(unicode(obj[0]))
-		ret = testermanToXml(obj[1], element)
-		if simpleElement:
-			return u'<%s>%s</%s>' % (simpleElement, ret, simpleElement)
+			# Invalid "choice" representation.
+			return ('', None)
+
+		(choiceName, choiceValue) = obj
+		(value, encoding) = _testermanToXml(choiceValue)
+		if encoding:
+			ret = u'<c n="%s" encoding="%s">%s</c>' % (convertToAttribute(choiceName), encoding, value)
 		else:
-			return ret
+			ret = u'<c n="%s">%s</c>' % (convertToAttribute(choiceName), value)
+		return (ret, None)
 	
 	if isinstance(obj, dict):
-		ret = [ testermanToXml(val, convertToElement(element)) for element, val in obj.items() ]
-		if simpleElement:
-			return u'<%s>%s</%s>' % (simpleElement, ''.join(ret), simpleElement)
-		else:
-			return u''.join(ret)
-	
+		ret = [ '<r>' ] # record
+		for fieldName, fieldValue in obj.items():
+			value, encoding = _testermanToXml(fieldValue)
+			if encoding:
+				ret.append(u'<f n="%s" encoding="%s">%s</f>' % (convertToAttribute(fieldName), encoding, value))
+			else:
+				ret.append(u'<f n="%s">%s</f>' % (convertToAttribute(fieldName), value))
+		ret.append('</r>')
+		return (u''.join(ret), None)
 
 	# Other (simple) types.
 	
@@ -335,16 +354,18 @@ def testermanToXml(obj, simpleElement = None):
 		except UnicodeDecodeError:
 			ret = base64.encodestring(obj)
 			encoding = "base64"
+
+	if not encoding:
+		ret = cgi.escape(ret) # u'<![CDATA[%s]]>' % ret
 	
-	if simpleElement:
-		if encoding:
-			return u'<%s encoding="%s"><![CDATA[%s]]></%s>' % (simpleElement, encoding, ret, simpleElement)
-		else:
-			return u'<%s><![CDATA[%s]]></%s>' % (simpleElement, ret, simpleElement)
-	else:
-		# Discarded encoding information in this case.
-		return ret
-			
+	return (ret, encoding)
+	
+def convertToAttribute(value):
+	"""
+	Escapes the usual characters so that the value can be used as an attribute value.
+	"""
+	return cgi.escape(value, True)
+
 def convertToElement(e):
 	"""
 	Makes sure e can be used as a valid element name.
@@ -362,3 +383,4 @@ def isPrintable(s):
 	if '\x00' in s:
 		return False
 	return True
+
