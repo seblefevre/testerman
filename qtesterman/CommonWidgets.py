@@ -235,6 +235,7 @@ class WSciReplace(QDialog):
 		QDialog.__init__(self, parent)
 		self.scintilla = scintilla
 		self.firstSearch = True
+		self.forward = True
 		self.__createWidgets()
 
 	def __createWidgets(self):
@@ -242,12 +243,11 @@ class WSciReplace(QDialog):
 		self.setWindowIcon(icon(':icons/testerman.png'))
 
 		searchLayout = QGridLayout()
-
-		searchLayout.addWidget(QLabel('Find what: '), 0, 0)
+		searchLayout.addWidget(QLabel('Find:'), 0, 0, Qt.AlignRight)
 		self.searchFor = QLineEdit()
 		self.connect(self.searchFor, SIGNAL("textChanged(const QString&)"), self.onSearchForTextChanged)
 		searchLayout.addWidget(self.searchFor, 0, 1)
-		searchLayout.addWidget(QLabel('Replace with: '), 1, 0)
+		searchLayout.addWidget(QLabel('Replace with:'), 1, 0, Qt.AlignRight)
 		self.replaceWith = QLineEdit()
 		searchLayout.addWidget(self.replaceWith, 1, 1)
 
@@ -267,26 +267,29 @@ class WSciReplace(QDialog):
 
 		layout = QVBoxLayout()
 		layout.addLayout(searchLayout)
+		layout.addStretch()
 
 		# Buttons
 		buttonLayout = QHBoxLayout()
-		self.replaceButton = QPushButton("Replace", self)
-		self.connect(self.replaceButton, SIGNAL("clicked()"), self.replace)
+		buttonLayout.addStretch()
 		self.nextButton = QPushButton("Next", self)
 		self.connect(self.nextButton, SIGNAL("clicked()"), self.next)
+		buttonLayout.addWidget(self.nextButton)
+		self.previousButton = QPushButton("Previous", self)
+		self.connect(self.previousButton, SIGNAL("clicked()"), self.previous)
+		buttonLayout.addWidget(self.previousButton)
+		self.replaceButton = QPushButton("Replace", self)
+		self.connect(self.replaceButton, SIGNAL("clicked()"), self.replace)
+		buttonLayout.addWidget(self.replaceButton)
 		self.replaceAllButton = QPushButton("Replace All", self)
 		self.connect(self.replaceAllButton, SIGNAL("clicked()"), self.replaceAll)
+		buttonLayout.addWidget(self.replaceAllButton)
 		self.cancelButton = QPushButton("Close", self)
 		self.connect(self.cancelButton, SIGNAL("clicked()"), self.reject)
-		buttonLayout.addStretch()
-		buttonLayout.addWidget(self.nextButton)
-		buttonLayout.addWidget(self.replaceButton)
-		buttonLayout.addWidget(self.replaceAllButton)
 		buttonLayout.addWidget(self.cancelButton)
 
 		layout.addLayout(buttonLayout)
 		self.setLayout(layout)
-
 		self.searchFor.setFocus()
 
 	def onSearchForTextChanged(self, txt):
@@ -297,6 +300,9 @@ class WSciReplace(QDialog):
 
 	def next(self):
 		self.find(self.searchFor.text())
+
+	def previous(self):
+		self.find(self.searchFor.text(), forward = False)
 
 	def replace(self):
 		"""
@@ -326,7 +332,7 @@ class WSciReplace(QDialog):
 		self.firstSearch = True
 		QMessageBox.information(self, getClientName(), "qtTesterman has completed its search and has made " +  str(i) + " replacement(s).", QMessageBox.Ok)
 
-	def find(self, text, singlePass = False):
+	def find(self, text, singlePass = False, forward = True):
 		"""
 		Return True if the text was found, False otherwise.
 
@@ -337,7 +343,7 @@ class WSciReplace(QDialog):
 		wordOnly = self.wordOnly.isChecked()
 		if not text.length():
 			return False
-		if self.firstSearch:
+		if self.firstSearch or self.forward != forward:
 			# The index should be the selection.indexFrom, if a selection is done.
 			# So we cannot leave the default index (the current cursor position, at the end of the selection)
 			(lineFrom, indexFrom, lineTo, indexTo) = self.scintilla.getSelection()
@@ -346,7 +352,8 @@ class WSciReplace(QDialog):
 				wrap = False
 				lineFrom = 0
 				indexFrom = 0
-			found = self.scintilla.findFirst(text, regExp, caseSensitive, wordOnly, wrap, True, lineFrom, indexFrom)
+			found = self.scintilla.findFirst(text, regExp, caseSensitive, wordOnly, wrap, forward, lineFrom, indexFrom)
+			self.forward = forward
 		else:
 			found = self.scintilla.findNext()
 		if found and self.firstSearch:

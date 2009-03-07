@@ -394,7 +394,7 @@ class WModuleDocument(WDocument):
 		replace function
 		"""
 		replaceBox = WSciReplace(self.editor, self)
-		replaceBox.exec_()
+		replaceBox.show()
 
 	def showDocumentation(self):
 		if self.model.getUrl() is not None:
@@ -500,7 +500,7 @@ class WAtsDocument(WDocument):
 		replace function
 		"""
 		replaceBox = WSciReplace(self.editor, self)
-		replaceBox.exec_()
+		replaceBox.show()
 
 	def verify(self, displayNoError = 1):
 		self.updateModel()
@@ -619,7 +619,7 @@ class WCampaignDocument(WDocument):
 		replace function
 		"""
 		replaceBox = WSciReplace(self.editor, self)
-		replaceBox.exec_()
+		replaceBox.show()
 
 	def verify(self):
 		self.updateModel()

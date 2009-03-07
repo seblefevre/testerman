@@ -16,11 +16,12 @@
 ##
 # Settings & Configuration management.
 #
+# NB: GUI guidelines: labels are right-aligned, input fields are left-aligned.
+#
 ##
 
 from PyQt4.Qt import *
 
-import md5
 import os
 import shutil
 
@@ -28,111 +29,163 @@ from Base import *
 from CommonWidgets import *
 
 import PluginManager
+import AutoUpdate
 
 ################################################################################
 # Settings management
 ################################################################################
 
 # Dialog Box
-class WSettingsDialog(QDialog):
+class WPreferencesDialog(QDialog):
 	def __init__(self, parent = None):
 		QDialog.__init__(self, parent)
 		self.__createWidgets()
 
 	def __createWidgets(self):
-		self.setWindowTitle(getClientName() + " configuration")
-		self.settings = WSettings(self)
-
-		# Buttons
-		self.okButton = QPushButton("Ok")
-		self.connect(self.okButton, SIGNAL("clicked()"), self.accept)
-		self.cancelButton = QPushButton("Cancel")
-		self.connect(self.cancelButton, SIGNAL("clicked()"), self.reject)
+		self.setWindowTitle(getClientName() + " preferences")
 
 		layout = QVBoxLayout()
-		layout.addWidget(self.settings)
+		self._preferences = WPreferences(self)
+		layout.addWidget(self._preferences)
+
+		# Buttons
+		self._okButton = QPushButton("Ok")
+		self.connect(self._okButton, SIGNAL("clicked()"), self.accept)
+		self._cancelButton = QPushButton("Cancel")
+		self.connect(self._cancelButton, SIGNAL("clicked()"), self.reject)
 		buttonLayout = QHBoxLayout()
 		buttonLayout.addStretch()
-		buttonLayout.addWidget(self.okButton)
-		buttonLayout.addWidget(self.cancelButton)
+		buttonLayout.addWidget(self._okButton)
+		buttonLayout.addWidget(self._cancelButton)
 		layout.addLayout(buttonLayout)
+
 		self.setLayout(layout)
+		
+		self.resize(500, 300)
 
 	def accept(self):
 		"""
 		QDialog reimplementation.
 		"""
-		if self.settings.checkModel():
-			self.settings.updateModel()
+		if self._preferences.validate():
+			self._preferences.updateModel()
 			QDialog.accept(self)
 
-class WSettings(QWidget):
+
+class WPreferencesPage(QWidget):
 	"""
-	Client Settings. For now, a simple page.
-	One day, something more complex.
+	A single page of preferences.
+	Offers several facility to add a WSettings in it,
+	either as a labelled groupbox or as a single setting.
+	"""
+	def __init__(self, parent = None):
+		QWidget.__init__(self, parent)
+		self._layout = QVBoxLayout()
+		self.setLayout(self._layout)
+
+	def addBoxedWidget(self, widget, label):
+		self._layout.addWidget(WGroupBox(label, widget))
+
+	def addWidget(self, widget):
+		self._layout.addWidget(widget)
+
+class WPreferences(QTabWidget):
+	"""
+	Settings/Preferences.
+	One tab per group of actions, each tab may contain more than a single
+	widget.
 	"""
 	def __init__(self, parent = None):
 		QWidget.__init__(self, parent)
 		self.__createWidgets()
 
 	def __createWidgets(self):
-		layout = QVBoxLayout()
+		
+		page = WPreferencesPage()		
+		self._connectionSettings = WConnectionSettings()
+		self._autoUpdateSettings = WAutoUpdateSettings()
+		page.addBoxedWidget(self._connectionSettings, "Connection")
+		page.addBoxedWidget(self._autoUpdateSettings, "Updates")
+		self.addTab(page, "Server")
 
-		self.connectionSettings = WConnectionSettings()
-		self.connectionSettingsGroupBox = WGroupBox("Connection", self.connectionSettings)
-		layout.addWidget(self.connectionSettingsGroupBox)
+		page = WPreferencesPage(self)
+		self._uiSettings = WInterfaceSettings()
+		self._logsSettings = WLogsSettings()
+		page.addBoxedWidget(self._uiSettings, "General")
+		page.addBoxedWidget(self._logsSettings, "Log viewer")
+		self.addTab(page, "User interface")
 
-		self.autoUpdateSettings = WAutoUpdateSettings()
-		self.autoUpdateSettingsGroupBox = WGroupBox("Updates", self.autoUpdateSettings)
-		layout.addWidget(self.autoUpdateSettingsGroupBox)
+		page = WPreferencesPage(self)
+		self._docSettings = WDocumentationSettings()
+		page.addWidget(self._docSettings)
+		self.addTab(page, "Documentation")
 
-		self.uiSettings = WInterfaceSettings()
-		self.uiSettingsGroupBox = WGroupBox("User interface", self.uiSettings)
-		layout.addWidget(self.uiSettingsGroupBox)
+		page = WPreferencesPage(self)
+		self._pluginsSettings = WPluginsSettings()
+		page.addWidget(self._pluginsSettings)
+		self.addTab(page, "Plugins")
 
-		self.docSettings = WDocumentationSettings()
-		self.docSettingsGroupBox = WGroupBox("Documentation", self.docSettings)
-		layout.addWidget(self.docSettingsGroupBox)
-
-		self.logsSettings = WLogsSettings()
-		self.logsSettingsGroupBox = WGroupBox("Logs", self.logsSettings)
-		layout.addWidget(self.logsSettingsGroupBox)
-
-		self.pluginsSettings = WPluginsSettings()
-		self.pluginsSettingsGroupBox = WGroupBox("Plugins", self.pluginsSettings)
-		layout.addWidget(self.pluginsSettingsGroupBox)
-
-		self.setLayout(layout)
-
-		self.settings = [ self.connectionSettings, self.uiSettings, self.docSettings, self.logsSettings, self.autoUpdateSettings, self.pluginsSettings ]
+		self._settings = [ self._connectionSettings, self._uiSettings, 
+			self._docSettings, self._logsSettings, 
+			self._autoUpdateSettings, self._pluginsSettings ]
 
 	def updateModel(self):
 		"""
 		Update the underlying model data.
-		Returns True if success, False on error.
 		"""
-		for setting in self.settings:
+		for setting in self._settings:
 			setting.updateModel()
-		return True
 
-	def checkModel(self):
+	def validate(self):
 		"""
-		Check the proposed values according to the possible data models.
-		Returns 1 if success, 0 on error.
+		Validates all the user input, delegating the local validation
+		to each setting widget.
+		
+		@rtype: bool
+		@returns: True if OK, False otherwise.
 		"""
-		for setting in self.settings:
-			if not setting.checkModel():
+		for setting in self._settings:
+			if not setting.validate():
 				return False
 		return True
 
+
+class WSettings(QWidget):
+	"""
+	Base class/interface to create widgets dedicated to a single-domain
+	preferences, called settings.
+	"""
+	def __init__(self, parent = None):
+		QWidget.__init__(self, parent)
+	
+	def updateModel(self):
+		"""
+		To reimplement.
+		Called to write the validated settings to a persistent storage 
+		plus activate them if applicable (server changes, etc).
+		"""
+		pass
+	
+	def validate(self):
+		"""
+		To reimplement.
+		Called to validate the user input.
+		@rtype: bool
+		@returns: True if the user input are all valid, False otherwise.
+		You may display additional message boxes to point the user to his/her 
+		invalid input.
+		
+		The default implementation assumes that no validation is required.
+		"""
+		return True
 
 ###############################################################################
 # Connection/Servers related settings
 ###############################################################################
 
-class WConnectionSettings(QWidget):
+class WConnectionSettings(WSettings):
 	def __init__(self, parent = None):
-		QWidget.__init__(self, parent)
+		WSettings.__init__(self, parent)
 		self.__createWidgets()
 
 	def __createWidgets(self):
@@ -150,24 +203,23 @@ class WConnectionSettings(QWidget):
 		self.urlComboBox.addItems(urllist)
 		self.urlComboBox.setEditText(lasturl)
 		self.urlComboBox.setMaxCount(5)
-		self.urlComboBox.setMaximumWidth(250)
+		self.urlComboBox.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
 		self.usernameLineEdit = QLineEdit(username)
-		self.usernameLineEdit.setMaximumWidth(250)
+		self.usernameLineEdit.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
 
 		layout = QVBoxLayout()
 		paramLayout = QGridLayout()
-		paramLayout.addWidget(QLabel("Server URL:"), 0, 0)
+		paramLayout.addWidget(QLabel("Server URL:"), 0, 0, Qt.AlignRight)
 		paramLayout.addWidget(self.urlComboBox, 0, 1)
-		paramLayout.addWidget(QLabel("Username:"), 1, 0)
+		paramLayout.addWidget(QLabel("Username:"), 1, 0, Qt.AlignRight)
 		paramLayout.addWidget(self.usernameLineEdit, 1, 1)
+		paramLayout.setColumnStretch(1, 1)
 		layout.addLayout(paramLayout)
+		layout.addStretch()
 
 		self.setLayout(layout)
 
 	def updateModel(self):
-		"""
-		Update the data model.
-		"""
 		url = self.urlComboBox.currentText()
 		# URL List: the currently selected item should be the first of the saved list,
 		# so that it is selected upon restoration (this requirement could be matched 
@@ -187,29 +239,26 @@ class WConnectionSettings(QWidget):
 		settings.setValue('connection/urllist', QVariant(urllist))
 		settings.setValue('connection/username', QVariant(username))
 
-	def checkModel(self):
-		"""
-		Check the data model, return 1 if OK, 0 if not.
-		"""
+	def validate(self):
 		url = QUrl(self.urlComboBox.currentText())
 		username = self.usernameLineEdit.text()
 		
 		if not url.scheme() == 'http':
 			QErrorMessage(self).showMessage('The Testerman server URL must start with http://')
-			return 0
+			return False
 		if username == '':
 			QErrorMessage(self).showMessage('You must enter a username')
-			return 0
-		return 1
+			return False
+		return True
 
 
 ###############################################################################
 # Documentation related settings
 ###############################################################################
 
-class WDocumentationSettings(QWidget):
+class WDocumentationSettings(WSettings):
 	def __init__(self, parent = None):
-		QWidget.__init__(self, parent)
+		WSettings.__init__(self, parent)
 		self.__createWidgets()
 
 	def __createWidgets(self):
@@ -219,6 +268,7 @@ class WDocumentationSettings(QWidget):
 		# Read the settings
 		settings = QSettings()
 		documentationCache = settings.value('documentation/cacheDir', QVariant(QString(QApplication.instance().get('documentationcache')))).toString()
+		vlayout = QVBoxLayout()
 		layout = QGridLayout()
 		# Documentation cache location + browse directory button
 		layout.addWidget(QLabel("Documentation cache:"), 0, 0, 1, 2)
@@ -231,8 +281,9 @@ class WDocumentationSettings(QWidget):
 		self.cleanDocumentationCacheButton = QPushButton("Clean cache now")
 		self.connect(self.cleanDocumentationCacheButton, SIGNAL('clicked()'), self.cleanDocumentationCache)
 		layout.addWidget(self.cleanDocumentationCacheButton, 2, 0, 1, 2)
-
-		self.setLayout(layout)
+		vlayout.addLayout(layout)
+		vlayout.addStretch()
+		self.setLayout(vlayout)
 
 	def browseForCacheDirectory(self):
 		documentationCache = QFileDialog.getExistingDirectory(self, "Documentation cache root directory", self.documentationCacheLineEdit.text())
@@ -250,28 +301,19 @@ class WDocumentationSettings(QWidget):
 		userInformation(self, "Documentation cache directory cleaned up.")
 
 	def updateModel(self):
-		"""
-		Update the data model.
-		"""
 		documentationCache = self.documentationCacheLineEdit.text()
 		# We save them as settings
 		settings = QSettings()
 		settings.setValue('documentation/cacheDir', QVariant(documentationCache))
-
-	def checkModel(self):
-		"""
-		Check the data model, return 1 if OK, 0 if not.
-		"""
-		return 1
 
 
 ###############################################################################
 # General interface related settings
 ###############################################################################
 
-class WInterfaceSettings(QWidget):
+class WInterfaceSettings(WSettings):
 	def __init__(self, parent = None):
-		QWidget.__init__(self, parent)
+		WSettings.__init__(self, parent)
 		self.__createWidgets()
 
 	def __createWidgets(self):
@@ -283,24 +325,24 @@ class WInterfaceSettings(QWidget):
 		style = settings.value('style', QVariant(QString('Cleanlooks'))).toString()
 		reopenOnStartup = settings.value('mru/reopenOnStartup', QVariant(True)).toBool()
 
+		vlayout = QVBoxLayout()
 		layout = QGridLayout()
+		layout.setColumnStretch(1, 1)
 		# GUI Style
 		self.styleComboBox = QComboBox()
 		self.styleComboBox.addItems(QStyleFactory.keys())
 		self.styleComboBox.setCurrentIndex(self.styleComboBox.findText(style))
-		layout.addWidget(QLabel("GUI Style:"), 0, 0)
-		layout.addWidget(self.styleComboBox, 0, 1)
+		layout.addWidget(QLabel("GUI Style:"), 0, 0, Qt.AlignRight)
+		layout.addWidget(self.styleComboBox, 0, 1, Qt.AlignLeft)
 		# Reopen most recently used docs on startup
 		self.reopenOnStartupCheckBox = QCheckBox("Re-open last open files on startup")
 		self.reopenOnStartupCheckBox.setChecked(reopenOnStartup)
-		layout.addWidget(self.reopenOnStartupCheckBox, 1, 0, 1, 2)
-
-		self.setLayout(layout)
+		layout.addWidget(self.reopenOnStartupCheckBox, 1, 0, 1, 2, Qt.AlignLeft)
+		vlayout.addLayout(layout)
+		vlayout.addStretch()
+		self.setLayout(vlayout)
 
 	def updateModel(self):
-		"""
-		Update the data model.
-		"""
 		style = self.styleComboBox.currentText()
 
 		# We save them as settings
@@ -311,20 +353,14 @@ class WInterfaceSettings(QWidget):
 
 		QApplication.instance().setStyle(style)
 
-	def checkModel(self):
-		"""
-		Check the data model, return 1 if OK, 0 if not.
-		"""
-		return 1
-
 
 ###############################################################################
 # Auto-update related settings
 ###############################################################################
 
-class WAutoUpdateSettings(QWidget):
+class WAutoUpdateSettings(WSettings):
 	def __init__(self, parent = None):
-		QWidget.__init__(self, parent)
+		WSettings.__init__(self, parent)
 		self.__createWidgets()
 
 	def __createWidgets(self):
@@ -334,7 +370,21 @@ class WAutoUpdateSettings(QWidget):
 		self.acceptExperimentalUpdatesCheckBox = QCheckBox("Accept experimental updates")
 		self.acceptExperimentalUpdatesCheckBox.setChecked(a)
 		layout.addWidget(self.acceptExperimentalUpdatesCheckBox)
+		self.checkUpdatesButton = QPushButton("Check updates now")
+		self.connect(self.checkUpdatesButton, SIGNAL("clicked()"), self.checkUpdates)
+		layout.addWidget(self.checkUpdatesButton)
+		layout.addStretch()
 		self.setLayout(layout)
+
+	def checkUpdates(self):
+		branches = [ 'stable' ]
+		if self.acceptExperimentalUpdatesCheckBox.isChecked():
+			branches.append('testing')
+			branches.append('experimental')
+		if AutoUpdate.updateComponent(proxy = QApplication.instance().client(), basepath = QApplication.instance().get('basepath'), component = "qtesterman", currentVersion = getClientVersion(), branches = branches):
+			ret = QMessageBox.question(self, getClientName(), "Do you want to restart now ? (Unsaved file modifications will be discarded)", QMessageBox.Yes | QMessageBox.No)
+			if ret == QMessageBox.Yes:
+				AutoUpdate.Restarter.restart()
 
 	def updateModel(self):
 		"""
@@ -346,20 +396,14 @@ class WAutoUpdateSettings(QWidget):
 		a = self.acceptExperimentalUpdatesCheckBox.isChecked()
 		settings.setValue('autoupdate/acceptExperimentalUpdates', QVariant(a))
 
-	def checkModel(self):
-		"""
-		Check the data model, return 1 if OK, 0 if not.
-		"""
-		return 1
-
 
 ###############################################################################
 # Log viewer related settings
 ###############################################################################
 
-class WLogsSettings(QWidget):
+class WLogsSettings(WSettings):
 	def __init__(self, parent = None):
-		QWidget.__init__(self, parent)
+		WSettings.__init__(self, parent)
 		self.__createWidgets()
 
 	def __createWidgets(self):
@@ -379,6 +423,7 @@ class WLogsSettings(QWidget):
 		self.trackingCheckBox.setChecked(tracking)
 		layout.addWidget(self.trackingCheckBox)
 
+		layout.addStretch()
 		self.setLayout(layout)
 
 	def updateModel(self):
@@ -392,12 +437,6 @@ class WLogsSettings(QWidget):
 		settings.setValue('logs/raws', QVariant(raws))
 		tracking = self.trackingCheckBox.isChecked()
 		settings.setValue('logs/autotracking', QVariant(tracking))
-
-	def checkModel(self):
-		"""
-		Check the data model, return 1 if OK, 0 if not.
-		"""
-		return 1
 
 
 ###############################################################################
@@ -464,9 +503,9 @@ class WPluginSettingsDialog(QDialog):
 			self.settings.saveConfiguration()
 			QDialog.accept(self)
 
-class WPluginsSettings(QWidget):
+class WPluginsSettings(WSettings):
 	def __init__(self, parent = None):
-		QWidget.__init__(self, parent)
+		WSettings.__init__(self, parent)
 		self.__createWidgets()
 	
 	def __createWidgets(self):
@@ -475,13 +514,30 @@ class WPluginsSettings(QWidget):
 		layout.addWidget(self.pluginsTreeView)
 		self.setLayout(layout)
 	
-	def checkModel(self):
-		return self.pluginsTreeView.checkModel()
+	def validate(self):
+		return True
 	
 	def updateModel(self):
 		return self.pluginsTreeView.updateModel()
 
 class WPluginsTreeView(QTreeWidget):
+	class PluginItem(QTreeWidgetItem):
+		def __init__(self, pluginInfo, parent):
+			QTreeWidgetItem.__init__(self, parent)
+			self.pluginInfo = pluginInfo
+			self.pluginId = pluginInfo['plugin-id']
+			self.setText(0, pluginInfo['label'])
+			self.setText(1, pluginInfo['type'])
+			self.configurationClass = pluginInfo['configuration-class']
+			self.setFlags(Qt.ItemIsUserCheckable | Qt.ItemIsEnabled | Qt.ItemIsSelectable)
+			if pluginInfo['activated']:
+				self.setCheckState(2, Qt.Checked)
+			else:
+				self.setCheckState(2, Qt.Unchecked)
+
+		def activated(self):
+			return self.checkState(2) == Qt.Checked
+
 	def __init__(self, parent = None):
 		QTreeWidget.__init__(self, parent)
 		self.__createWidgets()
@@ -489,40 +545,24 @@ class WPluginsTreeView(QTreeWidget):
 		self.buildTree()
 
 	def __createWidgets(self):
-		pass
+		self.setRootIsDecorated(False)
+		self.setSortingEnabled(True)
+		self.setHeaderLabels(["name", "type", "active"])
+		self.connect(self, SIGNAL("itemActivated(QTreeWidgetItem*, int)"), self.onItemActivated)
+		self.setContextMenuPolicy(Qt.DefaultContextMenu)
+		self.header().setResizeMode(0, QHeaderView.Interactive)
+		self.header().resizeSection(0, 200)
+		self.header().setResizeMode(1, QHeaderView.ResizeToContents)
+		self.header().setResizeMode(2, QHeaderView.ResizeToContents)
 	
 	def buildTree(self):
 		self.clear()
-		class PluginItem(QTreeWidgetItem):
-			def __init__(self, pluginInfo, parent):
-				QTreeWidgetItem.__init__(self, parent)
-				self.pluginInfo = pluginInfo
-				self.pluginId = pluginInfo['plugin-id']
-				self.setText(0, pluginInfo['label'])
-				self.setText(1, pluginInfo['type'])
-				self.configurationClass = pluginInfo['configuration-class']
-				self.setFlags(Qt.ItemIsUserCheckable | Qt.ItemIsEnabled | Qt.ItemIsSelectable)
-				if pluginInfo['activated']:
-					self.setCheckState(2, Qt.Checked)
-				else:
-					self.setCheckState(2, Qt.Unchecked)
-
-			def activated(self):
-				return self.checkState(2) == Qt.Checked
-	
-		self.setRootIsDecorated(False)
-		self.setSortingEnabled(True)
-		self.sortItems(0, Qt.AscendingOrder)
-		self.setHeaderLabels(QStringList([ "name", "type", "activated"]))
-#		settings = QSettings()
 		# Load all plugins into a listview
 		for v in PluginManager.getPluginClasses():
-			item = PluginItem(v, parent = self)
-
-		self.connect(self, SIGNAL("itemActivated(QTreeWidgetItem*, int)"), self.onItemActivated)
+			item = self.PluginItem(v, parent = self)
+		self.sortItems(0, Qt.AscendingOrder)
 
 	def __createActions(self):
-		# Hidden actions for now. To expose through a contextual popup menu.
 		self.rescanAction = TestermanAction(self, "Rescan plugins", PluginManager.rescanPlugins)
 		self.rescanAction.setShortcut("F5")
 		self.rescanAction.setShortcutContext(Qt.WidgetShortcut)
@@ -531,6 +571,7 @@ class WPluginsTreeView(QTreeWidget):
 		self.aboutAction.setShortcut("Ctrl+Shift+A")
 		self.aboutAction.setShortcutContext(Qt.WidgetShortcut)
 		self.addAction(self.aboutAction)
+		self.configureAction = TestermanAction(self, "Configure", self.configurePlugin)
 
 	def rescanPlugins(self):
 		PluginManager.rescanPlugins()
@@ -542,10 +583,28 @@ class WPluginsTreeView(QTreeWidget):
 			dialog = WAboutPluginDialog(item.pluginInfo, self)
 			dialog.exec_()
 
-	def onItemActivated(self, item, col):
+	def configurePlugin(self):
+		item = self.currentItem()
 		if item:
-			dialog = WPluginSettingsDialog(item.text(0), item.configurationClass, self)
-			dialog.exec_()
+			if item.configurationClass:
+				dialog = WPluginSettingsDialog(item.text(0), item.configurationClass, self)
+				dialog.exec_()
+			else:
+				userInformation(self, "This plugin has no configuration dialog.")
+
+	def onItemActivated(self, item, col):
+		self.configurePlugin()
+
+	def contextMenuEvent(self, event):
+		item = self.itemAt(event.pos())
+		menu = QMenu(self)
+		if item:
+			menu.addAction(self.configureAction)
+			menu.addAction(self.aboutAction)
+			menu.addSeparator()
+		# In any case, general action
+		menu.addAction(self.rescanAction)
+		menu.popup(event.globalPos())
 	
 	def updateModel(self):
 		# Activate/deactivate plugins
@@ -554,8 +613,4 @@ class WPluginsTreeView(QTreeWidget):
 		for i in range(0, root.childCount()):
 			item = root.child(i)
 			settings.setValue('plugins/activated/' + item.pluginId, QVariant(item.activated()))
-		pass
-	
-	def checkModel(self):
-		return True
 	

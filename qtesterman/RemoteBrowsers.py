@@ -118,7 +118,6 @@ class ViewController(QObject):
 class WRepositoryBrowsingDock(QDockWidget):
 	def __init__(self, parent):
 		QDockWidget.__init__(self, parent)
-		self.connect(self, SIGNAL("nextInitializationStep(QString&)"), QApplication.instance().get('gui.splash').showMessage)
 		self.__createWidgets()
 
 	def __createWidgets(self):
@@ -126,12 +125,10 @@ class WRepositoryBrowsingDock(QDockWidget):
 		
 		self.setWindowTitle("Remote browsing")
 		self.tab = QTabWidget(self)
-		self.emit(SIGNAL("nextInitializationStep(QString&)"), QString("Initializing remote browsers (repository)..."))
 		self.repositoryTree = ServerFileSystemView.WServerFileSystemTreeWidget('/repository', self.tab)
 		self.repositoryTree.setClient(getProxy())
 		self.controller.addView(self.repositoryTree)
 		self.tab.addTab(self.repositoryTree, 'Repository')
-		self.emit(SIGNAL("nextInitializationStep(QString&)"), QString("Initializing remote browsers (archives)..."))
 		self.archivesTree = ServerFileSystemView.WServerFileSystemTreeWidget('/archives', self.tab)
 		self.archivesTree.setClient(getProxy())
 		self.controller.addView(self.archivesTree)

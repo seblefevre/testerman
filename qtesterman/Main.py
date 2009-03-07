@@ -28,7 +28,6 @@ import getopt
 import TestermanClient
 
 from Base import *
-from Settings import *
 from CommonWidgets import *
 
 import AutoUpdate
@@ -41,7 +40,7 @@ import DocumentPropertyEditor
 import PluginManager
 import OutlineView
 import ChatView
-
+import Preferences
 
 # Editors contains a reference to QScintilla.
 # We'll let the main application code display an error
@@ -111,6 +110,7 @@ class QTestermanApplication(QApplication):
 		self.__testermanClient = None
 		self._username = None
 		self._xcConnected = False
+		self._splash = None # splashscreen
 
 	def icon(self, resource):
 		"""
@@ -246,6 +246,33 @@ class QTestermanApplication(QApplication):
 	
 	def isXcConnected(self):
 		return self._xcConnected
+	
+	def notifyInitializationProgress(self, message):
+		"""
+		To call when the application wants to inform the user
+		of a new initialization steps.
+		The current implementation is updating a message on a splashcreen.
+		
+		@type  message: string/QString
+		@param message: the message to display
+		"""
+		self._splash.showMessage(message)
+		self.processEvents()
+	
+	def showSplashScreen(self):
+		"""
+		Creates and show a splash screen.
+		"""
+		pixmap = QPixmap(":images/splash.png").scaled(QSize(500, 300), Qt.IgnoreAspectRatio, Qt.SmoothTransformation)
+		self._splash = QSplashScreen(pixmap)
+		self._splash.showMessage("Initializing...")
+		self._splash.show()
+		self.processEvents()
+	
+	def finishSplashScreen(self, window):
+		self._splash.finish(window)
+		self._splash = None
+	
 
 
 ################################################################################
@@ -437,7 +464,7 @@ class WConnectionDialog(QDialog):
 		layout.addWidget(splash)
 
 		# WConnectionSetting part
-		self.connectionSettings = WConnectionSettings(self)
+		self.connectionSettings = Preferences.WConnectionSettings()
 		layout.addWidget(self.connectionSettings)
 		
 		# Buttons
@@ -458,7 +485,7 @@ class WConnectionDialog(QDialog):
 		"""
 		QDialog reimplementation.
 		"""
-		if self.connectionSettings.checkModel():
+		if self.connectionSettings.validate():
 			self.connectionSettings.updateModel()
 			QDialog.accept(self)
 
@@ -506,30 +533,27 @@ class WMainStatusBar(QStatusBar):
 class WMainWindow(QMainWindow):
 	"""
 	Main Window class.
-	During the creation, emit a signal nextInitializationStep(QString& label)
-	so that we can add a progress bar.
 	"""
 	def __init__(self, parent = None):
 		QMainWindow.__init__(self, parent)
 		QApplication.instance().set('gui.mainwindow', self)
 
-		self.connect(self, SIGNAL("nextInitializationStep(QString&)"), QApplication.instance().get('gui.splash').showMessage)
 
-		self.emit(SIGNAL("nextInitializationStep(QString&)"), "Initializing widgets...")
+		QApplication.instance().notifyInitializationProgress("Initializing widgets...")
 		self.__createWidgets()
-		self.emit(SIGNAL("nextInitializationStep(QString&)"), QString("Initializing actions..."))
+		QApplication.instance().notifyInitializationProgress("Initializing actions...")
 		self.createActions()
-		self.emit(SIGNAL("nextInitializationStep(QString&)"), QString("Initializing toolbars..."))
+		QApplication.instance().notifyInitializationProgress("Initializing toolbars...")
 		self.createToolBars()
-		self.emit(SIGNAL("nextInitializationStep(QString&)"), QString("Initializing menus..."))
+		QApplication.instance().notifyInitializationProgress("Initializing menus...")
 		self.createMenus()
-		self.emit(SIGNAL("nextInitializationStep(QString&)"), QString("Retrieving configuration settings..."))
+		QApplication.instance().notifyInitializationProgress("Restoring user settings...")
 		self.readSettings()
 
 		# List of QString
 		self.previousUrlsToRetry = []
 
-		self.emit(SIGNAL("nextInitializationStep(QString&)"), QString("Ready"))
+		QApplication.instance().notifyInitializationProgress("Ready")
 
 	def onShow(self):
 		# Re-open files
@@ -597,47 +621,42 @@ class WMainWindow(QMainWindow):
 	def __createWidgets(self):
 		try:
 			# The central things
-			self.emit(SIGNAL("nextInitializationStep(QString&)"), QString("Initializing main window..."))
+			QApplication.instance().notifyInitializationProgress("Initializing main window...")
 			self.setWindowTitle(getClientName() + ' ' + getClientVersion())
 			self.setWindowIcon(icon(':/icons/testerman.png'))
 
-			self.emit(SIGNAL("nextInitializationStep(QString&)"), QString("Initializing document manager..."))
+			QApplication.instance().notifyInitializationProgress("Initializing document manager...")
 			self.documentManager = Editors.WDocumentManager(self)
 			self.setCentralWidget(self.documentManager)
 
 			# Acceptable docks
-	#		self.emit(SIGNAL("nextInitializationStep(QString&)"), QString("Initializing event monitoring manager..."))
-	#		self.eventMonitorDock = EventMonitor.WEventMonitorDock(self)
-	#		self.eventMonitorDock.setObjectName("eventMonitorDock")
-	#		self.addDockWidget(Qt.BottomDockWidgetArea, self.eventMonitorDock)
-
-			self.emit(SIGNAL("nextInitializationStep(QString&)"), QString("Initializing remote browsers..."))
+			QApplication.instance().notifyInitializationProgress("Initializing remote browsers...")
 			self.repositoryBrowserDock = RemoteBrowsers.WRepositoryBrowsingDock(self)
 			self.repositoryBrowserDock.setObjectName("repositoryBrowserDock")
 			self.addDockWidget(Qt.LeftDockWidgetArea, self.repositoryBrowserDock)
 
-			self.emit(SIGNAL("nextInitializationStep(QString&)"), QString("Initializing property editor..."))
+			QApplication.instance().notifyInitializationProgress("Initializing property editor...")
 			self.documentPropertyEditorDock = DocumentPropertyEditor.WDocumentPropertyEditorDock(self.documentManager.tab, self)
 			self.documentPropertyEditorDock.setObjectName("scriptPropertyEditorDock") # this scriptPropertyEditorDock name is kept for settings compatibility
 			self.addDockWidget(Qt.LeftDockWidgetArea, self.documentPropertyEditorDock)
 
-			self.emit(SIGNAL("nextInitializationStep(QString&)"), QString("Initializing job manager..."))
+			QApplication.instance().notifyInitializationProgress("Initializing job manager...")
 			self.jobManagerDock = JobManager.WJobManagerDock(self)
 			self.jobManagerDock.setObjectName("jobManagerDock")
 			self.addDockWidget(Qt.RightDockWidgetArea, self.jobManagerDock)
 
-			self.emit(SIGNAL("nextInitializationStep(QString&)"), QString("Initializing probe manager..."))
+			QApplication.instance().notifyInitializationProgress("Initializing probe manager...")
 			self.probeManagerDock = ProbeManager.WProbeManagerDock(self)
 			self.probeManagerDock.setObjectName("probeManagerDock")
 			self.addDockWidget(Qt.RightDockWidgetArea, self.probeManagerDock)
 
-			self.emit(SIGNAL("nextInitializationStep(QString&)"), QString("Initializing outline view..."))
+			QApplication.instance().notifyInitializationProgress("Initializing outline view...")
 			self.outlineViewDock = OutlineView.WOutlineViewDock(self.documentManager.tab, self)
 			self.outlineViewDock.setObjectName("outlineViewDock")
 			self.addDockWidget(Qt.RightDockWidgetArea, self.outlineViewDock)
 			QApplication.instance().set("gui.outlineview", self.outlineViewDock.getOutlineView())
 
-			self.emit(SIGNAL("nextInitializationStep(QString&)"), QString("Initializing chat component..."))
+			QApplication.instance().notifyInitializationProgress("Initializing chat component...")
 			self.chatViewDock = ChatView.WChatViewDock(self)
 			self.chatViewDock.setObjectName("chatViewDock")
 			self.addDockWidget(Qt.LeftDockWidgetArea, self.chatViewDock)
@@ -711,8 +730,8 @@ class WMainWindow(QMainWindow):
 		self.toggleFullScreenAction.setShortcut("Ctrl+Shift+F")
 
 		# Configuration
-		self.settingsAction = TestermanAction(self, "&Settings...", self.settings, "Configure your client settings")
-		self.settingsAction.setIcon(icon(':/icons/configure.png'))
+		self.preferencesAction = TestermanAction(self, "&Preferences...", self.preferences, "Configure your client preferences")
+		self.preferencesAction.setIcon(icon(':/icons/configure.png'))
 
 		# Help/About
 		self.aboutAction = TestermanAction(self, "&About...", self.about, "About this Testerman Client")
@@ -720,7 +739,7 @@ class WMainWindow(QMainWindow):
 		self.aboutQtAction = TestermanAction(self, "About &Qt...", self.aboutQt, "About Qt")
 
 		# MOTD
-		self.motdAction = TestermanAction(self, "MOTD...", self.messageOfTheDay, "Message of the Day (from Testerman server)")
+		self.motdAction = TestermanAction(self, "Message of the day...", self.messageOfTheDay, "Message of the Day (from Testerman server)")
 
 	def createToolBars(self):
 		self.mainToolBar = self.addToolBar("Main toolbar")
@@ -782,7 +801,7 @@ class WMainWindow(QMainWindow):
 		self.pluginsMenu.addMenu(self.editorPluginsMenu)
 
 		self.toolsMenu = self.menuBar().addMenu("&Tools")
-		self.toolsMenu.addAction(self.settingsAction)
+		self.toolsMenu.addAction(self.preferencesAction)
 		self.toolsMenu.addSeparator()
 		self.toolsMenu.addAction(self.motdAction)
 
@@ -881,9 +900,9 @@ class WMainWindow(QMainWindow):
 	def aboutQt(self):
 		QMessageBox.aboutQt(self)
 
-	def settings(self):
-		settings = WSettingsDialog(self)
-		settings.exec_()
+	def preferences(self):
+		preferences = Preferences.WPreferencesDialog(self)
+		preferences.exec_()
 
 	def saveToRepositoryAs(self):
 		self.documentManager.saveCurrentToRepositoryAs()
@@ -918,6 +937,8 @@ class WMainWindow(QMainWindow):
 			info = None
 		
 		if (content is None) or not info:
+			if force:
+				userInformation(self, "No Message of the Day is available on this server.")
 			return
 
 		if force:
@@ -974,8 +995,6 @@ def runClient():
 	style = settings.value('style', QVariant(QString('Cleanlooks'))).toString()
 	app.setStyle(style)
 
-	acceptUnstableUpdates = settings.value('autoupdate/acceptExperimentalUpdates', QVariant(False)).toBool()
-
 	try:
 		import PyQt4.Qsci
 	except ImportError:
@@ -999,16 +1018,11 @@ Please install the appropriate package for your Linux/Unix distribution or downl
 	if connectionDialog.exec_() != QDialog.Accepted:
 		sys.exit(0)
 
-	# A splashscreen to let the user wait for initialization...
-	pixmap = QPixmap(":images/splash.png").scaled(QSize(500, 300), Qt.IgnoreAspectRatio, Qt.SmoothTransformation)
-	splash = QSplashScreen(pixmap)
-	splash.showMessage("Initializing...")
-	splash.show()
-	app.processEvents()
-	QApplication.instance().set('gui.splash', splash)
+	QApplication.instance().showSplashScreen()
 
 	# The next step is the autoUpdate
-	splash.showMessage("Checking updates...")
+	QApplication.instance().notifyInitializationProgress("Checking updates...")
+	acceptUnstableUpdates = settings.value('autoupdate/acceptExperimentalUpdates', QVariant(False)).toBool()
 	branches = [ 'stable' ]
 	if acceptUnstableUpdates:
 		branches.append('testing')
@@ -1018,21 +1032,18 @@ Please install the appropriate package for your Linux/Unix distribution or downl
 		AutoUpdate.Restarter.restart()
 	log("Updates checked.")
 
-	splash.showMessage("Loading plugins...")
+	QApplication.instance().notifyInitializationProgress("Loading plugins...")
 	PluginManager.scanPlugins()
 
-	# Finally, run the main window
+	# Initialize the main window
 	mainWindow = WMainWindow()
-	splash.finish(mainWindow) # The splashscreen will automatically hide after the main window is shown
-	# Process queued events during initialization
-	app.processEvents()
+	QApplication.instance().finishSplashScreen(mainWindow) # The splashscreen will automatically hide after the main window shows up
 
 	log("Main Window created.")
 	app.connect(app, SIGNAL("lastWindowClosed()"), mainWindow.quit)
 	mainWindow.show()
 
 	mainWindow.onShow()
-
 	return app.exec_()
 
 def runLogAnalyzer(logFilename):
