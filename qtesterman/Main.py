@@ -111,6 +111,7 @@ class QTestermanApplication(QApplication):
 		self._username = None
 		self._xcConnected = False
 		self._splash = None # splashscreen
+		self._serverUrl = None # QUrl
 
 	def icon(self, resource):
 		"""
@@ -181,15 +182,18 @@ class QTestermanApplication(QApplication):
 		@rtype: QUrl
 		@returns: the curent server URL
 		"""
-		return self.get('server.url', None)
+		return self._serverUrl
 		
-	def setServerUrl(self, url):
+	def setServerUrl(self, url, force = False):
 		"""
 		Sets the Testerman server, url.
 		Automatically tries to connect to its Xc interface.
 		
 		@type  url: QUrl
 		@param url: the new server url
+		@type  force: bool
+		@param force: if set, reconnects to the server if the url is the same.
+		              Otherwise, does nothing if the server is unchanged.
 		
 		If the new url is the same as the current one, a reconnection occurs.
 		
@@ -199,9 +203,13 @@ class QTestermanApplication(QApplication):
 		You should expect a xcConnectionUpdated(QString state) signal regarding
 		the Xc interface.
 		"""
-		log("Setting Server to %s" % url.toString())
 		
-		self.set('server.url', url)
+		if not force and self._serverUrl == url:
+			log("Not setting server to %s: same server" % url.toString())
+			return
+		
+		log("Setting server to %s" % url.toString())
+		self._serverUrl = url
 
 		# Translated to string, for the plain underlying Python TestermanClient.Client class
 		serverUrl = "http://%s:%s" % (url.host(), url.port(8080))
@@ -378,7 +386,7 @@ class WServerStatusIndicator(QWidget):
 				fastSwitchMenu.addAction(stringUrl, lambda url=url: QApplication.instance().setServerUrl(url))
 
 		# View resynchronizations (normally automatic once reconnected)
-		menu.addAction("Resynchronize", lambda: QApplication.instance().setServerUrl(currentUrl))
+		menu.addAction("Resynchronize", lambda: QApplication.instance().setServerUrl(currentUrl, force = True))
 		menu.popup(event.globalPos())
 
 
