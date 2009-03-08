@@ -511,16 +511,16 @@ class TestComponent:
 			
 			# Execute the user code
 			behaviour._execute(**kwargs)
-			# Push the local verdict to the testcase
-			self._updateTestCaseVerdict()
 
-			self._doStop("PTC %s ended normally" % str(self))
-			# Non-alive components are automatically killed by a stop.
+			self._doStop("PTC %s ended normally" % str(self)) # Non-alive components are automatically killed by a stop.
+			
+			# Push the local verdict to the testcase - after logging the PTC termination.
+			self._updateTestCaseVerdict()
 			
 		except TestermanStopException:
+			self._doStop("PTC %s stopped explicitly" % str(self))
 			# Push the local verdict to the testcase
 			self._updateTestCaseVerdict()
-			self._doStop("PTC %s stopped explicitly" % str(self))
 
 		except TestermanKillException:
 			# In this special case, we don't update the testcase verdict (violent death)
@@ -530,9 +530,9 @@ class TestComponent:
 		except Exception:
 			# Non-control exception.
 			self._setverdict(VERDICT_ERROR)
-			self._updateTestCaseVerdict()
 			logUser(tc = str(self), message = "PTC %s stopped on error:\n%s" % (str(self), getBacktrace()))
 			self._doStop("PTC %s stopped on error" % str(self))
+			self._updateTestCaseVerdict()
 			# Kill it ?
 			self._doKill()
 
