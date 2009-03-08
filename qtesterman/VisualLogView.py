@@ -307,7 +307,7 @@ class TimeoutTimerItem(StoppedTimerItem):
 class StoppedTcItem(GraphicsItem):
 	"""
 	Used to mark a stopped TC: a circle with a cross in it.
-	The verdict is provided below.
+	The verdict is indicated to its right.
 	"""
 	def __init__(self, label, bgcolor = QColor(240, 240, 200, 192)):
 		GraphicsItem.__init__(self)
@@ -322,7 +322,7 @@ class StoppedTcItem(GraphicsItem):
 		self._label = None
 		self._boundingRect = None
 		self._diameter = 30.0
-		self._verticalMargin = 1.0 # space between the label and the circle above it
+		self._margin = 4.0 # space between the label and the circle at its left
 		self.setLabel(label)
 		self.updateLines()
 
@@ -333,7 +333,7 @@ class StoppedTcItem(GraphicsItem):
 		w = self.boundingRect().width()
 		x = self.boundingRect().x()
 		y = self.boundingRect().y()
-		self._circleCenter = QPointF(x + w/2.0, y + self._diameter/2.0)
+		self._circleCenter = QPointF(x + self._diameter/2.0, y + self._diameter/2.0)
 		self._lines = []
 		offset = 0.7*self._diameter/2.0  # 0.7 = sqrt(2)/2
 		self._lines.append(QLine(self._circleCenter.x() - offset, self._circleCenter.y() - offset, self._circleCenter.x() + offset, self._circleCenter.y() + offset))
@@ -344,9 +344,9 @@ class StoppedTcItem(GraphicsItem):
 		# Update bounding rect
 		fm = QFontMetrics(self._font)
 		br = fm.boundingRect(self._label)
-		# Add some space for the circle above the label
-		br.setWidth(max(br.width(), self._diameter))
-		br.setHeight(self._diameter + self._verticalMargin + br.height())
+		# Add some space for the circle to the left of the label
+		br.setWidth(br.width() + self._margin + self._diameter)
+		br.setHeight(self._diameter)
 		self._boundingRect = QRectF(br)
 
 	def paint(self, painter, option, widget = None):		
@@ -356,7 +356,7 @@ class StoppedTcItem(GraphicsItem):
 		painter.drawEllipse(self._circleCenter, self._diameter/2.0, self._diameter/2.0)
 		painter.drawLines(self._lines)
 		painter.setPen(self._fontPen)
-		painter.drawText(self.boundingRect(), Qt.AlignBottom | Qt.AlignHCenter, self._label)
+		painter.drawText(self.boundingRect(), Qt.AlignRight | Qt.AlignVCenter, self._label)
 
 
 class RightArrowBoxedLabel(GraphicsItemGroup):
@@ -544,6 +544,7 @@ class TestCaseActor(QGraphicsItemGroup):
 	def __init__(self, name, parent = None, scene = None):
 		QGraphicsItemGroup.__init__(self, parent, scene)
 		self.__killed = False # actor killed: to life line anymore.
+		self._state = 'running' # or 'stopped' or 'killed'
 		self.__createWidgets(name)
 
 	def __createWidgets(self, name):
@@ -551,6 +552,8 @@ class TestCaseActor(QGraphicsItemGroup):
 		self.mainPen = QPen(QColor(160, 160, 160))
 		self.mainPen.setWidth(2)
 		self.mainPen.setCapStyle(Qt.RoundCap)
+
+		self.dashPen = QPen(QColor(200, 200, 200), 2, Qt.DotLine, Qt.RoundCap)
 
 		#print "DEBUG: creating actor %s" % name
 		self.titleText = QGraphicsSimpleTextItem(name)
@@ -569,7 +572,7 @@ class TestCaseActor(QGraphicsItemGroup):
 		self.titleRect.translate(- self.titleRect.boundingRect().width() / 2.0, 0)
 		self.addToGroup(self.titleRect)
 
-		self.mainLine = QGraphicsLineItem(0, self.titleRect.boundingRect().height(), 0, 200)
+		self.mainLine = QGraphicsLineItem(0, self.titleRect.boundingRect().height(), 0, 20)
 		self.mainLine.setPen(self.mainPen)
 		self.mainLine.setZValue(0)
 		self.addToGroup(self.mainLine)
@@ -577,10 +580,54 @@ class TestCaseActor(QGraphicsItemGroup):
 		# Let's make sure that arrows are always selectable even in front of the actor BB (Bounding Box)
 		self.setZValue(-1000)
 
+	def setStopped(self):
+		self._state = 'stopped'
+		# New line
+		self.mainLine = QGraphicsLineItem(self.getSceneXAnchor(), self.mainLine.line().y2(), self.getSceneXAnchor(), self.mainLine.line().y2())
+		self.mainLine.setPen(self.dashPen)
+		self.mainLine.setZValue(0)
+		self.addToGroup(self.mainLine)
+	
+	def setRunning(self):
+		self._state = 'running'
+		# New line
+		self.mainLine = QGraphicsLineItem(self.getSceneXAnchor(), self.mainLine.line().y2(), self.getSceneXAnchor(), self.mainLine.line().y2())
+		self.mainLine.setPen(self.mainPen)
+		self.mainLine.setZValue(0)
+		self.addToGroup(self.mainLine)
+
+	def setKilled(self):
+		"""
+		Once an actor is killed, its main line is stopped.
+		"""
+		self._state = 'killed'
+	
+	def isKilled(self):
+		return self._state == 'killed'
+
 	def expandMainLine(self, toY):
-		if not self.__killed:
-			if self.mainLine.line().y2() < toY:
-				self.mainLine.setLine(self.mainLine.line().x1(), self.mainLine.line().y1() , self.mainLine.line().x2(), toY)
+		if self.isKilled():
+			return
+		# We can accept new events. But the life line is expanded in dash dots.
+		if self.mainLine.line().y2() < toY:
+			self.mainLine.setLine(self.mainLine.line().x1(), self.mainLine.line().y1() , self.mainLine.line().x2(), toY)
+
+	def createKilledStickerItem(self, yOffset):
+		"""
+		Add a filled black rectangle.
+		"""
+		item = QGraphicsRectItem(QRectF(0.0, 0.0, 40.0, 5.0))
+		item.setBrush(QBrush(QColor(0,0,0)))
+		item.setPen(QPen())
+		y = yOffset + 20
+		x = self.getSceneXAnchor() - item.boundingRect().width() / 2.0
+		item.translate(x, y)
+
+		# main line growth, if needed
+		if y > self.mainLine.line().y2():
+			self.expandMainLine(y)
+		self.setKilled()
+		return item
 
 	def createStickerItem(self, text, yOffset, color = QColor(240, 240, 200, 192)):
 		"""
@@ -597,7 +644,7 @@ class TestCaseActor(QGraphicsItemGroup):
 
 		# main line growth, if needed
 		if y > self.mainLine.line().y2():
-			self.expandMainLine( y - self.mainLine.line().y2() + 20 )
+			self.expandMainLine(y)
 
 		return group
 
@@ -608,7 +655,18 @@ class TestCaseActor(QGraphicsItemGroup):
 		item.translate(x, y)
 		# main line growth, if needed
 		if y > self.mainLine.line().y2():
-			self.expandMainLine( y - self.mainLine.line().y2() + 20 )
+			self.expandMainLine(y)
+		return item
+
+	def createStartedStickerItem(self, text, yOffset, color = QColor(240, 240, 200, 192)):
+		item = RoundedBoxedLabel(text, bgcolor = color)
+		y = yOffset + 20
+		x = self.getSceneXAnchor() - item.boundingRect().width() / 2.0
+		item.translate(x, y)
+		# main line growth, if needed
+		if y > self.mainLine.line().y2():
+			self.expandMainLine(y)
+		self.setRunning()
 		return item
 
 	def createHexaStickerItem(self, text, yOffset, color = QColor(240, 240, 200, 192)):
@@ -618,7 +676,7 @@ class TestCaseActor(QGraphicsItemGroup):
 		item.translate(x, y)
 		# main line growth, if needed
 		if y > self.mainLine.line().y2():
-			self.expandMainLine( y - self.mainLine.line().y2() + 20 )
+			self.expandMainLine(y)
 		return item
 
 	def createStartedTimerStickerItem(self, text, yOffset, color = QColor(240, 240, 200, 192)):
@@ -628,37 +686,42 @@ class TestCaseActor(QGraphicsItemGroup):
 		item.translate(x, y)
 		# main line growth, if needed
 		if y > self.mainLine.line().y2():
-			self.expandMainLine( y - self.mainLine.line().y2() + 20 )
+			self.expandMainLine(y)
 		return item
 
 	def createStoppedTimerStickerItem(self, text, yOffset, color = QColor(240, 240, 200, 192)):
+		if self.isKilled():
+			return
 		item = StoppedTimerItem(text, bgcolor = color)
 		y = yOffset + 20
 		x = self.getSceneXAnchor() - item.boundingRect().width() # align it against the TC line
 		item.translate(x, y)
 		# main line growth, if needed
 		if y > self.mainLine.line().y2():
-			self.expandMainLine( y - self.mainLine.line().y2() + 20 )
+			self.expandMainLine(y)
 		return item
 
 	def createTimeoutTimerStickerItem(self, text, yOffset, color = QColor(240, 240, 200, 192)):
+		if self.isKilled():
+			return
 		item = TimeoutTimerItem(text, bgcolor = color)
 		y = yOffset + 20
 		x = self.getSceneXAnchor() - item.boundingRect().width() # align it against the TC line
 		item.translate(x, y)
 		# main line growth, if needed
 		if y > self.mainLine.line().y2():
-			self.expandMainLine( y - self.mainLine.line().y2() + 20 )
+			self.expandMainLine(y)
 		return item
 
 	def createStoppedStickerItem(self, text, yOffset, color = QColor(240, 240, 200, 192)):
 		item = StoppedTcItem(text, bgcolor = color)
 		y = yOffset + 20
-		x = self.getSceneXAnchor() - item.boundingRect().width() / 2.0
+		x = self.getSceneXAnchor() - item._diameter/2.0 - 0.5
 		item.translate(x, y)
 		# main line growth, if needed
 		if y > self.mainLine.line().y2():
-			self.expandMainLine( y - self.mainLine.line().y2() + 20 )
+			self.expandMainLine(y)
+		self.setStopped()
 		return item
 
 	def createRightArrowStickerItem(self, text, yOffset, color = QColor(240, 240, 200, 192)):
@@ -669,7 +732,7 @@ class TestCaseActor(QGraphicsItemGroup):
 
 		# main line growth, if needed
 		if y > self.mainLine.line().y2():
-			self.expandMainLine( y - self.mainLine.line().y2() + 20 )
+			self.expandMainLine(y)
 
 		return group
 
@@ -681,16 +744,9 @@ class TestCaseActor(QGraphicsItemGroup):
 
 		# main line growth, if needed
 		if y > self.mainLine.line().y2():
-			self.expandMainLine( y - self.mainLine.line().y2() + 20 )
+			self.expandMainLine(y)
 
 		return group
-
-	def setKilled(self, toY):
-		"""
-		Once an actor is killed, its main line is stopped.
-		"""
-		self.mainLine.setLine(self.mainLine.line().x1(), self.mainLine.line().y1() , self.mainLine.line().x2(), toY)
-		self.__killed = True
 
 	def getSceneXAnchor(self):
 		"""
@@ -796,7 +852,7 @@ class TestCaseScene(QGraphicsScene):
 			elif element == "tc-started":
 				actor = domElement.attribute("id")
 				behaviour = domElement.attribute("behaviour")
-				itemToAdd = self.__actors[actor].createRoundedStickerItem(behaviour, y, self.startedColor)
+				itemToAdd = self.__actors[actor].createStartedStickerItem(behaviour, y, self.startedColor)
 			elif element == "tc-stopped":
 				actor = domElement.attribute("id")
 				verdict = domElement.attribute("verdict")
@@ -806,7 +862,7 @@ class TestCaseScene(QGraphicsScene):
 				itemToAdd = self.__actors[actor].createStoppedStickerItem(verdict, y, color)
 			elif element == "tc-killed":
 				actor = domElement.attribute("id")
-				self.__actors[actor].setKilled(y)
+				itemToAdd = self.__actors[actor].createKilledStickerItem(y)
 
 			# Timer events
 			elif element == "timer-started":
@@ -897,7 +953,7 @@ class TestCaseScene(QGraphicsScene):
 
 		# Expand all actor main lines up to y at least
 		for (name, a) in self.__actors.items():
-			a.expandMainLine(self.__previousY + 50)
+			a.expandMainLine(self.__previousY)
 		
 		return itemToAdd
 

@@ -7,6 +7,7 @@ This is QTesterman, a PyQt4-based GUI for Testerman.
 - Added: basic chat component, single channel
 - Added: server status indicator, with fast server switching
 - Added: previous option in search/replace dialog
+- Added: support for manual check for updates in Preferences dialog
 - Modified: improved remote browser, with asynchronous loading
 - Modified: improved visual log viewer, with TTCN-3 GFT-like symbols
 - Modified: improved settings dialog, renamed to "Preferences"

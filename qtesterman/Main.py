@@ -1010,10 +1010,10 @@ def runClient():
 			# A message for linux/unix clients
 			# Under windows, we suggest installing Python 2.5 + the latest pyQt binary package, containing QScintilla as well.
 			msg = """Sorry, you need QScintilla2 for Python to run this client.
-You may install Python 2.5 for Windows (http://www.python.org) as well as the latest PyQt binary package for Windows (http://www.riverbankcomputing.co.uk/pyqt/) to get it."""
+You may install Python 2.5 for Windows (http://www.python.org) as well as the latest PyQt binary package for Windows (http://www.riverbankcomputing.co.uk/software/pyqt/download) to get it."""
 		else:
 			msg = """Sorry, you need QScintilla2 for Python to run this client.
-Please install the appropriate package for your Linux/Unix distribution or download it from http://www.riverbankcomputing.co.uk/qscintilla/"""
+Please install the appropriate package for your Linux/Unix distribution or download it from http://www.riverbankcomputing.co.uk/software/qscintilla/download"""
 
 		dialog = QMessageBox(QMessageBox.Critical, getClientName(), msg, QMessageBox.Ok)
 		dialog.exec_()
