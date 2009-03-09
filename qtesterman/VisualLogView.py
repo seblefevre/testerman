@@ -26,7 +26,6 @@ from PyQt4.Qt import *
 import time
 
 from CommonWidgets import *
-import Base
 
 class GraphicsItemGroup(QGraphicsItemGroup):
 	"""
@@ -48,7 +47,7 @@ class GraphicsItemGroup(QGraphicsItemGroup):
 class GraphicsItem(QGraphicsItem):
 	"""
 	Modified class to support additional pythonic associated data
-	(avoid the usage of QVariant with Python data)
+	(avoid the use of QVariant with Python data)
 	"""
 	def __init__(self, parent = None):
 		QGraphicsItem.__init__(self, parent)
@@ -60,25 +59,47 @@ class GraphicsItem(QGraphicsItem):
 	def myData(self, index):
 		return self.__data.get(index, None)
 
+# From QT 4.5 source: gui/graphicsview/qgraphicsitem.cpp
+# Helper to compute the bouding rect of a multi-line text.
+def setupTextLayout(layout):
+	"""
+	@type  layout: QTextLayout
+	"""
+	layout.setCacheEnabled(True)
+	layout.beginLayout()
+	while (layout.createLine().isValid()):
+		pass
+	layout.endLayout()
+	maxWidth = 0.0
+	y = 0.0
+	for i in range(layout.lineCount()):
+		line = layout.lineAt(i)
+		maxWidth = max(maxWidth, line.naturalTextWidth())
+		line.setPosition(QPointF(0.0, y))
+		y += line.height()
+	return QRectF(0.0, 0.0, maxWidth, y)
 
 class BoxedLabel(GraphicsItem):
 	"""
 	A label in a box. The label is centered in the box, with a margin on both sides.
 	(0,0) is the origin of the box.
+	 _____
+	|_____|
 	
-	Used for basic logs.
+	Typically used for basic logs.
+	Supports multiline labels.
 	"""
 	def __init__(self, label, bgcolor = QColor(240, 240, 200, 192)):
 		GraphicsItem.__init__(self)
 		self._bgColor = bgcolor
-		self._fontPen = QPen()
-		pen = QPen(QColor(160, 160, 160))
-		pen.setWidth(2)
-		pen.setCapStyle(Qt.RoundCap)
-		self._pen = pen
+		self._pen = QPen(QColor(160, 160, 160))
+#		self._pen.setWidth(1)
+#		self._pen.setCapStyle(Qt.RoundCap)
 		self._font = QFont()
+		self._fontPen = QPen()
 
 		self._label = None
+		self._multiLine = False # If multiline, left-aligned instead of centered.
 		self._boundingRect = None
 		self._verticalMargin = 0
 		self._horizontalMargin = 10
@@ -89,13 +110,29 @@ class BoxedLabel(GraphicsItem):
 
 	def setLabel(self, label):
 		self._label = label
+		if '\n' in self._label:
+			self._multiLine = True
 		# Update bounding rect
-		fm = QFontMetrics(self._font)
-		br = fm.boundingRect(self._label)
-		# Add some spaces around the text
+		br = self.getLabelBoundingRect(self._label)
+		# Add some space around the text
 		br.setWidth(br.width() + 2*self._horizontalMargin)
 		br.setHeight(br.height() + 2*self._verticalMargin)
 		self._boundingRect = QRectF(br)
+	
+	def getLabelBoundingRect(self, label):
+		"""
+		Gets the bounding rect for a label using the current font.
+		Supports multi-line labels.
+		
+		For single-line labels, you may simply use:
+		fm = QFontMetrics(self._font)
+		return fm.boundingRect(label)
+		"""
+		tmp = QString(label)
+		tmp.replace('\n', QChar(QChar.LineSeparator))
+		layout = QTextLayout(tmp, self._font)
+		br = setupTextLayout(layout)
+		return br
 
 	def paint(self, painter, option, widget = None):		
 		painter.setPen(self._pen)
@@ -103,11 +140,19 @@ class BoxedLabel(GraphicsItem):
 		painter.setBrush(QBrush(self._bgColor))
 		painter.drawRect(self.boundingRect())
 		painter.setPen(self._fontPen)
-		painter.drawText(self.boundingRect(), Qt.AlignCenter, self._label)
+		if self._multiLine:
+			align = Qt.AlignLeft | Qt.AlignVCenter
+		else:
+			align = Qt.AlignCenter
+		painter.drawText(self.boundingRect(), align, self._label)
 
 class RoundedBoxedLabel(BoxedLabel):
 	"""
-	Used to identify started behaviour
+	A rounded box around a (single line) label.
+	 _____
+	(_____)
+
+	Typically used for ports.
 	"""
 	def __init__(self, label, bgcolor = QColor(240, 240, 200, 192)):
 		BoxedLabel.__init__(self, label, bgcolor)
@@ -120,9 +165,70 @@ class RoundedBoxedLabel(BoxedLabel):
 		painter.setPen(self._fontPen)
 		painter.drawText(self.boundingRect(), Qt.AlignCenter, self._label)
 
+class DoubleVBoxedLabel(GraphicsItem):
+	"""
+	A (single line) label in a box with double vertical borders.
+	-----------
+	|| label ||
+	-----------
+
+	Typically used to indicate started behaviours.
+	"""
+	def __init__(self, label, bgcolor = QColor(240, 240, 200, 192)):
+		GraphicsItem.__init__(self)
+		self._bgColor = bgcolor
+		self._pen = QPen(QColor(160, 160, 160))
+		self._fontPen = QPen()
+		self._font = QFont()
+
+		self._label = None
+		self._boundingRect = None
+		self._verticalMargin = 0
+		self._horizontalMargin = 10
+		self._spacer = 5 # the space between the two vertical borders on each side.
+		self.setLabel(label)
+		self.updateLines()
+
+	def boundingRect(self):
+		return self._boundingRect
+
+	def updateLines(self):
+		# inner double side borders.
+		w = self.boundingRect().width()
+		h = self.boundingRect().height()
+		x = self.boundingRect().x()
+		y = self.boundingRect().y()
+		self._lines = []
+		self._lines.append(QLine(x + self._spacer, y, x + self._spacer, y + h)) 
+		self._lines.append(QLine(x + w - self._spacer, y, x + w - self._spacer, y + h))
+
+	def setLabel(self, label):
+		self._label = label
+		# Update bounding rect
+		fm = QFontMetrics(self._font)
+		br = fm.boundingRect(self._label)
+		# Add some spaces around the text
+		br.setWidth(br.width() + 2*self._horizontalMargin + 2*self._spacer)
+		br.setHeight(br.height() + 2*self._verticalMargin)
+		self._boundingRect = QRectF(br)
+
+	def paint(self, painter, option, widget = None):		
+		painter.setPen(self._pen)
+		painter.setFont(self._font)
+		painter.setBrush(QBrush(self._bgColor))
+		painter.drawRect(self.boundingRect())
+		painter.drawLines(self._lines)
+		painter.setPen(self._fontPen)
+		painter.drawText(self.boundingRect(), Qt.AlignCenter, self._label)
+
 class HexaBoxedLabel(BoxedLabel):
 	"""
-	Used to verdict assignment notification.
+	A (single line) label in an Hexagonal box.
+	 ______
+	/      \
+	\______/
+
+	Typically used for verdict assignment notifications.
 	"""
 	def __init__(self, label, bgcolor = QColor(240, 240, 200, 192)):
 		BoxedLabel.__init__(self, label, bgcolor)
@@ -165,10 +271,9 @@ class StartedTimerItem(GraphicsItem):
 	def __init__(self, label, bgcolor = QColor(240, 240, 200, 192)):
 		GraphicsItem.__init__(self)
 		self._bgColor = bgcolor
-		pen = QPen(QColor(160, 160, 160))
-		pen.setWidth(1)
-		pen.setCapStyle(Qt.RoundCap)
-		self._pen = pen
+		self._pen = QPen(QColor(160, 160, 160))
+#		self._pen.setWidth(1)
+#		self._pen.setCapStyle(Qt.RoundCap)
 		self._fontPen = QPen()
 		self._font = QFont()
 
@@ -230,10 +335,9 @@ class StoppedTimerItem(GraphicsItem):
 	def __init__(self, label, bgcolor = QColor(240, 240, 200, 192)):
 		GraphicsItem.__init__(self)
 		self._bgColor = bgcolor
-		pen = QPen(QColor(160, 160, 160))
-		pen.setWidth(1)
-		pen.setCapStyle(Qt.RoundCap)
-		self._pen = pen
+		self._pen = QPen(QColor(160, 160, 160))
+#		self._pen.setWidth(1)
+#		self._pen.setCapStyle(Qt.RoundCap)
 		self._fontPen = QPen()
 		self._font = QFont()
 
@@ -312,10 +416,9 @@ class StoppedTcItem(GraphicsItem):
 	def __init__(self, label, bgcolor = QColor(240, 240, 200, 192)):
 		GraphicsItem.__init__(self)
 		self._bgColor = bgcolor
-		pen = QPen(QColor(160, 160, 160))
-		pen.setWidth(1)
-		pen.setCapStyle(Qt.RoundCap)
-		self._pen = pen
+		self._pen = QPen(QColor(160, 160, 160))
+#		self._pen.setWidth(1)
+#		self._pen.setCapStyle(Qt.RoundCap)
 		self._fontPen = QPen()
 		self._font = QFont()
 
@@ -330,7 +433,6 @@ class StoppedTcItem(GraphicsItem):
 		return self._boundingRect
 
 	def updateLines(self):
-		w = self.boundingRect().width()
 		x = self.boundingRect().x()
 		y = self.boundingRect().y()
 		self._circleCenter = QPointF(x + self._diameter/2.0, y + self._diameter/2.0)
@@ -359,81 +461,140 @@ class StoppedTcItem(GraphicsItem):
 		painter.drawText(self.boundingRect(), Qt.AlignRight | Qt.AlignVCenter, self._label)
 
 
-class RightArrowBoxedLabel(GraphicsItemGroup):
+class RightArrowBoxedLabel(GraphicsItem):
 	"""
-	A label into a wide arrow, directed to the right.
-	(0,0) is the top left origin of the visual item.
+	A (single line) label into a wide arrow, directed to the right.
+	
+	 ___|\
+	|     \  
+	|___  /
+	    |/
+
+	Typically used for messages sent to the SUT.
 	"""
-	def __init__(self, label, bgcolor = QColor(240, 240, 200, 192), pen = QPen()):
-		GraphicsItemGroup.__init__(self)
-		self.__createWidgets(label, bgcolor, pen)
+	def __init__(self, label, bgcolor = QColor(240, 240, 200, 192)):
+		GraphicsItem.__init__(self)
+		self._bgColor = bgcolor
+		self._pen = QPen(QColor(160, 160, 160))
+		self._fontPen = QPen()
+		self._font = QFont()
 
-	def __createWidgets(self, text, bgcolor, pen):
-		# The label
-		label = QGraphicsSimpleTextItem(text)
-		label.setZValue(100)
+		self._label = None
+		self._boundingRect = None
+		self._arrowLength = 10
+		self._arrowHeight = 5 # the "bevel" arround the arrow
+		self._horizontalMargin = 10
+		self._verticalMargin = 1
 
-		rect = label.boundingRect()
-		# the bounding arrow. The arrow body width is adapter to the label height,
-		# and the final arrow is bevel pixel high and low its main body.
-		bevel = 5 # pixels
-		path = QPainterPath()
-		path.lineTo(path.currentPosition() + QPointF(rect.width() + 20 - bevel, 0))
-		path.lineTo(path.currentPosition() + QPointF(0, -bevel))
-		path.lineTo(path.currentPosition() + QPointF(2*bevel, bevel + rect.height() / 2.0))
-		path.lineTo(path.currentPosition() + QPointF(-2*bevel, bevel + rect.height() / 2.0))
-		path.lineTo(path.currentPosition() + QPointF(0, -bevel))
-		path.lineTo(path.currentPosition() + QPointF(- (rect.width() + 20 - bevel), 0))
-		path.closeSubpath()
+		self.setLabel(label)
+		self.updatePolyline()
 
-		box = QGraphicsPathItem(path)
-		box.setPen(pen)
-		box.setBrush(QBrush(bgcolor))
-		box.setZValue(50)
-		self.addToGroup(box)
-		# We center the label in the box
-		label.translate((box.boundingRect().width() - rect.width()) / 2.0, 0)
-		self.addToGroup(label)
+	def boundingRect(self):
+		return self._boundingRect
+
+	def updatePolyline(self):
+		w = self.boundingRect().width()
+		h = self.boundingRect().height()
+		x = self.boundingRect().x()
+		y = self.boundingRect().y()
+		self._points = []
+		self._points.append(QPoint(x, y + self._arrowHeight))
+		self._points.append(QPoint(x + w - self._arrowLength, y + self._arrowHeight))
+		self._points.append(QPoint(x + w - self._arrowLength, y))
+		self._points.append(QPoint(x + w, y + h/2.0))
+		self._points.append(QPoint(x + w - self._arrowLength, y + h))
+		self._points.append(QPoint(x + w - self._arrowLength, y + h - self._arrowHeight))
+		self._points.append(QPoint(x, y + h - self._arrowHeight))
+		self._polygon = QPolygon(self._points)
+
+	def setLabel(self, label):
+		self._label = label
+		# Update bounding rect
+		fm = QFontMetrics(self._font)
+		br = fm.boundingRect(self._label)
+		# Add some space to build the arrow around it
+		br.setWidth(br.width() + self._arrowLength + self._horizontalMargin)
+		br.setHeight(br.height() + 2*self._arrowHeight + self._verticalMargin)
+		self._boundingRect = QRectF(br)
+
+	def paint(self, painter, option, widget = None):		
+		painter.setPen(self._pen)
+		painter.setFont(self._font)
+		painter.setBrush(QBrush(self._bgColor))
+		painter.drawPolygon(self._polygon)
+		painter.setPen(self._fontPen)
+		br = QRectF(self.boundingRect())
+		br.setX(br.x() + self._horizontalMargin)
+		br.setY(br.y() + self._verticalMargin)
+		painter.drawText(br, Qt.AlignLeft | Qt.AlignVCenter, self._label)
 
 
-class LeftArrowBoxedLabel(GraphicsItemGroup):
+class LeftArrowBoxedLabel(GraphicsItem):
 	"""
 	A label into a wide arrow, directed to the left.
-	(0,0) is the top left origin of the visual item.
+	
+	 /|____
+	/      |
+	\  ____|
+	 \|
+
+	Typically used for messages received from the SUT.
 	"""
-	def __init__(self, label, bgcolor = QColor(240, 240, 200, 192), pen = QPen()):
-		GraphicsItemGroup.__init__(self)
-		self.__createWidgets(label, bgcolor, pen)
+	def __init__(self, label, bgcolor = QColor(240, 240, 200, 192)):
+		GraphicsItem.__init__(self)
+		self._bgColor = bgcolor
+		self._pen = QPen(QColor(160, 160, 160))
+		self._fontPen = QPen()
+		self._font = QFont()
 
-	def __createWidgets(self, text, bgcolor, pen):
-		# The label
-		label = QGraphicsSimpleTextItem(text)
-		label.setZValue(100)
+		self._label = None
+		self._boundingRect = None
+		self._arrowLength = 10
+		self._arrowHeight = 5 # the "bevel" arround the arrow
+		self._horizontalMargin = 10
+		self._verticalMargin = 1
 
-		rect = label.boundingRect()
-		# the bounding arrow. The arrow body width is adapter to the label height,
-		# and the final arrow is bevel pixel high and low its main body.
-		bevel = 5 # pixels
-		path = QPainterPath()
-		path.lineTo(path.currentPosition() + QPointF(-(rect.width() + 20 - bevel), 0))
-		path.lineTo(path.currentPosition() + QPointF(0, -bevel))
-		path.lineTo(path.currentPosition() + QPointF(-2*bevel, bevel + rect.height() / 2.0))
-		path.lineTo(path.currentPosition() + QPointF(2*bevel, bevel + rect.height() / 2.0))
-		path.lineTo(path.currentPosition() + QPointF(0, -bevel))
-		path.lineTo(path.currentPosition() + QPointF( (rect.width() + 20 - bevel), 0))
-		path.closeSubpath()
+		self.setLabel(label)
+		self.updatePolyline()
 
-		box = QGraphicsPathItem(path)
-		box.setPen(pen)
-		box.setBrush(QBrush(bgcolor))
-		box.setZValue(50)
-		box.translate(rect.width() + 20 + bevel, 0)
-		self.addToGroup(box)
-		# We center the label in the box
-		label.translate((box.boundingRect().width() - rect.width()) / 2.0, 0)
-		self.addToGroup(label)
+	def boundingRect(self):
+		return self._boundingRect
 
+	def updatePolyline(self):
+		w = self.boundingRect().width()
+		h = self.boundingRect().height()
+		x = self.boundingRect().x()
+		y = self.boundingRect().y()
+		self._points = []
+		self._points.append(QPoint(x + w, y + self._arrowHeight))
+		self._points.append(QPoint(x + self._arrowLength, y + self._arrowHeight))
+		self._points.append(QPoint(x + self._arrowLength, y))
+		self._points.append(QPoint(x, y + h/2.0))
+		self._points.append(QPoint(x + self._arrowLength, y + h))
+		self._points.append(QPoint(x + self._arrowLength, y + h - self._arrowHeight))
+		self._points.append(QPoint(x + w, y + h - self._arrowHeight))
+		self._polygon = QPolygon(self._points)
 
+	def setLabel(self, label):
+		self._label = label
+		# Update bounding rect
+		fm = QFontMetrics(self._font)
+		br = fm.boundingRect(self._label)
+		# Add some space to build the arrow around it
+		br.setWidth(br.width() + self._arrowLength + self._horizontalMargin)
+		br.setHeight(br.height() + 2*self._arrowHeight + self._verticalMargin)
+		self._boundingRect = QRectF(br)
+
+	def paint(self, painter, option, widget = None):		
+		painter.setPen(self._pen)
+		painter.setFont(self._font)
+		painter.setBrush(QBrush(self._bgColor))
+		painter.drawPolygon(self._polygon)
+		painter.setPen(self._fontPen)
+		br = QRectF(self.boundingRect())
+		br.setX(br.x() + self._arrowLength)
+		br.setY(br.y() + self._verticalMargin)
+		painter.drawText(br, Qt.AlignLeft | Qt.AlignVCenter, self._label)
 
 
 class MessageArrow(GraphicsItemGroup):
@@ -534,6 +695,111 @@ class MessageArrow(GraphicsItemGroup):
 			if toLabel: toolTip += toLabel
 			self.setToolTip(toolTip)
 
+class Arrow(GraphicsItem):
+	def __init__(self, fromItem, toItem, label = None):
+		"""
+		@type  fromItem: GraphicsItem
+		@type  toItem: GraphicsItem
+		
+		Creates a line or an arc to link fromNode to toNode, based on their
+		bounding rects. Only two attach points possible:
+		- left/vcenter of the br,
+		- or right/vcenter.
+		
+		i.e. the arrow is designed to be part of a "horizontal-oriented layout".
+		"""
+		GraphicsItem.__init__(self)
+		self._pen = QPen(QColor(160, 160, 160))
+		self._brush = QBrush()
+		self._arrowBrush = QBrush(QColor(160, 160, 160))
+		self._fontPen = QPen()
+		self._font = QFont()
+		
+		self._label = label
+		self._path = None
+		self._arrowIndicator = None # QPolygonF
+		self._boundingRect = None
+		self._arrowHeight = 7.0
+		self._arrowLength = 10.0
+		
+		# Compute actual attachment points.
+		fromBr = fromItem.mapToScene(fromItem.boundingRect()).boundingRect()
+		toBr = toItem.mapToScene(toItem.boundingRect()).boundingRect()
+		self._straightConnection = True # straigth or curved connection ? (when connecting same sides, for instance)
+		if (fromBr.x() + fromBr.width()) < toBr.x():
+			# Not overlapping, 
+			# 'To' if to the right of 'From'
+			self._from = QPointF(fromBr.x() + fromBr.width(), fromBr.y() + fromBr.height() / 2.0) # right side
+			self._to = QPointF(toBr.x(), toBr.y() + fromBr.height() / 2.0) # left side
+		elif fromBr.x() > toBr.x() + toBr.width():
+			# Not overlapping, 
+			# 'To' if to the left of 'From'
+			self._from = QPointF(fromBr.x(), fromBr.y() + fromBr.height() / 2.0) # left side
+			self._to = QPointF(toBr.x() + fromBr.width(), toBr.y() + fromBr.height() / 2.0) # rigth side
+		else:
+			# We overlap along the X axis. By "layout convention", we took right sides only.
+			self._from = QPointF(fromBr.x() + fromBr.width(), fromBr.y() + fromBr.height() / 2.0) # right side
+			self._to = QPointF(toBr.x() + fromBr.width(), toBr.y() + fromBr.height() / 2.0) # rigth side
+			self._straightConnection = False # will force to create a "loop" instead of a straigth connection
+
+		self.updatePath()
+
+	def updatePath(self):
+		self._path = QPainterPath(self._from)
+		if self._straightConnection:
+			self._path.lineTo(self._to)
+		else:
+			"""
+			# Cubic connection
+			x = self._from.x()
+			y = self._from.y()
+			a = self._to.x()
+			b = self._to.y()
+			cx1 = (a-x)/2 + x
+			cy1 = y
+			cx2 = cx1
+			cy2 = b
+			self._path.cubicTo(cx1, cy1, cx2, cy2, a, b)
+			"""
+			x = self._from.x()
+			y = self._from.y()
+			a = self._to.x()
+			b = self._to.y()
+			cx1 = max(x, a) + 20.0
+			cy1 = (y + b)/2.0
+			self._path.quadTo(cx1, cy1, a, b)
+
+		# Add an arrow indicator (a triangle)
+		if self._straightConnection:
+			if self._from.x() > self._to.x(): # arrow to the left
+				points = [QPointF(0.0, 0.0), QPointF(self._arrowLength, self._arrowHeight/2.0), QPointF(self._arrowLength, -self._arrowHeight/2), QPointF(0.0, 0.0)]
+			else: # to the right
+				points = [QPointF(0.0, 0.0), QPointF(-self._arrowLength, self._arrowHeight/2.0), QPointF(-self._arrowLength, -self._arrowHeight/2), QPointF(0.0, 0.0)]
+		else:
+			# to the left, aligned with (to, controlPoint) (manually aligned...)
+			points = [QPointF(0.0, 0.0), QPointF(self._arrowLength*0.9, -self._arrowHeight*0.4), QPointF(self._arrowLength*0.3, -self._arrowHeight*1.1), QPointF(0.0, 0.0)]
+			
+		self._arrowIndicator = QPolygonF(points)
+		self._arrowIndicator.translate(self._to)
+
+		self._boundingRect = self._path.boundingRect().united(self._arrowIndicator.boundingRect())
+
+	def boundingRect(self):
+		return self._boundingRect
+
+	def paint(self, painter, option, widget = None):		
+		painter.setPen(self._pen)
+		painter.setFont(self._font)
+		painter.setBrush(self._brush)
+		painter.drawPath(self._path)
+		painter.setBrush(self._arrowBrush)
+		painter.drawPolygon(self._arrowIndicator)
+#		painter.setPen(self._fontPen)
+#		br = QRectF(self.boundingRect())
+#		br.setX(br.x() + self._horizontalMargin)
+#		br.setY(br.y() + self._verticalMargin)
+#		painter.drawText(br, Qt.AlignLeft | Qt.AlignVCenter, self._label)
+		
 
 class TestCaseActor(QGraphicsItemGroup):
 	"""
@@ -637,16 +903,14 @@ class TestCaseActor(QGraphicsItemGroup):
 		From Qt doc on addToGroup:
 		The item will be reparented to this group, but its position and transformation relative to the scene will stay intact.
 		"""
-		group = BoxedLabel(text, bgcolor = color)
+		item = BoxedLabel(text, bgcolor = color)
 		y = yOffset + 20
-		x = self.getSceneXAnchor() - group.boundingRect().width() / 2.0
-		group.translate(x, y)
-
+		x = self.getSceneXAnchor() - item.boundingRect().width() / 2.0
+		item.translate(x, y)
 		# main line growth, if needed
 		if y > self.mainLine.line().y2():
 			self.expandMainLine(y)
-
-		return group
+		return item
 
 	def createRoundedStickerItem(self, text, yOffset, color = QColor(240, 240, 200, 192)):
 		item = RoundedBoxedLabel(text, bgcolor = color)
@@ -659,7 +923,7 @@ class TestCaseActor(QGraphicsItemGroup):
 		return item
 
 	def createStartedStickerItem(self, text, yOffset, color = QColor(240, 240, 200, 192)):
-		item = RoundedBoxedLabel(text, bgcolor = color)
+		item = DoubleVBoxedLabel(text, bgcolor = color)
 		y = yOffset + 20
 		x = self.getSceneXAnchor() - item.boundingRect().width() / 2.0
 		item.translate(x, y)
@@ -725,28 +989,24 @@ class TestCaseActor(QGraphicsItemGroup):
 		return item
 
 	def createRightArrowStickerItem(self, text, yOffset, color = QColor(240, 240, 200, 192)):
-		group = RightArrowBoxedLabel(text, bgcolor = color)
+		item = RightArrowBoxedLabel(text, bgcolor = color)
 		y = yOffset + 20
-		x = self.getSceneXAnchor() - group.boundingRect().width() / 2.0
-		group.translate(x, y)
-
+		x = self.getSceneXAnchor() - item.boundingRect().width() / 2.0
+		item.translate(x, y)
 		# main line growth, if needed
 		if y > self.mainLine.line().y2():
 			self.expandMainLine(y)
-
-		return group
+		return item
 
 	def createLeftArrowStickerItem(self, text, yOffset, color = QColor(240, 240, 200, 192)):
-		group = LeftArrowBoxedLabel(text, bgcolor = color)
+		item = LeftArrowBoxedLabel(text, bgcolor = color)
 		y = yOffset + 20
-		x = self.getSceneXAnchor() - group.boundingRect().width() / 2.0
-		group.translate(x, y)
-
+		x = self.getSceneXAnchor() - item.boundingRect().width() / 2.0
+		item.translate(x, y)
 		# main line growth, if needed
 		if y > self.mainLine.line().y2():
 			self.expandMainLine(y)
-
-		return group
+		return item
 
 	def getSceneXAnchor(self):
 		"""
@@ -895,22 +1155,33 @@ class TestCaseScene(QGraphicsScene):
 				fromPort = domElement.attribute("from-port")
 				toPort = domElement.attribute("to-port")
 				encodedMessage = ''
-				itemToAdd = self.createSentMessageItem(encodedMessage, fromActor, toActor, y, "%s.%s" % (fromActor, fromPort), "%s.%s" % (toActor, toPort))
-				itemToAdd.setMyData(0, domElement.firstChildElement("message"))
+				fromPortItem = self.__actors[fromActor].createRoundedStickerItem(fromPort, y, self.timerStartedColor)
+				if fromActor == toActor:
+					y += 30 # both port items on the same actor. Separate them a little.
+				toPortItem = self.__actors[toActor].createRoundedStickerItem(toPort, y, self.timerStartedColor)
+				arrowItem = Arrow(fromPortItem, toPortItem)
+				
+				itemToAdd = GraphicsItemGroup()
+				itemToAdd.addToGroup(fromPortItem)
+				itemToAdd.addToGroup(toPortItem)
+				itemToAdd.addToGroup(arrowItem)
+				arrowItem.setMyData(0, domElement.firstChildElement("message"))
 
 			# Template matchin events
 			elif element == "template-match":
 				actor = domElement.attribute("tc")
+				port = domElement.attribute("port")
 				# If the actor does not exist, this probably means that we are handling a template-match on the internal Testerman queue (timer timeout, etc)
 				if self.__actors.has_key(actor):
-					itemToAdd = self.__actors[actor].createStickerItem("<match>", y, self.successColor)
+					itemToAdd = self.__actors[actor].createRoundedStickerItem("%s match" % port, y, self.successColor)
 					itemToAdd.setMyData(0, domElement.firstChildElement("message"))
 					itemToAdd.setMyData(1, domElement.firstChildElement("template"))
 			elif element == "template-mismatch":
 				actor = domElement.attribute("tc")
+				port = domElement.attribute("port")
 				# If the actor does not exist, this probably means that we are handling a template-match on the internal Testerman queue (timer timeout, etc)
 				if self.__actors.has_key(actor):
-					itemToAdd = self.__actors[actor].createStickerItem("<mismatch>", y, self.failedColor)
+					itemToAdd = self.__actors[actor].createStickerItem("%s mismatch" % port, y, self.failedColor)
 					itemToAdd.setMyData(0, domElement.firstChildElement("message"))
 					itemToAdd.setMyData(1, domElement.firstChildElement("template"))
 
@@ -930,7 +1201,7 @@ class TestCaseScene(QGraphicsScene):
 				msg = domElement.text()
 				itemToAdd = self.createUserLogItem(actor, msg, y)
 
-		except KeyError, e:
+		except KeyError:
 			log("WARNING: unable to add visual event, possibly missed actor creation event (%s)" % getBacktrace())
 			itemToAdd = None
 
