@@ -20,6 +20,9 @@
 import CodecManager
 import TestermanTCI
 
+from CodecManager import CodecNotFoundException
+
+
 CodecManager.instance().setLogCallback(lambda x: TestermanTCI.logInternal("CD: %s" % x))
 
 def instance():

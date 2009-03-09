@@ -36,6 +36,7 @@ import re
 import threading
 import time
 
+API_VERSION = "1.0"
 
 ################################################################################
 # Some general functions
@@ -2287,7 +2288,7 @@ def set_variable(name, value):
 
 def _encodeTemplate(template):
 	"""
-	Valuate a template:
+	Valuates a template:
 	- calls encoders,
 	- valuates matching mechanisms, if possible
 	- if it's a function, call it (0-arity)
@@ -2322,6 +2323,10 @@ def _encodeTemplate(template):
 	
 
 def _expandTemplate(template):
+	"""
+	Expands a template to its Testerman structure, 
+	evaluating inner functions and skipping encoding/decoding.
+	"""
 	if callable(template):
 		template = template()
 
@@ -2359,14 +2364,13 @@ class CodecTemplate:
 		# first encode what should be encoded within the template,
 		# then encode it
 		try:
-			ret = TestermanCD.encode(self._codec, _encodeTemplate(self._template))
+			(encodedMessage, summary) = TestermanCD.encode(self._codec, _encodeTemplate(self._template))
 		except Exception:
+			# This includes a CodecNotFound exception
 			raise TestermanException('Encoding error: could not encode message with codec %s:\n%s' % (self._codec, getBacktrace()))
-		if ret is None:
-			# Codec not found
-			raise TestermanException('Encoding error: codec %s not found' % self._codec)
 		else:
-			return ret
+			# Summary is FFU.
+			return encodedMessage
 	
 	def getTemplate(self):
 		# recursive expansion
@@ -2377,18 +2381,23 @@ class CodecTemplate:
 		# This way, the codec only decodes what it knows how to decode, and has no need
 		# to know what other codecs are available.
 		try:
-			ret = TestermanCD.decode(self._codec, encodedMessage)
+			# In the TE context, 
+			(decodedMessage, summary) = TestermanCD.decode(self._codec, encodedMessage)
+		except TestermanCD.CodecNotFoundException:
+			raise TestermanException('Decoding error: codec %s not found' % self._codec)
 		except Exception:
 			logInternal('Decoding error: could not decode message with codec %s:\n%s' % (self._codec, getBacktrace()))
 			# Unable to decode: leave the buffer as is - it will lead to a match error probably.
+			# Leaving it as is enables to convey the payload all along the flow for further analysis.
 			return encodedMessage
-		if ret is None:
-			# Codec not found
-			raise TestermanException('Decoding error: codec %s not found' % self._codec)
+		if decodedMessage is None:
+			logInternal('Decoding error: could not decode message with codec %s' % self._codec)
+			return encodedMessage
 		else:
-			return ret
+			# Summary if FFU.
+			return decodedMessage
 			
-# The main alias - final one TBD (with_codec ?)
+# The main alias - as defined in Testerman API 1.0
 class with_(CodecTemplate):
 	pass
 
