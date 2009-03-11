@@ -570,21 +570,96 @@ class Client(Nodes.ConnectingNode):
 
 	def removeFile(self, filename):
 		"""
-		Removes a file or a directory. In this later case, this is a recursive removal.
-		The caller should check that the directory is empty before deleting it.
+		Removes a file.
 		
 		@type  filename: string
-		@param filename: complete path within the docroot of the filename/directory to delete
+		@param filename: complete docroot-path of the file to delete
 
 		@throws Exception in case of a (technical) error
 		
 		@rtype: bool
-		@returns: True file/directory deletion was ok, False if it was not possible to delete it.
+		@returns: True if file deletion was ok, False if it was not possible to delete it.
 		"""
-		self.getLogger().debug("Removing %s ..." % filename)
+		self.getLogger().debug("Removing fie %s ..." % filename)
 		res = self.__proxy.removeFile(filename)
-		self.getLogger().debug("Removed %s: " % filename + str(res))
+		self.getLogger().debug("Removed file %s: %s" % (filename, str(res)))
 		return res
+
+	def removeDirectory(self, path, recursive = False):
+		"""
+		Removes a directory.
+		If recursive if false, only accepts to remove an empty directory.
+		
+		@type  path: string
+		@param path: complete path within the docroot of the filename/directory to delete
+		@type  recursive: bool
+		@param recursive: deletes the directory recursively or not
+
+		@throws Exception in case of a (technical) error
+		
+		@rtype: bool
+		@returns: True if the directory deletion was ok, False if it was not possible to delete it.
+		"""
+		self.getLogger().debug("Removing directory %s ..." % path)
+		res = self.__proxy.removeDirectory(path, recursive)
+		self.getLogger().debug("Removed directory %s: %s" % (path, str(res)))
+		return res
+
+	##
+	# High-level file management: convenience functions to manage dependencies between files
+	##
+
+	def deleteAts(self, filename, deleteExecutionLogs = True):
+		"""
+		Deletes an ATS and its associated execution logs.
+
+		@type  filename: string
+		@param filename: the docroot-path of the ATS to delete
+		@type  deleteExecutionLogs: bool
+		@param deleteExecutionLogs: delete associated execution logs (with TE), if any
+		"""
+		ret = self.removeFile(filename)
+		if deleteExecutionLogs:
+			# compute associated log path
+			archivePath = '/archives/%s' % ('/'.join(filename.split('/')[2:]))
+			# this archive folder contains all TEs and all associated logs for the ats.
+			# Delete all.
+			self.removeDirectory(archivePath, True)
+		return ret
+
+	def deleteCampaign(self, filename, deleteExecutionLogs = True):
+		"""
+		Deletes a Campaign and its associated execution logs.
+
+		@type  filename: string
+		@param filename: the docroot-path of the ATS to delete
+		@type  deleteExecutionLogs: bool
+		@param deleteExecutionLogs: delete associated execution logs (with TE), if any
+		"""
+		ret = self.removeFile(filename)
+		if deleteExecutionLogs:
+			# compute associated log path
+			archivePath = '/archives/%s' % ('/'.join(filename.split('/')[2:]))
+			# this archive folder contains all TEs and all associated logs for the ats.
+			# Delete all.
+			self.removeDirectory(archivePath, True)
+		return ret
+
+	def deleteExecutionLog(self, filename, deleteTestExecutable = True):
+		"""
+		Deletes an execution log and its associated TE.
+
+		@type  filename: string
+		@param filename: the docroot-path of the file to delete
+		@type  deleteTestExecutable: bool
+		@param deleteTestExecutable: delete associated TE package
+		"""
+		assert(filename.endswith('.log'))
+		tePath = filename[:-4] # removes the trailing '.log'
+		ret = self.removeFile(filename)
+		if deleteTestExecutable:
+			self.removeDirectory(tePath, True)
+		return ret
 
 	##
 	# Update management

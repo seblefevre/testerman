@@ -509,7 +509,7 @@ class AtsJob(Job):
 		except:
 			pass
 
-		# self._logFilename is relative to the docroot for a retrieval via Ws
+		# self._logFilename is a docroot-path for a retrieval via Ws
 		self._logFilename = "%s/%s.log" % (baseDocRootDirectory, basename)
 		# whereas logFilename is an absolute local path (execution)
 		logFilename = "%s/%s.log" % (baseDirectory, basename)
@@ -562,17 +562,12 @@ class AtsJob(Job):
 			return self.getResult()
 
 		# Prepare input/output session files
-		baseSessionDirectory = ConfigManager.get('testerman.tmp_root')
-		try:
-			os.makedirs(baseSessionDirectory)
-		except:
-			pass
-		inputSessionFilename = "%s/%s.input.session" % (baseSessionDirectory, basename)
-		outputSessionFilename = "%s/%s.output.session"  % (baseSessionDirectory, basename)
+		inputSessionFilename = "%s/%s.input.session" % (tePackageDirectory, basename)
+		outputSessionFilename = "%s/%s.output.session"  % (tePackageDirectory, basename)
 		# Create the actual input session:
 		# the default session, from metadata, overriden with user input session values.
 		# FIXME: should we accept user input parameters that are not defined in default parameters, i.e.
-		# in ATS ignature ?
+		# in ATS signature ?
 		# default session
 		try:
 			defaultSession = TEFactory.getDefaultSession(self._source)
@@ -696,10 +691,11 @@ class AtsJob(Job):
 		"""
 		if self._logFilename:
 			# Why not use the FileSystemManager acccess instead of an absolute, local path ? 
+			# Because of the file lock only ?
 			absoluteLogFilename = os.path.normpath("%s%s" % (ConfigManager.get("testerman.document_root"), self._logFilename))
 			f = open(absoluteLogFilename, 'r')
 			fcntl.flock(f.fileno(), fcntl.LOCK_EX)
-			res = '<?xml version="1.0" encoding="utf-8" ?>\n<ats>\n%s</ats>' % f.read()
+			res = '<?xml version="1.0" encoding="utf-8" ?>\n<ats version="2.0">\n%s</ats>' % f.read()
 			f.close()
 			return res
 		else:
@@ -864,7 +860,6 @@ class CampaignJob(Job):
 		
 		Comments are indicated with a #.
 		"""
-		
 		getLogger().info("%s: parsing campaign file" % str(self))
 
 		# The path of the campaign within the docroot.
@@ -948,10 +943,19 @@ class CampaignJob(Job):
 
 	def getLog(self):
 		"""
-		TODO.
+		Returns the current known log.
 		"""
-		return '<?xml version="1.0" encoding="utf-8" ?><campaign></campaign>'
-
+		if self._logFilename:
+			# Why not use the FileSystemManager acccess instead of an absolute, local path ?
+			# Because of the file lock only ?
+			absoluteLogFilename = os.path.normpath("%s%s" % (ConfigManager.get("testerman.document_root"), self._logFilename))
+			f = open(absoluteLogFilename, 'r')
+			fcntl.flock(f.fileno(), fcntl.LOCK_EX)
+			res = '<?xml version="1.0" encoding="utf-8" ?>\n<campaign version="1.0">\n%s</campaign>' % f.read()
+			f.close()
+			return res
+		else:
+			return '<?xml version="1.0" encoding="utf-8" ?><campaign></campaign>'
 
 ################################################################################
 # The Scheduler Thread

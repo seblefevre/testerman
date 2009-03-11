@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 ##
 # This file is part of Testerman, a test automation system.
 # Copyright (c) 2008-2009 Sebastien Lefevre and other contributors
@@ -13,10 +14,9 @@
 ##
 
 ##
-# -*- coding: utf-8 -*-
 # A FileSystemBackend implementation for local files management.
 # 
-# Also provides a basic, non-optimized revision management system, 
+# Will also provide a basic, non-optimized revision management system, 
 # prefixing filenames with @<rev>
 # samples/file.ats
 # samples/file.ats@1.1
@@ -164,7 +164,10 @@ class LocalBackend(FileSystemBackend.FileSystemBackend):
 			return False
 
 		try:
-			if not os.path.isdir(path):
+			if not fileExists(path):
+				# Already non-existent
+				return True
+			elif not os.path.isdir(path):
 				return False
 			else:
 				os.rmdir(path)

@@ -503,11 +503,10 @@ def getFileInfo(path):
 
 def removeFile(path):
 	"""
-	Remove a file, but also a directory ?...
-	For now, a file only.
+	Remove a file.
 	
 	@type  path: string
-	@param path: the path to the file to delete
+	@param path: the docroot-path to the file to delete
 	
 	@rtype: bool
 	@returns: True if OK, False if nothing deleted. (? to check)
@@ -522,6 +521,30 @@ def removeFile(path):
 		raise(e)
 
 	getLogger().info("<< removeFile(): %s" % str(res))
+	return res
+
+def removeDirectory(path, recursive = False):
+	"""
+	Remove an empty directory, unless recursive is set to True.
+	
+	@type  path: string
+	@param path: the docroot-path to the directory to delete
+	@type  recursive: bool
+	@param recursive: True if we should delete files and directories in it. DANGEROUS.
+	
+	@rtype: bool
+	@returns: True if OK, False if nothing deleted. (? to check)
+	"""
+	getLogger().info(">> removeDirectory(%s)" % path)
+	res = False
+	try:
+		res = FileSystemManager.instance().rmdir(path, recursive)
+	except Exception, e:
+		e =  Exception("Unable to perform operation: %s\n%s" % (str(e), Tools.getBacktrace()))
+		getLogger().info("<< removeDirectory(...): Fault:\n" + str(e))
+		raise(e)
+
+	getLogger().info("<< removeDirectory(): %s" % str(res))
 	return res
 
 def getReferencingFiles(module):

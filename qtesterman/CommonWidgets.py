@@ -1,18 +1,34 @@
-##
 # -*- coding: utf-8 -*-
+##
+# This file is part of Testerman, a test automation system.
+# Copyright (c) 2008-2009 Sebastien Lefevre and other contributors
 #
-# Some useful, often used enhanced widgets.
+# This program is free software; you can redistribute it and/or modify it under
+# the terms of the GNU General Public License as published by the Free Software
+# Foundation; either version 2 of the License, or (at your option) any later
+# version.
+# This program is distributed in the hope that it will be useful, but WITHOUT
+# ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
+# FOR A PARTICULAR PURPOSE.  See the GNU General Public License for more
+# details.
 ##
 
-from PyQt4.Qt import *
+##
+# Some useful, often used enhanced widgets.
+#
+##
 
 from Base import *
 
+import binascii
 import base64
 import pickle
 
+from PyQt4.Qt import *
+
+
 ################################################################################
-# Convenience function
+# Convenience function: simple message boxes
 ################################################################################
 
 def userError(parent, txt):
@@ -24,8 +40,9 @@ def systemError(parent, txt):
 def userInformation(parent, txt):
 	QMessageBox.information(parent, getClientName(), txt, QMessageBox.Ok, QMessageBox.Ok)
 
+
 ################################################################################
-# Possible actions
+# QActions-related convenience functions
 ################################################################################
 
 class TestermanAction(QAction):
@@ -44,9 +61,8 @@ class TestermanCheckableAction(QAction):
 		self.connect(self, SIGNAL("toggled(bool)"), callback)
 
 
-
 ################################################################################
-# WTextEditDialog - convenience dialog
+# Message of the Day dialog
 ################################################################################
 
 class WMessageOfTheDayDialog(QDialog):
@@ -93,14 +109,14 @@ class WMessageOfTheDayDialog(QDialog):
 
 
 ################################################################################
-# WTextEditDialog - convenience dialog
+# Text Edit, RW or RO - convenience dialog
 ################################################################################
 
 class WTextEditDialog(QDialog):
 	"""
 	A basic Text Edit modal dialog.
 	May be read-only or not.
-	Useful for Descript/prerequisites edition, or release notes viewing.
+	Useful for Description/prerequisites edition, or release notes viewing, ...
 	"""
 	def __init__(self, text, title, readOnly = 0, parent = None, size = None, fixedFont = False):
 		QDialog.__init__(self, parent)
@@ -146,8 +162,9 @@ class WTextEditDialog(QDialog):
 	def getText(self):
 		return self.textEdit.toPlainText()
 
+
 ################################################################################
-# WValueDialog - display a value in binary and text format
+# WValueDialog - displays a value in binary and text format
 ################################################################################
 
 class WValueDialog(QDialog):
@@ -222,6 +239,7 @@ class WValueDialog(QDialog):
 		defaultFont.setFixedPitch(True)
 		self.unicodeTextEdit.setFont(defaultFont)
 		self.binaryTextEdit.setFont(defaultFont)
+
 
 ################################################################################
 # Find/Replace dialog controlling a QSciScintilla widget
@@ -366,88 +384,10 @@ class WSciReplace(QDialog):
 		"""
 		QDialog.reject(self)
 
+
 ################################################################################
-# Find dialog
+# Find widget controlling a QSciScintilla widget, displayed at its bottom
 ################################################################################
-
-class WFind(QWidget):
-	"""
-	Find widget, to associate to a textEdit widget.
-	
-	It automatically register a Ctrl+F action on the textEdit widget to get
-	the focus on itself.
-	"""
-	def __init__(self, textEdit, parent = None):
-		QWidget.__init__(self, parent)
-		self.textEdit = textEdit
-		self.__createWidgets()
-		# This does not work...
-		self.action = TestermanAction(self.textEdit, "Find", self.getFocus)
-		self.action.setShortcut(Qt.CTRL + Qt.Key_F)
-		self.action.setShortcutContext(Qt.WidgetShortcut)
-		self.textEdit.addAction(self.action)
-		self.isCopyAvailable = 0
-
-	def __createWidgets(self):
-		layout = QHBoxLayout()
-		layout.setMargin(0)
-		layout.addWidget(QLabel("Find:", self))
-		self.findLineEdit = QLineEdit(self)
-		self.connect(self.findLineEdit, SIGNAL('textChanged(const QString&)'), self.onTextChanged)
-		#self.connect(self.findLineEdit, SIGNAL('editingFinished()'), self.onNextClicked)
-		self.connect(self.textEdit, SIGNAL('copyAvailable(bool)'), self.onCopyAvailableChange)
-		layout.addWidget(self.findLineEdit)
-		self.nextButton = QPushButton("Next", self)
-		self.nextButton.setShortcut('F3')
-		self.connect(self.nextButton, SIGNAL('clicked()'), self.onNextClicked)
-		layout.addWidget(self.nextButton)
-		self.setLayout(layout)
-		self.defaultPalette = QPalette(self.findLineEdit.palette())
-		self.alternatePalette = QPalette(self.defaultPalette)
-		self.alternatePalette.setColor(QPalette.Base, QColor(237, 203, 197))
-
-	def getFocus(self):
-		self.findLineEdit.selectAll()
-		self.findLineEdit.grabKeyboard()
-		self.findLineEdit.setFocus(Qt.OtherFocusReason)
-
-	def getAction(self):
-		return self.action
-
-	def find(self, text, excludeCurrentSelection = 1):
-		if not text.length():
-			self.findLineEdit.setPalette(self.defaultPalette)
-			return
-		if excludeCurrentSelection:
-			# Starts after the end of the selection (ideal for "next")
-			cursor = self.textEdit.document().find(text, self.textEdit.textCursor())
-		else:
-			# Starts from the beginning of the selection (ideal for incremental)
-			cursor = self.textEdit.document().find(text, self.textEdit.textCursor().selectionStart())
-		if cursor.isNull():
-			# we make a second try starting at the beginning
-			cursor = self.textEdit.document().find(text, 0)
-		if not cursor.isNull():
-			self.textEdit.setTextCursor(cursor)
-			self.findLineEdit.setPalette(self.defaultPalette)
-		else:
-			self.findLineEdit.setPalette(self.alternatePalette)
-
-	def onCopyAvailableChange(self, bool):
-		self.isCopyAvailable = bool
-
-	def onTextChanged(self, text):
-		self.find(text, 0)
-
-	def onNextClicked(self):
-		if self.isCopyAvailable:
-			self.textEdit.copy()
-			self.findLineEdit.setText('')
-			self.findLineEdit.paste()
-		elif self.findLineEdit.text() == '':
-			self.getFocus()
-			return
-		self.find(self.findLineEdit.text())
 
 class WSciFind(QWidget):
 	"""
@@ -546,6 +486,95 @@ class WSciFind(QWidget):
 				return
 		self.find(text = self.findLineEdit.text(), forward = forward)
 
+
+################################################################################
+# Find dialog controlling a QTextEdit, displayed at its bottom.
+################################################################################
+
+class WFind(QWidget):
+	"""
+	Find widget, to associate to a textEdit widget.
+	
+	It automatically register a Ctrl+F action on the textEdit widget to get
+	the focus on itself.
+	"""
+	def __init__(self, textEdit, parent = None):
+		QWidget.__init__(self, parent)
+		self.textEdit = textEdit
+		self.__createWidgets()
+		# This does not work...
+		self.action = TestermanAction(self.textEdit, "Find", self.getFocus)
+		self.action.setShortcut(Qt.CTRL + Qt.Key_F)
+		self.action.setShortcutContext(Qt.WidgetShortcut)
+		self.textEdit.addAction(self.action)
+		self.isCopyAvailable = 0
+
+	def __createWidgets(self):
+		layout = QHBoxLayout()
+		layout.setMargin(0)
+		layout.addWidget(QLabel("Find:", self))
+		self.findLineEdit = QLineEdit(self)
+		self.connect(self.findLineEdit, SIGNAL('textChanged(const QString&)'), self.onTextChanged)
+		#self.connect(self.findLineEdit, SIGNAL('editingFinished()'), self.onNextClicked)
+		self.connect(self.textEdit, SIGNAL('copyAvailable(bool)'), self.onCopyAvailableChange)
+		layout.addWidget(self.findLineEdit)
+		self.nextButton = QPushButton("Next", self)
+		self.nextButton.setShortcut('F3')
+		self.connect(self.nextButton, SIGNAL('clicked()'), self.onNextClicked)
+		layout.addWidget(self.nextButton)
+		self.setLayout(layout)
+		self.defaultPalette = QPalette(self.findLineEdit.palette())
+		self.alternatePalette = QPalette(self.defaultPalette)
+		self.alternatePalette.setColor(QPalette.Base, QColor(237, 203, 197))
+
+	def getFocus(self):
+		self.findLineEdit.selectAll()
+		self.findLineEdit.grabKeyboard()
+		self.findLineEdit.setFocus(Qt.OtherFocusReason)
+
+	def getAction(self):
+		return self.action
+
+	def find(self, text, excludeCurrentSelection = 1):
+		if not text.length():
+			self.findLineEdit.setPalette(self.defaultPalette)
+			return
+		if excludeCurrentSelection:
+			# Starts after the end of the selection (ideal for "next")
+			cursor = self.textEdit.document().find(text, self.textEdit.textCursor())
+		else:
+			# Starts from the beginning of the selection (ideal for incremental)
+			cursor = self.textEdit.document().find(text, self.textEdit.textCursor().selectionStart())
+		if cursor.isNull():
+			# we make a second try starting at the beginning
+			cursor = self.textEdit.document().find(text, 0)
+		if not cursor.isNull():
+			self.textEdit.setTextCursor(cursor)
+			self.findLineEdit.setPalette(self.defaultPalette)
+		else:
+			self.findLineEdit.setPalette(self.alternatePalette)
+
+	def onCopyAvailableChange(self, bool):
+		self.isCopyAvailable = bool
+
+	def onTextChanged(self, text):
+		self.find(text, 0)
+
+	def onNextClicked(self):
+		if self.isCopyAvailable:
+			self.textEdit.copy()
+			self.findLineEdit.setText('')
+			self.findLineEdit.paste()
+		elif self.findLineEdit.text() == '':
+			self.getFocus()
+			return
+		self.find(self.findLineEdit.text())
+
+
+################################################################################
+# Convenience widget that embeds a widget into a QGroupBox
+################################################################################
+
 class WGroupBox(QGroupBox):
 	"""
 	Utility class to embed a widget within a group box easily
@@ -558,13 +587,17 @@ class WGroupBox(QGroupBox):
 		self.setLayout(layout)
 
 
+################################################################################
+# Enhanced QTabWidget
+################################################################################
+
 class WEnhancedTabWidget(QTabWidget):
 	"""
 	Utility widget.
 
 	Slightly enhanced tab widget with:
 	- close button support
-	- automatic tab name renamming in case of duplicata
+	- automatic tab name renaming in case of duplicata
 	- send a signal "tabCountChanged" whenever a tab is added/removed
 	- send a closeCurrentTab signal when clicking on the close button
 	"""
@@ -707,6 +740,66 @@ class WDeleteFileConfirmation(QDialog):
 			return self.checkBox.isChecked()
 		return 0
 
+################################################################################
+# Enhanced Question dialog
+################################################################################
+
+class WUserQuestion(QDialog):
+	"""
+	Display a confirmation dialog (Yes/No) 
+	with a additional checkable options.
+	(e.g. "Delete ATS file too", or "Delete all related logs", etc)
+	"""
+	def __init__(self, title, question, checkBoxes = [], parent = None):
+		"""
+		@type  title: string
+		@param title: the title of the dialog box
+		@type  question: string
+		@param question: the label of the question to ask
+		@type  checkBoxes: list of (string, bool)
+		@param checkBoxes: a list of (label, checked) for additional checkboxes
+		                   to display
+		
+		use isChecked(index) to get the check state of a checkbox once 
+		the dialog has been accepted.
+		"""
+		QDialog.__init__(self, parent)
+		self._checkBoxes = []
+		self.__createWidgets(title, question, checkBoxes)
+	
+	def __createWidgets(self, title, question, checkBoxes):
+		self.setWindowTitle(title)
+
+		layout = QVBoxLayout()
+		layout.addWidget(QLabel(question))
+		for (label, checked) in checkBoxes:
+			cb = QCheckBox(label)
+			cb.setChecked(checked)
+			layout.addWidget(cb)
+			self._checkBoxes.append(cb)
+
+		buttonLayout = QHBoxLayout()
+		buttonLayout.addStretch()
+		self.okButton = QPushButton("Yes", self)
+		self.connect(self.okButton, SIGNAL("clicked()"), self.accept)
+		buttonLayout.addWidget(self.okButton)
+		self.cancelButton = QPushButton("No", self)
+		self.connect(self.cancelButton, SIGNAL("clicked()"), self.reject)
+		buttonLayout.addWidget(self.cancelButton)
+		buttonLayout.addStretch()
+		layout.addLayout(buttonLayout)
+
+		self.setLayout(layout)
+
+	def isChecked(self, index):
+		if index < len(self._checkBoxes):
+			return self._checkBoxes[index].isChecked()
+		else:
+			return False
+
+################################################################################
+# Message + Template viewer
+################################################################################
 
 class WMixedTemplateView(QSplitter):
 	"""
@@ -728,8 +821,6 @@ class WMixedTemplateView(QSplitter):
 		self.templateViewLeft.setTemplate(template1)
 		self.templateViewRight.setTemplate(template2)
 
-
-import binascii
 def getHexaDisplay(data):
 	"""
 	@param data is an array of bytes / a string with non-ascii characters.
@@ -946,6 +1037,7 @@ class WTemplateView(QTreeWidget):
 		except Exception, e:
 			print str(e)
 
+
 ###############################################################################
 # Transient Window for simple user feedbacks
 ###############################################################################
@@ -975,6 +1067,7 @@ class WTransientWindow(QDialog):
 		self.label.setText(txt)
 		self.show()
 		QApplication.instance().processEvents()
+
 
 ###############################################################################
 # MIME data

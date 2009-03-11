@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 ##
 # This file is part of Testerman, a test automation system.
 # Copyright (c) 2008-2009 Sebastien Lefevre and other contributors
@@ -13,7 +14,6 @@
 ##
 
 ##
-# -*- coding: utf-8 -*-
 # File System Management.
 #
 # File accessors, writers, etc, through plugable backends.
@@ -102,11 +102,46 @@ class FileSystemManager:
 
 		return True
 
-	def rmdir(self, path):
+	def rmdir(self, path, recursive = False):
+		"""
+		Removes a directory.
+		If recursive is set to True, which is DANGEROUS,
+		will remove all existing files and directories before deleting
+		the directory.
+		
+		TODO: define a strategy to follow mount points or not...
+		For now, we do not follow them and only deletes entities in the same backend
+		as the deleted dir.
+		"""
 		(adjusted, backend) = FileSystemBackendManager.getBackend(path)
 		if not backend:
 			raise Exception('No backend available to manipulate %s' % path)
-		return backend.rmdir(adjusted)
+		if not recursive:
+			return backend.rmdir(adjusted)
+		else:
+			getLogger().info("Deleting directory '%s' recursively, adjusted to '%s' for backend '%s'" % (path, adjusted, backend))
+			self._rmdir(adjusted, backend)
+	
+	def _rmdir(self, adjustedPath, currentBackend):
+		"""
+		Recursively called:
+		- scan the adjustedPath dir from currentBackend,
+		- call unlink or _rmdir on each entities in it. I.e. we do not try to switch backends.
+		"""
+		entries = currentBackend.getdir(adjustedPath)
+		if entries:
+			for entry in entries:
+				# The name relative to the backend
+				name = '%s/%s' % (adjustedPath, entry['name'])
+				type_ = entry['type']
+				if type_ == 'file':
+					try:
+						currentBackend.unlink(name)
+					except Exception, e:
+						getLogger().warning("Unable to recursively delete adjusted file '%s' for backend '%s': %s" % (name, backend, str(e)))
+				elif type_ == 'directory':
+					self._rmdir(name, currentBackend)
+		return currentBackend.rmdir(adjustedPath)
 
 	def attributes(self, filename):
 		(adjusted, backend) = FileSystemBackendManager.getBackend(filename)

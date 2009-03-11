@@ -14,16 +14,17 @@
 ##
 
 ##
-# Client-wide 'business' actions.
+# Client-wide 'business logic' actions.
 #
 ##
 
-from PyQt4.Qt import *
-
-import os.path
 
 from Base import *
 from CommonWidgets import *
+
+import os.path
+
+from PyQt4.Qt import *
 
 
 ################################################################################
