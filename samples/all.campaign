@@ -1,0 +1,31 @@
+# __METADATA__BEGIN__
+# <?xml version="1.0" encoding="utf-8" ?>
+# <metadata version="1.0">
+# <description>description</description>
+# <prerequisites>prerequisites</prerequisites>
+# <parameters>
+# <parameter name="PX_PARAM1" default="defaultValue01" type="string"><![CDATA[]]></parameter>
+# </parameters>
+# </metadata>
+# __METADATA__END__
+# Main samples/autotest campaign.
+
+# If the core feature tests (testerman.ats) fails, it's no use
+# continuing anything else.
+# That's why all other ATSes are conditionned to its correct
+# completion.
+
+# You'll need a pyagent deployed as 'localhost' to execute
+# most of these tests.
+
+ats testerman.ats
+	ats http.client.ats
+	ats rtsp.client.ats
+	campaign transport.campaign
+	ats sql.mysql.ats
+	ats sql.oracle.ats
+	ats ssh.ats
+	ats watcher.dir.ats
+	ats watcher.file.ats
+	ats xmlrpc.client.ats
+

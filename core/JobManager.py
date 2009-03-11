@@ -38,6 +38,7 @@ import fcntl
 import logging
 import os
 import parser
+import re
 import signal
 import sys
 import threading
@@ -84,7 +85,10 @@ def createJobEventNotification(uri, jobDict):
 class Job(object):
 	"""
 	Main job base class.
-	Jobs are organized in trees, based on their _id and _parentId (int).
+	Jobs are organized in trees, based on _childBranches and _parent (Job instances).
+	The tree is a 2-branch tree:
+	each job may have a list of job to execute on success (success branch)
+	or to execute in case of an error (error branch)
 	"""
 
 	# Job-acceptable signals
@@ -112,6 +116,10 @@ class Job(object):
 	FINAL_STATES = [ STATE_COMPLETE, STATE_CANCELLED, STATE_KILLED, STATE_ERROR ]
 	STATES = [ STATE_INITIALIZING, STATE_WAITING, STATE_RUNNING, STATE_KILLING, STATE_CANCELLING, STATE_PAUSED, STATE_COMPLETE, STATE_CANCELLED, STATE_KILLED, STATE_ERROR ]
 
+	BRANCH_SUCCESS = 0 # actually, this is more a "default" or "normal completion"
+	BRANCH_ERROR = 1 # actualy, this is more a "abnormal termination"
+	BRANCHES = [ BRANCH_ERROR, BRANCH_SUCCESS ]
+	
 	##
 	# To reimplement in your own subclasses
 	##
@@ -122,33 +130,32 @@ class Job(object):
 		@type  name: string
 		@param name: a friendly name for this job
 		"""
-		#: id is int
+		# id is int
 		self._id = getNewId()
-		#: default parent: 'root' (id 0)
-		self._parentId = 0
-		#: Children Job instances are referenced here, too
-		self._children = []
+		self._parent = None
+		# Children Job instances are referenced here, according to their branch
+		self._childBranches = { self.BRANCH_ERROR: [], self.BRANCH_SUCCESS: [] }
 		self._name = name
 		self._state = self.STATE_INITIALIZING
 		self._scheduledStartTime = time.time() # By default, immediate execution
-		#: the initial, input session variables.
-		#: passed as actual input session to execute() by the scheduler,
-		#: overriden by previous output sessions in case of campaign execution.
+		# the initial, input session variables.
+		# passed as actual input session to execute() by the scheduler,
+		# overriden by previous output sessions in case of campaign execution.
 		self._scheduledSession = {}
 		
 		self._startTime = None
 		self._stopTime = None
 		
-		#: the final job result status (int, 0 = OK)
+		# the final job result status (int, 0 = OK)
 		self._result = None
-		#: the output, updated session variables after a complete execution
+		# the output, updated session variables after a complete execution
 		self._outputSession = {}
 		
-		#: the associated log filename with this job (within the docroot - not an absolute path)
+		# the associated log filename with this job (within the docroot - not an absolute path)
 		self._logFilename = None
 		
 		self._username = None
-		
+
 		self._mutex = threading.RLock()
 	
 	def setScheduledStartTime(self, timestamp):
@@ -178,8 +185,23 @@ class Job(object):
 	def getId(self):
 		return self._id
 	
+	def getParent(self):
+		return self._parent
+	
 	def getName(self):
 		return self._name
+
+	def addChild(self, job, branch):
+		"""
+		Adds a job as a child to this job, in the success or error branch.
+		
+		@type  job: a Job instance
+		@param job: the job to add as a child
+		@type  branch: int in self.BRANCHES
+		@param branch: the child branch
+		"""
+		self._childBranches[branch].append(job)
+		job._parent = self
 	
 	def setResult(self, result):
 		self._result = result
@@ -247,15 +269,20 @@ class Job(object):
 		if self._stopTime:
 			runningTime = self._stopTime - self._startTime
 	
+		if self._parent:
+			parentId = self._parent._id
+		else:
+			parentId = 0
+	
 		ret = { 'id': self._id, 'name': self._name, 
 		'start-time': self._startTime, 'stop-time': self._stopTime,
-		'running-time': runningTime, 'parent-id': self._parentId,
+		'running-time': runningTime, 'parent-id': parentId,
 		'state': self.getState(), 'result': self._result, 'type': self._type,
 		'username': self._username, 'scheduled-at': self._scheduledStartTime }
 		return ret
 	
 	def __str__(self):
-		return "%s: %s (%s)" % (self._type, self._name, self.getUri())
+		return "%s:%s (%s)" % (self._type, self._name, self.getUri())
 	
 	def getUri(self):
 		"""
@@ -286,7 +313,7 @@ class Job(object):
 		else:
 			self._unlock()
 			return False
-
+		
 	##
 	# Methods to implement in sub classes
 	##	
@@ -338,15 +365,15 @@ class AtsJob(Job):
 	"""
 	_type = "ats"
 
-	def __init__(self, name, ats):
+	def __init__(self, name, source):
 		"""
 		@type  name: string
-		@type  ats: string (utf-8)
-		@param ats: the complete ats file (containing metadata)
+		@type  source: string (utf-8)
+		@param source: the complete ats file (containing metadata)
 		"""
 		Job.__init__(self, name)
 		# string (as utf-8)
-		self._ats = ats
+		self._source = source
 		# The PID of the forked TE executable
 		self._tePid = None
 	
@@ -437,7 +464,7 @@ class AtsJob(Job):
 			# the ATS name. So the name (constructed by the client) should follow some rules 
 			# to make it work correctly.
 			atsPath = '/%s/%s' % (ConfigManager.get('constants.repository'), '/'.join(self.getName().split('/')[:-1]))
-			deps = TEFactory.getDependencyFilenames(self._ats, atsPath)
+			deps = TEFactory.getDependencyFilenames(self._source, atsPath)
 		except Exception, e:
 			getLogger().error("%s: unable to resolve dependencies: %s" % (str(self), str(e)))
 			self.setResult(25)
@@ -446,7 +473,7 @@ class AtsJob(Job):
 		getLogger().info("%s: resolved deps:\n%s" % (str(self), deps))
 
 		getLogger().info("%s: creating TE..." % str(self))
-		te = TEFactory.createTestExecutable(self.getName(), self._ats)
+		te = TEFactory.createTestExecutable(self.getName(), self._source)
 		
 		# TODO: delegate TE check to the TE factory (so that if e need to use another builder that
 		# build something else than a Python script, it contains its own checker)
@@ -548,7 +575,7 @@ class AtsJob(Job):
 		# in ATS ignature ?
 		# default session
 		try:
-			defaultSession = TEFactory.getDefaultSession(self._ats)
+			defaultSession = TEFactory.getDefaultSession(self._source)
 			if defaultSession is None:
 				getLogger().warning('%s: unable to extract default session from ats. Missing metadata ?' % (str(self)))
 				defaultSession = {}
@@ -665,9 +692,10 @@ class AtsJob(Job):
 
 	def getLog(self):
 		"""
-		TODO.
+		Returns the current known log.
 		"""
 		if self._logFilename:
+			# Why not use the FileSystemManager acccess instead of an absolute, local path ? 
 			absoluteLogFilename = os.path.normpath("%s%s" % (ConfigManager.get("testerman.document_root"), self._logFilename))
 			f = open(absoluteLogFilename, 'r')
 			fcntl.flock(f.fileno(), fcntl.LOCK_EX)
@@ -677,7 +705,258 @@ class AtsJob(Job):
 		else:
 			return '<?xml version="1.0" encoding="utf-8" ?><ats></ats>'
 	
+
+################################################################################
+# Job subclass: Campaign
+################################################################################
+
+class CampaignJob(Job):
+	"""
+	Campaign Job.
 	
+	Job signals are, for most of them, forwarded to the current child job.
+	
+	Campaign state machine:
+	to discuss. Should we map the campaign state with the current child job's ?
+	"""
+	_type = "campaign"
+
+	def __init__(self, name, source):
+		"""
+		@type  name: string
+		@type  source: string (utf-8)
+		@param source: the complete campaign source file (containing metadata)
+		"""
+		Job.__init__(self, name)
+		# string (as utf-8)
+		self._source = source
+		# The PID of the forked TE executable
+		self._tePid = None
+	
+	def handleSignal(self, sig):
+		"""
+		So, what should we do ?
+		"""
+		getLogger().info("%s received signal %s" % (str(self), sig))
+		
+		state = self.getState()
+		try:
+			if sig == self.SIGNAL_CANCEL:
+				if state == self.STATE_WAITING:
+					self.setState(self.STATE_CANCELLED)
+				else:
+					self.setState(self.STATE_CANCELLING)
+			else:
+				getLogger().warning("%s: received unhandled signal %s" % (str(self), sig))
+			
+		except Exception, e:
+			getLogger().error("%s: unable to handle signal %s: %s" % (str(self), sig, str(e)))
+
+	def run(self, inputSession = {}):
+		"""
+		Prepares the campaign, starts it, and only returns when it's over.
+		
+		inputSession contains parameters values that overrides default ones.
+		The default ones are extracted (during the campaign preparation) from the
+		metadata embedded within the campaign source.
+		
+		A campaign is prepared/expanded to a collection of child jobs,
+		that can be ATSes or campaigns.
+		
+		A campaign job has a dedicated execution directory:
+		%(docroot)/%(archives)/%(campaign_name)/
+		contains:
+			%Y%m%d-%H%M%S_%(user).log : the main execution log
+		
+		Each ATS job created from this campaigns are prepared and executed as if they
+		were executed separately.
+		
+		During the campaign preparation, we just check that all child job sources
+		are present within the directory.
+		WARNING: we do not snapshot all ATSes and campaigns nor prepare them prior to 
+		executing the campaign. 
+		In particular, if an child ATS is changed after the campaign has been started
+		or scheduled, before the child ATS is started, the updated ATS will be taken
+		into account.
+		
+		A campaign always schedules a child job for an immediate execution, i.e. no
+		child job is prepared/scheduled in advance.
+		
+		@type  inputSession: dict[unicode] of unicode
+		@param inputSession: the override session parameters.
+		
+		@rtype: int
+		@returns: the campaign return code
+		"""
+		# First step, parse
+		getLogger().info("%s: parsing..." % str(self))
+		try:
+			self._parse()
+		except Exception, e:
+			getLogger().error("%s: unable to prepare the campaign: %s" % (str(self), str(e)))
+			self.setResult(25) # Same as dependencies error ?
+			self.setState(self.STATE_ERROR)
+			return self.getResult()
+		
+		getLogger().info("%s: parsed OK..." % str(self))
+		
+		# Now, execute the child jobs
+		self.setState(self.STATE_RUNNING)
+		self._run(callingJob = self, inputSession = self.getScheduledSession())
+		if self.getState() == self.STATE_RUNNING:
+			self.setResult(0) # a campaign always returns OK for now. Unless cancelled, etc ?
+			self.setState(self.STATE_COMPLETE)
+		elif self.getState() == self.STATE_CANCELLING:
+			self.setResult(1)
+			self.setState(self.STATE_CANCELLED)
+		
+		return self.getResult()
+
+	def _run(self, callingJob, inputSession, branch = Job.BRANCH_SUCCESS):
+		"""
+		Recursively called.
+		"""
+		if self.getState() != self.STATE_RUNNING:
+			# We stop our loop/recursion (killed, cancelled, etc).
+			return
+
+		# Now, the child jobs according to the branch
+		for job in callingJob._childBranches[branch]:
+			instance().registerJob(job)
+			getLogger().info("%s: starting child job %s, invoked by %s, on branch %s" % (str(self), str(job), str(callingJob), branch))
+			# Prepare a new thread, execute the job
+			jobThread = threading.Thread(target = lambda: job.run(inputSession))
+			jobThread.start()
+			# Now wait for the job to complete.
+			jobThread.join()
+			ret = job.getResult()
+			getLogger().info("%s: started child job %s, invoked by %s, on branch %s returned %s" % (str(self), str(job), str(callingJob), branch, ret))
+			if ret == 0:
+				nextBranch = self.BRANCH_SUCCESS
+			else:
+				nextBranch = self.BRANCH_ERROR
+			nextInputSession = job.getOutputSession()
+			self._run(job, nextInputSession, nextBranch)
+
+	def _parse(self):
+		"""
+		Parses the source file, check that all referenced sources exist.
+		
+		A campaign format is a tree based on indentation:
+		
+		job
+			job
+			job
+				job
+		job
+		
+		The indentation is defined by the number of indent characters.
+		Validindent characters are \t and ' '.
+		
+		a job line is formatted as:
+		[* ]<type> <path>
+		where:
+		<type> is a keyword in 'ats', 'campaign' (for now)
+		<path> is a relative (not starting with a /) or 
+		       absolute path (/-starting) within the repository.
+		the optional * indicates that the job should be executed if its parent
+		returns a non-0 result. ('on error' branch).
+		
+		Comments are indicated with a #.
+		"""
+		
+		getLogger().info("%s: parsing campaign file" % str(self))
+
+		# The path of the campaign within the docroot.
+		# It assumes that the job name is a path within the repository.
+		path = '/%s/%s' % (ConfigManager.get('constants.repository'), '/'.join(self.getName().split('/')[:-1]))
+		
+		indent = 0
+		currentParent = self
+		lastCreatedJob = None
+		lc = 0
+		for line in self._source.splitlines():
+			lc += 1
+			# Remove comments
+			line = line.split('#', 1)[0].rstrip()
+			if not line:
+				continue # empty line
+			m = re.match(r'(?P<indent>\s*)((?P<branch>\*)\s*)?(?P<type>\w+)\s+(?P<filename>.*)', line)
+			if not m:
+				raise Exception('Parse error at line %s: invalid line format' % lc)
+			
+			type_ = m.group('type')
+			filename = m.group('filename')
+			branch = m.group('branch') # may be none
+			indentDiff = len(m.group('indent')) - indent
+			indent = indent + indentDiff
+			
+			# Filename creation within the docroot
+			if filename.startswith('/'):
+				# absolute path within the *repository*
+				filename = '/%s%s' % (ConfigManager.get('constants.repository'), filename)
+			else:
+				# just add the local campaign path
+				filename = '%s/%s' % (path, filename)
+
+			# Branch validation
+			if branch in [ '*', 'on_error' ]: # * is an alias for the error branch
+				branch = self.BRANCH_ERROR
+			elif not branch or branch in ['on_success']:
+				branch =  self.BRANCH_SUCCESS # the default branch
+			else:
+				raise Exception('Error at line %s: invalid branch (%s)' % (lc, branch))
+
+			# Type validation
+			if not type_ in [ 'ats', 'campaign' ]:
+				raise Exception('Error at line %s: invalid job type (%s)' % (lc, type_))
+
+			if indentDiff > 1:
+				raise Exception('Parse error at line %s: invalid indentation (too deep)' % lc)
+			# Get the current parent
+			elif indentDiff == 1:
+				# the current parent is the previous created job
+				if not lastCreatedJob:
+					raise Exception('Parse error at line %s: invalid indentation (invalid initial indentation)' % lc)
+				else:
+					currentParent = lastCreatedJob
+			elif indentDiff == 0:
+				# the current parent remains the parent
+				pass
+			else:
+				# negative indentation. 
+				for _ in range(abs(indentDiff)):
+					currentParent = currentParent.getParent()
+			
+			# Now we can create our job.
+			getLogger().debug('%s: creating child job based on file docroot:%s' % (str(self), filename))
+			source = FileSystemManager.instance().read(filename)
+			name = filename[len('/repository/'):] # TODO: clean this mess up. Not clean at all.
+			if source is None:
+				raise Exception('File %s is not in the repository.' % name)
+			if type_ == 'ats':
+				job = AtsJob(name = name, source = source)
+			else: # campaign
+				job = CampaignJob(name = name, source = source)
+			job.setUsername(self.getUsername())
+			currentParent.addChild(job, branch)
+			getLogger().info('%s: child job %s has been created, branch %s' % (str(self), str(job), branch))
+			lastCreatedJob = job
+
+		# OK, we're done with parsing and job preparation.
+		getLogger().info('%s: fully prepared, all children found and created.' % str(self))
+
+	def getLog(self):
+		"""
+		TODO.
+		"""
+		return '<?xml version="1.0" encoding="utf-8" ?><campaign></campaign>'
+
+
+################################################################################
+# The Scheduler Thread
+################################################################################
+
 class Scheduler(threading.Thread):
 	"""
 	A Background thread that regularly checks the main job queue for job to start (job in STATE_WAITING).
@@ -739,15 +1018,23 @@ class JobManager:
 	def _unlock(self):
 		self._mutex.release()
 	
-	def submitJob(self, job):
+	def registerJob(self, job):
 		"""
-		Submit a new job in the queue.
-		@rtype: int
-		@returns: the submitted job Id
+		Register a new job in the queue.
+		Do not update its state or do anything with it.
+		Typically used by a campaign to register the child jobs it manages.
 		"""
 		self._lock()
 		self._jobQueue.append(job)
 		self._unlock()
+	
+	def submitJob(self, job):
+		"""
+		Submits a new job in the queue.
+		@rtype: int
+		@returns: the submitted job Id
+		"""
+		self.registerJob(job)
 		# Triggers the job state notification
 		job.setState(Job.STATE_WAITING)
 		getLogger().info("JobManager: new job submitted: %s, scheduled to start on %s" % (str(job), time.strftime("%Y%m%d, at %H:%H:%S", time.localtime(job.getScheduledStartTime()))))

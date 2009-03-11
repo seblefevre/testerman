@@ -27,7 +27,6 @@ import FileSystemManager
 import FileSystemBackendManager
 import JobManager
 import ProbeManager
-import TestermanAgentControllerClient as TACC
 import Tools
 import Versions
 
@@ -93,7 +92,7 @@ def getXcVersion():
 # Job management
 ################################################################################
 
-def scheduleAts(ats, atsId, username, session, at):
+def scheduleAts(source, atsId, username, session, at):
 	"""
 	Schedule an ATS to start at <at>
 	
@@ -130,9 +129,9 @@ def scheduleAts(ats, atsId, username, session, at):
 			for (k, v) in session.items():
 				s[k] = v
 		
-		ats = ats.encode('utf-8')
+		source = source.encode('utf-8')
 		
-		job = JobManager.AtsJob(atsId, ats)
+		job = JobManager.AtsJob(atsId, source)
 		job.setUsername(username)
 		job.setScheduledStartTime(at)
 		job.setScheduledSession(s)
@@ -149,6 +148,64 @@ def scheduleAts(ats, atsId, username, session, at):
 		raise(e)
 
 	getLogger().info("<< scheduleAts(...): %s" % str(res))
+	return res
+
+def scheduleCampaign(source, campaignId, username, session, at):
+	"""
+	Schedule an ATS to start at <at>
+	
+	@type  ats: string
+	@param ats: the ats contents, as a utf-8 string
+	@type  atsId: string
+	@param atsId: a friendly identifier/job label
+	@type  username: string
+	@param username: the username of the user who scheduled this ATS
+	@type  session: dict[utf-8 strings] of utf8 strings
+	@param session: input session variables (may be empty)
+	@type  at: float, or None
+	@param at: the timestamp at which the ats should be started.
+	           If set to None or lower than current (server) time, immediate start.
+	
+	@throws Exception: in case of an internal error
+
+	@rtype: dict { 'job-uri': string, 'job-id': integer, 'message': string }
+	@returns: a dict containing: 
+	          job-uri: the newly created job uri, only valid if status == 0
+	          job-id: the newly created job id, only valid if status == 0
+	          message: a human readable string indicating what was done.
+	"""
+	getLogger().info(">> scheduleCampaign(..., session = %s)" % str(session))
+
+	try:
+		# FIXME: ats and the dict of string seems to be received as unicode,
+		# whereas they were sent by the client as UTF-8.
+		# I should check on the wire and/or an XML-RPC feature somewhere (default encoding, etc).
+
+		# Translate the session into a dict[unicode] of unicode
+		s = {}
+		if session:
+			for (k, v) in session.items():
+				s[k] = v
+		
+		source = source.encode('utf-8')
+		
+		job = JobManager.CampaignJob(campaignId, source)
+		job.setUsername(username)
+		job.setScheduledStartTime(at)
+		job.setScheduledSession(s)
+		jobId = JobManager.instance().submitJob(job)
+		message = ""
+		if job.getScheduledStartTime() <= time.time():
+			message = "immediate start"
+		else:
+			message = "will start on %s" % time.strftime("%Y%m%d, at %H:%M:%S", time.localtime(job.getScheduledStartTime()))
+		res = { 'job-id': jobId, 'job-uri': job.getUri(), 'message': "Campaign scheduled, %s. Its job ID is %d" % (message, jobId) }
+	except Exception, e:
+		e =  Exception("Unable to perform operation: %s\n%s" % (str(e), Tools.getBacktrace()))
+		getLogger().info("<< scheduleCampaign(...): Fault:\n%s" % str(e))
+		raise(e)
+
+	getLogger().info("<< scheduleCampaign(...): %s" % str(res))
 	return res
 
 def getJobInfo(jobId = None):

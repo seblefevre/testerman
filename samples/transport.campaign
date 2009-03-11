@@ -1,0 +1,15 @@
+# __METADATA__BEGIN__
+# <?xml version="1.0" encoding="utf-8" ?>
+# <metadata version="1.0">
+# <description>description</description>
+# <prerequisites>prerequisites</prerequisites>
+# <parameters>
+# <parameter name="PX_PARAM1" default="defaultValue01" type="string"><![CDATA[]]></parameter>
+# </parameters>
+# </metadata>
+# __METADATA__END__
+# Low-level probe auto tests
+
+ats sctp.ats
+ats tcp.ats
+ats udp.ats

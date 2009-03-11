@@ -216,6 +216,38 @@ class Client(Nodes.ConnectingNode):
 		except xmlrpclib.Fault, e:
 			self.getLogger().error("ATS Scheduling fault: " + str(e))
 			raise(e)
+
+	def scheduleCampaign(self, source, campaignId, username, session = {}, at = 0.0):
+		"""
+		Schedules a campaign to be executed at 'at' time.
+		If 'at' is lower than the current server's time, an immediate execution occurs. 
+		
+		@type  ats: unicode
+		@param ats: the ATS to schedule
+		@type  campaignId: unicode
+		@param campaignId: a name identifying the campaign
+		@type  session: dict[unicode] of strings
+		@param session: the initial session parameters, altering the ATS metadata's provided ones
+		@type  at: float
+		@param at: timestamp of the scheduled start
+		@type  username: string
+		@param username: username identifying the user scheduling the ATS
+		
+		@throws Exception in case of a scheduling error.
+		
+		@rtype: dict{'job-id': integer, 'job-uri': string, 'message': string}
+		@returns: some info about the scheduled job.
+		"""
+		try:
+			s = {}
+			if not (session is None):
+				for (k, v) in session.items():
+					s[k.encode('utf-8')] = v.encode('utf-8')
+			
+			return self.__proxy.scheduleCampaign(source.encode('utf-8'), campaignId.encode('utf-8'), username.encode('utf-8'), s, at)
+		except xmlrpclib.Fault, e:
+			self.getLogger().error("Campaign Scheduling fault: " + str(e))
+			raise(e)
 		
 	def rescheduleJob(self, jobId, at):
 		"""

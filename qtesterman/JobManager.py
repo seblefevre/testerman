@@ -63,7 +63,7 @@ class WJobManagerDock(QDockWidget):
 
 	def __createWidgets(self):
 		self.controller = ViewController(self)
-		self.jobTree = JobView.WJobView(self)
+		self.jobTree = JobView.WJobTreeWidget(self)
 		self.jobTree.setClient(getProxy())
 		self.controller.addView(self.jobTree)
 		self.setWidget(self.jobTree)

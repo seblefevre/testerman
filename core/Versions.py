@@ -19,19 +19,19 @@
 ##
 
 #: Main TS implementation version
-TESTERMAN_SERVER_VERSION = '1.0.0'
+TESTERMAN_SERVER_VERSION = '1.1.0'
 
 #: Main TACS implementation version
-TESTERMAN_AGENT_CONTROLLER_VERSION = '1.0.0'
+TESTERMAN_AGENT_CONTROLLER_VERSION = '1.1.0'
 
 #: API versions: major.minor
 #: major += 1 if not backward compatible,
 #: minor += 1 if feature-enriched, backward compatible
-XC_VERSION = '1.0'
-IA_VERSION = '1.0'
-WS_VERSION = '1.0'
+XC_VERSION = '1.1'
+IA_VERSION = '1.1'
+WS_VERSION = '1.1'
 IL_VERSION = '1.0'
-XA_VERSION = '1.0'
+XA_VERSION = '1.1'
 
 
 def getServerVersion():

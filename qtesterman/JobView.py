@@ -26,12 +26,19 @@
 ##
 
 
+import Resources
+
 import time
 
 from PyQt4.Qt import *
 
-import Resources
 
+################################################################################
+# Local Icon Cache
+################################################################################
+
+#: may be shared in a common file.
+#: however, copying it locally enables more independent modules.
 class IconCache:
 	def __init__(self):
 		self._icons = {}
@@ -41,254 +48,97 @@ class IconCache:
 			self._icons[resource] = QIcon(resource)
 		return self._icons[resource]
 
+TheIconCache = IconCache()
 
-class JobQueueTreeModel(QAbstractItemModel):
-	"""
-	A Qt Model representation of the server's queue.
+def icon(resource):
+	return TheIconCache.icon(resource)
+
+
+################################################################################
+# Tree Widget Items
+################################################################################
+
+SECTIONS = [ 'id', 'name', 'state', 'result', 'username', 'type', 'start-time', 'running-time', 'scheduled-at' ]
+
+class JobItem(QTreeWidgetItem):
+	def __init__(self, jobInfo, parent = None):
+		QTreeWidgetItem.__init__(self, parent)
+		self._data = {}
+		self.updateFromServer(jobInfo)
 	
-	Such a queue is actually a tree of jobs, where children
-	for a particular jos are identified by their parent-id == the job id.
-	"""
-	def __init__(self, context, parent = None):
+	def updateFromServer(self, jobInfo):
 		"""
-		Context, in our case, is the view.
-		"""
-		QAbstractItemModel.__init__(self, parent)
-		self._context = context
-		# Internally, we stick to a flat model, as retrieved by Ws.getJobQueue()
-		self._queue = []
-		# Same thing, indexed by the job id for better efficiency
-		self._indexedQueue = {}
-		# Sections to display in the tree. Must match existing dict entries in self._queue entries.
-		self._sections = [ 'id', 'name', 'state', 'result', 'username', 'type', 'start-time', 'running-time', 'scheduled-at' ]
-		self._sectionLabels = {'id': 'id', 'state': 'state', 'parent-id': 'parent', 'start-time': 'started at', 'running-time': 'running duration', 'scheduled-at': 'scheduled start' }
+		Updates the item according to fresh info received from the server for this job.
 		
-	def icon(self, resource):
-		return self._context.icon(resource)
+		@type  jobInfo: dict
+		@param jobInfo: dict, as received in a Xc JOB notification
+		"""
+		self._data = jobInfo
+		i = 0
+		for s in SECTIONS:
+			value = jobInfo[s]
+			if s in [ 'scheduled-at', 'start-time', 'stop-time' ]:
+				if value: value = time.strftime("%Y/%m/%d, %H:%M:%S", time.localtime(value))
+				else: value = ''
+			elif s in [ 'running-time' ]:
+				if value: value = "%2.2f" % value
+				else: value = ''
+			self.setData(i, Qt.DisplayRole, QVariant(value)) # instead of a setText, to preserve the data type
+			i += 1
+		
+		# Update the icon according to the current state
+		t = jobInfo['type']
+		s = jobInfo['state']
+		r = jobInfo['result']
+
+		i = icon(':/icons/unknown.png')
+		if s in [ 'waiting' ]:
+			i = icon(':/icons/job-waiting.png')
+		elif s in [ 'running' ]:
+			i = icon(':/icons/job-running.png')
+		elif s in [ 'killing', 'cancelling' ]:
+			i = icon(':/icons/job-running.png')
+		elif s in [ 'paused' ]:
+			i = icon(':/icons/job-paused.png')
+		elif s in [ 'complete' ] and r == 0:
+			i = icon(':/icons/job-success.png')
+		elif s in [ 'complete' ] and r > 0: # This case should not be possible
+			i = icon(':/icons/job-warning.png')
+		elif s in [ 'cancelled' ]:
+			i = icon(':/icons/job-warning.png')
+		elif s in [ 'error', 'killed' ]:
+			i = icon(':/icons/job-error.png')
+		self.setIcon(0, i)
+
+	def getState(self):
+		return self._data['state']
 	
-	def index(self, row, column, parentIndex):
-		"""
-		In this model implementation, we store the job-id into the modelIndex.internalId,
-		the full job data, stored as a dict, can then be retrieved bia sef._indexedQueue[job-id].
-		"""
-		if not self.hasIndex(row, column, parentIndex):
-			return QModelIndex()
-		
-		parentId = None
-		
-		if not parentIndex.isValid():
-			parentId = 0 # the root job: id = 0
-		else:
-			parentId = parentIndex.internalId()
-		
-		# Now we scan the flat queue and gather childrens corresponding to the parent
-		childrens = filter(lambda x: x['parent-id'] == parentId, self._queue)
-		if row < len(childrens):
-			return self.createIndex(row, column, childrens[row]['id'])
-		else:
-			# invalid child
-			return QModelIndex()
-		
-	def flags(self, index):
-		if not index.isValid():
-			return 0
-		return Qt.ItemIsEnabled | Qt.ItemIsSelectable
-	
-	def headerData(self, section, orientation, role):
-		if orientation == Qt.Horizontal and role == Qt.DisplayRole:
-			return QVariant(self._sectionLabels.get(self._sections[section], self._sections[section]))
-		return QVariant()
-	
-	def parent(self, index):
-		"""
-		Returns the modelIndex of the parent of index.
-		For that purpose, we need to know its own parent, i.e. index's grand parent.
-		"""
-		if not index.isValid():
-			return QModelIndex()
+	def getId(self):
+		return self._data['id']
 
-		itemId = index.internalId()
-		
-		if itemId == 0:
-			# The root has no parent
-			return QModelIndex()
+	def getType(self):
+		return self._data['type']
 
-		# Retrieves the item info
-		# itemDict = filter(lambda x: x['id'] == itemId, self._queue)[0]
-		itemDict = self._indexedQueue[itemId]
-		parentId = itemDict['parent-id']
-		
-		if parentId == 0:
-			# The parent is the root
-			return self.createIndex(0, 0, 0)
-		
-		parentDict = filter(lambda x: x['id'] == parentId, self._queue)[0]
-		# Need to get the row of the parent, ie its index in its parent list
-		grandParentId = parentDict['parent-id']
-		parentSiblingIds = map(lambda x: x['id'], filter(lambda x: x['parent-id'] == grandParentId, self._queue))
-		parentRow = parentSiblingIds.index(parentId)
-		
-		return self.createIndex(parentRow, 0, parentId)
-	
-	def columnCount(self, parentIndex):
-		# Fixed column count in this model.
-		return len(self._sections)
-		
-	def rowCount(self, parentIndex):
-		if parentIndex.isValid():
-			itemId = parentIndex.internalId()
-		else:
-			# The parent is the root
-			itemId = 0
+################################################################################
+# Tree Widget
+################################################################################
 
-		# Now let's count the number of children for this parent
-		children = filter(lambda x: x['parent-id'] == itemId, self._queue)
-		count = len(children)
-		return count
-
-	def data(self, index, role):
-		if not index.isValid():
-			return QVariant()
-		
-		if role == Qt.DisplayRole:
-			itemId = index.internalId()
-			#itemDict = filter(lambda x: x['id'] == itemId, self._queue)[0]
-			itemDict = self._indexedQueue[itemId]
-
-			fieldId = self._sections[index.column()]
-			value = itemDict[fieldId]
-
-			# Some formatting
-			if value is not None:
-				if fieldId in [ 'scheduled-at', 'start-time', 'stop-time' ]:
-					value = time.strftime("%Y/%m/%d, %H:%M:%S", time.localtime(value))
-				elif fieldId in [ 'running-time' ]:
-					value = "%2.2f" % value
-			else:
-				value = ''
-
-			return QVariant(value)
-
-		elif role == Qt.DecorationRole and index.column() == 0:
-			# Icon computation according to job type, status, result
-			itemId = index.internalId()
-			itemDict = self._indexedQueue[itemId]
-			t = itemDict['type']
-			s = itemDict['state']
-			r = itemDict['result']
-
-			ret = self.icon(':/icons/unknown.png')
-			
-			if s in [ 'waiting' ]:
-				ret = self.icon(':/icons/job-waiting.png')
-			elif s in [ 'running' ]:
-				ret = self.icon(':/icons/job-running.png')
-			elif s in [ 'killing', 'cancelling' ]:
-				ret = self.icon(':/icons/job-running.png')
-			elif s in [ 'paused' ]:
-				ret = self.icon(':/icons/job-paused.png')
-			elif s in [ 'complete' ] and r == 0:
-				ret = self.icon(':/icons/job-success.png')
-			elif s in [ 'complete' ] and r > 0: # This case should not be possible
-				ret = self.icon(':/icons/job-warning.png')
-			elif s in [ 'cancelled' ]:
-				ret = self.icon(':/icons/job-warning.png')
-			elif s in [ 'error', 'killed' ]:
-				ret = self.icon(':/icons/job-error.png')
-
-			return QVariant(ret)
-		
-		else:
-			return QVariant()
-	
-	##
-	# Model specific
-	##
-	def updateQueue(self, queue):
-		"""
-		Replaces the existing queue with a fresh one.
-		
-		@type  queue: list of dicts (jobInfo)
-		@param queue: the replacement queue
-		"""
-#		self.emit(SIGNAL('layoutAboutToBeChanged()'))
-		self._queue = queue
-		self._indexedQueue.clear()
-		for d in self._queue:
-			self._indexedQueue[d['id']] = d
-		self.reset()
-#		self.emit(SIGNAL('layoutChanged()'))
-	
-	def updateJobInfo(self, jobInfo):
-		"""
-		Updates (or add) a job with jobInfo data.
-		
-		@type  jobInfo: a dict{'id': integer, 'name': string, ....}
-		@param jobInfo: the new info to take into account.
-		"""
-		# Quick and dirty approach: update the internal queue,
-		# reconstruct the model. Not optimal at all.
-		updated = False
-		queue = []
-		for info in self._queue:
-			if info['id'] == jobInfo['id']:
-				queue.append(jobInfo)
-				updated = True
-			else:
-				queue.append(info)
-		if not updated:
-			# New job
-			queue.append(jobInfo)
-		
-		# We should be more incremental.
-		# For large job list, this could be a real bottleneck.
-		self.updateQueue(queue)
-
-	def getId(self, index):
-		"""
-		Returns the job ID for a particular index.
-		"""
-		if not index.isValid():
-			return None
-		
-		itemId = index.internalId()
-		itemDict = self._indexedQueue[itemId]
-		return itemDict['id']	
-
-	def getState(self, index):
-		"""
-		Returns the job state for a particular index.
-		"""
-		if not index.isValid():
-			return None
-		
-		itemId = index.internalId()
-		itemDict = self._indexedQueue[itemId]
-		return itemDict['state']	
-
-			
-class WJobView(QTreeView):
-	"""
-	@emits: showLog(int jobId)
-	"""
+class WJobTreeWidget(QTreeWidget):
 	def __init__(self, parent = None):
-		QTreeView.__init__(self, parent)
+		QTreeWidget.__init__(self, parent)
 		self._client = None
-		self._iconCache = IconCache()
-		self.setWindowIcon(self.icon(":/icons/job-queue.png"))
+
+		self.setWindowIcon(icon(":/icons/job-queue.png"))
 		self.setWindowTitle('Job queue')
-
-		#: need to keep a local reference to the model, or it will be GC'd by Python ?
-		model = JobQueueTreeModel(context = self, parent = self)
-		self.setModel(model)
-		self.connect(self, SIGNAL('jobNotification'), self.onJobNotification)
-
+		
+		self._labels = {'id': 'id', 'state': 'state', 'parent-id': 'parent', 'start-time': 'started at', 'running-time': 'run duration', 'scheduled-at': 'scheduled start' }
+		self.setHeaderLabels([self._labels.get(x, x) for x in SECTIONS])
+		self.header().setResizeMode(0, QHeaderView.ResizeToContents)
 		self.setContextMenuPolicy(Qt.DefaultContextMenu)
-		self.setSortingEnabled(True)
-
-	def icon(self, resource):
-		return self._iconCache.icon(resource)
-	
+		self.connect(self, SIGNAL("itemActivated(QTreeWidgetItem*, int)"), self.onItemActivated)
+		self.connect(self, SIGNAL('jobNotification'), self.onJobNotification)
+#		self.setSortingEnabled(True)
+		
 	def setClient(self, client):
 		"""
 		Attaches a Testerman client instance.
@@ -315,35 +165,68 @@ class WJobView(QTreeView):
 			return
 		# Forward the job update to the model.
 		jobInfo = notification.getApplicationBody()
-		self.model().updateJobInfo(jobInfo)
+		self.updateFromServer(jobInfo)
 	
 	def refresh(self):
 		try:
 			queue = self._client.getJobQueue()
 		except:
 			queue = []
-		self.model().updateQueue(queue)
 		
+		self.clear()
+		self._items = {} # JobItem indexed by its job id
+		for jobInfo in queue:
+			self.updateFromServer(jobInfo)
+
+	def updateFromServer(self, jobInfo):
+		"""
+		Updates or creates an item corresponding to jobInfo.
+		"""
+		id_ = jobInfo['id']
+		if not self._items.has_key(id_):
+			# We should create a new item
+			parentId = jobInfo['parent-id']
+			if parentId == 0: # the root
+				parent = self
+			else:
+				parent = self._items.get(parentId, None)
+			if not parent:
+				print "DEBUG: missing parent %s to create job node for job id %s" % (parentId, id_)
+				return
+			# We create a new item
+			item = JobItem(jobInfo, parent)
+			self._items[id_] = item
+		else:
+			item = self._items[id_]
+			item.updateFromServer(jobInfo)
+
 	def contextMenuEvent(self, event):
-		index = self.indexAt(event.pos())
+		item = self.itemAt(event.pos())
 		
 		menu = QMenu(self)
 		
-		if index.isValid():
+		if item:
 			# Depending of the state, add several actions
-			jobId = self.model().getId(index)
-			state = self.model().getState(index)
+			jobId = item.getId()
+			state = item.getState()
+			type_ = item.getType()
 			action = menu.addAction("View log...", lambda: self._viewLog(jobId))
 			menu.addSeparator()
-			if state in [ 'running' ]:			
-				action = menu.addAction("Pause", lambda: self._sendSignal(jobId, 'pause'))
-				action = menu.addAction("Cancel", lambda: self._sendSignal(jobId, 'cancel'))
-				action = menu.addAction("Kill", lambda: self._sendSignal(jobId, 'kill'))
-			elif state in [ 'paused' ]:
-				action = menu.addAction("Resume", lambda: self._sendSignal(jobId, 'resume'))
-				action = menu.addAction("Cancel", lambda: self._sendSignal(jobId, 'cancel'))
-			elif state in [ 'waiting' ]:
-				action = menu.addAction("Cancel", lambda: self._sendSignal(jobId, 'cancel'))
+			if type_ == 'campaign':
+				if state in [ 'running' ]:			
+					action = menu.addAction("Cancel", lambda: self._sendSignal(jobId, 'cancel'))
+				elif state in [ 'waiting' ]:
+					action = menu.addAction("Cancel", lambda: self._sendSignal(jobId, 'cancel'))
+			else: # ATS
+				if state in [ 'running' ]:			
+					action = menu.addAction("Pause", lambda: self._sendSignal(jobId, 'pause'))
+					action = menu.addAction("Cancel", lambda: self._sendSignal(jobId, 'cancel'))
+					action = menu.addAction("Kill", lambda: self._sendSignal(jobId, 'kill'))
+				elif state in [ 'paused' ]:
+					action = menu.addAction("Resume", lambda: self._sendSignal(jobId, 'resume'))
+					action = menu.addAction("Cancel", lambda: self._sendSignal(jobId, 'cancel'))
+				elif state in [ 'waiting' ]:
+					action = menu.addAction("Cancel", lambda: self._sendSignal(jobId, 'cancel'))
 
 			menu.addSeparator()
 		
@@ -361,6 +244,10 @@ class WJobView(QTreeView):
 	def _viewLog(self, jobId):
 		self.emit(SIGNAL('showLog(int)'), jobId)	
 
+	def onItemActivated(self, item, col):
+		if item:
+			self._viewLog(item.getId())
+
 # Basic test
 if __name__ == "__main__":
 	import sys
@@ -371,7 +258,7 @@ if __name__ == "__main__":
 	client = TestermanClient.Client("test", "JobQueue/1.0.0", serverUrl = "http://localhost:8080")
 	client.startXc()
 	
-	w = WJobView()
+	w = WJobTreeWidget()
 	w.show()
 	w.setClient(client)
 	
