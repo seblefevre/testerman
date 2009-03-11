@@ -116,7 +116,7 @@ class SdpCodec(CodecManager.Codec):
 
 		ret = '\n'.join(ret)
 
-		return ret
+		return (ret, 'SDP')
 
 	def decode(self, data):
 		ret = {}
@@ -156,7 +156,7 @@ class SdpCodec(CodecManager.Codec):
 				elif line.startswith('b='):	media['bandwidths'].append(line[2:])
 				elif line.startswith('a='):	media['attributes'].append(line[2:])
 		
-		return ret
+		return (ret, 'SDP')
 		
 CodecManager.registerCodecClass('sdp', SdpCodec)
 

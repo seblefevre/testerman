@@ -83,10 +83,11 @@ class TbcdCodec(CodecManager.Codec):
 		"""
 		Template is a string of human readable digits
 		"""
-		return string2tbcd(template, self['filler'])
+		return (string2tbcd(template, self['filler']), template)
 	
 	def decode(self, data):
-		return tbcd2string(data)
+		ret = tbcd2string(data)
+		return (ret, ret)
 
 CodecManager.registerCodecClass('tbcd', TbcdCodec)
 
@@ -103,10 +104,10 @@ if __name__ == "__main__":
 	]
 
 	for e, d in samples:
-		encoded = CodecManager.encode('tbcd', d)
+		(encoded, _) = CodecManager.encode('tbcd', d)
 		print "encoded: %s (%s)" % (repr(encoded), binascii.hexlify(encoded))
 		assert(encoded == e)
-		decoded = CodecManager.decode('tbcd', e)
+		(decoded, _) = CodecManager.decode('tbcd', e)
 		print "decoded: %s" % repr(decoded)
 		assert(decoded == d)
 

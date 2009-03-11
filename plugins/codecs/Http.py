@@ -71,8 +71,7 @@ class HttpRequestCodec(CodecManager.Codec):
 		ret.append('')
 
 		ret = '\r\n'.join(ret)
-		print "DEBUG: encoded HTTP request: " + ret
-		return ret
+		return (ret, self.getSummary(template))
 
 	def decode(self, data):
 		ret = {}
@@ -99,7 +98,14 @@ class HttpRequestCodec(CodecManager.Codec):
 		
 		ret['body'] = "\r\n".join(lines[i:])
 		
-		return ret
+		return (ret, self.getSummary(ret))
+
+	def getSummary(self, template):
+		"""
+		Returns the summary of the template representing an RTSP message.
+		(meaningful, short, human-understandable description)
+		"""
+		return '%s %s' % (template.get('method', 'GET'), template['url'])
 		
 CodecManager.registerCodecClass('http.request', HttpRequestCodec)
 
@@ -146,7 +152,7 @@ class HttpResponseCodec(CodecManager.Codec):
 			ret.append(body)
 		ret.append('')
 		
-		return '\r\n'.join(ret)
+		return ('\r\n'.join(ret), self.getSummary(template))
 
 	def decode(self, data):
 		ret = {}
@@ -186,7 +192,14 @@ class HttpResponseCodec(CodecManager.Codec):
 				# Truncate the body
 				ret['body'] = ret['body'][:cl]
 		
-		return ret
+		return (ret, self.getSummary(ret))
+
+	def getSummary(self, template):
+		"""
+		Returns the summary of the template representing an RTSP message.
+		(meaningful, short, human-understandable description)
+		"""
+		return '%s %s' % (template['status'], template['reason'])
 		
 CodecManager.registerCodecClass('http.response', HttpResponseCodec)
 		

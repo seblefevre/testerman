@@ -63,9 +63,10 @@ class XmlCodec(CodecManager.Codec):
 		root_element = dom.documentElement
 		self._encode(dom, root_element, rootAttr)
 		if self.getProperty('prettyprint', False):
-			return writexml(dom, prolog = self.getProperty('write_prolog', True), encoding = self.getProperty('encoding', 'utf-8'), addindent = "\t", newl = "\n")
+			ret = writexml(dom, prolog = self.getProperty('write_prolog', True), encoding = self.getProperty('encoding', 'utf-8'), addindent = "\t", newl = "\n")
 		else:
-			return writexml(dom, prolog = self.getProperty('write_prolog', True), encoding = self.getProperty('encoding', 'utf-8'))
+			ret = writexml(dom, prolog = self.getProperty('write_prolog', True), encoding = self.getProperty('encoding', 'utf-8'))
+		return (ret, "XML data")
 	
 	def _encode(self, doc, element, attr):
 		"""
@@ -97,7 +98,7 @@ class XmlCodec(CodecManager.Codec):
 		dom = xml.dom.minidom.parseString(data)
 		element = dom.documentElement
 		ret = self._decode(element)
-		return ret
+		return (ret, "XML data")
 	
 	def _decode(self, element):
 		"""
@@ -148,15 +149,15 @@ if __name__ == '__main__':
 	for codec in [ 'xml', 'xml.noprolog', 'xml.iso', 'xml.pretty' ]:
 		print "%s %s %s" % (40*'=', codec, 40*'=')
 		print "decoded with %s:" % codec
-		decoded = CodecManager.decode(codec, sample)
+		(decoded, _) = CodecManager.decode(codec, sample)
 		print decoded
 		print
 		print "re-encoded with %s:" % codec
-		reencoded = CodecManager.encode(codec, decoded)
+		(reencoded, _) = CodecManager.encode(codec, decoded)
 		print
 		print reencoded
 		print "re-decoded with %s:" % codec
-		redecoded = CodecManager.decode(codec,reencoded)
+		(redecoded, _) = CodecManager.decode(codec,reencoded)
 		print redecoded
 		assert(decoded == redecoded)
 		print

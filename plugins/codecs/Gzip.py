@@ -23,9 +23,9 @@ import zlib
 
 class GZipCodec(CodecManager.Codec):
 	def encode(self, template):
-		return zlib.compress(template)
+		return (zlib.compress(template), 'GZIP data')
 	
 	def decode(self, data):
-		return zlib.decompress(data)
+		return (zlib.decompress(data), None)
 
 CodecManager.registerCodecClass('gzip', GZipCodec)

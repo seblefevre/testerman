@@ -20,16 +20,16 @@
 
 import binascii
 
-import tone
+import Tone
 
 # Some sample sounds to use as default data source to stream
 
 # For G711 alaw (a "random" tone)
-G711A = 512*(''.join(tone.generateTone(8000, 400)))
+G711A = 512*(''.join(Tone.generateTone(8000, 400)))
 
 
 # For G711 ulaw (a "random" tone)
-G711U = 512*(''.join(tone.generateTone(8000, 200)))
+G711U = 512*(''.join(Tone.generateTone(8000, 200)))
 
 # Default, for all other codecs
 DEFAULT = 2048*'\x01'

@@ -18,6 +18,8 @@
 #
 # Based on RFC3868.
 #
+# Implemented as an incremental codec.
+#
 ##
 
 import CodecManager
@@ -105,6 +107,7 @@ class Message:
 		self.messageClass = None
 		self.messageType = None
 		self.parameters = []
+		self.decodedLength = None
 
 	def fromNetwork(self, data):
 		unpacker = xdrlib.Unpacker(data)
@@ -130,6 +133,10 @@ class Message:
 		ret['classLabel'] = label
 		ret['typeLabel'] = typeLabels.get(self.messageType, 'Reserved/Unknown')
 		return ret
+	
+	def summary(self):
+		(label, typeLabels) = MessageClasses.get(self.messageClass, ('Reserved/Unknown', {}))
+		return "%s %s" % (label.split(' ')[0], typeLabels.get(self.messageType, 'Reserved/Unknown'))
 	
 	def _decode(self, unpacker, bytes):
 		"""
@@ -167,6 +174,10 @@ class Message:
 		pos = unpacker.get_position()
 		rawvalue = unpacker.get_buffer()[pos:pos + remainingBytes]
 		self.parameters = decodeParameters(rawvalue)
+		self.decodedLength = length
+
+	def getDecodedLength(self):
+		return self.decodedLength
 		
 	def _encode(self, packer):
 		payload = encodeParameters(self.parameters)
@@ -651,16 +662,21 @@ def getParameterCodec(tag):
 ##
 # Testerman Codec Wrapper
 ##
-class SuaCodec(CodecManager.Codec):
+class SuaCodec(CodecManager.IncrementalCodec):
 	def encode(self, template):
 		m = Message()
 		m.fromUserland(template)
-		return m.toNetwork()
+		return (m.toNetwork(), m.summary())
 
-	def decode(self, data):
+	def incrementalDecode(self, data):
 		m = Message()
-		m.fromNetwork(data)
-		return m.toUserland()
+		try:
+			m.fromNetwork(data)
+		except IncompleteMessageException:
+			return (self.DECODING_NEED_MORE_DATA, 0, None, None)
+		except Exception:
+			return (self.DECODING_ERROR, getDecodedLength() or len(data), None, None)
+		return (self.DECODING_OK, m.getDecodedLength(), m.toUserland(), m.summary())
 
 CodecManager.registerCodecClass('sua', SuaCodec)
 
@@ -680,10 +696,11 @@ if __name__ == '__main__':
 	for s in samples:
 		print "Testing: %s" % s
 		s = binascii.unhexlify(s)
-		decoded = CodecManager.decode('sua', s)
-		print "Decoded: %s" % decoded
-		reencoded = CodecManager.encode('sua', decoded)
-		print "Reencoded: %s" % binascii.hexlify(reencoded)
+		(_, consumed, decoded, summary) = CodecManager.incrementalDecode('sua', s)
+		print "Decoded: %s\nSummary: %s" % (decoded, summary)
+		print "Consumed %s bytes ouf of %s" % (consumed, len(s))
+		(reencoded, summary) = CodecManager.encode('sua', decoded)
+		print "Reencoded: %s\nSummary: %s" % (binascii.hexlify(reencoded), summary)
 		print "Original : %s" % binascii.hexlify(s)
 		assert(s == reencoded)
 	

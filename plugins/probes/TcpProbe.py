@@ -62,7 +62,7 @@ class TcpProbe(ProbeImplementationManager.ProbeImplementation):
 	|| `listening_ip` || string || 0.0.0.0 || Listening IP address, if listening mode is activated (see below) ||
 	|| `listening_port` || integer || 0 || Set it to a non-zero port to start listening on mapping ||
 	|| `size` || integer || 0 || Fixed-size packet strategy: if set to non-zero, only raises messages when `size` bytes have been received. All raised messages will hage this constant size. ||
-	|| `separator` || string || None || Separator-based packet strategy: if set no a character or a string, only raises messages when `separator` has been encountered; this separator is assumed to be a packet separator, and is not included in the raised message. May be useful for, for instance, \x00-based packet protocols. ||
+	|| `separator` || string || None || Separator-based packet strategy: if set to a character or a string, only raises messages when `separator` has been encountered; this separator is assumed to be a packet separator, and is not included in the raised message. May be useful for, for instance, \x00-based packet protocols. ||
 	|| `enable_notifications` || boolean || False || If set, you may get connection/disconnection notification and connectionConfirm/Error notification messages || ||
 	|| `default_sut_address` || string (ip:port) || None || If set, used as a default SUT address if none provided by the user || ||
 	"""

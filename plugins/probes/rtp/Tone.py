@@ -16,7 +16,7 @@ def generateTone(sampleRate, tone):
 	# We sample a sin period each sampleRate/tone.
 	steps = float(sampleRate) / float(tone)
 
-	for i in range(steps):
+	for i in range(int(steps)):
 		val = math.sin(2*math.pi*float(i) / steps)
 		# Normalize the value between 0..1
 		val = (val + 1.0) / 2.0

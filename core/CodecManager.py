@@ -21,18 +21,35 @@
 #
 ##
 
+
+##
+# Codec-related exceptions
+##
 class CodecNotFoundException(Exception): pass
 
+##
+# Utilities
+##
+def getBacktrace():
+	"""
+	Returns the current backtrace.
+	"""
+	import traceback
+	import StringIO
+	backtrace = StringIO.StringIO()
+	traceback.print_exc(None, backtrace)
+	ret = backtrace.getvalue()
+	backtrace.close()
+	return ret
 
+##
+# Main Codec Class to implement
+##
 class Codec:
 	"""
-	Codec base class.
+	Codec base class for all codec plugins.
 	Subclass it to create your own codec.
 	"""
-	DECODING_ERROR = -2
-	DECODING_NEED_MORE_DATA = -1
-	DECODING_OK = 0
-	
 	def __init__(self):
 		self._properties = {}
 	
@@ -166,6 +183,7 @@ class Codec:
 		"""
 		raise Exception("Decoding method not implemented")
 
+
 class IncrementalCodec(Codec):
 	"""
 	Same as above, but with incremental decoding capabilities:
@@ -184,6 +202,10 @@ class IncrementalCodec(Codec):
 	If you chose to implement an incremental codec, you don't need to
 	implement the decode(self, data) method of the standard Codec class.
 	"""
+	DECODING_ERROR = -2
+	DECODING_NEED_MORE_DATA = -1
+	DECODING_OK = 0
+	
 	def incrementalDecode(self, data):
 		"""
 		To implement in your IncrementalCodec subclass.
@@ -234,6 +256,9 @@ class IncrementalCodec(Codec):
 		else:
 			return (None, None)
 
+##
+# Internal class - do not use
+##
 class CodecManager(object):
 	"""
 	A CodecManager is adapted according to the

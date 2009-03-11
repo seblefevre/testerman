@@ -22,8 +22,29 @@
 # 
 ##
 
+##
+# Probe-related exceptions
+##
 class ProbeException(Exception): pass
 
+##
+# Utilities
+##
+def getBacktrace():
+	"""
+	Returns the current backtrace.
+	"""
+	import traceback
+	import StringIO
+	backtrace = StringIO.StringIO()
+	traceback.print_exc(None, backtrace)
+	ret = backtrace.getvalue()
+	backtrace.close()
+	return ret
+
+##
+# Main ProbeImplementation Class to implement
+##
 class ProbeImplementation:
 	"""
 	Base class for all probe implementation plugins.

@@ -78,7 +78,7 @@ type record RtspRequest
 		ret.append('')
 
 		ret = '\r\n'.join(ret)
-		return ret
+		return (ret, self.getSummary(template))
 
 	def decode(self, data):
 		ret = {}
@@ -108,7 +108,16 @@ type record RtspRequest
 		
 		ret['body'] = "\r\n".join(lines[i:])
 		
-		return ret
+		return (ret, self.getSummary(ret))
+
+	def getSummary(self, template):
+		"""
+		Returns the summary of the template representing an RTSP message.
+		(meaningful, short, human-understandable description)
+		"""
+		return template['method']
+
+
 		
 CodecManager.registerCodecClass('rtsp.request', RtspRequestCodec)
 
@@ -164,7 +173,7 @@ type record RtspResponse
 			ret.append(body)
 		ret.append('')
 		
-		return '\r\n'.join(ret)
+		return ('\r\n'.join(ret), self.getSummary(template))
 
 	def _getInsensitiveValue(self, headers, name):
 		"""
@@ -214,7 +223,14 @@ type record RtspResponse
 				# Truncate the body
 				ret['body'] = ret['body'][:cl]
 		
-		return ret
+		return (ret, self.getSummary(ret))
+
+	def getSummary(self, template):
+		"""
+		Returns the summary of the template representing an RTSP message.
+		(meaningful, short, human-understandable description)
+		"""
+		return '%s %s' % (template['status'], template['reason'])
 		
 CodecManager.registerCodecClass('rtsp.response', RtspResponseCodec)
 		

@@ -882,10 +882,10 @@ def encodeMessage(p):
 
 class SipCodec(CodecManager.Codec):
 	def encode(self, template):
-		return encodeMessage(template)
+		return (encodeMessage(template), 'SIP message')
 
 	def decode(self, data):
-		return decodeMessage(data)
+		return (decodeMessage(data), 'SIP message')
 
 if __name__ != '__main__':
 	CodecManager.registerCodecClass('sip', SipCodec)
@@ -1027,9 +1027,9 @@ Content-Length: 0
 	for (label, decode_f, encode_f, samples) in sets[2:]:
 		print "======== %s =======" % label
 		for s in samples:
-			decoded = decode_f(s)
+			decoded, _ = decode_f(s)
 			print decoded
-			reencoded = encode_f(decoded)
+			reencoded, _ = encode_f(decoded)
 			print
 			print "Reencoded: %s" % reencoded
 			print "Original : %s" % s

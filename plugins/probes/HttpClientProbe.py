@@ -89,9 +89,9 @@ class HttpClientProbe(ProbeImplementationManager.ProbeImplementation):
 			if not message.has_key('version'):
 				message['version'] = self['version']
 			try:
-				encodedMessage = CodecManager.encode('http.request', message)
+				(encodedMessage, summary) = CodecManager.encode('http.request', message)
 			except Exception, e:
-				raise ProbeImplementationManager.ProbeException('Invalid request message format: cannot encode HTTP request')
+				raise ProbeImplementationManager.ProbeException('Invalid request message format: cannot encode HTTP request:\n%s' % ProbeImplementationManager.getBacktrace())
 			
 			# Connect if needed
 			if not self.isConnected():
@@ -99,7 +99,7 @@ class HttpClientProbe(ProbeImplementationManager.ProbeImplementation):
 
 			# Send our payload
 			self._httpConnection.send(encodedMessage)
-			self.logSentPayload(encodedMessage.split('\r\n')[0], encodedMessage)
+			self.logSentPayload(summary, encodedMessage)
 			# Now wait for a response asynchronously
 			self.waitResponse()
 		except Exception, e:
@@ -175,15 +175,15 @@ class ResponseThread(threading.Thread):
 					decodedMessage = None
 					try:
 						self._probe.getLogger().debug('data received (bytes %d), decoding attempt...' % len(buf))
-						decodedMessage = CodecManager.decode('http.response', buf)
+						(decodedMessage, summary) = CodecManager.decode('http.response', buf)
 					except Exception, e:
 						# Incomplete message. Wait for more data.
-						self._probe.getLogger().debug('unable to decode: %s' % str(e))
+						self._probe.getLogger().debug('unable to decode: %s' % ProbeImplementationManager.getBacktrace())
 						pass
 						
 					if decodedMessage:
 						self._probe.getLogger().debug('message decoded, enqueuing...')
-						self._probe.logReceivedPayload(buf.split('\r\n')[0], buf)
+						self._probe.logReceivedPayload(summary, buf)
 						self._probe.triEnqueueMsg(decodedMessage)
 						self._stopEvent.set()
 			except Exception, e:

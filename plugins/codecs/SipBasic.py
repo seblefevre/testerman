@@ -20,6 +20,8 @@
 # is a flat dictionnary.
 #
 # Multi-values are decoded/encoded as a multi-line (\n-separated) single value.
+#
+# This codec is NOT incremental (for now).
 ##
 
 """
@@ -141,7 +143,6 @@ def decodeMessage(s):
 	headers = {}
 	def addHeader(previousHeaderLine):
 		# Split multivalued headers into multiple headers, if needed.
-
 		s = previousHeaderLine.split(':', 1)
 		fieldName = s[0].strip()
 		encodedValue = s[1].strip()
@@ -181,6 +182,10 @@ def decodeMessage(s):
 			previousHeaderLine = line.strip()
 		i += 1
 
+	#
+	#if not headers.has_key('content-length'):
+	#	assume length = 0, etc; or exactly know how many bytes should be read in case of incremental decoding.
+
 	if s[i:]:
 		body = '\r\n'.join(s[i:])
 		ret['__body'] = body
@@ -215,16 +220,27 @@ def encodeMessage(p):
 	return '\r\n'.join(ret)
 
 
+def getSummary(p):
+	if p['__type'] == 'response':
+		return "%s %s" % (p['__responsecode'], p['__reasonphrase'])
+	elif template['__type'] == 'request':
+		return "%s %s" % (p['__message'], p['__requesturi'])
+	else:
+		return "Invalid SIP template"
+
+
 ##
 # The Testerman codec interface to the codec
 ##
 
 class SipBasicCodec(CodecManager.Codec):
 	def encode(self, template):
-		return encodeMessage(template)
+		return (encodeMessage(template), getSummary(template))
 
 	def decode(self, data):
-		return decodeMessage(data)
+		ret = decodeMessage(data)
+		summary = getSummary(ret)
+		return (ret, summary)
 
 if __name__ != '__main__':
 	CodecManager.registerCodecClass('sip.basic', SipBasicCodec)
@@ -345,11 +361,12 @@ Content-Length: 0
 	for (label, decode_f, encode_f, samples) in sets:
 		print "======== %s =======" % label
 		for s in samples:
-			decoded = decode_f(s)
+			(_, decoded, summary) = decode_f(s)
 			print decoded
-			reencoded = encode_f(decoded)
+			print "Summary: %s" % summary
+			(reencoded, summary) = encode_f(decoded)
 			print
-			print "Reencoded: %s" % reencoded
+			print "Reencoded: %s\nSummary: %s" % (reencoded, summary)
 			print "Original : %s" % s
 			# assert (s == reencoded)
 			print
