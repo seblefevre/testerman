@@ -32,7 +32,7 @@ import logging
 import cStringIO as StringIO
 import tarfile
 
-VERSION = "1.1.2"
+VERSION = "1.1.3"
 
 ################################################################################
 # Restarter/Reinitializer facility

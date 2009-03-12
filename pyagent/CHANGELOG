@@ -11,3 +11,6 @@
 - Fixed: large payloads over Xa are now correctly sent.
 - Modified: now use cPickle instead of pickle.
 - Fixed: some error conditions in tcp and sctp probes.
+
+1.1.3:
+- Fixed: better Xa transport monitoring thanks to a keep-alive support.
