@@ -217,13 +217,15 @@ def encodeMessage(p):
 	ret.append('')
 	if '__body' in p and p['__body']:
 		ret.append(p['__body'])
+	else:
+		ret.append('') # Forces a final \r\n for empty bodies
 	return '\r\n'.join(ret)
 
 
 def getSummary(p):
 	if p['__type'] == 'response':
 		return "%s %s" % (p['__responsecode'], p['__reasonphrase'])
-	elif template['__type'] == 'request':
+	elif p['__type'] == 'request':
 		return "%s %s" % (p['__message'], p['__requesturi'])
 	else:
 		return "Invalid SIP template"
