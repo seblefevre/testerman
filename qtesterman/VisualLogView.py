@@ -597,104 +597,6 @@ class LeftArrowBoxedLabel(GraphicsItem):
 		painter.drawText(br, Qt.AlignLeft | Qt.AlignVCenter, self._label)
 
 
-class MessageArrow(GraphicsItemGroup):
-	"""
-	Better be a QGraphicsItem... but a group has the benefit of being clickable on
-	different parts, triggering different actions.
-
-	If fromX == toX, this is a loopback arrow.
-	"""
-	def __init__(self, label, message, fromX, toX, fromLabel = None, toLabel = None):
-		GraphicsItemGroup.__init__(self)
-		self.__createWidgets(label, message, fromX, toX, fromLabel, toLabel)
-
-	def __createWidgets(self, label, message, fromX, toX, fromLabel, toLabel):
-		"""
-		Create an arrow oriented according to fromX/toX,
-		with a clickable text label.
-		The local coordinate 0, 0 corresponds to the start of the arrow
-		(i.e. the array may points to negative or positivie X coordinates).
-
-		Create a loopback arrow if fromX == toX.
-		fromLabel and toLabel, if available, are x-aligned (not centered) on fromX, toX right/left according to the arrow direction.
-		"""
-		self.mainPen = QPen(QColor(160, 160, 160))
-		self.mainPen.setWidth(2)
-		self.mainPen.setCapStyle(Qt.RoundCap)
-
-		self.label = QGraphicsSimpleTextItem(label)
-
-		if fromX != toX:
-			# Directed arrow
-			if (toX - fromX) > 0:
-				sign = 1
-			else:
-				sign = -1
-
-			# The label is x-aligned to the terminated ("to") side,
-			# ie the label BB is closed to the toX
-			if sign < 0: # to the right
-				xoffset = toX - fromX + 15
-			else: # to the left
-				xoffset = toX - fromX - 15 - self.label.boundingRect().width()
-
-			self.label.translate(xoffset, -20) # -20: the label is above the arrow line,
-			self.addToGroup(self.label)
-
-			# The from/to labels are managed as tooltips.
-			toolTip = QString("")
-			if fromLabel: toolTip += fromLabel
-			toolTip += " -> "
-			if toLabel: toolTip += toLabel
-			self.setToolTip(toolTip)
-
-			# Main line
-			# 2 is a margin from the extreme from/to - this makes the display cleaner, and avoir useless item collisions
-			line = QGraphicsLineItem(sign*2, 0, toX - fromX  - sign*2, 0)
-			line.setPen(self.mainPen)
-			self.addToGroup(line)
-			# around the toX, we draw two diag lines
-			line = QGraphicsLineItem(toX - fromX - sign*2, 0, toX - fromX - sign*2 -sign*5, -5)
-			line.setPen(self.mainPen)
-			self.addToGroup(line)
-			line = QGraphicsLineItem(toX - fromX - sign*2, 0, toX - fromX - sign*2 -sign*5, 5)
-			line.setPen(self.mainPen)
-			self.addToGroup(line)
-		else:
-			# Loopback arrow.
-			# We draw a circle pie (?) with a final arrow. The circle arrow starts at (0, 0)
-			# The label is inserted at mid-height, with transparency, x-centered on 0.
-			radius = 10
-			path = QPainterPath()
-			path.moveTo(radius, 0)
-			path.arcTo(0, 0, 2*radius, 2*radius, 90, -180)
-			circle = QGraphicsPathItem(path)
-			circle.setPen(self.mainPen)
-			circle.translate(-radius + 2, 0) # 2 is the margin from the main actor axis
-
-			self.addToGroup(circle)
-
-			self.label.translate(- self.label.boundingRect().width() / 2.0, radius - self.label.boundingRect().height() / 2.0)
-			self.addToGroup(self.label)
-
-			sign = -1 # the final arrow is to the left
-			# around the toX/fromX, we draw two diag lines
-			line = QGraphicsLineItem(0, 2*radius, 2 , 2*radius - 5)
-			line.setPen(self.mainPen)
-			line.translate(2, 0) # 2 is the margin from the main actor axis
-			self.addToGroup(line)
-			line = QGraphicsLineItem(0, 2*radius, 5, 2*radius + 3)
-			line.setPen(self.mainPen)
-			line.translate(2, 0) # 2 is the margin from the main actor axis
-			self.addToGroup(line)
-
-			# The from/to labels are managed as tooltips.
-			toolTip = QString("")
-			if fromLabel: toolTip += fromLabel
-			toolTip += " -> "
-			if toLabel: toolTip += toLabel
-			self.setToolTip(toolTip)
-
 class Arrow(GraphicsItem):
 	def __init__(self, fromItem, toItem, label = None):
 		"""
@@ -735,11 +637,11 @@ class Arrow(GraphicsItem):
 			# Not overlapping, 
 			# 'To' if to the left of 'From'
 			self._from = QPointF(fromBr.x(), fromBr.y() + fromBr.height() / 2.0) # left side
-			self._to = QPointF(toBr.x() + fromBr.width(), toBr.y() + fromBr.height() / 2.0) # rigth side
+			self._to = QPointF(toBr.x() + toBr.width(), toBr.y() + fromBr.height() / 2.0) # rigth side
 		else:
 			# We overlap along the X axis. By "layout convention", we took right sides only.
 			self._from = QPointF(fromBr.x() + fromBr.width(), fromBr.y() + fromBr.height() / 2.0) # right side
-			self._to = QPointF(toBr.x() + fromBr.width(), toBr.y() + fromBr.height() / 2.0) # rigth side
+			self._to = QPointF(toBr.x() + toBr.width(), toBr.y() + fromBr.height() / 2.0) # rigth side
 			self._straightConnection = False # will force to create a "loop" instead of a straigth connection
 
 		self.updatePath()
