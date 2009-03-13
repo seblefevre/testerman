@@ -1488,7 +1488,9 @@ class WPythonCodeEditor(sci.QsciScintilla):
 		QApplication.instance().get('gui.outlineview').updateModel(str(self.text().toUtf8()))
 
 	def onTextChanged(self):
-		QTimer.singleShot(500, self.autoCompletion)
+		autocompletion = QSettings().value('editor/autocompletion', QVariant(False)).toBool()
+		if autocompletion:
+			QTimer.singleShot(500, self.autoCompletion)
 
 ################################################################################
 # Session Variable Management

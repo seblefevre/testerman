@@ -111,8 +111,10 @@ class WPreferences(QTabWidget):
 		page = WPreferencesPage(self)
 		self._uiSettings = WInterfaceSettings()
 		self._logsSettings = WLogsSettings()
+		self._editorSettings = WEditorSettings()
 		page.addBoxedWidget(self._uiSettings, "General")
 		page.addBoxedWidget(self._logsSettings, "Log viewer")
+		page.addBoxedWidget(self._editorSettings, "Code editor")
 		self.addTab(page, "User interface")
 
 		page = WPreferencesPage(self)
@@ -127,7 +129,8 @@ class WPreferences(QTabWidget):
 
 		self._settings = [ self._connectionSettings, self._uiSettings, 
 			self._docSettings, self._logsSettings, 
-			self._autoUpdateSettings, self._pluginsSettings ]
+			self._autoUpdateSettings, self._pluginsSettings,
+			self._editorSettings ]
 
 	def updateModel(self):
 		"""
@@ -353,6 +356,40 @@ class WInterfaceSettings(WSettings):
 
 		QApplication.instance().setStyle(style)
 
+
+###############################################################################
+# Editor settings
+###############################################################################
+
+class WEditorSettings(WSettings):
+	"""
+	For now, only a way to activate/deactivate autocompletion.
+	Will be completed later with other options.
+	"""
+	def __init__(self, parent = None):
+		WSettings.__init__(self, parent)
+		self.__createWidgets()
+
+	def __createWidgets(self):
+		"""
+		The model is in the saved settings.
+		"""
+		# Read the settings
+		settings = QSettings()
+		autocompletion = settings.value('editor/autocompletion', QVariant(False)).toBool()
+
+		vlayout = QVBoxLayout()
+		self._autocompletionCheckBox = QCheckBox("Enable code autocompletion (experimental)")
+		self._autocompletionCheckBox.setChecked(autocompletion)
+		vlayout.addWidget(self._autocompletionCheckBox)
+		vlayout.addStretch()
+		self.setLayout(vlayout)
+
+	def updateModel(self):
+		# We save them as settings
+		settings = QSettings()
+		autocompletion = self._autocompletionCheckBox.isChecked()
+		settings.setValue('editor/autocompletion', QVariant(autocompletion))
 
 ###############################################################################
 # Auto-update related settings

@@ -31,7 +31,7 @@ import Resources
 # Versioning
 ################################################################################
 
-CLIENT_VERSION = "1.1.0"
+CLIENT_VERSION = "1.1.1-wip"
 CLIENT_NAME = "QTesterman"
 
 def getClientVersion():
