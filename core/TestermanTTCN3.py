@@ -89,7 +89,7 @@ class TestermanContext:
 	"""
 	def __init__(self):
 		# Current timers
-		self.timers = []
+		self._timers = []
 		# Current Test Component (a PTC or the MTC)
 		self._tc = None
 		# Current Test Case
@@ -128,7 +128,6 @@ class TestermanContext:
 	
 	def setTestCase(self, testcase):
 		self._testcase = testcase
-	
 
 	def addDefaultAltstep(self, altstep):
 		altstepReference = "default_altstep_%s" % _getNewId()
@@ -158,6 +157,13 @@ class TestermanContext:
 	def getDefaultAlternatives(self):
 		return self._defaultAlternatives
 	
+	def registerTimer(self, timer):
+		self._timers.append(timer)
+	
+	def unregisterTimer(self, timer):
+		if timer in self._timers:
+			self._timers.remove(timer)
+	
 def getLocalContext():
 	"""
 	Returns the current TC context.
@@ -186,8 +192,8 @@ def _stopAllTimers():
 	(to call at the end of testcases)
 	"""
 	_ContextMapMutex.acquire()
-	for (thr, context) in _ContextMap.items():
-		for timer in context.timers:
+	for thr, context in _ContextMap.items():
+		for timer in context._timers:
 			timer.stop()
 	_ContextMapMutex.release()
 
@@ -284,7 +290,7 @@ class Timer:
 			self._name = "timer_%d" % _getNewId()
 		
 		self.TIMEOUT = _BranchCondition(_getSystemQueue(), self._TIMEOUT_EVENT)
-		getLocalContext().timers.append(self)
+		getLocalContext().registerTimer(self)
 		self._tc = getLocalContext().getTc()
 
 		logInternal("%s created" % str(self))
@@ -296,6 +302,7 @@ class Timer:
 		logTimerExpiry(tc = str(self._tc), id_ = str(self))
 		# we post a message into the system component special port
 		_postSystemEvent(self._TIMEOUT_EVENT, self)
+		getLocalContext().unregisterTimer(self)
 
 	# TTCN-3 compliant interface
 
