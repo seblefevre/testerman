@@ -1,0 +1,80 @@
+# __METADATA__BEGIN__
+# <?xml version="1.0" encoding="utf-8" ?>
+# <metadata version="1.0">
+# <description>description</description>
+# <prerequisites>prerequisites</prerequisites>
+# <parameters>
+# <parameter name="PX_PASSWORD" default="" type="string"><![CDATA[Password to use for LDAP bind]]></parameter>
+# <parameter name="PX_SERVER_IP" default="127.0.0.1" type="string"><![CDATA[LDAP server IP address]]></parameter>
+# <parameter name="PX_USERNAME" default="" type="string"><![CDATA[DN to use for LDAP bind]]></parameter>
+# </parameters>
+# </metadata>
+# __METADATA__END__
+##
+# Sample script for Testerman
+#
+# This ATS demonstrates and autotests the ldap.client probe.
+#
+##
+
+class TC_LDAP_CLIENT_SEARCH(TestCase):
+	"""
+	In this sample,
+	we test a simple LDAP search with implicit binding.
+	"""
+	def body(self, server_ip_port = "127.0.0.1:60009"):
+		
+		def m_ldapSearch(basedn, filter_ = '(objectClass=*)', scope = 'subtree'):
+			return ('search', {'filter': filter_, 'baseDn': basedn, 'scope': scope})
+		
+		def mw_ldapSearchResult(template = any_or_none()):
+			return ('searchResult', template)
+		
+		def mw_ldapError():
+			return ('error', any())
+
+		ldapPort = self.mtc['port']
+		port_map(ldapPort, self.system['ldapServer'])
+
+		# We have 2s to complete the testcase
+		t = Timer(5.0, name = "Global watchdog")
+		t.start()
+		
+		activate([
+			[ t.TIMEOUT, 
+				lambda: log("Global timeout. Test case failed."),
+				lambda: setverdict("fail"),
+				lambda: stop()
+			],
+			[ ldapPort.RECEIVE(),
+				lambda: log("Unexpected message received. Test case failed."),
+				lambda: setverdict("fail"),
+				lambda: stop(),
+			]				
+		])
+
+		# Search something
+		ldapPort.send(m_ldapSearch(basedn = 'dc=nodomain', filter = ('cn=admin')))
+		alt([
+			[ ldapPort.RECEIVE(mw_ldapSearchResult()),
+				lambda: log("search results received"),
+			],
+		])
+		self.setverdict("pass")
+		
+
+##
+# Test Adapter Configurations
+##
+
+conf = TestAdapterConfiguration('local')
+conf.bindByUri('ldapServer', 'probe:ldap01', 'ldap.client', server_url = 'ldap://%s' % get_variable('PX_SERVER_IP'), username = '', password = '')
+
+##
+# Control definition
+##
+
+enable_debug_logs()
+
+useTestAdapterConfiguration('local')
+TC_LDAP_CLIENT_SEARCH(id_suffix = 'LOCAL').execute()
