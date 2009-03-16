@@ -2220,7 +2220,8 @@ class or_(ConditionTemplate):
 		(m, _) = templateMatch(message, self._templateA)
 		if not m:
 			return templateMatch(message, self._templateB)[0]
-		return True
+		else:
+			return True
 	def __repr__(self):
 		return "(%s or %s)" % (unicode(self._templateA), unicode(self._templateB))
 
@@ -2237,12 +2238,14 @@ class extract(ConditionTemplate):
 		self._template = template
 		self._name = value
 	def match(self, message):
-		ret = self._template.match(message)
-		if ret:
-			_setValue(self._name, message)
-		return ret
+		(matched, decodedMessage) = templateMatch(message, self._template)
+		if matched:
+			_setValue(self._name, decodedMessage)
+			return True
+		else:
+			return False
 	def __repr__(self):
-		return str(self._template)
+		return "%s -> %s" % (str(self._template), self._name)
 	def value(self):
 		if hasattr(self._template, "value"):
 			return self._template.value()
@@ -2322,7 +2325,7 @@ def _encodeTemplate(template):
 		return (template[0], _encodeTemplate(template[1]))
 	
 	try:
-		# if the template is a matching mechanism, we provide may provide a value
+		# if the template is a matching mechanism, it may provide a value
 		return template.value()
 	except:
 		pass
@@ -2537,39 +2540,6 @@ def _templateMatch(message, template):
 		#   matched = match(message[i:], template)
 		(result, decodedList) = _templateMatch_list(message, template)
 		return (result, decodedList)
-
-		"""		
-		decodedList = []
-		# Ordered matching. All elements in templates must be matched, in the correct order.
-		result = True
-		i = 0
-		messageLen = len(message)
-		for tmplt in template:
-			if i < messageLen:
-				m = message[i]
-				(ret, decodedEntry) = _templateMatch(m, tmplt)
-				if not ret:
-					# Not matched. Stop here.
-					result = False
-					decodedList.append(decodedEntry)
-					logInternal("mistmatch: lists stopped matching at element %d" % i)
-					# but still continue to display the complete message attempt in log
-					# break
-				else:
-					# OK, first template element matched.
-					# Continue with the next elements of both lists
-					decodedList.append(decodedEntry)
-				i += 1
-			else:
-				# We consumed our message
-				break
-		if not result or i < len(template):
-			logInternal("mismatch: not all templates were matched")
-			result = False
-		else:
-			result = True
-		return (result, decodedList)
-		"""
 
 	# conditions: proxied templates	
 	if isinstance(template, ConditionTemplate):
