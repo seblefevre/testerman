@@ -113,7 +113,7 @@ class RtspClientProbe(ProbeImplementationManager.ProbeImplementation):
 					cseq = str(message['headers']['CSeq'])
 
 			try:
-				encodedMessage = CodecManager.encode('rtsp.request', message)
+				encodedMessage, summary = CodecManager.encode('rtsp.request', message)
 			except Exception, e:
 				raise ProbeImplementationManager.ProbeException('Invalid request message format: cannot encode RTSP request')
 			
@@ -123,7 +123,7 @@ class RtspClientProbe(ProbeImplementationManager.ProbeImplementation):
 
 			# Send our payload
 			self._connection.send(encodedMessage)
-			self.logSentPayload(encodedMessage.split('\r\n')[0], encodedMessage)
+			self.logSentPayload(summary, encodedMessage)
 			# Now wait for a response asynchronously
 			self.waitResponse(cseq = cseq)
 		except Exception, e:
@@ -205,7 +205,7 @@ class ResponseThread(threading.Thread):
 					decodedMessage = None
 					try:
 						self._probe.getLogger().debug('data received (bytes %d), decoding attempt...' % len(buf))
-						decodedMessage = CodecManager.decode('rtsp.response', buf, lower_case = (not self._probe['strict_mode']))
+						decodedMessage, summary = CodecManager.decode('rtsp.response', buf, lower_case = (not self._probe['strict_mode']))
 					except Exception, e:
 						# Incomplete message. Wait for more data.
 						self._probe.getLogger().debug('unable to decode: %s' % str(e))
@@ -213,7 +213,7 @@ class ResponseThread(threading.Thread):
 						
 					if decodedMessage:
 						# System log, always
-						self._probe.logReceivedPayload(buf.split('\r\n')[0], buf)
+						self._probe.logReceivedPayload(summary, buf)
 						
 						# Should we check the cseq locally ?
 						if self._cseq is None:
