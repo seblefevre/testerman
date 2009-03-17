@@ -72,6 +72,34 @@ def _getNewId():
 	ret = _GeneratorBaseId
 	_GeneratorBaseIdMutex.release()
 	return ret
+
+# docstring trimmer - from PEP 257 sample code
+def trim(docstring):
+	if not docstring:
+		return ''
+	maxint = 2147483647
+	# Convert tabs to spaces (following the normal Python rules)
+	# and split into a list of lines:
+	lines = docstring.expandtabs().splitlines()
+	# Determine minimum indentation (first line doesn't count):
+	indent = maxint
+	for line in lines[1:]:
+		stripped = line.lstrip()
+		if stripped:
+			indent = min(indent, len(line) - len(stripped))
+	# Remove indentation (first line is special):
+	trimmed = [lines[0].strip()]
+	if indent < maxint:
+		for line in lines[1:]:
+			trimmed.append(line[indent:].rstrip())
+	# Strip off trailing and leading blank lines:
+	while trimmed and not trimmed[-1]:
+		trimmed.pop()
+	while trimmed and not trimmed[0]:
+		trimmed.pop(0)
+	# Return a single string:
+	return '\n'.join(trimmed)
+
 	
 # Contexts are general containers similar to TLS (Thread Local Storages).
 # We don't use Python 2.4 TLS because they may evolve to something else than
@@ -984,12 +1012,12 @@ class TestCase:
 		if not self._title:
 			self._title = ''
 		self._idSuffix = id_suffix
-		self._description = self.__doc__
+		self._description = trim(self.__doc__)
 		self._mutex = threading.RLock()
 		self._name = self.__class__.__name__
 		# This is a list of the ptc created by/within this testcase.
 		self._ptcs = []
-		logTestcaseCreated(str(self), title = title)
+		logTestcaseCreated(str(self))
 
 		self._mtc = None
 		self._system = None
@@ -1107,7 +1135,7 @@ class TestCase:
 			# Make sure no old system messages remain in queue
 			_resetSystemQueue()
 		
-			logTestcaseStarted(str(self))
+			logTestcaseStarted(str(self), title = self._title)
 
 			# Initialize static connections
 			# (and testerman bindings according to the system configuration)

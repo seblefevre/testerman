@@ -164,11 +164,11 @@ def logMessageSent(fromTc, fromPort, toTc, toPort, message, address = None):
 		ret = getBacktrace()
 		logUser(unicode(e) + u'\n' + unicode(ret))
 
-def logTestcaseCreated(id_, title):
-	tliLog('event', toXml('testcase-created', { 'class': 'event', 'timestamp': time.time(), 'id': id_ }, '<![CDATA[%s]]>' % title))
+def logTestcaseCreated(id_):
+	tliLog('event', toXml('testcase-created', { 'class': 'event', 'timestamp': time.time(), 'id': id_ }))
 
-def logTestcaseStarted(id_):
-	tliLog('event', toXml('testcase-started', { 'class': 'event', 'timestamp': time.time(), 'id': id_ }))
+def logTestcaseStarted(id_, title):
+	tliLog('event', toXml('testcase-started', { 'class': 'event', 'timestamp': time.time(), 'id': id_ }, '<![CDATA[%s]]>' % title))
 
 def logTestcaseStopped(id_, verdict, description):
 	tliLog('event', toXml('testcase-stopped', { 'class': 'event', 'timestamp': time.time(), 'id': id_, 'verdict': verdict }, '<![CDATA[%s]]>' % description))
