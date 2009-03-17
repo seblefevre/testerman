@@ -251,6 +251,8 @@ class WLogViewer(QWidget):
 			self.setWindowTitle('%s (viewing %s)' % (self.title, unicode(self._url.path())))
 
 	def __createWidgets(self):
+		self.setWindowIcon(icon(':/icons/log'))
+	
 		# Inner objects (non widget)
 		self.eventMonitor = None
 		self.logParser = LogParser()
