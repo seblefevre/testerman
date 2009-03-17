@@ -299,6 +299,7 @@ class Timer:
 		return self._name
 	
 	def _onTimeout(self):
+		self._timerId = None
 		logTimerExpiry(tc = str(self._tc), id_ = str(self))
 		# we post a message into the system component special port
 		_postSystemEvent(self._TIMEOUT_EVENT, self)
