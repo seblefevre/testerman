@@ -40,7 +40,7 @@ class BerCodec(CodecManager.Codec):
 	
 	def encode(self, template):
 		summary = self.getSummary(template)
-		e = asn1.encode(self.PDU, BerAdapter.fromTesterman(template))
+		e = asn1.encode(self.PDU, BerAdapter.fromTesterman(template)).tostring()
 		return (e, summary)
 	
 	def decode(self, data):
