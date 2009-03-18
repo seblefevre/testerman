@@ -1,0 +1,70 @@
+TCAPMessages { ccitt recommmendation q 773 modules (2) messages (1) version2 (2) }
+
+DEFINITIONS ::=
+
+BEGIN
+
+MessageType ::= CHOICE {
+	unidirectional [APPLICATION 1] IMPLICIT Unidirectional,
+	begin          [APPLICATION 2] IMPLICIT Begin,
+	end            [APPLICATION 4] IMPLICIT End,
+	continue       [APPLICATION 5] IMPLICIT Continue,
+	abort          [APPLICATION 7] IMPLICIT Abort
+}
+
+OrigTransactionID ::= [APPLICATION 8] IMPLICIT OCTET STRING (SIZE (1..4) )
+
+DestTransactionID ::= [APPLICATION 9] IMPLICIT OCTET STRING (SIZE (1..4) )
+
+Unidirectional ::= SEQUENCE {
+ 	dialoguePortion DialoguePortion OPTIONAL,
+	components ComponentPortion
+}
+
+Begin ::= SEQUENCE {
+	otid OrigTransactionID,
+	dialoguePortion DialoguePortion OPTIONAL,
+	components ComponentPortion OPTIONAL
+}
+
+End ::= SEQUENCE {
+	dtid DestTransactionID,
+	dialoguePortion DialoguePortion OPTIONAL,
+	components ComponentPortion OPTIONAL
+}
+
+Continue ::= SEQUENCE { otid OrigTransactionID,
+	dtid DestTransactionID,
+	dialoguePortion DialoguePortion OPTIONAL,
+	components ComponentPortion OPTIONAL
+}
+
+
+
+-- DialoguePortion ::= [APPLICATION 11] EXTERNAL
+-- Using Wireshark (WS) adaptation:
+DialoguePortion ::= [APPLICATION  11] IMPLICIT DialogueOC
+DialogueOC ::= OCTET STRING
+
+
+ComponentPortion ::= [APPLICATION 12] IMPLICIT SEQUENCE SIZE (1..MAX) OF Component
+
+Component ::= CHOICE {
+	invoke              [1] IMPLICIT Invoke,
+	returnResultLast    [2] IMPLICIT ReturnResult,
+	returnError         [3] IMPLICIT ReturnError,
+	reject              [4] IMPLICIT Reject,
+	returnResultNotLast [7] IMPLICIT ReturnResult
+}
+
+Invoke ::= OCTET STRING
+
+ReturnResult ::= OCTET STRING
+
+ReturnError ::= OCTET STRING
+
+Reject ::= OCTET STRING
+
+ReturnResult ::= OCTET STRING
+
+END

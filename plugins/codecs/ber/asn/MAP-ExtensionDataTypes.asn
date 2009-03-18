@@ -1,0 +1,35 @@
+-- $Id: MAP-ExtensionDataTypes.asn 24270 2008-02-05 06:10:34Z etxrab $
+-- MAP-ExtensionDataTypes.asn
+--
+-- Taken from 3GPP TS 29.002 V8.4.0 (2007-12)
+-- http://www.3gpp.org/ftp/Specs/archive/29_series/29.002/29002-840.zip/29002-840.doc
+--
+-- 17.7.11 Extension data types
+--
+
+MAP-ExtensionDataTypes {
+   itu-t (0) identified-organization (4) etsi (0) mobileDomain (0)
+   gsm-Network (1) modules (3) map-ExtensionDataTypes (21) version11 (11)}
+
+DEFINITIONS
+
+IMPLICIT TAGS
+
+::=
+
+BEGIN
+
+EXPORTS
+
+	PrivateExtension,
+	ExtensionContainer,
+	SLR-ArgExtensionContainer;
+
+
+-- IOC for private MAP extensions
+
+-- data types
+
+ExtensionContainer ::= SEQUENCE { ... }
+
+END

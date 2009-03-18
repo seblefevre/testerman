@@ -1,0 +1,53 @@
+This BER codec is based on
+
+ASN.1 python compiler included in the PyZ3950 project
+(named tyrannioware's compiler in this document):
+http://www.pobox.com/~asl2/software/PyZ3950/
+Copyright (c) 2001, Aaron S. Lav, asl2@pobox.com
+licensed under the X Consortium license.
+
+This project provided the following files:
+- asn1.py
+- compiler.py
+- py_output.py
+- visitor.py
+
+asn1.py has been modified to match the codec's needs.
+
+
+This compiler is itself based on PLY project:
+Copyright (C) 2001-2008, David M. Beazley
+licensed under LGPL 2.1 or later.
+Files from PLY:
+- lex.py
+- yacc.py
+- parsetab.py
+
+
+================================================================================
+Generating new BER codecs from ASN.1
+================================================================================
+
+If you need to create new codecs from an ASN.1 file, you may follow this 
+procedure:
+
+1. run: ./py_output.py myfile.asn > myfile_asn.py
+
+You may need to modify the ASN.1 file to comply with the tyrannioware parser
+limitations. In particular, module OIDs must always contains numbers:
+
+  Not OK:
+    TCAPMessages { ccitt recommmendation q 773 modules (2) messages (1) version2 (2) }
+
+  OK:
+    TCAPMessages {itu-t(0) recommendation(0) q(17) 773 modules(2) messages(1) version3(3)}	
+
+2. You can now use the generated encoder/decodec using:
+
+import asn1
+import myfile_asn
+
+asn1.decode(myfile_asn.<PDU>, data)
+
+
+

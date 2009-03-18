@@ -1,0 +1,38 @@
+SimpleTest { ccitt (1) recommendation (0) q (2) 773 modules (2) messages (1) version2 (2) }
+
+DEFINITIONS ::=
+
+BEGIN
+
+Component ::= CHOICE {
+	invoke              [1] IMPLICIT Invoke,
+	returnResultLast    [2] IMPLICIT ReturnResult,
+	returnError         [3] IMPLICIT ReturnError,
+	reject              [4] IMPLICIT Reject,
+	returnResultNotLast [7] IMPLICIT ReturnResult
+}
+
+Invoke ::= OCTET STRING
+
+ReturnResult ::= OCTET STRING
+
+ReturnError ::= OCTET STRING
+
+Reject ::= OCTET STRING
+
+
+TCMessage ::= CHOICE {
+				unidirectional				[APPLICATION 1]		IMPLICIT Unidirectional,
+				begin						[APPLICATION 2]		IMPLICIT Begin,
+				end							[APPLICATION 4]		IMPLICIT End,
+				continue					[APPLICATION 5]		IMPLICIT Continue,
+				abort						[APPLICATION 7]		IMPLICIT Abort
+}
+
+Unidirectional ::= OCTET STRING
+Begin ::= OCTET STRING
+End ::= OCTET STRING
+Continue ::= OCTET STRING
+Abort ::= OCTET STRING
+
+END
