@@ -2578,6 +2578,18 @@ def _templateMatch(message, template):
 	# Simple types
 	return (message == template, message)
 
+def _is_any_or_none(template):
+	"""
+	Returns True if the template is a any_or_none behind a extract, codec template, etc
+	"""
+	if isinstance(template, any_or_none):
+		return True
+	elif isinstance(template, extract):
+		return _is_any_or_none(template._template)
+	elif isinstance(template, CodecTemplate):
+		return _is_any_or_none(template.getTemplate())
+	else:
+		return False
 
 def _templateMatch_list(message, template):
 	"""
@@ -2595,7 +2607,7 @@ def _templateMatch_list(message, template):
 	
 	# [] can only be matched by [], [ * ]
 	if not message:
-		if not template or (len(template) == 1 and (isinstance(template[0], any_or_none) or (isinstance(template[0], extract) and isinstance(template[0]._template, any_or_none)))):
+		if not template or (len(template) == 1 and (_is_any_or_none(template[0]))):
 #			logInternal("_templateMatch_list matched: [] against [] or [*]")
 			return (True, [])
 		else:
@@ -2606,20 +2618,28 @@ def _templateMatch_list(message, template):
 		# ... but template is
 #		logInternal("_templateMatch_list mismatched: %s against %s" % (unicode(message), unicode(template)))
 		return (False, message)
-		
+	
+	# template header|trail	
 	th, tt = (template[0], template[1:])
+	# message header[trail
 	mh, mt = (message[0], message[1:])
-	if isinstance(th, any_or_none) or (isinstance(th, extract) and isinstance(th._template, any_or_none)):
+	if _is_any_or_none(th):
 		if not tt:
 #			logInternal("_templateMatch_list matched: %s against %s ([*])" % (unicode(message), unicode(template)))
 			return (True, message)
 		matched = False
-		decodedList = None
+		decodedList = []
+		trailingDecodedList = []
 		i = 0
 		while not matched and message[i:]:
-			(matched, decodedList) = _templateMatch_list(message[i:], tt)
+			(matched, trailingDecodedList) = _templateMatch_list(message[i:], tt)
+			if not matched:
+				decodedList.append(message[i])
 			i += 1
 #		logInternal("_templateMatch_list res %s: %s against %s ([*])" % (matched, unicode(message), unicode(template)))
+		# decodedList += trailingDecodedList
+		for e in trailingDecodedList:
+			decodedList.append(e)
 		return (matched, decodedList)
 	else:
 		# Recursive approach:
