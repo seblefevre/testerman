@@ -107,10 +107,10 @@ def _toTesterman(obj):
 			# Known choice.
 			choiceName = tag
 			
-			if tag == 'single-ASN1-type':
-				# Reencode it to an octetstring - we do not want 
-				# blind construct decoding at that level
-				return ('single-ASN1-type', asn1.encode(asn1.ANY, obj[1]).tostring())
+#			if tag == 'single-ASN1-type':
+#				# Reencode it to an octetstring - we do not want 
+#				# blind construct decoding at that level
+#				return ('single-ASN1-type', asn1.encode(asn1.ANY, obj[1]).tostring())
 		else:
 			raise Exception("Invalid tag format: %s" % str(obj[0]))
 		return (choiceName, _toTesterman(obj[1]))
@@ -238,14 +238,7 @@ def _fromTesterman(message):
 		# a string that contains only digits and .
 		if isOid(message):
 			return asn1.OidVal([int(x) for x in message.split('.')])
-		
-		# If it's a ANY, we should decode it
-		try:
-			d = asn1.decode(asn1.ANY, message)
-			return d
-		except Exception, e:
-#			print "The following buffer is not a ANY struct (%s):\n%s" % (str(e), repr(message))
-			# Normal string ??
+		else:		
 			return message
 		
 	else:

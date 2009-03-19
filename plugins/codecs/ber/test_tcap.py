@@ -6,6 +6,8 @@ import asn1
 # To compile TcapAsn: py_output.py tcap.asn > TcapAsn.py
 
 import TcapAsn
+import MapAsn
+
 import BerAdapter
 import binascii
 
@@ -20,17 +22,21 @@ tcapBegin2 = \
  "626a48042f3b46026b3a2838060700118605010101a02d602b80020780a109060704000001001302be1a2818060704000001010101a00da00b80099656051124006913f66c26a12402010102013b301c04010f040eaa180da682dd6c31192d36bbdd468007917267415827f2"
 #"626a4804 2f3b4602 6b3a2838 06070011 8605010101a02d602b80020780a109060704000001001302be1a2818060704000001010101a00da00b80099656051124006913f66c26a12402010102013b301c04010f040eaa180da682dd6c31192d36bbdd468007917267415827f2"
 
+sendRoutingInfoForSMArg = \
+	"30158007910026151101008101ff820791261010101010"
 
 def test():
-	for buf in [ binascii.unhexlify(x) for x in [ tcapBegin2 ] ]:
+	for buf, pdu in [ (binascii.unhexlify(x), y) for (x, y) in [ 
+		(sendRoutingInfoForSMArg, MapAsn.RoutingInfoForSM_Arg)
+#		(tcapBegin2, TcapAsn.TCMessage)
+		] ]:
 
 		# Decoding
 		# Buf -> ASN
 		print 80*'-'
-		dec = asn1.decode(TcapAsn.TCMessage, buf)
+		dec = asn1.decode(pdu, buf)
 		print "Buffer -> ASN:"
 		print repr(dec)
-		print "dec[1] type: " + dec[1].__class__.__name__
 		# ASN -> Testerman
 		print 80*'-'
 		print "ASN -> Testerman:"
@@ -52,16 +58,16 @@ def test():
 		print 80*'-'
 		print "Re-encoded buffer:"
 		# .encode() outputs an array.array
-		bufbuf = asn1.encode(TcapAsn.TCMessage, dec).tostring()
+		bufbuf = asn1.encode(pdu, dec).tostring()
 		print binascii.hexlify(bufbuf)
 		print "Re-encoded buffer type: %s" % bufbuf.__class__.__name__
 		print "Initial buffer:"
 		print binascii.hexlify(buf)
 		print "Initial buffer type: %s" % buf.__class__.__name__
 		print "Re-decoded:"
-		decdec = asn1.decode(TcapAsn.TCMessage, bufbuf)
+		decdec = asn1.decode(pdu, bufbuf)
 		print decdec
-		bufbufbuf = asn1.encode(TcapAsn.TCMessage, decdec).tostring()
+		bufbufbuf = asn1.encode(pdu, decdec).tostring()
 		print "Re-re-encoded:"
 		print binascii.hexlify(bufbufbuf)
 		print "Previously re-encoded buffer:"
@@ -73,6 +79,14 @@ def test2():
 	"""
 	Basic encoding testing.
 	"""
+	
+	t = binascii.unhexlify("301ba009040791002615110100a103010101a209040791261010101010")
+	print repr(asn1.decode(asn1.ANY, t))
+	t = binascii.unhexlify("30158007910026151101008101ff820791261010101010")
+	print repr(asn1.decode(asn1.ANY, t))
+	return
+	
+	
 	print "Sequence encoding (TCMessage):"
 	s =  asn1.StructBase(otid = '\xff\x00')
 	m = ('begin', s)

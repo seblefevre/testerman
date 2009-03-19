@@ -121,13 +121,27 @@ _ASN.1: Communication between Heterogeneous Systems_</a>
 </ul>
 """
 
-from __future__ import nested_scopes
 vers = "0.83"
 
 import array
 import string
 import copy
 import math
+
+##
+# Utilities
+##
+def getBacktrace():
+	"""
+	Returns the current backtrace.
+	"""
+	import traceback
+	import StringIO
+	backtrace = StringIO.StringIO()
+	traceback.print_exc(None, backtrace)
+	ret = backtrace.getvalue()
+	backtrace.close()
+	return ret
 
 
 # - elements should expose a list of possible tags, instead of just one tag,
@@ -160,6 +174,11 @@ cons_encoding = 0
 # cases where the length of the data isn't known ahead of time, and
 # one doesn't want to have to buffer the entire thing.  It is possible
 # to pass lazy sequences into the appropriate functions, but ...
+
+
+# SLE addon: if set, ANY types are not decoded - instead
+# they are reported as a raw string buffer.
+use_any_buffer = 0
 
 # For debugging the asn.1 code only
 trace_seq = 0
@@ -573,6 +592,16 @@ class IncrementalDecodeCtx(CtxBase):
 			self.last_begin_offset = self.offset + 1
 			# +1 because self.offset will be incremented on return
 		else:
+			# SLE Begin
+			# SLE: check if we are adding a ANY of not.
+			# If it's a ANY, reencode it on the fly so that we have a buffer
+			# instead of a anonymous tree.
+			cur_def = self.get_cur_def()
+#			print "DEBUG: finished decoding data from curdef: %s" % repr(cur_def)
+			if use_any_buffer and cur_def is not None and hasattr(cur_def, 'tag') and cur_def.tag == ANY_class.tag:
+#				print "DEBUG: reencoding ANY"
+				val = encode(ANY, val).tostring()
+			# SLE End
 			self.stack[-1].cons.handle_val (val)
 			self.check_pop ()
 	def check_pop (self):
@@ -1245,6 +1274,12 @@ class ANY_class(OCTSTRING_class): # inherit decode_val
 	def start_cons (self, tag, cur_len, ctx):
 		return self.ConsElt (tag, cur_len)
 	def encode_aux (self, val):
+		# SLE Begin - support for pre-encoded values.
+		# In this case, just dump them as is.
+		if isinstance(val, basestring):
+			# Raw buffer, already encoded - leave it as is
+			return val
+		# SLE End
 		(tag, val, indef_flag) = val
 		if isinstance (val, type ([])):
 			buf = "".join (map (self.encode_aux, val))
@@ -1419,7 +1454,10 @@ class SeqConsElt:
 				self.index = i
 				return typ
 			if not optional:
-				raise BERError ("SEQUENCE tag %s not found in %s (%d/%d)" %
+				#raise BERError
+				# Seems to have some problem when handling a 
+				# buffer containing explicit TAGs to detect expected tags
+				print ("SEQUENCE tag %s not found in %s (%d/%d)" %
 								(str (seen_tag), str (self.seq),
 								 self.index, i))
 			
