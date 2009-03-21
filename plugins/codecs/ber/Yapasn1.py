@@ -1,9 +1,58 @@
+# -*- coding: utf-8 -*-
+##
+# This file is part of Testerman, a test automation system.
+# Copyright (c) 2009 Sebastien Lefevre and other contributors
+#
+# This program is free software; you can redistribute it and/or modify it under
+# the terms of the GNU General Public License as published by the Free Software
+# Foundation; either version 2 of the License, or (at your option) any later
+# version.
+# This program is distributed in the hope that it will be useful, but WITHOUT
+# ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
+# FOR A PARTICULAR PURPOSE.  See the GNU General Public License for more
+# details.
+##
+
 ##
 # Yet Another Python ASN.1 lib (Yapasn1).
+# Based on X.690-0207
 #
 # A BER coder/decoder that can work with
-# Tyrannioware's Z3950 ASN.1 compiler generated specifications.
+# Tyrannioware's Z3950 ASN.1 compiler's generated specifications.
+# (py_output.py file.asn > OutputAsn.py)
 #
+# #############################################################################
+# Contains some code snippets from asn1.py available from
+# http://www.pobox.com/~asl2/software/PyZ3950/
+# and is licensed under the X Consortium license:
+#
+# Copyright (c) 2001, Aaron S. Lav, asl2@pobox.com
+# All rights reserved. 
+#
+# Permission is hereby granted, free of charge, to any person obtaining a
+# copy of this software and associated documentation files (the
+# "Software"), to deal in the Software without restriction, including
+# without limitation the rights to use, copy, modify, merge, publish,
+# distribute, and/or sell copies of the Software, and to permit persons
+# to whom the Software is furnished to do so, provided that the above
+# copyright notice(s) and this permission notice appear in all copies of
+# the Software and that both the above copyright notice(s) and this
+# permission notice appear in supporting documentation.
+#
+# THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS
+# OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
+# MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT
+# OF THIRD PARTY RIGHTS. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR
+# HOLDERS INCLUDED IN THIS NOTICE BE LIABLE FOR ANY CLAIM, OR ANY SPECIAL
+# INDIRECT OR CONSEQUENTIAL DAMAGES, OR ANY DAMAGES WHATSOEVER RESULTING
+# FROM LOSS OF USE, DATA OR PROFITS, WHETHER IN AN ACTION OF CONTRACT,
+# NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN CONNECTION
+# WITH THE USE OR PERFORMANCE OF THIS SOFTWARE. 
+#
+# Except as contained in this notice, the name of a copyright holder
+# shall not be used in advertising or otherwise to promote the sale, use
+# or other dealings in this Software without prior written authorization
+# of the copyright holder. 
 ##
 
 # Main model:
@@ -45,7 +94,7 @@
 #   are supported on decoding) (this is DER/CER compliant, incidentaly)
 # - Boolean values set to True are encoding with a content = 0xff (this is DER compliant, by the way)
 
-# Based on X.690-0207
+
 
 
 import math
@@ -110,15 +159,8 @@ def getBacktrace():
 	return ret
 
 ##
-# String codecs
+# Tag management
 ##
-
-def get_string_encoder(tag):
-	"""
-	Returns a tuple (a, b) where a is a encoding function (callable/1)
-	and b is a bool indicating if we should strip bom or not (2 bytes).
-	"""
-	
 
 def is_construct(tag):
 	flags, val = tag
@@ -129,41 +171,6 @@ def match_tag(a, b):
 	if (a[1] == ANY_TAG or b[1] == ANY_TAG):
 		return cons_match
 	return a[1] == b[1] and cons_match
-
-def encode_base128(val):
-	"""
-	Encodes an integer value to pseudo base128 (i.e. only using 7 bit on each byte).
-	@type  val: integer
-	@param val: the value to encode.
-	@rtype: string/buffer
-	"""
-	if val == 0:
-		return '\0x00'
-	l = []
-	while val:
-		l.append ((val % 128) | 0x80)
-		val = val / 128
-	if len (l) > 0:
-		l[0] = l[0] & 0x7F
-		l.reverse ()
-	return ''.join(map(chr, l))
-
-def read_base128(buf):
-	"""
-	Decodes/reads an integer value coded in pseudo-base128 from a buffer
-	@type  buf: string/buffer
-	@rtype: (integer, integer)
-	@returns: (value, offset) where offset is the number of consumed bytes.
-	"""
-	val = 0
-	offset = 0
-	while 1:
-		b = ord(buf[offset])
-		offset += 1
-		val = val * 128 + (b & 0x7F)
-		if b & 0x80 == 0:
-			break
-	return (val, offset)
 
 def encode_tag_ber(tag, orig_flags = None):
 	"""
@@ -225,6 +232,45 @@ def tag_str(tag, verbose = True):
 
 	return "[%s %s%s]" % (label, value, v)
 
+##
+# Low level coders
+##
+def encode_base128(val):
+	"""
+	Encodes an integer value to pseudo base128 (i.e. only using 7 bit on each byte).
+	@type  val: integer
+	@param val: the value to encode.
+	@rtype: string/buffer
+	"""
+	if val == 0:
+		return '\0x00'
+	l = []
+	while val:
+		l.append ((val % 128) | 0x80)
+		val = val / 128
+	if len (l) > 0:
+		l[0] = l[0] & 0x7F
+		l.reverse ()
+	return ''.join(map(chr, l))
+
+def read_base128(buf):
+	"""
+	Decodes/reads an integer value coded in pseudo-base128 from a buffer
+	@type  buf: string/buffer
+	@rtype: (integer, integer)
+	@returns: (value, offset) where offset is the number of consumed bytes.
+	"""
+	val = 0
+	offset = 0
+	while 1:
+		b = ord(buf[offset])
+		offset += 1
+		val = val * 128 + (b & 0x7F)
+		if b & 0x80 == 0:
+			break
+	return (val, offset)
+
+
 def extract_bits(val, lo_bit, hi_bit):
 	tmp = (val & (~0L << (lo_bit))) >> lo_bit
 	tmp = tmp & ((1L << (hi_bit - lo_bit + 1)) - 1)
@@ -240,6 +286,9 @@ def sgn(val):
 	if val == 0: return 0
 	return 1
 
+##
+# Len management
+##
 def encode_len_ber(mylen):
 	if mylen < 128:
 		return chr(mylen)
@@ -279,6 +328,10 @@ def decode_len_ber(buf):
 		value = c & 0x7f
 		return (value, 1)
 	
+
+################################################################################
+# SyntaxNodes
+################################################################################
 
 class SyntaxNode:
 	"""
@@ -699,6 +752,7 @@ class IA5StringSyntaxNode(OctetstringSyntaxNode):
 		else:
 			return content
 
+
 class VisibleStringSyntaxNode(OctetstringSyntaxNode):
 	def __init__(self, length_constraint = None):
 		OctetstringSyntaxNode.__init__(self, (UNIVERSAL_FLAG, VISIBLESTRING_TAG), length_constraint)
@@ -711,6 +765,7 @@ class VisibleStringSyntaxNode(OctetstringSyntaxNode):
 			return content.encode('ascii')
 		else:
 			return content
+
 
 ################################################################################
 # Null value
@@ -730,6 +785,7 @@ class NullSyntaxNode(SyntaxNode):
 	def encode_content_ber(self, content, context):
 		# ignore the content even if it's not None
 		return ''
+
 
 ################################################################################
 # Sequence
@@ -796,6 +852,7 @@ class SequenceSyntaxNode(SyntaxNode):
 				raise BerEncodingError("%s: missing mandatory field %s in sequence" % (str(self), name))
 
 		return ''.join(buf)
+		
 		
 ################################################################################
 # Sequence Of
@@ -933,6 +990,7 @@ class ObjectIdentifierSyntaxNode(SyntaxNode):
 			oid.append(val)
 		return '.'.join(map(str, oid))
 
+
 ################################################################################
 # Object Descriptor
 ################################################################################
@@ -942,6 +1000,7 @@ class ObjectDescriptorSyntaxNode(SyntaxNode):
 	"""
 	def __init__(self):
 		SyntaxNode.__init__(self, base_tag = (UNIVERSAL_FLAG, OID_TAG))
+
 
 ################################################################################
 # Any
@@ -1033,7 +1092,7 @@ def decode(syntax, buf):
 
 ################################################################################
 # Compatibility with Z3950's ASN.1 compiler's output:
-# Helper to define the Syntax Tree.
+# Helpers to define the Syntax Tree.
 ################################################################################
 
 def EXPLICIT(value, cls = CONTEXT_FLAG):
@@ -1116,8 +1175,8 @@ NULL = NullSyntaxNode()
 BOOLEAN = BooleanSyntaxNode()
 BITSTRING = BitstringSyntaxNode()
 ANY = AnySyntaxNode()
+EXTERNAL = ExternalSyntaxNode()
 VisibleString = VisibleStringSyntaxNode()
 NumericString = VisibleStringSyntaxNode()
 ObjectDescriptor = ObjectDescriptorSyntaxNode()
 
-EXTERNAL = ExternalSyntaxNode()
