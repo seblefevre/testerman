@@ -1,15 +1,21 @@
 #!/usr/bin/env python
 
+##
+# Slighty modified by Sebastien Lefevre to support basic implicit/explicit tagging
+# on command line (waiting for a correct implementation that uses "IMPLICIT TAGS" 
+# statement in ASN.1 definitions)
+##
+
 import sys
 import visitor
 import compiler
 import time
 
 class Visitor:
-    def __init__ (self, defined_dict, source_name, indent = 0):
+    def __init__ (self, defined_dict, source_name, indent = 0, tags_def = 'EXPLICIT'):
         self.source_name = source_name
         self.defined_dict  = defined_dict
-        self.tags_def = 'EXPLICIT' # default default tag is explicit, but can override at module level
+        self.tags_def = tags_def
         self.indent_lev = 0
         self.assignments = {}
         self.dependencies = {}
@@ -242,29 +248,48 @@ class Visitor:
 #        self.output ("#Ignoring constraint: %s" % repr(node))
 #        self.walker.dispatch (node.subtype.typ)
 
-def parse_and_output (s, fn, defined_dict):
+def parse_and_output (s, fn, defined_dict, tags_def):
     ast = compiler.yacc.parse (s)
     time_str = time.strftime("%a, %d %b %Y %H:%M:%S +0000", time.gmtime())
-    print """#!/usr/bin/env python
-# Auto-generated from %s at %s
-import Yapasn1 as asn1""" % (fn, time_str)
+    print """# Auto-generated at %s
+# with the following command line:
+# %s --%s %s
+import Yapasn1 as asn1""" % (time_str, sys.argv[0], tags_def, fn)
     for module in ast:
         assert (module.type == 'Module')
-        visit_instance = Visitor (defined_dict, fn)
+        visit_instance = Visitor (defined_dict, fn, 0, tags_def.upper())
         walker = visitor.ASTWalk ()
         visit_instance.set_walker (walker)
         walker.preorder (module, visit_instance)
         visit_instance.finish ()
 
 
-import sys
+def usage():
+	print "Usage:"
+	print " %s --explicit|--implicit <files> ..."
+	print 
+	print "Generates a Yapasn1-compatible syntax tree definition file, using"
+	print "either EXPLICIT or IMPLICIT default tags"
+	sys.exit(1)
+
 if __name__ == '__main__':
-    defined_dict = {}
-    for fn in sys.argv [1:]:
-        f = open (fn, "r")
-        parse_and_output (f.read (), fn, defined_dict)
-        f.close ()
-        compiler.lexer.lineno = 1
+	if len(sys.argv) < 3:
+		usage()
+
+	try:
+		default_tag = sys.argv[1][2:]
+	except:
+		usage()
+
+	if not default_tag in [ 'explicit', 'implicit' ]:
+		usage()
+
+	defined_dict = {}
+	for fn in sys.argv [2:]:
+		f = open (fn, "r")
+		parse_and_output (f.read (), fn, defined_dict, default_tag)
+		f.close ()
+		compiler.lexer.lineno = 1
 
 
 

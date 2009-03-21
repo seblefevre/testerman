@@ -101,7 +101,7 @@ import math
 import binascii
 
 # General syntax tree configuration - maybe it should be left to the compiler...
-explicit_tag_environment = True
+explicit_tag_environment = False
 
 # Traces
 trace_extraction = False
@@ -483,6 +483,9 @@ class SyntaxNode:
 			# Check that we have the base tag construct
 			(tag, content, consumedbytes) = self.extract_element(buf)
 			if not match_tag(tag, self._base_tag):
+				# In some samples, I ran into the following cases: a sequence was both explicit and implicitly tagged.
+				# Normally, since it is explicitly tagged it should be useless to check the base tag.
+				# But when checked, we got this error.
 				raise BerDecodingError("%s: expected base tag %s, got %s" % (str(self), tag_str(self._base_tag), tag_str(tag)))
 		else:
 			content = buf	
@@ -522,7 +525,7 @@ class BooleanSyntaxNode(SyntaxNode):
 	def decode_content_ber(self, tag, buf, context):
 		if len(buf) != 1:
 			raise BerDecodingError("%s: invalid boolean encoding (%s bytes instead of 1)" % (str(self), len(buf)))
-		if chr(buf[0]):
+		if ord(buf[0]):
 			return True
 		else:
 			return False
@@ -1104,9 +1107,6 @@ def IMPLICIT(value, cls = CONTEXT_FLAG):
 	# Returns a tag for next use as implicit with TYPE
 	# (explicit, protocolClass, value)
 	return (False, cls, value)
-
-def TAG(value, cls = CONTEXT_FLAG):
-	return (explicit_tag_environment, cls, value)
 
 import copy 
 

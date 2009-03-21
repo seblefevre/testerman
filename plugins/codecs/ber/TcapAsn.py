@@ -1,5 +1,6 @@
-#!/usr/bin/env python
-# Auto-generated from asn/tcap.asn at Sat, 21 Mar 2009 16:23:42 +0000
+# Auto-generated at Sat, 21 Mar 2009 18:47:52 +0000
+# with the following command line:
+# ./py_output.py --implicit asn/tcap.asn
 import Yapasn1 as asn1
 #module TCAPMessages None
 InvokeIdType=asn1.INTEGER_class ([],-128,127)
