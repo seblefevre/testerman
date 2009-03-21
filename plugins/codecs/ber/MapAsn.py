@@ -1,6 +1,6 @@
 #!/usr/bin/env python
-# Auto-generated from asn/MAP-CommonDataTypes_expanded.asn at Thu, 19 Mar 2009 11:27:54 +0000
-import asn1
+# Auto-generated from asn/MAP-CommonDataTypes_expanded.asn at Sat, 21 Mar 2009 16:24:03 +0000
+import Yapasn1 as asn1
 #module MAP_CommonDataTypes None
 SGSN_EventList=asn1.BITSTRING_class ([('pdpContext',0),('mo_mt_sms',1),('rau_gprsAttach_gprsDetach',2),('mbmsContext',3)],None,None)
 MulticallBearerInfo=asn1.INTEGER_class ([],1,7)
@@ -185,7 +185,6 @@ Ext_ProtocolId=asn1.ENUM(ets_300356=1)
 SS_SubscriptionViolationParam=asn1.SEQUENCE ([('extensionContainer',None,ExtensionContainer,1)], seq_name = 'SS_SubscriptionViolationParam')
 Ext_BearerServiceCode=asn1.OCTSTRING
 TraceType=asn1.INTEGER_class ([],0,255)
-NoSubscriberReplyParam=asn1.SEQUENCE ([('extensionContainer',None,ExtensionContainer,1)], seq_name = 'NoSubscriberReplyParam')
 O_BcsmTriggerDetectionPoint=asn1.ENUM(collectedInfo=2,routeSelectFailure=4)
 SubscriberStatus=asn1.ENUM(serviceGranted=0,operatorDeterminedBarring=1)
 GeographicalInformation=asn1.OCTSTRING
@@ -223,8 +222,7 @@ IST_AlertRes=asn1.SEQUENCE ([('istAlertTimer',None,asn1.TYPE(asn1.EXPLICIT(0,cls
     ('istInformationWithdraw',None,asn1.TYPE(asn1.EXPLICIT(1,cls=asn1.CONTEXT_FLAG),asn1.NULL),1),
     ('callTerminationIndicator',None,asn1.TYPE(asn1.EXPLICIT(2,cls=asn1.CONTEXT_FLAG),CallTerminationIndicator),1),
     ('extensionContainer',None,asn1.TYPE(asn1.EXPLICIT(3,cls=asn1.CONTEXT_FLAG),ExtensionContainer),1)], seq_name = 'IST_AlertRes')
-GSM_SecurityContextData=asn1.SEQUENCE ([('kc',None,Kc,0),
-    ('cksn',None,Cksn,0)], seq_name = 'GSM_SecurityContextData')
+NoSubscriberReplyParam=asn1.SEQUENCE ([('extensionContainer',None,ExtensionContainer,1)], seq_name = 'NoSubscriberReplyParam')
 RNC_InterfaceList=asn1.BITSTRING_class ([('iu',0),('iur',1),('iub',2),('uu',3)],None,None)
 GPRSMSClass=asn1.SEQUENCE ([('mSNetworkCapability',None,asn1.TYPE(asn1.EXPLICIT(0,cls=asn1.CONTEXT_FLAG),MSNetworkCapability),0),
     ('mSRadioAccessCapability',None,asn1.TYPE(asn1.EXPLICIT(1,cls=asn1.CONTEXT_FLAG),MSRadioAccessCapability),1)], seq_name = 'GPRSMSClass')
@@ -341,7 +339,6 @@ MC_SS_Info=asn1.SEQUENCE ([('ss_Code',None,asn1.TYPE(asn1.EXPLICIT(0,cls=asn1.CO
 SubBusyForMT_SMS_Param=asn1.SEQUENCE ([('extensionContainer',None,ExtensionContainer,1)], seq_name = 'SubBusyForMT_SMS_Param')
 ExtensibleSystemFailureParam=asn1.SEQUENCE ([('networkResource',None,NetworkResource,1),
     ('extensionContainer',None,ExtensionContainer,1)], seq_name = 'ExtensibleSystemFailureParam')
-TeleserviceList=asn1.SEQUENCE_OF (Ext_TeleserviceCode)
 EraseCC_EntryRes=asn1.SEQUENCE ([('ss_Code',None,asn1.TYPE(asn1.EXPLICIT(0,cls=asn1.CONTEXT_FLAG),SS_Code),0),
     ('ss_Status',None,asn1.TYPE(asn1.EXPLICIT(1,cls=asn1.CONTEXT_FLAG),SS_Status),1)], seq_name = 'EraseCC_EntryRes')
 AuthenticationFailureReportRes=asn1.SEQUENCE ([('extensionContainer',None,ExtensionContainer,1)], seq_name = 'AuthenticationFailureReportRes')
@@ -392,6 +389,7 @@ RestoreDataRes=asn1.SEQUENCE ([('hlr_Number',None,ISDN_AddressString,0),
     ('msNotReachable',None,asn1.NULL,1),
     ('extensionContainer',None,ExtensionContainer,1)], seq_name = 'RestoreDataRes')
 BusySubscriberParam=asn1.SEQUENCE ([('extensionContainer',None,ExtensionContainer,1)], seq_name = 'BusySubscriberParam')
+TeleserviceList=asn1.SEQUENCE_OF (Ext_TeleserviceCode)
 BearerServiceList=asn1.SEQUENCE_OF (Ext_BearerServiceCode)
 VoiceBroadcastData=asn1.SEQUENCE ([('groupid',None,GroupId,0),
     ('broadcastInitEntitlement',None,asn1.NULL,1),
@@ -545,8 +543,6 @@ SendAuthenticationInfoArg=asn1.SEQUENCE ([('imsi',None,asn1.TYPE(asn1.EXPLICIT(0
     ('extensionContainer',None,asn1.TYPE(asn1.EXPLICIT(2,cls=asn1.CONTEXT_FLAG),ExtensionContainer),1)], seq_name = 'SendAuthenticationInfoArg')
 StatusReportRes=asn1.SEQUENCE ([('extensionContainer',None,asn1.TYPE(asn1.EXPLICIT(0,cls=asn1.CONTEXT_FLAG),ExtensionContainer),1)], seq_name = 'StatusReportRes')
 TargetCellOutsideGCA_Param=asn1.SEQUENCE ([('extensionContainer',None,ExtensionContainer,1)], seq_name = 'TargetCellOutsideGCA_Param')
-CurrentSecurityContext=asn1.CHOICE ([('gsm_SecurityContextData',None,asn1.TYPE(asn1.EXPLICIT(0,cls=asn1.CONTEXT_FLAG),GSM_SecurityContextData)),
-    ('umts_SecurityContextData',None,asn1.TYPE(asn1.EXPLICIT(1,cls=asn1.CONTEXT_FLAG),UMTS_SecurityContextData))])
 AnyTimeInterrogationArg=asn1.SEQUENCE ([('subscriberIdentity',None,asn1.TYPE(asn1.EXPLICIT(0,cls=asn1.CONTEXT_FLAG),SubscriberIdentity),0),
     ('requestedInfo',None,asn1.TYPE(asn1.EXPLICIT(1,cls=asn1.CONTEXT_FLAG),RequestedInfo),0),
     ('gsmSCF_Address',None,asn1.TYPE(asn1.EXPLICIT(3,cls=asn1.CONTEXT_FLAG),ISDN_AddressString),0),
@@ -640,6 +636,8 @@ ProvideRoamingNumberArg=asn1.SEQUENCE ([('imsi',None,asn1.TYPE(asn1.EXPLICIT(0,c
     ('extensionContainer',None,asn1.TYPE(asn1.EXPLICIT(11,cls=asn1.CONTEXT_FLAG),ExtensionContainer),1)], seq_name = 'ProvideRoamingNumberArg')
 ProvideRoamingNumberRes=asn1.SEQUENCE ([('roamingNumber',None,ISDN_AddressString,0),
     ('extensionContainer',None,ExtensionContainer,1)], seq_name = 'ProvideRoamingNumberRes')
+GSM_SecurityContextData=asn1.SEQUENCE ([('kc',None,Kc,0),
+    ('cksn',None,Cksn,0)], seq_name = 'GSM_SecurityContextData')
 InformServiceCentreArg=asn1.SEQUENCE ([('storedMSISDN',None,ISDN_AddressString,1),
     ('mw_Status',None,MW_Status,1),
     ('extensionContainer',None,ExtensionContainer,1)], seq_name = 'InformServiceCentreArg')
@@ -814,6 +812,10 @@ CCBS_Feature=asn1.SEQUENCE ([('ccbs_Index',None,asn1.TYPE(asn1.EXPLICIT(0,cls=as
     ('b_subscriberSubaddress',None,asn1.TYPE(asn1.EXPLICIT(2,cls=asn1.CONTEXT_FLAG),ISDN_SubaddressString),1),
     ('basicServiceGroup',None,asn1.TYPE(asn1.EXPLICIT(3,cls=asn1.CONTEXT_FLAG),BasicServiceCode),1)], seq_name = 'CCBS_Feature')
 CallBarringFeatureList=asn1.SEQUENCE_OF (CallBarringFeature)
+ExternalClient=asn1.SEQUENCE ([('clientIdentity',None,LCSClientExternalID,0),
+    ('gmlc_Restriction',None,asn1.TYPE(asn1.EXPLICIT(0,cls=asn1.CONTEXT_FLAG),GMLC_Restriction),1),
+    ('notificationToMSUser',None,asn1.TYPE(asn1.EXPLICIT(1,cls=asn1.CONTEXT_FLAG),NotificationToMSUser),1),
+    ('extensionContainer',None,asn1.TYPE(asn1.EXPLICIT(2,cls=asn1.CONTEXT_FLAG),ExtensionContainer),1)], seq_name = 'ExternalClient')
 RoutingInfo=asn1.CHOICE ([('roamingNumber',None,ISDN_AddressString),
     ('forwardingData',None,ForwardingData)])
 ForwardAccessSignalling_Arg=asn1.TYPE(asn1.EXPLICIT(3,cls=asn1.CONTEXT_FLAG),asn1.SEQUENCE ([('an_APDU',None,AccessNetworkSignalInfo,0),
@@ -858,10 +860,6 @@ RemoteUserFreeArg=asn1.SEQUENCE ([('imsi',None,asn1.TYPE(asn1.EXPLICIT(0,cls=asn
 CancelLocationArg=asn1.TYPE(asn1.EXPLICIT(3,cls=asn1.CONTEXT_FLAG),asn1.SEQUENCE ([('identity',None,Identity,0),
     ('cancellationType',None,CancellationType,1),
     ('extensionContainer',None,ExtensionContainer,1)], seq_name = 'CancelLocationArg'))
-ExternalClient=asn1.SEQUENCE ([('clientIdentity',None,LCSClientExternalID,0),
-    ('gmlc_Restriction',None,asn1.TYPE(asn1.EXPLICIT(0,cls=asn1.CONTEXT_FLAG),GMLC_Restriction),1),
-    ('notificationToMSUser',None,asn1.TYPE(asn1.EXPLICIT(1,cls=asn1.CONTEXT_FLAG),NotificationToMSUser),1),
-    ('extensionContainer',None,asn1.TYPE(asn1.EXPLICIT(2,cls=asn1.CONTEXT_FLAG),ExtensionContainer),1)], seq_name = 'ExternalClient')
 RequestedSubscriptionInfo=asn1.SEQUENCE ([('requestedSS_Info',None,asn1.TYPE(asn1.EXPLICIT(1,cls=asn1.CONTEXT_FLAG),SS_ForBS_Code),1),
     ('odb',None,asn1.TYPE(asn1.EXPLICIT(2,cls=asn1.CONTEXT_FLAG),asn1.NULL),1),
     ('requestedCAMEL_SubscriptionInfo',None,asn1.TYPE(asn1.EXPLICIT(3,cls=asn1.CONTEXT_FLAG),RequestedCAMEL_SubscriptionInfo),1),
@@ -953,6 +951,8 @@ PrepareHO_Arg=asn1.TYPE(asn1.EXPLICIT(3,cls=asn1.CONTEXT_FLAG),asn1.SEQUENCE ([(
     ('extensionContainer',None,asn1.TYPE(asn1.EXPLICIT(8,cls=asn1.CONTEXT_FLAG),ExtensionContainer),1)], seq_name = 'PrepareHO_Arg'))
 ResetArg=asn1.SEQUENCE ([('hlr_Number',None,ISDN_AddressString,0),
     ('hlr_List',None,HLR_List,1)], seq_name = 'ResetArg')
+CurrentSecurityContext=asn1.CHOICE ([('gsm_SecurityContextData',None,asn1.TYPE(asn1.EXPLICIT(0,cls=asn1.CONTEXT_FLAG),GSM_SecurityContextData)),
+    ('umts_SecurityContextData',None,asn1.TYPE(asn1.EXPLICIT(1,cls=asn1.CONTEXT_FLAG),UMTS_SecurityContextData))])
 CCBS_Data=asn1.SEQUENCE ([('ccbs_Feature',None,asn1.TYPE(asn1.EXPLICIT(0,cls=asn1.CONTEXT_FLAG),CCBS_Feature),0),
     ('translatedB_Number',None,asn1.TYPE(asn1.EXPLICIT(1,cls=asn1.CONTEXT_FLAG),ISDN_AddressString),0),
     ('serviceIndicator',None,asn1.TYPE(asn1.EXPLICIT(2,cls=asn1.CONTEXT_FLAG),ServiceIndicator),1),

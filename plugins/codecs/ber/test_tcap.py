@@ -2,7 +2,7 @@
 # BER codec feasability test tool.
 ##
 
-import asn1
+import Yapasn1 as asn1
 # To compile TcapAsn: py_output.py tcap.asn > TcapAsn.py
 
 import TcapAsn
@@ -26,6 +26,56 @@ sendRoutingInfoForSMArg = \
 	"30158007910026151101008101ff820791261010101010"
 
 def test():
+	for buf, pdu in [ (binascii.unhexlify(x), y) for (x, y) in [ 
+		(sendRoutingInfoForSMArg, MapAsn.RoutingInfoForSM_Arg)
+#		(tcapBegin2, TcapAsn.TCMessage)
+		] ]:
+
+		# Decoding
+		# Buf -> ASN
+		print 80*'-'
+		dec = asn1.decode(pdu, buf)
+		print "Buffer -> ASN:"
+		print repr(dec)
+		# ASN -> Testerman
+		print 80*'-'
+		print "ASN -> Testerman:"
+		testermanDec = BerAdapter.toTesterman(dec)
+		print repr(testermanDec)
+	#	print 80*'-'
+	#	print "ASN -> Testerman (pretty printed):"
+	#	BerAdapter.prettyprint(testermanDec)
+		print 80*'-'
+		print
+
+		# Testerman -> ASN
+		print 80*'-'
+		print "Testerman -> ASN:"
+		dec = BerAdapter.fromTesterman(testermanDec)
+		print repr(dec)
+
+		# First re-encoding
+		print 80*'-'
+		print "Re-encoded buffer:"
+		# .encode() outputs an array.array
+		bufbuf = asn1.encode(pdu, dec).tostring()
+		print binascii.hexlify(bufbuf)
+		print "Re-encoded buffer type: %s" % bufbuf.__class__.__name__
+		print "Initial buffer:"
+		print binascii.hexlify(buf)
+		print "Initial buffer type: %s" % buf.__class__.__name__
+		print "Re-decoded:"
+		decdec = asn1.decode(pdu, bufbuf)
+		print decdec
+		bufbufbuf = asn1.encode(pdu, decdec).tostring()
+		print "Re-re-encoded:"
+		print binascii.hexlify(bufbufbuf)
+		print "Previously re-encoded buffer:"
+		print binascii.hexlify(bufbuf)
+		print "Initial buffer:"
+		print binascii.hexlify(buf)
+
+def test_old():
 	for buf, pdu in [ (binascii.unhexlify(x), y) for (x, y) in [ 
 		(sendRoutingInfoForSMArg, MapAsn.RoutingInfoForSM_Arg)
 #		(tcapBegin2, TcapAsn.TCMessage)

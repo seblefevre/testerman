@@ -24,7 +24,7 @@
 import CodecManager
 
 import BerAdapter
-import asn1
+import Yapasn1 as asn1
 
 class BerCodec(CodecManager.Codec):
 	"""
@@ -40,11 +40,11 @@ class BerCodec(CodecManager.Codec):
 	
 	def encode(self, template):
 		summary = self.getSummary(template)
-		e = asn1.encode(self.PDU, BerAdapter.fromTesterman(template)).tostring()
+		e = asn1.encode(self.PDU, template)
 		return (e, summary)
 	
 	def decode(self, data):
-		d = BerAdapter.toTesterman(asn1.decode(self.PDU, data))	
+		d = asn1.decode(self.PDU, data)
 		summary = self.getSummary(d)
 		return (d, summary)
 	

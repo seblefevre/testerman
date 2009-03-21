@@ -46,6 +46,7 @@ if __name__ == '__main__':
 	tcapBegin2 = \
 	 "626a48042f3b46026b3a2838060700118605010101a02d602b80020780a109060704000001001302be1a2818060704000001010101a00da00b80099656051124006913f66c26a12402010102013b301c04010f040eaa180da682dd6c31192d36bbdd468007917267415827f2"
 
+	print 80*'-'
 	print "TCAP (ITU-T) Codec unit tests"
 	print 80*'-'
 	samples = [	
@@ -62,4 +63,5 @@ if __name__ == '__main__':
 		print "Reencoded: %s\nSummary: %s" % (binascii.hexlify(reencoded), summary)
 		print "Original : %s" % binascii.hexlify(s)
 #		assert(s == reencoded)
+		print
 	

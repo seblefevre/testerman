@@ -247,7 +247,7 @@ def parse_and_output (s, fn, defined_dict):
     time_str = time.strftime("%a, %d %b %Y %H:%M:%S +0000", time.gmtime())
     print """#!/usr/bin/env python
 # Auto-generated from %s at %s
-import asn1""" % (fn, time_str)
+import Yapasn1 as asn1""" % (fn, time_str)
     for module in ast:
         assert (module.type == 'Module')
         visit_instance = Visitor (defined_dict, fn)

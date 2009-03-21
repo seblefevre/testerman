@@ -1,6 +1,6 @@
 #!/usr/bin/env python
-# Auto-generated from asn/tcap.asn at Wed, 18 Mar 2009 16:46:58 +0000
-import asn1
+# Auto-generated from asn/tcap.asn at Sat, 21 Mar 2009 16:23:42 +0000
+import Yapasn1 as asn1
 #module TCAPMessages None
 InvokeIdType=asn1.INTEGER_class ([],-128,127)
 ERROR=asn1.CHOICE ([('localValue',None,asn1.INTEGER_class ([],None,None)),
