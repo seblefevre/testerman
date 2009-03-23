@@ -26,29 +26,44 @@ import ber.MapAsn as MapAsn
 # SMS management: SRI and MT Forward
 class RoutingInfoForSM_ArgCodec(BerCodec.BerCodec):
 	PDU = MapAsn.RoutingInfoForSM_Arg
-CodecManager.registerCodecClass('map.RoutingInfoForSM_Arg', RoutingInfoForSM_ArgCodec)
+	def getSummary(self, message): return 'RoutingInfoForSM-Arg'
+CodecManager.registerCodecClass('map.RoutingInfoForSM-Arg', RoutingInfoForSM_ArgCodec)
 
 class RoutingInfoForSM_ResCodec(BerCodec.BerCodec):
 	PDU = MapAsn.RoutingInfoForSM_Res
-CodecManager.registerCodecClass('map.RoutingInfoForSM_Res', RoutingInfoForSM_ResCodec)
-
-class MT_ForwardSM_ResCodec(BerCodec.BerCodec):
-	PDU = MapAsn.MT_ForwardSM_Res
-CodecManager.registerCodecClass('map.MT_ForwardSM_Res', MT_ForwardSM_ResCodec)
+	def getSummary(self, message): return 'RoutingInfoForSM-Res'
+CodecManager.registerCodecClass('map.RoutingInfoForSM-Res', RoutingInfoForSM_ResCodec)
 
 class MT_ForwardSM_ArgCodec(BerCodec.BerCodec):
 	PDU = MapAsn.MT_ForwardSM_Arg
-CodecManager.registerCodecClass('map.MT_ForwardSM_Arg', MT_ForwardSM_ArgCodec)
+	def getSummary(self, message): return 'MT-ForwardSM-Arg'
+CodecManager.registerCodecClass('map.MT-ForwardSM-Arg', MT_ForwardSM_ArgCodec)
 
+class MT_ForwardSM_ResCodec(BerCodec.BerCodec):
+	PDU = MapAsn.MT_ForwardSM_Res
+	def getSummary(self, message): return 'MT-ForwardSM-Res'
+CodecManager.registerCodecClass('map.MT-ForwardSM-Res', MT_ForwardSM_ResCodec)
+
+class MO_ForwardSM_ArgCodec(BerCodec.BerCodec):
+	PDU = MapAsn.MO_ForwardSM_Arg
+	def getSummary(self, message): return 'MO-ForwardSM-Arg'
+CodecManager.registerCodecClass('map.MO-ForwardSM-Arg', MO_ForwardSM_ArgCodec)
+
+class MO_ForwardSM_ResCodec(BerCodec.BerCodec):
+	PDU = MapAsn.MO_ForwardSM_Res
+	def getSummary(self, message): return 'MO-ForwardSM-Res'
+CodecManager.registerCodecClass('map.MO-ForwardSM-Res', MO_ForwardSM_ResCodec)
 
 if __name__ == '__main__':
 	import binascii
+	def o(x):
+		return binascii.unhexlify(x.replace(' ', ''))
 	
 	sendRoutingInfoForSMArg = \
 	"30158007910026151101008101ff820791261010101010"
 
 	print 80*'-'
-	print "MAP (Phase 2) Codec unit tests"
+	print "MAP (Phase 2+) Codec unit tests"
 	print 80*'-'
 	samples = [	
 		sendRoutingInfoForSMArg,
@@ -59,10 +74,30 @@ if __name__ == '__main__':
 		print 80*'-'
 		print "Testing: %s" % s
 		s = binascii.unhexlify(s)
-		(decoded, summary) = CodecManager.decode('map.RoutingInfoForSM_Arg', s)
+		(decoded, summary) = CodecManager.decode('map.RoutingInfoForSM-Arg', s)
 		print "Decoded: %s\nSummary: %s" % (decoded, summary)
-		(reencoded, summary) = CodecManager.encode('map.RoutingInfoForSM_Arg', decoded)
+		(reencoded, summary) = CodecManager.encode('map.RoutingInfoForSM-Arg', decoded)
 		print "Reencoded: %s\nSummary: %s" % (binascii.hexlify(reencoded), summary)
 		print "Original : %s" % binascii.hexlify(s)
-#		assert(s == reencoded)
+		assert(s == reencoded)
+	
+
+	print
+	print 80*'-'
+	print "Direct encoding testing"
+	# Explicit encoding test
+	sriSmRes = { 
+		'imsi': '\x91\x10\x32\x54',
+		'locationInfoWithLMSI': {
+			'lmsi': '\x01\x02\x03\x04',
+			'networkNode-Number': '\x91\x22\x22\x22\x22\x22',
+		}
+	}
+	print "Encoding sendRoutingInfoForSM Res:"
+	encoded, summary = CodecManager.encode('map.RoutingInfoForSM-Res', sriSmRes)
+	print binascii.hexlify(encoded)
+	decoded, summary = CodecManager.decode('map.RoutingInfoForSM-Res', encoded)
+	print "Redecoded sendRoutingInfoForSM Res:"
+	print repr(decoded)
+	assert(decoded == sriSmRes)
 	

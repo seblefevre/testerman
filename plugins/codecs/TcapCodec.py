@@ -55,6 +55,8 @@ if __name__ == '__main__':
 	]
 
 	for s in samples:
+		print
+		print 80*'-'
 		print "Testing: %s" % s
 		s = binascii.unhexlify(s)
 		(decoded, summary) = CodecManager.decode('tcap', s)
@@ -62,6 +64,5 @@ if __name__ == '__main__':
 		(reencoded, summary) = CodecManager.encode('tcap', decoded)
 		print "Reencoded: %s\nSummary: %s" % (binascii.hexlify(reencoded), summary)
 		print "Original : %s" % binascii.hexlify(s)
-#		assert(s == reencoded)
-		print
+		assert(s == reencoded)
 	

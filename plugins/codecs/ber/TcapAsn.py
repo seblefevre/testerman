@@ -1,14 +1,14 @@
-# Auto-generated at Sat, 21 Mar 2009 18:47:52 +0000
+# Auto-generated at Mon, 23 Mar 2009 09:38:42 +0000
 # with the following command line:
 # ./py_output.py --implicit asn/tcap.asn
 import Yapasn1 as asn1
 #module TCAPMessages None
+P_AbortCause=asn1.TYPE(asn1.IMPLICIT(10,cls=asn1.APPLICATION_FLAG),asn1.INTEGER_class ([('unrecognizedMessageType',0),('unrecognizedTransactionID',1),('badlyFormattedTransactionPortion',2),('incorrectTransactionPortion',3),('resourceLimitation',4)],0,127))
 InvokeIdType=asn1.INTEGER_class ([],-128,127)
 ERROR=asn1.CHOICE ([('localValue',None,asn1.INTEGER_class ([],None,None)),
     ('globalValue',None,asn1.OBJECT_IDENTIFIER)])
 ReturnResultProblem=asn1.INTEGER_class ([('unrecognizedInvokeID',0),('returnResultUnexpected',1),('mistypedParameter',2)],None,None)
 Parameter=asn1.ANY
-P_AbortCause=asn1.TYPE(asn1.IMPLICIT(10,cls=asn1.APPLICATION_FLAG),asn1.INTEGER_class ([('unrecognizedMessageType',0),('unrecognizedTransactionID',1),('badlyFormattedTransactionPortion',2),('incorrectTransactionPortion',3),('resourceLimitation',4)],0,127))
 ErrorCode=asn1.CHOICE ([('nationaler',None,asn1.TYPE(asn1.IMPLICIT(19,cls=asn1.PRIVATE_FLAG),asn1.INTEGER_class ([],-32768,32767))),
     ('privateer',None,asn1.TYPE(asn1.IMPLICIT(20,cls=asn1.PRIVATE_FLAG),asn1.INTEGER_class ([],None,None)))])
 ReturnError=asn1.SEQUENCE ([('invokeID',None,InvokeIdType,0),
@@ -43,8 +43,8 @@ Component=asn1.CHOICE ([('invoke',None,asn1.TYPE(asn1.IMPLICIT(1,cls=asn1.CONTEX
     ('returnError',None,asn1.TYPE(asn1.IMPLICIT(3,cls=asn1.CONTEXT_FLAG),ReturnError)),
     ('reject',None,asn1.TYPE(asn1.IMPLICIT(4,cls=asn1.CONTEXT_FLAG),Reject)),
     ('returnResultNotLast',None,asn1.TYPE(asn1.IMPLICIT(7,cls=asn1.CONTEXT_FLAG),ReturnResult))])
-Reason=asn1.CHOICE ([('p_abortCause',None,P_AbortCause),
-    ('u_abortCause',None,DialoguePortion)])
+Reason=asn1.CHOICE ([('p-abortCause',None,P_AbortCause),
+    ('u-abortCause',None,DialoguePortion)])
 Abort=asn1.SEQUENCE ([('dtid',None,DestTransactionID,0),
     ('reason',None,Reason,1)], seq_name = 'Abort')
 ComponentPortion=asn1.TYPE(asn1.IMPLICIT(12,cls=asn1.APPLICATION_FLAG),asn1.SEQUENCE_OF (Component))

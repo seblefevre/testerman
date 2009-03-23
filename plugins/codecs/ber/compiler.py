@@ -171,12 +171,12 @@ def t_QSTRING (t):
 def t_UCASE_IDENT (t):
     r"[A-Z](-[a-zA-Z0-9]|[a-zA-Z0-9])*" # can't end w/ '-'
     t.type = reserved_words.get (t.value, "UCASE_IDENT")
-    t.value = t.value.replace ('-', '_') # XXX is it OK to do '-' to '_' during lex
+#    t.value = t.value.replace ('-', '_') # XXX is it OK to do '-' to '_' during lex
     return t
 
 def t_LCASE_IDENT (t):
     r"[a-z](-[a-zA-Z0-9]|[a-zA-Z0-9])*" # can't end w/ '-'
-    t.value = t.value.replace ('-', '_')# XXX is it OK to do '-' to '_' during lex
+#    t.value = t.value.replace ('-', '_')# XXX is it OK to do '-' to '_' during lex
     return t
 
 def t_NUMBER (t):

@@ -839,7 +839,7 @@ class SequenceSyntaxNode(SyntaxNode):
 		# Check if this is satisfying or not
 		for name, sn, optional in self._fields:
 			if not optional and not name in ret:
-				raise BerDecodingError("%s: Missing mandatory field in sequence: %s" % (str(self), str(sn)))
+				raise BerDecodingError("%s: Missing mandatory field '%s' in sequence" % (str(self), name))
 		# OK
 		return ret
 	
@@ -852,7 +852,7 @@ class SequenceSyntaxNode(SyntaxNode):
 			if content.has_key(name):
 				buf.append(sn.encode_ber(content[name], context))
 			elif not optional:
-				raise BerEncodingError("%s: missing mandatory field %s in sequence" % (str(self), name))
+				raise BerEncodingError("%s: missing mandatory field '%s' in sequence" % (str(self), name))
 
 		return ''.join(buf)
 		
@@ -1156,9 +1156,13 @@ def CHOICE(choices):
 			sn.addChoice(name, syntaxNode)
 	return sn
 
-def ENUM(**kwargs):
+def ENUM(values):
+	"""
+	values is a dict string: number (new syntax, not
+	asn1.py compliant) 
+	"""
 	sn = EnumeratedSyntaxNode()
-	for k, v in kwargs.items():
+	for k, v in values.items():
 		sn.addValue(k, v)
 	return sn
 
