@@ -166,7 +166,7 @@ type record ExecuteCommand
 
 type record OutputNotification
 {
-	charstring line,
+	charstring output,
 	charstring matched_*,
 	charstring stream, // 'stderr' or 'stdout'
 }
@@ -185,13 +185,17 @@ type port ExecPortType message
 }
 
 	Properties:
-	None for now (user/uid one day ?)
+	|| name || type || default || description ||
+	|| `separator` || string || `None` || Should we notifies only complete lines based on this separator ? ||
+	|| `timeout`|| real || `0.5` || maximum amount of time to wait for new data before notifying it whe no separator is used ||
 
 	"""
 	def __init__(self):
 		ProbeImplementationManager.ProbeImplementation.__init__(self)
 		self._mutex = threading.RLock()
 		self._execThread = None
+		self.setDefaultProperty('separator', None)
+		self.setDefaultProperty('timeout', 0.5)
 
 	# ProbeImplementation reimplementation
 
@@ -374,6 +378,52 @@ class Popen(subprocess.Popen):
 			if not conn.closed:
 				fcntl.fcntl(conn, fcntl.F_SETFL, flags) # restore initial flags
 
+	def read_out_err(self, timeout = 0.0, maxsize = None):
+		connout, maxsizeout = self.get_conn_maxsize('stdout', maxsize)
+		connerr, maxsizeerr = self.get_conn_maxsize('stderr', maxsize)
+		flagsout = fcntl.fcntl(connout, fcntl.F_GETFL)
+		flagserr = fcntl.fcntl(connerr, fcntl.F_GETFL)
+		if not connout.closed:
+			fcntl.fcntl(connout, fcntl.F_SETFL, flagsout | os.O_NONBLOCK)
+		if not connerr.closed:
+			fcntl.fcntl(connerr, fcntl.F_SETFL, flagserr | os.O_NONBLOCK)
+		
+		rlist = []
+		if connout is not None:
+			rlist.append(connout)
+		if connerr is not None:
+			rlist.append(connerr)
+		
+		try:
+			r, _, _ = select.select(rlist, [], [], timeout)
+			if not r:
+				return ('', '')
+			
+			retout = None
+			reterr = None
+			if connout in r:
+				read = connout.read(maxsizeout)
+				if not read:
+					retout = self._close('stdout') # returns None
+				else:
+					retout = read
+
+			if connerr in r:
+				read = connerr.read(maxsizeerr)
+				if not read:
+					reterr = self._close('stderr') # returns None
+				else:
+					reterr = read
+			
+			return (retout, reterr)
+		except Exception, e:
+			return (None, None)
+		finally:
+			if not connout.closed:
+				fcntl.fcntl(connout, fcntl.F_SETFL, flagsout) # restore initial flags
+			if not connerr.closed:
+				fcntl.fcntl(connerr, fcntl.F_SETFL, flagserr) # restore initial flags
+
 class ExecThread(threading.Thread):
 	"""
 	Executes a command in a subprocess, leaving std streams available for interactions.
@@ -387,6 +437,11 @@ class ExecThread(threading.Thread):
 		self._mutex = threading.RLock()
 		self._reportStatus = True
 		self._stoppedEvent = threading.Event()
+		self._buffer = { 'stdout': '', 'stderr': '' }
+		self._separator = self._probe['separator']
+		self._timeout = self._probe['timeout']
+		if self._separator:
+			self._timeout = 0.0
 	
 	def run(self):
 		self._probe.getLogger().debug("Starting command execution thread...")
@@ -398,8 +453,9 @@ class ExecThread(threading.Thread):
 		retcode = None
 		while retcode is None:
 			retcode = self._process.poll()
-			stdout = self._process.read_out()
-			stderr = self._process.read_err()
+			self._probe.getLogger().debug('Reading output...')
+			stdout, stderr = self._process.read_out_err(self._timeout)
+			self._probe.getLogger().debug('Read output:\n%s\n%s' % (stdout, stderr) )
 			self.handleOutput(stdout, 'stdout')
 			self.handleOutput(stderr, 'stderr')
 			time.sleep(0.001)
@@ -461,21 +517,33 @@ class ExecThread(threading.Thread):
 			self._probe.getLogger().debug("Sending input to process: %s" % input_)
 			self._process.send_all(input_) #self._process.stdin.write(input_)
 	
-	def handleOutput(self, lines, stream):
-		if not lines:
+	def handleOutput(self, data, stream):
+		self._probe.getLogger().debug('Got some input on %s: (%s)' % (stream, data)) 
+		if not data:
 			return
-		self._probe.getLogger().debug('Got some input on %s: (%s)' % (stream, lines)) 
-		for line in lines.splitlines():
+		buf = self._buffer[stream]
+		buf += data
+
+		if self._separator:
+			msgs = buf.split(self._separator)
+			for msg in msgs[:-1]:
+				for pattern in self._patterns:
+					m = pattern.match(msg)
+					if m:
+						event = { 'stream': stream, 'output': msg }
+						for k, v in m.groupdict().items():
+							event['matched_%s' % k] = v
+						self._probe.triEnqueueMsg(event)			
+			buf = msgs[-1]
+		else:
+			# No separator management. Notifies things as is.
 			for pattern in self._patterns:
-				m = pattern.match(line)
+				m = pattern.match(buf)
 				if m:
-					event = { 'stream': stream, 'line': line.strip() } # Should we strip the line ?
+					event = { 'stream': stream, 'output': buf } # Should we strip the line ?
 					for k, v in m.groupdict().items():
 						event['matched_%s' % k] = v
 					self._probe.triEnqueueMsg(event)			
-					# A line can be matched only once.
-					break
-				# else no match
-
+			buf = ''
 
 ProbeImplementationManager.registerProbeImplementationClass("exec.interactive", InteractiveExecProbe)
