@@ -23,7 +23,6 @@
 
 import CodecManager
 
-import BerAdapter
 import Yapasn1 as asn1
 
 class BerCodec(CodecManager.Codec):
