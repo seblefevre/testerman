@@ -154,7 +154,7 @@ class InteractiveExecProbe(ProbeImplementationManager.ProbeImplementation):
 type union ExecCommand
 {
 	ExecuteCommand start,
-	charstring input,
+	universal charstring input,
 	int        signal,
 }
 
@@ -166,8 +166,8 @@ type record ExecuteCommand
 
 type record OutputNotification
 {
-	charstring output,
-	charstring matched_*,
+	universal charstring output,
+	universal charstring matched_*,
 	charstring stream, // 'stderr' or 'stdout'
 }
 
@@ -188,6 +188,7 @@ type port ExecPortType message
 	|| name || type || default || description ||
 	|| `separator` || string || `None` || Should we notifies only complete lines based on this separator ? ||
 	|| `timeout`|| real || `0.5` || maximum amount of time to wait for new data before notifying it whe no separator is used ||
+	|| `encoding` || string || 'utf-8' || the encoding to use to turns the output to unicode ||
 
 	"""
 	def __init__(self):
@@ -196,6 +197,7 @@ type port ExecPortType message
 		self._execThread = None
 		self.setDefaultProperty('separator', None)
 		self.setDefaultProperty('timeout', 0.5)
+		self.setDefaultProperty('encoding', 'utf-8')
 
 	# ProbeImplementation reimplementation
 
@@ -416,13 +418,12 @@ class Popen(subprocess.Popen):
 					reterr = read
 			
 			return (retout, reterr)
-		except Exception, e:
-			return (None, None)
 		finally:
 			if not connout.closed:
 				fcntl.fcntl(connout, fcntl.F_SETFL, flagsout) # restore initial flags
 			if not connerr.closed:
 				fcntl.fcntl(connerr, fcntl.F_SETFL, flagserr) # restore initial flags
+		return (None, None)
 
 class ExecThread(threading.Thread):
 	"""
@@ -442,6 +443,7 @@ class ExecThread(threading.Thread):
 		self._timeout = self._probe['timeout']
 		if self._separator:
 			self._timeout = 0.0
+		self._encoding = self._probe['encoding']
 	
 	def run(self):
 		self._probe.getLogger().debug("Starting command execution thread...")
@@ -453,9 +455,9 @@ class ExecThread(threading.Thread):
 		retcode = None
 		while retcode is None:
 			retcode = self._process.poll()
-			self._probe.getLogger().debug('Reading output...')
+#			self._probe.getLogger().debug('Reading output...')
 			stdout, stderr = self._process.read_out_err(self._timeout)
-			self._probe.getLogger().debug('Read output:\n%s\n%s' % (stdout, stderr) )
+#			self._probe.getLogger().debug('Read output:\n%s\n%s' % (repr(stdout), repr(stderr)) )
 			self.handleOutput(stdout, 'stdout')
 			self.handleOutput(stderr, 'stderr')
 			time.sleep(0.001)
@@ -514,13 +516,19 @@ class ExecThread(threading.Thread):
 	
 	def sendInput(self, input_):
 		if self._process:
-			self._probe.getLogger().debug("Sending input to process: %s" % input_)
-			self._process.send_all(input_) #self._process.stdin.write(input_)
+			self._probe.getLogger().debug("Sending input to process: %s" % repr(input_))
+			self._process.send_all(input_.encode(self._encoding)) #self._process.stdin.write(input_)
 	
 	def handleOutput(self, data, stream):
-		self._probe.getLogger().debug('Got some input on %s: (%s)' % (stream, data)) 
 		if not data:
 			return
+		try:
+			data = data.decode(self._encoding)
+		except Exception, e:
+			self._probe.getLogger().warning('Invalid encoding scheme on output (%s):\n%s' % (str(e), repr(data)))
+			return
+		
+		self._probe.getLogger().debug('Got some input on %s: (%s)' % (stream, repr(data))) 
 		buf = self._buffer[stream]
 		buf += data
 
