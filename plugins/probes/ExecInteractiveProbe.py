@@ -190,6 +190,13 @@ type port ExecPortType message
 	|| `timeout`|| real || `0.5` || maximum amount of time to wait for new data before notifying it whe no separator is used ||
 	|| `encoding` || string || 'utf-8' || the encoding to use to turns the output to unicode ||
 
+	Limitations:
+	- No Windows platform support (for now)
+	- Stderr is forwarded to stdout - no stream segregation
+	- Interleaved stdout/stderr output are not garanteed to be delivered in the correct order
+	
+	Notes:
+	- No need to make the executed program use unbuffered stdout.
 	"""
 	def __init__(self):
 		ProbeImplementationManager.ProbeImplementation.__init__(self)
@@ -425,6 +432,10 @@ class Popen(subprocess.Popen):
 				fcntl.fcntl(connerr, fcntl.F_SETFL, flagserr) # restore initial flags
 		return (None, None)
 
+
+# Experimental version to work around the buffered streams
+import ssh.pexpect.pexpect as pexpect
+
 class ExecThread(threading.Thread):
 	"""
 	Executes a command in a subprocess, leaving std streams available for interactions.
@@ -448,11 +459,14 @@ class ExecThread(threading.Thread):
 	def run(self):
 		self._probe.getLogger().debug("Starting command execution thread...")
 		try:
-			self._process = Popen(self._command, stdout=subprocess.PIPE, stderr=subprocess.PIPE, stdin=subprocess.PIPE, shell=True)
+			self._process = pexpect.spawn(self._command)
+			self._process.setecho(False)
+#			self._process = Popen(self._command, bufsize=0, stdout=subprocess.PIPE, stderr=subprocess.PIPE, stdin=subprocess.PIPE, shell=True)
 		except Exception, e:
 			self._probe.triEnqueueMsg('Internal execution error: %s' % str(e))
 
 		retcode = None
+		"""
 		while retcode is None:
 			retcode = self._process.poll()
 #			self._probe.getLogger().debug('Reading output...')
@@ -461,6 +475,20 @@ class ExecThread(threading.Thread):
 			self.handleOutput(stdout, 'stdout')
 			self.handleOutput(stderr, 'stderr')
 			time.sleep(0.001)
+		"""
+		alive = True
+		while alive:
+			alive = self._process.isalive()
+			try:
+				r = self._process.read_nonblocking(1024, self._timeout)
+				self.handleOutput(r, 'stdout')
+			except:
+				time.sleep(0.001)
+
+		self._process.close()
+		retcode = self._process.status
+			
+		
 		
 		self._process = None
 
@@ -517,7 +545,12 @@ class ExecThread(threading.Thread):
 	def sendInput(self, input_):
 		if self._process:
 			self._probe.getLogger().debug("Sending input to process: %s" % repr(input_))
-			self._process.send_all(input_.encode(self._encoding)) #self._process.stdin.write(input_)
+#			self._process.send_all(input_.encode(self._encoding)) #self._process.stdin.write(input_)
+			
+			data = input_.encode(self._encoding)
+			while data:
+				written = self._process.send(data)
+				data = data[written:]
 	
 	def handleOutput(self, data, stream):
 		if not data:
@@ -525,7 +558,7 @@ class ExecThread(threading.Thread):
 		try:
 			data = data.decode(self._encoding)
 		except Exception, e:
-			self._probe.getLogger().warning('Invalid encoding scheme on output (%s):\n%s' % (str(e), repr(data)))
+			self._probe.getLogger().warning('Invalid encoding scheme on output %s (%s):\n%s' % (stream, str(e), repr(data)))
 			return
 		
 		self._probe.getLogger().debug('Got some input on %s: (%s)' % (stream, repr(data))) 
