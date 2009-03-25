@@ -340,13 +340,13 @@ class ExecThread(threading.Thread):
 	def run(self):
 		self._probe.getLogger().debug("Starting command execution thread...")
 		try:
-			self._process = pexpect.spawn(self._command)
-			try:
-				self._process.setecho(False)
-			except:
-				pass # On Solaris, the termios.tcgetattr() called by setecho raises an Invalid argument...
+			if isinstance(self._command, list):
+				self._process = pexpect.spawn(self._command[0], self._command[1:])
+			else: # Assume this is a string
+				self._process = pexpect.spawn(self._command)
+			self._process.setwinsize(24, 80)
 		except Exception, e:
-			self._probe.triEnqueueMsg('Internal execution error: %s' % str(e))
+			self._probe.triEnqueueMsg('Internal execution error: %s' % ProbeImplementationManager.getBacktrace())
 
 		retcode = None
 		alive = True

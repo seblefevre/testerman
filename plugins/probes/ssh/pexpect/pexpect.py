@@ -264,7 +264,7 @@ class spawn (object):
     """This is the main class interface for Pexpect. Use this class to start
     and control child applications. """
 
-    def __init__(self, command, args=[], timeout=30, maxread=2000, searchwindowsize=None, logfile=None, cwd=None, env=None):
+    def __init__(self, command, args=[], timeout=30, maxread=2000, searchwindowsize=None, logfile=None, cwd=None, env=None, echo=False):
 
         """This is the constructor. The command parameter may be a string that
         includes a command and any arguments to the command. For example::
@@ -412,9 +412,11 @@ class spawn (object):
         self.closed = True # File-like object.
         self.cwd = cwd
         self.env = env
+        self.echo = echo
         self.__irix_hack = (sys.platform.lower().find('irix')>=0) # This flags if we are running on irix
         # Solaris uses internal __fork_pty(). All others use pty.fork().
-        if (sys.platform.lower().find('solaris')>=0) or (sys.platform.lower().find('sunos5')>=0):
+        # SLE: Python 2.4.x is fine on Solaris 10.
+        if False and (sys.platform.lower().find('solaris')>=0) or (sys.platform.lower().find('sunos5')>=0):
             self.use_native_pty_fork = False
         else:
             self.use_native_pty_fork = True
@@ -534,7 +536,10 @@ class spawn (object):
             try:
                 self.child_fd = sys.stdout.fileno() # used by setwinsize()
                 self.setwinsize(24, 80)
-            except:
+                # SLE: make sure we don't echo input characters. For testerman, that's the 'default'.
+                # Moreover, it seems to be the only way to disable echo on Solaris - not allowed from the parent process
+                if not self.echo: self.setecho(False) 
+            except Exception, e:
                 # Some platforms do not like setwinsize (Cygwin).
                 # This will cause problem when running applications that
                 # are very picky about window size.
@@ -599,7 +604,11 @@ class spawn (object):
                 os.close(child_fd)
         else:
             # Parent.
-            os.close(child_fd)
+            # SLE: close() may be blocking under Solaris ??!
+            # just try: s = pexpect.spawn('/bin/ls -l') multiple time in a Python shell under Sol10/x86...
+            # will block here ~ 30% of attempts. However, the 'fix' is not acceptable in the long run.  
+            # However, with Python 2.4+ under Solaris, the standard Python fork_pty is fine under Sol10.
+            pass # os.close(child_fd)
 
         return pid, parent_fd
 
@@ -755,8 +764,6 @@ class spawn (object):
             p.expect (['abcd'])
             p.expect (['wxyz'])
         """
-
-        self.child_fd
         attr = termios.tcgetattr(self.child_fd)
         if state:
             attr[3] = attr[3] | termios.ECHO

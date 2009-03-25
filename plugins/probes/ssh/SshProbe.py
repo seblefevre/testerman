@@ -212,7 +212,8 @@ class SshThread(threading.Thread):
 			# Wait for a command completion
 			while not self._stopEvent.isSet():
 				if self._ssh.prompt(0.1):
-					# We got a completion
+					# We got a completion - skip the command line that have been
+					# echoed.
 					output = '\n'.join(self._ssh.before.split('\n')[1:])
 					self._ssh.sendline('echo $?')
 					self._ssh.prompt()
