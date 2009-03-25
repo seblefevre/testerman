@@ -24,13 +24,15 @@ import ProbeImplementationManager
 
 import os
 import signal
-import subprocess
 import threading
 import time
 import sys
 import glob
 import re
 import struct
+
+import ssh.pexpect.pexpect as pexpect
+
 
 ##
 # Tools: get a whole process tree (as a flat list of pids)
@@ -194,6 +196,8 @@ type port ExecPortType message
 	- No Windows platform support (for now)
 	- Stderr is forwarded to stdout - no stream segregation
 	- Interleaved stdout/stderr output are not garanteed to be delivered in the correct order
+	- On Solaris (and maybe other untested POSIX systems), sent data is also echoed to the output.
+	  Consider it as a bug for now.
 	
 	Notes:
 	- No need to make the executed program use unbuffered stdout.
@@ -312,129 +316,6 @@ type port ExecPortType message
 		self._execThread = None
 		self._unlock()
 
-import fcntl
-import errno
-import select
-
-class Popen(subprocess.Popen):
-	"""
-	Subclassed to support non-blocking I/O.
-	
-	From http://code.activestate.com/recipes/440554
-	
-	WARNING: does not work with:
-	- Windows (not yet)
-	- Buffered programs
-	"""
-	def read_out(self, maxsize = None):
-		return self._recv('stdout', maxsize)
-	
-	def read_err(self, maxsize = None):
-		return self._recv('stderr', maxsize)
-	
-	def get_conn_maxsize(self, which, maxsize):
-		if maxsize is None:
-			maxsize = 1024
-		elif maxsize < 1:
-			maxsize = 1
-		return getattr(self, which), maxsize
-	
-	def _close(self, which):
-		getattr(self, which).close()
-		setattr(self, which, None)
-	
-	def send_all(self, data):
-		while data:
-			written = self.send(data)
-			data = data[written:]
-	
-	# Posix platform only - no windows support yet
-	def send(self, data):
-		if not self.stdin:
-			return None
-		_, w, _ = select.select([], [self.stdin], [], 0.5) # 500ms timeout
-		if not w:
-			return 0
-		try:
-			written = os.write(self.stdin.fileno(), data)
-		except OSError, e:
-			if e[0] == errno.EPIPE:
-				return self._close('stdin')
-			raise e
-		return written
-
-	def _recv(self, which, maxsize):
-		conn, maxsize = self.get_conn_maxsize(which, maxsize)
-		if conn is None:
-			return None
-		flags = fcntl.fcntl(conn, fcntl.F_GETFL)
-		if not conn.closed:
-			fcntl.fcntl(conn, fcntl.F_SETFL, flags | os.O_NONBLOCK)
-		
-		try:
-			r, _, _ = select.select([conn], [], [], 0)
-			if not r:
-				return ''
-			
-			read = conn.read(maxsize)
-			if not read:
-				return self._close(which) # returns None
-			
-			if self.universal_newlines:
-				read = self._translate_newlines(read)
-			return read
-		finally:
-			if not conn.closed:
-				fcntl.fcntl(conn, fcntl.F_SETFL, flags) # restore initial flags
-
-	def read_out_err(self, timeout = 0.0, maxsize = None):
-		connout, maxsizeout = self.get_conn_maxsize('stdout', maxsize)
-		connerr, maxsizeerr = self.get_conn_maxsize('stderr', maxsize)
-		flagsout = fcntl.fcntl(connout, fcntl.F_GETFL)
-		flagserr = fcntl.fcntl(connerr, fcntl.F_GETFL)
-		if not connout.closed:
-			fcntl.fcntl(connout, fcntl.F_SETFL, flagsout | os.O_NONBLOCK)
-		if not connerr.closed:
-			fcntl.fcntl(connerr, fcntl.F_SETFL, flagserr | os.O_NONBLOCK)
-		
-		rlist = []
-		if connout is not None:
-			rlist.append(connout)
-		if connerr is not None:
-			rlist.append(connerr)
-		
-		try:
-			r, _, _ = select.select(rlist, [], [], timeout)
-			if not r:
-				return ('', '')
-			
-			retout = None
-			reterr = None
-			if connout in r:
-				read = connout.read(maxsizeout)
-				if not read:
-					retout = self._close('stdout') # returns None
-				else:
-					retout = read
-
-			if connerr in r:
-				read = connerr.read(maxsizeerr)
-				if not read:
-					reterr = self._close('stderr') # returns None
-				else:
-					reterr = read
-			
-			return (retout, reterr)
-		finally:
-			if not connout.closed:
-				fcntl.fcntl(connout, fcntl.F_SETFL, flagsout) # restore initial flags
-			if not connerr.closed:
-				fcntl.fcntl(connerr, fcntl.F_SETFL, flagserr) # restore initial flags
-		return (None, None)
-
-
-# Experimental version to work around the buffered streams
-import ssh.pexpect.pexpect as pexpect
 
 class ExecThread(threading.Thread):
 	"""
@@ -460,22 +341,14 @@ class ExecThread(threading.Thread):
 		self._probe.getLogger().debug("Starting command execution thread...")
 		try:
 			self._process = pexpect.spawn(self._command)
-			self._process.setecho(False)
-#			self._process = Popen(self._command, bufsize=0, stdout=subprocess.PIPE, stderr=subprocess.PIPE, stdin=subprocess.PIPE, shell=True)
+			try:
+				self._process.setecho(False)
+			except:
+				pass # On Solaris, the termios.tcgetattr() called by setecho raises an Invalid argument...
 		except Exception, e:
 			self._probe.triEnqueueMsg('Internal execution error: %s' % str(e))
 
 		retcode = None
-		"""
-		while retcode is None:
-			retcode = self._process.poll()
-#			self._probe.getLogger().debug('Reading output...')
-			stdout, stderr = self._process.read_out_err(self._timeout)
-#			self._probe.getLogger().debug('Read output:\n%s\n%s' % (repr(stdout), repr(stderr)) )
-			self.handleOutput(stdout, 'stdout')
-			self.handleOutput(stderr, 'stderr')
-			time.sleep(0.001)
-		"""
 		alive = True
 		while alive:
 			alive = self._process.isalive()
@@ -488,8 +361,6 @@ class ExecThread(threading.Thread):
 		self._process.close()
 		retcode = self._process.status
 			
-		
-		
 		self._process = None
 
 		self._probe._onExecThreadTerminated()
@@ -545,8 +416,7 @@ class ExecThread(threading.Thread):
 	def sendInput(self, input_):
 		if self._process:
 			self._probe.getLogger().debug("Sending input to process: %s" % repr(input_))
-#			self._process.send_all(input_.encode(self._encoding)) #self._process.stdin.write(input_)
-			
+
 			data = input_.encode(self._encoding)
 			while data:
 				written = self._process.send(data)
@@ -581,7 +451,7 @@ class ExecThread(threading.Thread):
 			for pattern in self._patterns:
 				m = pattern.match(buf)
 				if m:
-					event = { 'stream': stream, 'output': buf } # Should we strip the line ?
+					event = { 'stream': stream, 'output': buf }
 					for k, v in m.groupdict().items():
 						event['matched_%s' % k] = v
 					self._probe.triEnqueueMsg(event)			
