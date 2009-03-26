@@ -14,8 +14,8 @@
 ##
 
 ##
-# TCAP (itu-t) Codec
-# To compile TcapAsn: ./py_output.py asn/tcap.asn > TcapAsn.py
+# MAP (2+) Codec
+# To compile MapAsn: cd ber && ./py_output.py asn/AMP-All.asn > MapAsn.py
 ##
 
 import CodecManager
