@@ -225,7 +225,7 @@ class InteractiveExecProbe(ProbeImplementationManager.ProbeImplementation):
 	type record StartCommand
 	{
 		charstring command,
-		record of charstring patterns optional, // defaulted to [ r'.*' ]
+		record of charstring patterns optional, // defaulted to [ r'.*' ]
 	}
 
 	type record OutputNotification
