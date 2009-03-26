@@ -97,7 +97,7 @@ def triStopTimer(timerId):
 		_unlock()
 		return TRI_Error
 	try:
-		CurrentTimers[timerId].cancel()
+		CurrentTimers[timerId]['timer'].cancel()
 	except:
 		pass
 	del CurrentTimers[timerId]
