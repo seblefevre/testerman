@@ -1321,6 +1321,140 @@ class TC_DEACTIVATE(TestCase):
 		])
 
 
+class TC_ALL_COMPONENT_DONE_EVENT(TestCase):
+	"""
+	Verifies that 'any component.done' Testerman implementation basically works (in a alt)
+	"""
+	def body(self):
+		control = self.mtc['control']
+		
+		nb = 5
+		# Creates N PTCs whose control port is connected to the main control
+		log("Creating and starting all PTCs...")
+		for i in range(nb):
+			ptc = self.create('tc %s' % i)
+			connect(control, ptc['control'])
+			ptc.start(BEHAVIOUR_LOOP())
+		
+		log("Gracefully stopping all PTCs...")
+		control.send("please stop") # 1 -> N PTCs
+		log("Waiting for PTCs completions...")
+
+		# Graceful stop
+		t = Timer(1.0)
+		t.start()
+		alt([
+			[ all_component.DONE,
+				lambda: log("all PTC stopped.")
+			],
+			[ t.TIMEOUT,
+				lambda: log("all PTC stopped event not detected"),
+				lambda: setverdict("fail"),
+				lambda: stop(),
+			]
+		])
+		t.stop()
+		# Verdict from PTC (gracefully stopped)
+
+class TC_ALL_COMPONENT_DONE_EVENT_2(TestCase):
+	"""
+	Verifies that 'any component.done' Testerman implementation basically works (in a alt)
+	
+	Includes a negative test, verifying that the event is not fired too soon.
+	"""
+	def body(self):
+		control = self.mtc['control']
+		
+		nb = 5
+		ptcs = []
+		# Creates N PTCs whose control port is connected to the main control
+		log("Creating and starting all PTCs...")
+		for i in range(nb):
+			ptc = self.create('tc %s' % i)
+			connect(control, ptc['control'])
+			ptc.start(BEHAVIOUR_LOOP())
+			ptcs.append(ptc)
+		
+		log("Stopping some PTCs...")
+		for ptc in ptcs[:-1]:
+			ptc.stop()
+
+		log("Verifying that no all_component.DONE is received")
+
+		t = Timer(1.0)
+		t.start()
+		alt([
+			[ all_component.DONE,
+				lambda: log("all PTC stopped incorrectly detected !"),
+				lambda: setverdict("fail"),
+				lambda: stop(),
+			],
+			[ t.TIMEOUT,
+				lambda: log("all PTC stopped event not detected - OK"),
+			]
+		])
+		t.stop()
+		
+		log("Stopping the last PTC...")
+		ptcs[-1].stop()
+
+		log("Expecting a all_component.DONE event...")
+		t = Timer(1.0)
+		t.start()
+		alt([
+			[ all_component.DONE,
+				lambda: log("all PTC stopped.")
+			],
+			[ t.TIMEOUT,
+				lambda: log("all PTC stopped event not detected"),
+				lambda: setverdict("fail"),
+				lambda: stop(),
+			]
+		])
+		t.stop()
+		setverdict('pass')
+
+class TC_ALL_COMPONENT_DONE(TestCase):
+	"""
+	Verifies that 'any component.done' Testerman implementation basically works.
+	"""
+	def body(self):
+		control = self.mtc['control']
+		
+		nb = 5
+		# Creates N PTCs whose control port is connected to the main control
+		log("Creating and starting all PTCs...")
+		for i in range(nb):
+			ptc = self.create('tc %s' % i)
+			connect(control, ptc['control'])
+			ptc.start(BEHAVIOUR_LOOP())
+		
+		log("Gracefully stopping all PTCs...")
+		control.send("please stop") # 1 -> N PTCs
+		log("Wait for PTCs completions...")
+		
+		all_component.done()
+		# Verdict from PTC (gracefully stopped)
+
+class TC_ALL_COMPONENT_STOP(TestCase):
+	"""
+	Verifies that 'any component.stop' Testerman implementation basically works.
+	"""
+	def body(self):
+		nb = 5
+		# Creates N PTCs whose control port is connected to the main control
+		log("Creating and starting all PTCs...")
+		for i in range(nb):
+			ptc = self.create('tc %s' % i)
+			ptc.start(BEHAVIOUR_LOOP())
+		
+		log("Stopping all PTCs...")
+		all_component.stop()
+		log("Wait for PTCs completions...")
+		
+		all_component.done()
+		setverdict('pass')
+
 ##
 # Control definition
 ##
@@ -1359,3 +1493,8 @@ TC_ACTION().execute()
 
 TC_ACTIVATE().execute()
 TC_DEACTIVATE().execute()
+
+TC_ALL_COMPONENT_DONE_EVENT().execute()
+TC_ALL_COMPONENT_DONE_EVENT_2().execute()
+TC_ALL_COMPONENT_DONE().execute()
+TC_ALL_COMPONENT_STOP().execute()
