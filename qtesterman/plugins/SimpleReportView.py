@@ -102,6 +102,7 @@ class Testcase:
 	
 	def toString(self):
 		ret = []
+		ret.append(80*'-')
 		ret.append('%s' % self._id)
 		ret.append('Verdict: %s' % self._verdict)
 		if self._title:
@@ -110,11 +111,13 @@ class Testcase:
 		if self._description:
 			ret.append('Description:\n%s' % self._description)
 		if self._logs:
+			ret.append(80*'-')
 			ret.append('User logs:')
 			for timestamp, log in self._logs:
-				d = QDateTime()
-				d.setTime_t(int(timestamp - self._startTimestamp))
-				ret.append('%s: %s' % (d.toString('+hh:mm:ss'), log))
+				delta = timestamp - self._startTimestamp
+				t = QTime().addMSecs(int(delta * 1000))
+				ret.append('%s: %s' % (t.toString('+ hh:mm:ss.zzz'), log))
+		ret.append(80*'-')
 
 		return '\n'.join(ret)
 	
@@ -151,10 +154,13 @@ class Ats:
 			if v in counts:
 				counts[v] = counts[v] + 1
 			count += 1
-		
-		ret.insert(0, 'Summary: %s testcases, %s%s passed, %s%s failed' % (count, 
+		ret.append(80*'=')
+
+		ret.insert(0, 80*'=')
+		ret.insert(0, 'Summary: %s testcases, %s%s passed, %s%s failed' % (count,
 			counts['pass'], count and ' (%2.2f%%)' % (float(counts['pass'])/float(count)*100.0) or '',
 			counts['fail'], count and ' (%2.2f%%)' % (float(counts['fail'])/float(count)*100.0) or ''))
+		ret.insert(0, 80*'=')
 
 		return '\n'.join(ret)
 
@@ -221,7 +227,7 @@ class WSimpleLogView(Plugin.WReportView):
 			for tc in self._ats.getTestcases():
 				self._textView.append(tc.toString())
 				self._textView.append('\n')
-	
+
 	def clearLog(self):
 		self._ats = None
 		self._currentTestcase = None
