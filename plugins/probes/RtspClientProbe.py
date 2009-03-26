@@ -32,6 +32,50 @@ import select
 
 class RtspClientProbe(ProbeImplementationManager.ProbeImplementation):
 	"""
+	= Identification and Properties =
+
+	Probe Type ID: `rtsp.client`
+
+	Properties:
+	|| '''Name''' || '''Type''' || '''Default value''' || '''Description''' ||
+	|| `strict_mode` || boolean || `False` || When `True`, disables automatic CSeq management (generation and check on response), and transfer response headers as is, without modifying the case (use this mode for protocol-oriented testing). When `False`, CSeq is automatically generated if not provided, checked when receiving a response, and reponse header names are converted to lower case to make matching easier. ||
+	|| `version` || string || `RTSP/1.0` || The RSTP version string to use in the request line ||
+	|| `auto_connect` || boolean || `False` || If set to `True`, tcp-connect on mapping, otherwise only connect hen sending a message. Has no effect for udp transport. ||
+	|| `maintain_connection` || boolean || `False` || If set to `True`, does not tcp-disconnect once a response has been received. Has no effect for udp transport. ||
+	|| `host` || string || `localhost` || The IP address or hostname of the RTSP server ||
+	|| `port` || integer || `554` || The transport port of the RTSP server ||
+	|| `transport` || string in `'tcp', 'udp'` || `tcp` || The transport to use to reach the RTSP server. Only `tcp` is implemented for now ||
+	|| `local_ip` || string || `''` (empty) || The local IP address (or hostname) to use for outgoing packets. Leave it empty for automatic selection by the system. For udp transport, this is also the address the probe listens for a response on ||
+	|| `local_port` || integer || `0` || The local port for the outgoing packets. Leave it to 0 for automatic port selection by the system. For udp transport, this is also the port the probe listens for a response on ||
+
+
+	= Overview =
+
+	This probe implements a very simple RTSP encoder/decoder over tcp or udp (udp transport currently not available).
+	It encapsulates the [CodecRtsp RTSP codec], feeding it only when the whole payload has been received
+	(that's why a probe is required), and is based on [http://www.ietf.org/rfc/rfc2326.txt RFC 2326].
+
+	Optionally, the probe can manage CSeq generation and correlation on response (see the `strict_mode` property),
+	enabling both high-level and more procotol-oriented testing.
+
+	== Availability ==
+
+	All platforms.
+
+	== Dependencies ==
+
+	None.
+
+	== See Also ==
+
+	 * For pure protocol testing, you may also consider using the RTSP codec with an UDP probe (stateful decoding not required), or  with a TCP probe 
+	 * CodecRtsp
+
+
+	= TTCN-3 Types Equivalence =
+
+	The test system interface port bound to such a probe complies with the `RtspClientPortType` port type as specified below:
+	{{{
 	type record RtspRequest
 	{
 		charstring method,
@@ -55,6 +99,7 @@ class RtspClientProbe(ProbeImplementationManager.ProbeImplementation):
 		in RtspRequest;
 		out RtspResponse;
 	}
+	}}}
 	"""
 	def __init__(self):
 		ProbeImplementationManager.ProbeImplementation.__init__(self)

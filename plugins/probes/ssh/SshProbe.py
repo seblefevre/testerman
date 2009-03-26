@@ -28,55 +28,53 @@ import threading
 class SshProbe(ProbeImplementationManager.ProbeImplementation):
 	"""
 	= Identification and Properties =
-	
+
 	Probe Type ID: `ssh`
-	
+
 	Properties:
-	
 	|| '''Name''' || '''Type''' || '''Default value''' || '''Description''' ||
 	|| `host` || string || `'localhost'` || to host to connect onto to execute the commands
 	|| `username` || string || (None) || the username to use to log onto `host`to execute the commands
 	|| `password` || string || (None) || the `username`'s password on `host`
 	|| `timeout` || float || `5.0` || the maximum amount of time, in s, allowed to __start__ executing the command on `host`. Includes the SSH login sequence.
-	|| `convert_eol`|| boolean || `True` || if set to True, convert `\r\n` in output to `\n`. This way, the templates are compatible with ProbeExec.
-	
+	|| `convert_eol`|| boolean || `True` || if set to True, convert `\\r\\n` in output to `\\n`. This way, the templates are compatible with ExecProbe.
+
 
 	= Overview =
-	
-	This probe implements a single shot command execution interface (the same as ExecProbe) through SSH.
-	
+
+	This probe implements a single shoot command execution interface (the same as ExecProbe) through SSH.
+
 	Basically you just specify a command to execute that will be executed within a shell, and you get a response
 	once its execution is over. The response contains both an integer return code and the whole command output.
-	
+
 	If you consider the command execution is too long (no response received), you can cancel it at any time from the
 	userland. Such a cancellation terminates all the subprocess tree with a SIGKILL signal. Once cancelled,
 	you should not expect a command response anymore.
-	
+
 	No interaction is possible during the command execution.
-	
+
 	Notes:
 	 * when starting daemons from this probe, make sure that your daemon correctly closes standard output, otherwise
 	the probe never detects the command as being complete.
-	
+
 	== Availability ==
-	
-	All POSIX systems. Windows systems are not supported.
-	
+
+	All POSIX platforms. Windows platforms are not supported.
+
 	== Dependencies ==
-	
+
 	Requires a ssh client installed on the machine running the probe, as it is only a wrapper over it.
-		
+
 	== See Also ==
-	
+
 	 * ExecProbe, implementing the same port type for local execution (convenient when you have no SSH access
 	to your machine, but you must deploy an agent on it)
 	 * ExecInteractiveProbe, to run a command line program and interact with it (CLI testing, etc)
-	
+
 
 	= TTCN-3 Types Equivalence =
-	
+
 	The test system interface port bound to such a probe complies with the `ExecPortType` port type as specified below:
-	
 	{{{
 	type union ExecCommand
 	{
