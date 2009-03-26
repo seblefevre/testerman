@@ -416,7 +416,7 @@ class spawn (object):
         self.__irix_hack = (sys.platform.lower().find('irix')>=0) # This flags if we are running on irix
         # Solaris uses internal __fork_pty(). All others use pty.fork().
         # SLE: Python 2.4.x is fine on Solaris 10.
-        if False and (sys.platform.lower().find('solaris')>=0) or (sys.platform.lower().find('sunos5')>=0):
+        if True and (sys.platform.lower().find('solaris')>=0) or (sys.platform.lower().find('sunos5')>=0):
             self.use_native_pty_fork = False
         else:
             self.use_native_pty_fork = True
@@ -621,9 +621,12 @@ class spawn (object):
         child_name = os.ttyname(tty_fd)
 
         # Disconnect from controlling tty if still connected.
-        fd = os.open("/dev/tty", os.O_RDWR | os.O_NOCTTY);
-        if fd >= 0:
-            os.close(fd)
+        try:
+            fd = os.open("/dev/tty", os.O_RDWR | os.O_NOCTTY);
+            if fd >= 0:
+                os.close(fd)
+        except:
+            pass # SLE: /dev/tty not available, already detached from a controlling tty (if we spawn() from a daemon)
 
         os.setsid()
 
