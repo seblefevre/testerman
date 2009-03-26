@@ -350,6 +350,11 @@ class Timer:
 		if duration is None:
 			raise TestermanTtcn3Exception("No duration set for this timer")
 
+		# We remove any TIMEOUT event that may be in the system queue for this timer,
+		# so that a previous timer.TIMEOUT / timer.timeout() does not match after a restart()
+		# In other words, the state "timeout" is no longer valid for this timer.
+		_removeSystemEvent(self._TIMEOUT_EVENT, self)
+
 		self._timerId = _getNewId()
 		_registerTimer(self._timerId, self)
 		TestermanPA.triStartTimer(self._timerId, duration)
@@ -435,6 +440,10 @@ class TestComponent:
 	STATE_RUNNING = 1
 	STATE_KILLED = 2
 	STATE_STOPPED = 3
+
+	# Static events - emitted conditionally on done, killed
+	_ALL_DONE_EVENT = { 'event': 'ac.done' }
+	_ALL_KILLED_EVENT = { 'event': 'ac.killed' }
 	
 	def __init__(self, name = None, alive = False):
 		"""
@@ -640,13 +649,31 @@ class TestComponent:
 				logTestComponentKilled(id_ = str(self), message = "PTC %s, non-alive, automatically killed after stop" % str(self))
 				self._setState(self.STATE_KILLED)
 				self._finalize()
-				_postSystemEvent(self._DONE_EVENT, self)
-				_postSystemEvent(self._KILLED_EVENT, self)
+				self._emitDoneEvent()
+				self._emitKilledEvent()
 		else:
 			if not self._getState() == self.STATE_STOPPED:
 				# Alive components
 				self._setState(self.STATE_STOPPED)
-				_postSystemEvent(self._DONE_EVENT, self)
+				self._emitDoneEvent()
+
+	def _emitDoneEvent(self):
+		_postSystemEvent(self._DONE_EVENT, self)
+		# If we are the last DONE, emit a all_component._DONE_EVENT too
+		for ptc in self._testcase._ptcs:
+			if ptc.alive():
+				return
+		# OK, Last one.
+		_postSystemEvent(self._ALL_DONE_EVENT, None)
+	
+	def _emitKilledEvent(self):
+		_postSystemEvent(self._KILLED_EVENT, self)
+		# If we are the last DONE, emit a all_component._KILLED_EVENT too
+		for ptc in self._testcase._ptcs:
+			if ptc.alive():
+				return
+		# OK, Last one.
+		_postSystemEvent(self._ALL_KILLED_EVENT, None)
 	
 	def _doKill(self):
 		"""
@@ -656,7 +683,7 @@ class TestComponent:
 			logTestComponentKilled(id_ = str(self), message = "killed")
 			self._setState(self.STATE_KILLED)
 			self._finalize()
-			_postSystemEvent(self._KILLED_EVENT, self)
+			self._emitKilledEvent()
 
 	def _raiseStopException(self):
 		"""
@@ -745,6 +772,12 @@ class TestComponent:
 		if self._getState() == self.STATE_RUNNING:
 			raise TestermanTtcn3Exception("Invalid operation: you cannot start a behaviour on a running PTC.")
 
+		# We remove any DONE event that may be in the system queue for this PTC,
+		# so that a previous ptc.DONE / ptc.done() does not match after a restart()
+		# In other words, the state "done" is no longer valid for this PTC.
+		_removeSystemEvent(self._DONE_EVENT, self)
+		_removeSystemEvent(self._ALL_DONE_EVENT, None)
+
 		logInternal("Starting %s..." % str(self))
 		self._setState(self.STATE_RUNNING)
 		# Attach the PTC to this behaviour
@@ -791,7 +824,7 @@ class TestComponent:
 		TTCN-3 done()
 		Waits for the TC termination (warning: no timeout).
 		
-		Only meaningful fot PTC.
+		Only meaningful for PTC.
 		
 		NB: use self.DONE instead of self.done() in an alt statement.
 		"""
@@ -799,6 +832,20 @@ class TestComponent:
 		if not self._getState() == self.STATE_RUNNING:
 			return
 		alt([[self.DONE]])
+
+	def killed(self):
+		"""
+		TTCN-3 killed()
+		Waits for the TC termination (warning: no timeout).
+		
+		Only meaningful for PTC.
+		
+		NB: use self.KILLED instead of self.killed() in an alt statement.
+		"""
+		# Immediately returns if the TC is not alive (i.e. already 'killed')
+		if self._getState() == self.STATE_KILLED:
+			return
+		alt([[self.KILLED]])
 
 
 ###############################################################################
@@ -860,6 +907,20 @@ class Port:
 			self._messageQueue.append((message, from_))
 			self._unlock()
 		# else not started: not enqueueing anything.
+
+	def _remove(self, message, from_):
+		"""
+		Very special purpose. Should not be used on normal ports.
+		Only useful to remove invalidated state messages from the system queue
+		(timer.TIMEOUT, ptc.DONE, ... once timer/ptc restarted).
+		"""
+		self._lock()
+		try:
+			self._messageQueue.remove((message, from_))
+		except ValueError:
+			# Not in queue
+			pass
+		self._unlock()
 
 	# TTCN-3 compliant operations
 	def send(self, message, to = None):
@@ -1110,6 +1171,8 @@ class TestCase:
 		tc = TestComponent(name, alive)
 		tc._testcase = self
 		self._ptcs.append(tc)
+		# Remove state events that are no longuer relevant - "ALL_DONE_EVENT" is still, however.
+		_removeSystemEvent(TestComponent._ALL_KILLED_EVENT, None)
 		return tc
 	
 	# NB: No default implementation of body() since its signature would not be
@@ -1643,7 +1706,6 @@ def alt(alternatives):
 	# 
 	# The system queue is handled differently:
 	# - unmatched messages are not consumed, but kept in the queue. This is not the case for "userland ports".
-	# - REPEAT, RETURN, are not supported for system queue events.
 
 	# Gets some basic things to intercept whenever we enter an alt, such as STOP_COMMAND and KILL_COMMAND
 	# through the system queue.	
@@ -1701,6 +1763,7 @@ def alt(alternatives):
 							port._messageQueue.remove((message, from_))
 							# Exit the port alternative loop, with matchedInfo
 							break
+					
 					if matchedInfo:
 						# Exit the loop on messages directly.
 						break
@@ -1717,9 +1780,12 @@ def alt(alternatives):
 					elif branch == 'done':
 						# done-branch selected
 						logDoneBranchSelected(id_ = str(condition.template['ptc']))
-					elif branch =='killed':
+					elif branch == 'killed':
 						# killed-branch selected
 						logKilledBranchSelected(id_ = str(condition.template['ptc']))
+					elif branch == 'ac.done':
+						# all component-done branch selected
+						logDoneBranchSelected(id_ = 'all')
 					else:
 						# Other system messages are for internal purpose only and does not have TTCN-3 branch equivalent
 						logInternal('system event received in system queue: %s' % repr(condition.template))
@@ -1844,6 +1910,13 @@ def _postSystemEvent(event, from_):
 	"""
 	_getSystemQueue()._enqueue(event, from_)
 
+def _removeSystemEvent(event, from_):
+	"""
+	Removes an event from the system bus.
+	Called to remove states that are no longer valid
+	(timer.TIMEOUT, ptc.DONE, ...) due to object restart.
+	"""
+	_getSystemQueue()._remove(event, from_)
 
 ################################################################################
 # Test Adapter Configuration management - System Bindings management
@@ -2782,6 +2855,73 @@ def deactivate(id_):
 	@returns: True if deactivated, False otherwise (not activated before)
 	"""
 	return getLocalContext().removeDefaultAltstep(id_)
+
+################################################################################
+# all component / all timer / ...
+################################################################################
+
+class all_component:
+	"""
+	Defined as a static class.
+	"""
+
+	DONE = _BranchCondition(_getSystemQueue(), TestComponent._ALL_DONE_EVENT)
+	KILLED = _BranchCondition(_getSystemQueue(), TestComponent._ALL_KILLED_EVENT)
+	
+	@staticmethod
+	def stop():
+		testcase = getLocalContext().getTestCase()
+		if not testcase:
+			raise TestermanTtcn3Exception("'all component.stop' can only be called from the MTC")
+		for ptc in testcase._ptcs:
+			ptc.stop()
+
+	@staticmethod
+	def kill():
+		testcase = getLocalContext().getTestCase()
+		if not testcase:
+			raise TestermanTtcn3Exception("'all component.kill' can only be called from the MTC")
+		for ptc in testcase._ptcs:
+			ptc.kill()
+
+	@classmethod
+	def done(cls):
+		"""
+		Could have been implemented as:
+		alt([[cls.DONE]])
+		"""
+		testcase = getLocalContext().getTestCase()
+		if not testcase:
+			raise TestermanTtcn3Exception("'all component.done' can only be called from the MTC")
+		alt([[cls.DONE]])
+
+	@classmethod
+	def killed(cls):
+		testcase = getLocalContext().getTestCase()
+		if not testcase:
+			raise TestermanTtcn3Exception("'all component.killed' can only be called from the MTC")
+		alt([[cls.KILLED]])
+
+	@staticmethod
+	def running()	:
+		testcase = getLocalContext().getTestCase()
+		if not testcase:
+			raise TestermanTtcn3Exception("'all component.running' can only be called from the MTC")
+		for ptc in testcase._ptcs:
+			if not ptc.running():
+				return False
+		return True
+
+	@staticmethod
+	def alive():
+		testcase = getLocalContext().getTestCase()
+		if not testcase:
+			raise TestermanTtcn3Exception("'all component.alive' can only be called from the MTC")
+		for ptc in testcase._ptcs:
+			if not ptc.alive():
+				return False
+		return True
+			
 
 ################################################################################
 # convenience functions: log level management
