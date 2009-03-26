@@ -1,6 +1,6 @@
-# Auto-generated at Mon, 23 Mar 2009 09:30:02 +0000
+# Auto-generated at Thu, 26 Mar 2009 16:40:07 +0000
 # with the following command line:
-# ./py_output.py --implicit asn/MAP-CommonDataTypes_expanded.asn
+# ./py_output.py --implicit asn/MAP-All.asn
 import Yapasn1 as asn1
 #module MAP-CommonDataTypes None
 MulticallBearerInfo=asn1.INTEGER_class ([],1,7)
@@ -11,10 +11,13 @@ Ext_TeleserviceCode=asn1.OCTSTRING
 TeleserviceList=asn1.SEQUENCE_OF (Ext_TeleserviceCode)
 T_BcsmTriggerDetectionPoint=asn1.ENUM({'termAttemptAuthorized':12,'tBusy':13,'tNoAnswer':14})
 SupportedLCS_CapabilitySets=asn1.BITSTRING_class ([('lcsCapabilitySet1',0),('lcsCapabilitySet2',1),('lcsCapabilitySet3',2),('lcsCapabilitySet4',3),('lcsCapabilitySet5',4)],None,None)
+Release_response_reason=asn1.INTEGER_class ([('normal',0),('not-finished',1),('user-defined',30)],None,None)
 CallTerminationIndicator=asn1.ENUM({'terminateCallActivityReferred':0,'terminateAllCallActivities':1})
 ChosenChannelInfo=asn1.OCTSTRING
 ChargingCharacteristics=asn1.OCTSTRING
 TraceDepth=asn1.ENUM({'minimum':0,'medium':1,'maximum':2})
+Associate_source_diagnostic=asn1.CHOICE ([('dialogue-service-user',None,asn1.TYPE(asn1.IMPLICIT(1,cls=asn1.CONTEXT_FLAG),asn1.INTEGER_class ([('null',0),('no-reason-given',1),('application-context-name-not-supported',2)],None,None))),
+    ('dialogue-service-provider',None,asn1.TYPE(asn1.IMPLICIT(2,cls=asn1.CONTEXT_FLAG),asn1.INTEGER_class ([('null',0),('no-reason-given',1),('no-common-dialogue-portion',2)],None,None)))])
 ISDN_SubaddressString=asn1.OCTSTRING
 SRES=asn1.OCTSTRING
 LSAOnlyAccessIndicator=asn1.ENUM({'accessOutsideLSAsAllowed':0,'accessOutsideLSAsRestricted':1})
@@ -44,9 +47,13 @@ OfferedCamel4CSIs=asn1.BITSTRING_class ([('o-csi',0),('d-csi',1),('vt-csi',2),('
 GeodeticInformation=asn1.OCTSTRING
 InterrogationType=asn1.ENUM({'basicCall':0,'forwarding':1})
 PDP_Address=asn1.OCTSTRING
+AARQ_apdu=asn1.TYPE(asn1.IMPLICIT(0,cls=asn1.APPLICATION_FLAG),asn1.SEQUENCE ([('protocol-version',None,asn1.TYPE(asn1.IMPLICIT(0,cls=asn1.CONTEXT_FLAG),asn1.BITSTRING_class ([('version1',0)],None,None)),0),
+    ('application-context-name',None,asn1.TYPE(asn1.IMPLICIT(1,cls=asn1.CONTEXT_FLAG),asn1.OBJECT_IDENTIFIER),0),
+    ('user-information',None,asn1.TYPE(asn1.IMPLICIT(30,cls=asn1.CONTEXT_FLAG),    asn1.SEQUENCE_OF (asn1.EXTERNAL)),1)], seq_name = 'AARQ-apdu'))
 SM_RP_SMEA=asn1.OCTSTRING
 EncryptionInformation=asn1.OCTSTRING
 DefaultSMS_Handling=asn1.ENUM({'continueTransaction':0,'releaseTransaction':1})
+Release_request_reason=asn1.INTEGER_class ([('normal',0),('urgent',1),('user-defined',30)],None,None)
 SM_DeliveryOutcome=asn1.ENUM({'memoryCapacityExceeded':0,'absentSubscriber':1,'successfulTransfer':2})
 Codec=asn1.OCTSTRING
 TEID=asn1.OCTSTRING
@@ -133,10 +140,14 @@ EraseCC_EntryArg=asn1.SEQUENCE ([('ss-Code',None,asn1.TYPE(asn1.IMPLICIT(0,cls=a
 BMSC_EventList=asn1.BITSTRING_class ([('mbmsMulticastServiceActivation',0)],None,None)
 Ext_QoS_Subscribed=asn1.OCTSTRING
 TraceNE_TypeList=asn1.BITSTRING_class ([('msc-s',0),('mgw',1),('sgsn',2),('ggsn',3),('rnc',4),('bm-sc',5)],None,None)
+Associate_result=asn1.INTEGER_class ([('accepted',0),('reject-permanent',1)],None,None)
 CallReferenceNumber=asn1.OCTSTRING
 InterCUG_Restrictions=asn1.OCTSTRING
 DestinationNumberLengthList=asn1.SEQUENCE_OF (asn1.INTEGER_class ([],1,15))
 SS_EventList=asn1.SEQUENCE_OF (SS_Code)
+RLRQ_apdu=asn1.TYPE(asn1.IMPLICIT(2,cls=asn1.APPLICATION_FLAG),asn1.SEQUENCE ([('reason',None,asn1.TYPE(asn1.IMPLICIT(0,cls=asn1.CONTEXT_FLAG),Release_request_reason),1),
+    ('user-information',None,asn1.TYPE(asn1.IMPLICIT(30,cls=asn1.CONTEXT_FLAG),    asn1.SEQUENCE_OF (asn1.EXTERNAL)),1)], seq_name = 'RLRQ-apdu'))
+ABRT_source=asn1.INTEGER_class ([('dialogue-service-user',0),('dialogue-service-provider',1)],None,None)
 MT_SMS_TPDU_Type=asn1.ENUM({'sms-DELIVER':0,'sms-SUBMIT-REPORT':1,'sms-STATUS-REPORT':2})
 GGSN_EventList=asn1.BITSTRING_class ([('pdpContext',0),('mbmsContext',1)],None,None)
 ForwardingOptions=asn1.OCTSTRING
@@ -208,6 +219,11 @@ IK=asn1.OCTSTRING
 BSSMAP_ServiceHandoverInfo=asn1.SEQUENCE ([('bssmap-ServiceHandover',None,BSSMAP_ServiceHandover,0),
     ('rab-Id',None,RAB_Id,0)], seq_name = 'BSSMAP-ServiceHandoverInfo')
 Cksn=asn1.OCTSTRING
+AARE_apdu=asn1.TYPE(asn1.IMPLICIT(1,cls=asn1.APPLICATION_FLAG),asn1.SEQUENCE ([('protocol-version',None,asn1.TYPE(asn1.IMPLICIT(0,cls=asn1.CONTEXT_FLAG),asn1.BITSTRING_class ([('version1',0)],None,None)),0),
+    ('application-context-name',None,asn1.TYPE(asn1.IMPLICIT(1,cls=asn1.CONTEXT_FLAG),asn1.OBJECT_IDENTIFIER),0),
+    ('result',None,asn1.TYPE(asn1.IMPLICIT(2,cls=asn1.CONTEXT_FLAG),Associate_result),0),
+    ('result-source-diagnostic',None,asn1.TYPE(asn1.IMPLICIT(3,cls=asn1.CONTEXT_FLAG),Associate_source_diagnostic),0),
+    ('user-information',None,asn1.TYPE(asn1.IMPLICIT(30,cls=asn1.CONTEXT_FLAG),    asn1.SEQUENCE_OF (asn1.EXTERNAL)),1)], seq_name = 'AARE-apdu'))
 TeleservNotProvParam=asn1.SEQUENCE ([('extensionContainer',None,ExtensionContainer,1)], seq_name = 'TeleservNotProvParam')
 AdditionalSubscriptions=asn1.BITSTRING_class ([('privilegedUplinkRequest',0),('emergencyUplinkRequest',1),('emergencyReset',2)],None,None)
 UnidentifiedSubParam=asn1.SEQUENCE ([('extensionContainer',None,ExtensionContainer,1)], seq_name = 'UnidentifiedSubParam')
@@ -255,6 +271,8 @@ Ext_SS_Status=asn1.OCTSTRING
 SS_CamelData=asn1.SEQUENCE ([('ss-EventList',None,SS_EventList,0),
     ('gsmSCF-Address',None,ISDN_AddressString,0),
     ('extensionContainer',None,asn1.TYPE(asn1.IMPLICIT(0,cls=asn1.CONTEXT_FLAG),ExtensionContainer),1)], seq_name = 'SS-CamelData')
+RLRE_apdu=asn1.TYPE(asn1.IMPLICIT(3,cls=asn1.APPLICATION_FLAG),asn1.SEQUENCE ([('reason',None,asn1.TYPE(asn1.IMPLICIT(0,cls=asn1.CONTEXT_FLAG),Release_response_reason),1),
+    ('user-information',None,asn1.TYPE(asn1.IMPLICIT(30,cls=asn1.CONTEXT_FLAG),    asn1.SEQUENCE_OF (asn1.EXTERNAL)),1)], seq_name = 'RLRE-apdu'))
 AbsentSubscriberReason=asn1.ENUM({'imsiDetach':0,'restrictedArea':1,'noPageResponse':2,'purgedMS':3})
 NumberOfForwarding=asn1.INTEGER_class ([],1,5)
 DispatcherList=asn1.SEQUENCE_OF (ISDN_AddressString)
@@ -450,6 +468,8 @@ MG_CSI=asn1.SEQUENCE ([('mobilityTriggers',None,MobilityTriggers,0),
     ('extensionContainer',None,asn1.TYPE(asn1.IMPLICIT(1,cls=asn1.CONTEXT_FLAG),ExtensionContainer),1),
     ('notificationToCSE',None,asn1.TYPE(asn1.IMPLICIT(2,cls=asn1.CONTEXT_FLAG),asn1.NULL),1),
     ('csi-Active',None,asn1.TYPE(asn1.IMPLICIT(3,cls=asn1.CONTEXT_FLAG),asn1.NULL),1)], seq_name = 'MG-CSI')
+ABRT_apdu=asn1.TYPE(asn1.IMPLICIT(4,cls=asn1.APPLICATION_FLAG),asn1.SEQUENCE ([('abort-source',None,asn1.TYPE(asn1.IMPLICIT(0,cls=asn1.CONTEXT_FLAG),ABRT_source),0),
+    ('user-information',None,asn1.TYPE(asn1.IMPLICIT(30,cls=asn1.CONTEXT_FLAG),    asn1.SEQUENCE_OF (asn1.EXTERNAL)),1)], seq_name = 'ABRT-apdu'))
 ServiceTypeList=asn1.SEQUENCE_OF (ServiceType)
 O_CauseValueCriteria=asn1.SEQUENCE_OF (CauseValue)
 CancelLocationRes=asn1.SEQUENCE ([('extensionContainer',None,ExtensionContainer,1)], seq_name = 'CancelLocationRes')
@@ -551,6 +571,9 @@ SS_SubscriptionOption=asn1.CHOICE ([('cliRestrictionOption',None,asn1.TYPE(asn1.
     ('overrideCategory',None,asn1.TYPE(asn1.IMPLICIT(1,cls=asn1.CONTEXT_FLAG),OverrideCategory))])
 MT_smsCAMELTDP_Criteria=asn1.SEQUENCE ([('sms-TriggerDetectionPoint',None,SMS_TriggerDetectionPoint,0),
     ('tpdu-TypeCriterion',None,asn1.TYPE(asn1.IMPLICIT(0,cls=asn1.CONTEXT_FLAG),TPDU_TypeCriterion),1)], seq_name = 'MT-smsCAMELTDP-Criteria')
+DialoguePDU=asn1.CHOICE ([('dialogueRequest',None,AARQ_apdu),
+    ('dialogueResponse',None,AARE_apdu),
+    ('dialogueAbort',None,ABRT_apdu)])
 HLR_Id=IMSI
 SS_SubscriptionViolationParam=asn1.SEQUENCE ([('extensionContainer',None,ExtensionContainer,1)], seq_name = 'SS-SubscriptionViolationParam')
 MC_SS_Info=asn1.SEQUENCE ([('ss-Code',None,asn1.TYPE(asn1.IMPLICIT(0,cls=asn1.CONTEXT_FLAG),SS_Code),0),
