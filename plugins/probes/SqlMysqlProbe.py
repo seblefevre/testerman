@@ -30,7 +30,7 @@ class MySqlProbe(ProbeImplementationManager.ProbeImplementation):
 	"""
 	= Identification and Properties =
 
-	Probe Type ID: `exec.interactive`
+	Probe Type ID: `sql.mysql`
 
 	Properties:
 	|| '''Name''' || '''Type''' || '''Default value''' || '''Description''' ||

@@ -43,7 +43,7 @@ class OracleProbe(ProbeImplementationManager.ProbeImplementation):
 	"""
 	= Identification and Properties =
 
-	Probe Type ID: `exec.interactive`
+	Probe Type ID: `sql.oracle`
 
 	Properties:
 	|| '''Name''' || '''Type''' || '''Default value''' || '''Description''' ||
@@ -134,26 +134,6 @@ class OracleProbe(ProbeImplementationManager.ProbeImplementation):
 		out SqlResult
 	}
 	}}}
-	
-
-	type charstring SqlRequest;
-	
-	type union Result
-	{
-		charstring error,
-		record of SqlResult result
-	}
-	
-	type record SqlResult
-	{
-		any <field name>* // according to your request 
-	}
-	
-	type port MySqlPortType message
-	{
-		in SqlRequest,
-		out SqlResult
-	}
 	
 	"""
 	def __init__(self):

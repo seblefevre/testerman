@@ -37,7 +37,7 @@ class SshProbe(ProbeImplementationManager.ProbeImplementation):
 	|| `username` || string || (none) || the username to use to log onto `host`to execute the commands
 	|| `password` || string || (none) || the `username`'s password on `host`
 	|| `timeout` || float || `5.0` || the maximum amount of time, in s, allowed to __start__ executing the command on `host`. Includes the SSH login sequence.
-	|| `convert_eol`|| boolean || `True` || if set to True, convert `\\r\\n` in output to `\\n`. This way, the templates are compatible with ExecProbe.
+	|| `convert_eol`|| boolean || `True` || if set to True, convert `\\r\\n` in output to `\\n`. This way, the templates are compatible with ProbeExec.
 
 
 	= Overview =
