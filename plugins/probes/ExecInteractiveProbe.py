@@ -158,9 +158,9 @@ class InteractiveExecProbe(ProbeImplementationManager.ProbeImplementation):
 
 	Properties:
 	|| '''Name''' || '''Type''' || '''Default value''' || '''Description''' ||
-	|| `separator` || string || `None` || should we notify only complete lines (or whatever) based on this separator ? ||
-	|| `timeout`|| float || `0.5` || maximum amount of time to wait for new data before notifying of it, when no separator is used ||
-	|| `encoding` || string || `'utf-8'` || the encoding to use to turns the output into unicode (also used to encode data sent to the started process) ||
+	|| `separator` || string || `None` || Should we notify only complete lines (or whatever) based on this separator ? ||
+	|| `timeout`|| float || `0.5` || Maximum amount of time to wait for new data before notifying of it, when no separator is used ||
+	|| `encoding` || string || `'utf-8'` || The encoding to use to turns the output into unicode (also used to encode data sent to the started process) ||
 
 
 	= Overview =
@@ -185,7 +185,7 @@ class InteractiveExecProbe(ProbeImplementationManager.ProbeImplementation):
 	Whenever you output to stdout/stderr is detected, based on `separator` and `timeout` properties, it checks that
 	it matches at least one of the regular expressions provided above before enqueing a `OutputNotification` message
 	to userland. If the matched regular expression contains named groups, corresponding fields are automatically
-	added in this message (as for the WatcherFileProbe).
+	added in this message (as for the ProbeWatcherFile).
 	
 	At any time, you may send some input to the started process using the `input` choice of the `InteractiveExecCommand`
 	message (don't forget possible trailing carriage returns, as they are not sent automatically) or send a
@@ -208,7 +208,7 @@ class InteractiveExecProbe(ProbeImplementationManager.ProbeImplementation):
 
 	== See Also ==
 
-	 * ExecProbe, a single shoot command, non-interactive execution.
+	 * ProbeExec, a single shoot command, non-interactive execution.
 
 
 	= TTCN-3 Types Equivalence =
@@ -403,6 +403,14 @@ class ExecThread(threading.Thread):
 				self.handleOutput(r, 'stdout')
 			except:
 				time.sleep(0.001)
+
+		# Consume the whole output
+		try:
+			while 1:
+				r = self._process.read_nonblocking(1024, self._timeout)
+				self.handleOutput(r, 'stdout')
+		except:
+			pass # nothing more to read
 
 		self._process.close()
 		retcode = self._process.status

@@ -28,6 +28,66 @@ import MySQLdb as dbapi
 
 class MySqlProbe(ProbeImplementationManager.ProbeImplementation):
 	"""
+	= Identification and Properties =
+
+	Probe Type ID: `exec.interactive`
+
+	Properties:
+	|| '''Name''' || '''Type''' || '''Default value''' || '''Description''' ||
+	|| `host` || string || `'localhost'` || The MySQL server IP address or hostname ||
+	|| `port`|| integer || `3306` || The MySQL service listening port on `host` ||
+	|| `db` || string || (empty) || The database to use ||
+	|| `user` || string || (empty) || The user to use to connect to the database `db` above ||
+	|| `password` || string || (empty) || The password to use, if required to connect to the database `db` above for user `user` ||
+
+
+	= Overview =
+
+	This probes allows to connect to a MySQL database and perform any valid SQL command
+	that are valid for this DBS. Just send the SQL request as a string through a port bound
+	to the probe.
+	
+	As a result, you should expect a `SqlResult` choice structure, whose `'error'` arm is a simple
+	charstring indicating an error (connection- or SQL- related), and `result` indicates a
+	successful query. [[BR]]
+	In case of a non-SELECT query, `result` is an empty list. In case of a SELECT query, 
+	it contains a list of dictionaries corresponding to the selected entries, whose keys are the
+	names of the returned columns. The associated values are natural Python equivalent to
+	SQL types. However, the following types have not been tested yet:
+	 * `NULL`
+	 * blobs
+	 * date/time
+	
+	(If you encounter any problem with these SQL types or other ones, please contact us or
+	create a ticket).
+	
+	These structures and mechanisms are common to all `sql.*` probe types.
+	
+	The supported MySQL versions depend on the underlying MySQL DB libs you are using, and are
+	independent from the probe.
+
+	== Availability ==
+
+	All platforms.
+
+	== Dependencies ==
+
+	This probe requires the MySQLdb Python module.
+	
+	 * Debian package: `python-mysql` (+ dependencies)
+	 * Windows package, egg package, sources available at [http://sourceforge.net/projects/mysql-python].
+	 
+	The Windows package also requires a MySQL ODBC connector, as available [http://www.mysql.com/products/connector/odbc/ here].
+
+	== See Also ==
+
+	 * ProbeSqlOracle, a probe to access Oracle databases.
+
+
+	= TTCN-3 Types Equivalence =
+
+	The test system interface port bound to such a probe complies with the `SqlPortType` port type as specified below:
+	{{{
 	type charstring SqlRequest;
 	
 	type union Result
@@ -41,21 +101,13 @@ class MySqlProbe(ProbeImplementationManager.ProbeImplementation):
 		any <field name>* // according to your request 
 	}
 	
-	type port MySqlPortType message
+	type port SqlPortType message
 	{
 		in SqlRequest,
 		out SqlResult
 	}
+	}}}
 	
-	SqlResult is an empty set in case of non-SELECT requests.
-	
-	
-	Properties:
-	host
-	port
-	database
-	user
-	password
 	"""
 	def __init__(self):
 		ProbeImplementationManager.ProbeImplementation.__init__(self)

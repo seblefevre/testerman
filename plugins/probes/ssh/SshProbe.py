@@ -34,15 +34,15 @@ class SshProbe(ProbeImplementationManager.ProbeImplementation):
 	Properties:
 	|| '''Name''' || '''Type''' || '''Default value''' || '''Description''' ||
 	|| `host` || string || `'localhost'` || to host to connect onto to execute the commands
-	|| `username` || string || (None) || the username to use to log onto `host`to execute the commands
-	|| `password` || string || (None) || the `username`'s password on `host`
+	|| `username` || string || (none) || the username to use to log onto `host`to execute the commands
+	|| `password` || string || (none) || the `username`'s password on `host`
 	|| `timeout` || float || `5.0` || the maximum amount of time, in s, allowed to __start__ executing the command on `host`. Includes the SSH login sequence.
 	|| `convert_eol`|| boolean || `True` || if set to True, convert `\\r\\n` in output to `\\n`. This way, the templates are compatible with ExecProbe.
 
 
 	= Overview =
 
-	This probe implements a single shoot command execution interface (the same as ExecProbe) through SSH.
+	This probe implements a single shot command execution interface (the same as ProbeExec) through SSH.
 
 	Basically you just specify a command to execute that will be executed within a shell, and you get a response
 	once its execution is over. The response contains both an integer return code and the whole command output.
@@ -67,9 +67,9 @@ class SshProbe(ProbeImplementationManager.ProbeImplementation):
 
 	== See Also ==
 
-	 * ExecProbe, implementing the same port type for local execution (convenient when you have no SSH access
+	 * ProbeExec, implementing the same port type for local execution (convenient when you have no SSH access
 	to your machine, but you must deploy an agent on it)
-	 * ExecInteractiveProbe, to run a command line program and interact with it (CLI testing, etc)
+	 * ProbeExecInteractive, to run a command line program and interact with it (CLI testing, etc)
 
 
 	= TTCN-3 Types Equivalence =
@@ -92,8 +92,8 @@ class SshProbe(ProbeImplementationManager.ProbeImplementation):
 
 	type port ExecPortType message
 	{
-		in  SshCommand;
-		out SshResponse, ErrorResponse;
+		in  ExecCommand;
+		out ExecResponse, ErrorResponse;
 	}
 	}}}
 

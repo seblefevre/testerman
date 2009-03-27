@@ -149,29 +149,74 @@ def getChildrenPids(pid):
 ##
 class ExecProbe(ProbeImplementationManager.ProbeImplementation):
 	"""
+	= Identification and Properties =
 
-type union ExecCommand
-{
-	charstring execute,
-	anytype    cancel
-}
-
-type record ExecResponse
-{
-	integer status,
-	charstring output
-}
-
-type charstring ErrorResponse;
-
-type port ExecPortType message
-{
-	in  ExecCommand;
-	out ExecResponse, ErrorResponse;
-}
+	Probe Type ID: `exec`
 
 	Properties:
-	None for now (user/uid one day ?)
+	|| '''Name''' || '''Type''' || '''Default value''' || '''Description''' ||
+	
+	(no properties)
+
+
+	= Overview =
+
+	This probe implements a single shot command execution interface (the same as ProbeSsh) for locally executed
+	commands.
+
+	Basically you just specify a command to execute that will be executed within a shell, and you get a response
+	once its execution is over. The response contains both an integer return code and the whole command output.
+
+	If you consider the command execution is too long (no response received), you can cancel it at any time from the
+	userland. Such a cancellation terminates all the subprocess tree with a SIGKILL signal on POSIX platforms,
+	and a SIGTERM to the started process (not all its subtree) on Windows. Once cancelled, you should not expect
+	a command response anymore.
+
+	No interaction is possible during the command execution.
+
+	Notes:
+	 * when starting daemons from this probe, make sure that your daemon correctly closes standard output, otherwise
+	the probe never detects the command as being complete.
+
+	== Availability ==
+
+	All platforms. Tested on Linux (kernel 2.6), Solaris 8, Solaris 10.
+
+	== Dependencies ==
+
+	None.
+
+	== See Also ==
+
+	 * ProbeSsh, implementing the same port type for execution through SSH (avoiding the installation of an agent
+	on the target machine)
+	 * ProbeExecInteractive, to run a command line program and interact with it (CLI testing, etc)
+
+
+	= TTCN-3 Types Equivalence =
+
+	The test system interface port bound to such a probe complies with the `ExecPortType` port type as specified below:
+	{{{
+	type union ExecCommand
+	{
+		charstring execute,
+		anytype    cancel
+	}
+
+	type record ExecResponse
+	{
+		integer status,
+		charstring output
+	}
+
+	type charstring ErrorResponse;
+
+	type port ExecPortType message
+	{
+		in  ExecCommand;
+		out ExecResponse, ErrorResponse;
+	}
+	}}}
 
 	"""
 	def __init__(self):
