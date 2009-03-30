@@ -15,13 +15,14 @@
 
 ##
 # TCAP (itu-t) Codec
-# To compile TcapAsn: ./py_output.py asn/tcap.asn > TcapAsn.py
+# To compile TcapAsn: ./py_output.py --explicit asn/tcap.asn > TcapAsn.py
 ##
 
 import CodecManager
 
 import ber.BerCodec as BerCodec
 import ber.TcapAsn as TcapAsn
+import ber.TcapDialoguePdusAsn as TcapDialoguePdusAsn
 
 class TcapCodec(BerCodec.BerCodec):
 	PDU = TcapAsn.TCMessage
@@ -35,6 +36,10 @@ class TcapCodec(BerCodec.BerCodec):
 
 CodecManager.registerCodecClass('tcap', TcapCodec)
 
+class DialoguePDUCodec(BerCodec.BerCodec):
+	PDU = TcapDialoguePdusAsn.DialoguePDU
+	def getSummary(self, message): return 'DialoguePDU'
+CodecManager.registerCodecClass('tcap.DialoguePDU', DialoguePDUCodec)
 
 if __name__ == '__main__':
 	import binascii
@@ -46,23 +51,29 @@ if __name__ == '__main__':
 	tcapBegin2 = \
 	 "626a48042f3b46026b3a2838060700118605010101a02d602b80020780a109060704000001001302be1a2818060704000001010101a00da00b80099656051124006913f66c26a12402010102013b301c04010f040eaa180da682dd6c31192d36bbdd468007917267415827f2"
 
+	dialoguePDU = \
+	"601aa109060704000001001902be0d280ba009a00780059691214365"
+
 	print 80*'-'
 	print "TCAP (ITU-T) Codec unit tests"
 	print 80*'-'
 	samples = [	
-		tcapBegin,
-		tcapBegin2
+		('tcap', tcapBegin),
+		('tcap', tcapBegin2),
+		('tcap.DialoguePDU', dialoguePDU)
 	]
 
-	for s in samples:
+	for pdu, s in samples:
 		print
 		print 80*'-'
 		print "Testing: %s" % s
 		s = binascii.unhexlify(s)
-		(decoded, summary) = CodecManager.decode('tcap', s)
+		(decoded, summary) = CodecManager.decode(pdu, s)
 		print "Decoded: %s\nSummary: %s" % (decoded, summary)
-		(reencoded, summary) = CodecManager.encode('tcap', decoded)
+		(reencoded, summary) = CodecManager.encode(pdu, decoded)
 		print "Reencoded: %s\nSummary: %s" % (binascii.hexlify(reencoded), summary)
 		print "Original : %s" % binascii.hexlify(s)
-		assert(s == reencoded)
-	
+#		assert(s == reencoded) # Cannot always work due to default value decoding/reencoding
+		(redecoded, summary) = CodecManager.decode(pdu, reencoded)
+		print "Decoded: %s\nSummary: %s" % (redecoded, summary)
+		assert(redecoded == decoded)

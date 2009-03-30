@@ -54,11 +54,6 @@ class MO_ForwardSM_ResCodec(BerCodec.BerCodec):
 	def getSummary(self, message): return 'MO-ForwardSM-Res'
 CodecManager.registerCodecClass('map.MO-ForwardSM-Res', MO_ForwardSM_ResCodec)
 
-class DialoguePDUCodec(BerCodec.BerCodec):
-	PDU = MapAsn.DialoguePDU
-	def getSummary(self, message): return 'DialoguePDU'
-CodecManager.registerCodecClass('map.DialoguePDU', DialoguePDUCodec)
-
 if __name__ == '__main__':
 	import binascii
 	def o(x):
@@ -66,22 +61,22 @@ if __name__ == '__main__':
 	
 	sendRoutingInfoForSMArg = \
 	"30158007910026151101008101ff820791261010101010"
-
+	
 	print 80*'-'
 	print "MAP (Phase 2+) Codec unit tests"
 	print 80*'-'
 	samples = [	
-		sendRoutingInfoForSMArg,
+		('RoutingInfoForSM-Arg', sendRoutingInfoForSMArg),
 	]
 
-	for s in samples:
+	for pdu, s in samples:
 		print
 		print 80*'-'
 		print "Testing: %s" % s
 		s = binascii.unhexlify(s)
-		(decoded, summary) = CodecManager.decode('map.RoutingInfoForSM-Arg', s)
+		(decoded, summary) = CodecManager.decode('map.%s' % pdu, s)
 		print "Decoded: %s\nSummary: %s" % (decoded, summary)
-		(reencoded, summary) = CodecManager.encode('map.RoutingInfoForSM-Arg', decoded)
+		(reencoded, summary) = CodecManager.encode('map.%s' % pdu, decoded)
 		print "Reencoded: %s\nSummary: %s" % (binascii.hexlify(reencoded), summary)
 		print "Original : %s" % binascii.hexlify(s)
 		assert(s == reencoded)

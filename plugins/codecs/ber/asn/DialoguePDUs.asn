@@ -17,15 +17,17 @@ DialoguePDU ::= CHOICE {
 }
 
 AARQ-apdu ::= [APPLICATION 0] IMPLICIT SEQUENCE {
+--	The current ASN.1 compiler does not support {...} around default values...
   protocol-version
-    [0] IMPLICIT BIT STRING {version1(0)},
+    [0] IMPLICIT BIT STRING {version1(0)} DEFAULT version1,
   application-context-name  [1]  OBJECT IDENTIFIER,
   user-information          [30] IMPLICIT SEQUENCE OF EXTERNAL OPTIONAL
 }
 
 AARE-apdu ::= [APPLICATION 1] IMPLICIT SEQUENCE {
+--	The current ASN.1 compiler does not support {...} around default values...
   protocol-version
-    [0] IMPLICIT BIT STRING {version1(0)},
+    [0] IMPLICIT BIT STRING {version1(0)} DEFAULT version1,
   application-context-name  [1]  OBJECT IDENTIFIER,
   result                    [2]  Associate-result,
   result-source-diagnostic  [3]  Associate-source-diagnostic,

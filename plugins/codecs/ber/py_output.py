@@ -222,7 +222,7 @@ class Visitor:
 		nt = node.val
 		assert (nt.type == 'NamedType')
 		optflag = node.optional
-		assert (node.default == None) # XXX add support for DEFAULT! 
+#		assert (node.default == None) # XXX add support for DEFAULT! 
 
 		tagstr = 'None'
 		identstr = nt.ident
@@ -231,7 +231,7 @@ class Visitor:
 								 nt.typ.tag.tag_typ,nt.typ.tag.num)
 			nt = nt.typ
 		typstr = self.visit_saving (nt.typ)
-		self.output ("('%s',%s,%s,%d)" % (identstr, tagstr,typstr.replace('-', '_'), optflag))
+		self.output ("('%s',%s,%s,%d,%s)" % (identstr, tagstr,typstr.replace('-', '_'), optflag, repr(node.default)))
 	def visitNamedType (self, node):
 		typstr = self.visit_saving (node.typ)
 		if node.ident <> None:

@@ -243,14 +243,15 @@ def encode_base128(val):
 	@rtype: string/buffer
 	"""
 	if val == 0:
-		return '\0x00'
+		return '\0'
 	l = []
 	while val:
-		l.append ((val % 128) | 0x80)
-		val = val / 128
-	if len (l) > 0:
-		l[0] = l[0] & 0x7F
-		l.reverse ()
+		a, b = divmod(val, 128)
+		l.append(b | 0x80) # by default, consider this is the last coding byte
+		val = a
+	if l:
+		l[0] = l[0] & 0x1f # adjust what will become the last byte within its extension bit
+	l.reverse()
 	return ''.join(map(chr, l))
 
 def read_base128(buf):
@@ -275,6 +276,13 @@ def extract_bits(val, lo_bit, hi_bit):
 	tmp = (val & (~0L << (lo_bit))) >> lo_bit
 	tmp = tmp & ((1L << (hi_bit - lo_bit + 1)) - 1)
 	return tmp
+
+def set_bit(val, bit):
+	val |= (1 << bit)
+	return val
+
+def get_bit(val, bit):
+	return val & (1 << bit)
 
 log_of_2 = math.log (2)
 
@@ -510,6 +518,12 @@ class SyntaxNode:
 		"""
 		raise BerDecodingError("%s: Content decoding not implemented" % str(self))
 
+	def value_from_str(self, s):
+		"""
+		Returns a structured value from a ASN.1 value representation.
+		Used to deduce default values representation.
+		"""
+		return None
 
 ################################################################################
 # Actual Nodes
@@ -536,6 +550,11 @@ class BooleanSyntaxNode(SyntaxNode):
 		else:
 			return '\x00'
 
+	def value_from_str(self, s):
+		if s.tolower() in [ 'false' ]:
+			return False
+		else:
+			return True
 
 ################################################################################
 # integer
@@ -610,6 +629,9 @@ class IntegerSyntaxNode(SyntaxNode):
 		l.reverse()
 		return ''.join(map(chr, l))
 
+	def value_from_str(self, s):
+		return int(s)
+	
 ################################################################################
 # enumerated
 ################################################################################
@@ -657,6 +679,8 @@ class RealSyntaxNode(SyntaxNode):
 		# Not implemented yet
 		return content
 
+	def value_from_str(self, s):
+		return float(s)
 
 ################################################################################
 # bitstring
@@ -669,27 +693,73 @@ class BitstringSyntaxNode(SyntaxNode):
 	"""
 	def __init__(self):
 		SyntaxNode.__init__(self, base_tag = (UNIVERSAL_FLAG, BITSTRING_TAG))
-		self._bitmap = {}
+		self._bitmap_by_bit = {}
+		self._bitmap_by_name = {}
 	
 	def addBitmap(self, name, bit):
 		"""
 		@param  bit: the bit number
 		@param  name: the mapping name corresponding to this bit
 		"""
-		self._bitmap[bit] = name
+		self._bitmap_by_bit[bit] = name
+		self._bitmap_by_name[name] = bit
 
 	def decode_content_ber(self, tag, buf, context):
 		# Not yet implemented
 		if is_construct(tag):
-			pass		
+			raise BerDecodingError("%s: BIT STRING construct decoding it not yet implemented" % str(self))		
 		else:
-			pass
-		return buf		
+			# Read first byte
+			trailing_bit_count = ord(buf[0]) & 0x7f
+			current_bit = 0
+			ret = {}
+			for byte in buf[1:]:
+				for b in range(0, 8):
+					name = self._bitmap_by_bit.get(current_bit, None)
+					current_bit += 1
+					if name is None:
+						continue # possible gap between 2 flags, trailing bits
+					flag = ord(byte) & (0x80 >> b) 
+					if flag:
+						ret[name] = True
+					else:
+						ret[name] = False
+			return ret				
 
 	def encode_content_ber(self, content, context):
-		# Not implemented yet
-		return content
+		bc = self._useful_bit_count()
+		if bc == 0:
+			return '\x00' # Empty bitstring
+		
+		# nb of coding bytes
+		nb, remaining = divmod(bc, 8)
+		# First byte: the number of useless bits in the last byte.
+		ret = [ (remaining % 8) & 0x80 ]
+		for _ in range(max(nb, 1)):
+			ret.append(0x00)
+		
+		for name, val in content.items():
+			if not name in self._bitmap_by_name:
+				raise BerEncodingError("%s: Invalid bit string name '%s'" % (str(self), name))
+			else:
+				if val:
+					bit = self._bitmap_by_name[name]
+					a, b = divmod(bit, 8)
+					ret[1 + a] |= (0x80 >> b) # set the bth bit (bit 1 = msb) of the ath coding byte
+		
+		return ''.join(map(chr, ret))
 	
+	def _useful_bit_count(self):
+		return max(self._bitmap_by_bit.keys()) + 1
+	
+	def value_from_str(self, s):
+		"""
+		s is something like fieldName[,fieldname]*
+		"""
+		ret = {}
+		for name in s.split(','):
+			ret[name.strip()] = True
+		return ret
 	
 
 ################################################################################
@@ -801,11 +871,11 @@ class SequenceSyntaxNode(SyntaxNode):
 		SyntaxNode.__init__(self, base_tag = (UNIVERSAL_FLAG | CONS_FLAG, SEQUENCE_TAG), name = name)
 		self._fields = []
 	
-	def addField(self, name, syntaxNode, optional = False):
+	def addField(self, name, syntaxNode, optional = False, default = None):
 		"""
 		Declare a new field in the sequence.
 		"""
-		self._fields.append((name, syntaxNode, optional))
+		self._fields.append((name, syntaxNode, optional, (default is not None and syntaxNode.value_from_str(default)) or None))
 	
 	def decode_content_ber(self, tag, buf, context):
 		"""
@@ -820,7 +890,7 @@ class SequenceSyntaxNode(SyntaxNode):
 			# Now match the tag against one of our possible field - order matters
 			found = False
 			i = 0
-			for name, sn, optional in self._fields[last_field_index:]:
+			for name, sn, _, _ in self._fields[last_field_index:]:
 				i += 1
 				if sn.match_tag(tag):
 					if trace_decoding:
@@ -837,9 +907,15 @@ class SequenceSyntaxNode(SyntaxNode):
 					print("%s: INFO: consumed an unexpected field in sequence, tag %s" % (str(self), tag_str(tag)))
 		
 		# Check if this is satisfying or not
-		for name, sn, optional in self._fields:
-			if not optional and not name in ret:
-				raise BerDecodingError("%s: Missing mandatory field '%s' in sequence" % (str(self), name))
+		for name, sn, optional, default in self._fields:
+			if not name in ret:
+				if not optional:
+					raise BerDecodingError("%s: Missing mandatory field '%s' in sequence" % (str(self), name))
+				elif default is not None:
+					# Create the default value (if available) so that the application sees it
+					ret[name] = default
+					if trace_decoding:
+						print "%s: field '%s' not present on the wire, filled with its default value %s" % (str(self), name, repr(default))
 		# OK
 		return ret
 	
@@ -848,10 +924,13 @@ class SequenceSyntaxNode(SyntaxNode):
 			raise BerEncodingError("%s: invalid content to encode, expected a dict" % (str(self)))
 
 		buf = []
-		for name, sn, optional in self._fields:
+		for name, sn, optional, default in self._fields:
 			if content.has_key(name):
 				buf.append(sn.encode_ber(content[name], context))
+				if trace_encoding:
+					print "%s: field '%s' encoded in sequence:\n%s" % (str(self), name, binascii.hexlify(buf[-1]))
 			elif not optional:
+				# NB: default values are not encoded.
 				raise BerEncodingError("%s: missing mandatory field '%s' in sequence" % (str(self), name))
 
 		return ''.join(buf)
@@ -977,12 +1056,16 @@ class ObjectIdentifierSyntaxNode(SyntaxNode):
 		except:
 			raise BerEncodingError("%s: Invalid OID format, expecting a dot-digits notation" % str(self))
 		
-		encoded = chr(40*ids[0] + ids[1]) # what if > 256 ??
+		encoded = [ chr(40*ids[0] + ids[1]) ] # what if > 256 ??
 		for val in ids[2:]:
-			encoded = encoded + encode_base128(val)
-		return encoded
+			encoded.append(encode_base128(val))
+		if trace_encoding:
+			print "%s: Encoded OID:\n%s" % (str(self), binascii.hexlify(''.join(encoded)))
+		return ''.join(encoded)
 	
 	def decode_content_ber(self, tag, buf, context):
+		if trace_decoding:
+			print "%s: Decoding OID:\n%s" % (str(self), binascii.hexlify(buf))
 		a, b = divmod(ord(buf[0]), 40)
 		oid =  [ a, b ]
 		start = 1
@@ -1127,8 +1210,8 @@ def SEQUENCE(seq, seq_name):
 	seq is a list of (name, ?, syntaxNode, optional) tuple
 	"""
 	sn = SequenceSyntaxNode(name = seq_name)
-	for name, _, syntaxNode, optional in seq:
-		sn.addField(name, syntaxNode, optional)
+	for name, _, syntaxNode, optional, default in seq:
+		sn.addField(name, syntaxNode, optional, default)
 	return sn
 
 def INTEGER_class(unknown, range_min, range_max):
