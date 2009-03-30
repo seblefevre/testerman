@@ -56,8 +56,8 @@ CodecManager.registerCodecClass('map.MO-ForwardSM-Res', MO_ForwardSM_ResCodec)
 
 class MAP_DialoguePDUCodec(BerCodec.BerCodec):
 	PDU = MapAsn.MAP_DialoguePDU
-	def getSummary(self, message): return 'MAP-Dialogue-PDU'
-CodecManager.registerCodecClass('map.MAP-Dialogue-PDU', MAP_DialoguePDUCodec)
+	def getSummary(self, message): return 'MAP-DialoguePDU'
+CodecManager.registerCodecClass('map.MAP-DialoguePDU', MAP_DialoguePDUCodec)
 
 if __name__ == '__main__':
 	import binascii
