@@ -20,6 +20,7 @@ import time
 from Base import *
 from DocumentModels import *
 from CommonWidgets import *
+import CommonWidgets
 
 import LogViewer
 import DocumentationManager
@@ -462,27 +463,34 @@ class WAtsDocument(WDocument):
 		# A find widget
 		self.find = WSciFind(self.editor, self)
 
+		self.runMenu = QMenu('Run', self)
+		self.runWithParametersAction = self.runMenu.addAction("With parameters...", self.runWithParam)
+		self.scheduleRunAction = self.runMenu.addAction("Scheduled run...", self.scheduleRun)
+
 		# By default, icon sizes are 24x24. We resize them to 16x16 to avoid to big buttons.
 		self.testButton = QPushButton("Check syntax")
 		self.testButton.setIcon(icon(':/icons/check.png'))
 		self.testButton.setIconSize(QSize(16, 16))
 		self.connect(self.testButton, SIGNAL("clicked()"), self.verify)
+		# Instant run
 		self.runButton = QPushButton("Run")
 		self.runButton.setIcon(icon(':/icons/run.png'))
 		self.runButton.setIconSize(QSize(16, 16))
 		self.connect(self.runButton, SIGNAL("clicked()"), self.run)
-		self.runWithParamButton = QPushButton("Run with params")
-		self.runWithParamButton.setIcon(icon(':/icons/run.png'))
-		self.runWithParamButton.setIconSize(QSize(16, 16))
-		self.connect(self.runWithParamButton, SIGNAL("clicked()"), self.runWithParam)
+
+		self.runOptionsButton = QPushButton("Special run")
+		self.runOptionsButton.setIcon(icon(':/icons/run.png'))
+		self.runOptionsButton.setIconSize(QSize(16, 16))
+		self.runOptionsButton.setMenu(self.runMenu)
+
 		self.launchLog = QCheckBox("Display runtime log")
 		self.launchLog.setChecked(True)
 
 		actionLayout.addWidget(self.find)
 		actionLayout.addStretch()
 		actionLayout.addWidget(self.testButton)
+		actionLayout.addWidget(self.runOptionsButton)
 		actionLayout.addWidget(self.runButton)
-		actionLayout.addWidget(self.runWithParamButton)
 		actionLayout.addWidget(self.launchLog)
 		actionLayout.setMargin(2)
 		layout.addLayout(actionLayout)
@@ -519,7 +527,13 @@ class WAtsDocument(WDocument):
 			self.editor.setFocus(Qt.OtherFocusReason)
 		return 0
 
+	##
+	# Run actions
+	##
 	def run(self):
+		"""
+		Immediate run, using the default parameters.
+		"""
 		# we 'commit' and verify the modified view of the script
 		if not self.verify(0):
 			return
@@ -547,12 +561,34 @@ class WAtsDocument(WDocument):
 			QApplication.instance().get('gui.statusbar').showMessage('Operation cancelled')
 			return
 
-		res = getProxy().scheduleAts(self.model.getDocument(), unicode(self.model.getName()), unicode(QApplication.instance().username()), session)
+		res = getProxy().scheduleAts(self.model.getDocument(), unicode(self.model.getName()), unicode(QApplication.instance().username()), session, at = time.time() + 1.0)
 		QApplication.instance().get('gui.statusbar').showMessage(res['message'])
 		if self.launchLog.isChecked():
 			logViewer = LogViewer.WLogViewer(parent = self)
 			logViewer.openJob(res['job-id'])
 			logViewer.show()
+	
+	def scheduleRun(self):
+		"""
+		Displays a dialog box to schedule a run.
+		"""
+		# we 'commit' and verify the modified view of the script
+		if not self.verify(0):
+			return
+
+		session = None
+		scheduledTime = None
+		paramEditorDialog = WScheduleDialog(self.model.getMetadataModel(), self)
+		if paramEditorDialog.exec_() == QDialog.Accepted:
+			session = paramEditorDialog.getSessionDict()
+			scheduledTime = paramEditorDialog.getScheduledTime()
+		else:
+			QApplication.instance().get('gui.statusbar').showMessage('Operation cancelled')
+			return
+
+		res = getProxy().scheduleAts(self.model.getDocument(), unicode(self.model.getName()), unicode(QApplication.instance().username()), session, scheduledTime)
+		QApplication.instance().get('gui.statusbar').showMessage(res['message'])
+		# Never shows the realtime log on scheduling.
 
 ###############################################################################
 # Campaign Edition
@@ -1677,7 +1713,7 @@ class WSessionParameterEditorDialog(QDialog):
 		self.saveButton = QPushButton("Save...", self)
 		self.connect(self.saveButton, SIGNAL("clicked()"), self.parameterEditor.saveToFile)
 		buttonLayout.addWidget(self.saveButton)
-		self.okButton = QPushButton("Ok", self)
+		self.okButton = QPushButton("Run", self)
 		self.connect(self.okButton, SIGNAL("clicked()"), self.accept)
 		buttonLayout.addWidget(self.okButton)
 		self.cancelButton = QPushButton("Cancel", self)
@@ -1690,3 +1726,51 @@ class WSessionParameterEditorDialog(QDialog):
 	def getSessionDict(self):
 		return self.parameterEditor.getSessionDict()
 
+class WScheduleDialog(QDialog):
+	"""
+	A WSessionParameterEditor embedded within a dialog, with
+	an additional date/time picker widget.
+	"""
+	def __init__(self, metadataModel, parent = None):
+		QDialog.__init__(self, parent)
+		self._metadataModel = metadataModel
+		self.__createWidgets()
+
+	def __createWidgets(self):
+		self.setWindowTitle("Schedule a run")
+		self.setWindowIcon(icon(':icons/testerman.png'))
+
+		layout = QVBoxLayout()
+		layout.addWidget(QLabel("Scheduling:"))
+		self._dateTimePicker = CommonWidgets.WDateTimePicker()
+		layout.addWidget(self._dateTimePicker)
+		layout.addWidget(QLabel("Session parameters:"))
+		self._parameterEditor = WSessionParameterEditor(self._metadataModel.getParameters(), self)
+		layout.addWidget(self._parameterEditor)
+
+		buttonLayout = QHBoxLayout()
+		buttonLayout.addStretch()
+		self._loadButton = QPushButton("Load...", self)
+		self.connect(self._loadButton, SIGNAL("clicked()"), self._parameterEditor.loadFromFile)
+		buttonLayout.addWidget(self._loadButton)
+		self._saveButton = QPushButton("Save...", self)
+		self.connect(self._saveButton, SIGNAL("clicked()"), self._parameterEditor.saveToFile)
+		buttonLayout.addWidget(self._saveButton)
+		self._okButton = QPushButton("Schedule", self)
+		self.connect(self._okButton, SIGNAL("clicked()"), self.accept)
+		buttonLayout.addWidget(self._okButton)
+		self._cancelButton = QPushButton("Cancel", self)
+		self.connect(self._cancelButton, SIGNAL("clicked()"), self.reject)
+		buttonLayout.addWidget(self._cancelButton)
+		layout.addLayout(buttonLayout)
+
+		self.setLayout(layout)
+
+	def getSessionDict(self):
+		return self._parameterEditor.getSessionDict()
+
+	def getScheduledTime(self):
+		"""
+		Returns the time as a integer (Python time)
+		"""
+		return self._dateTimePicker.selectedDateTime().toTime_t()

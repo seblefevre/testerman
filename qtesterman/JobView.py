@@ -32,6 +32,7 @@ import time
 
 from PyQt4.Qt import *
 
+import CommonWidgets
 
 ################################################################################
 # Local Icon Cache
@@ -52,6 +53,49 @@ TheIconCache = IconCache()
 
 def icon(resource):
 	return TheIconCache.icon(resource)
+
+
+################################################################################
+# A date/time picker in a dialog, for rescheduling
+################################################################################
+
+class WRescheduleDialog(QDialog):
+	"""
+	Selected a date/time in a dialog
+	"""
+	def __init__(self, dateTime = None, parent = None):
+		QDialog.__init__(self, parent)
+		if dateTime is None:
+			dateTime = QDateTime.currentDateTime()
+		self.__createWidgets(dateTime)
+
+	def __createWidgets(self, dateTime):	
+		self.setWindowTitle("Reschedule a run")
+		self.setWindowIcon(icon(':icons/testerman.png'))
+
+		layout = QVBoxLayout()
+
+		# Date picker
+		self._dateTimePicker = CommonWidgets.WDateTimePicker()
+		layout.addWidget(self._dateTimePicker)
+
+		buttonLayout = QHBoxLayout()
+		buttonLayout.addStretch()
+		self._okButton = QPushButton("Reschedule", self)
+		self.connect(self._okButton, SIGNAL("clicked()"), self.accept)
+		buttonLayout.addWidget(self._okButton)
+		self._cancelButton = QPushButton("Cancel", self)
+		self.connect(self._cancelButton, SIGNAL("clicked()"), self.reject)
+		buttonLayout.addWidget(self._cancelButton)
+		layout.addLayout(buttonLayout)
+
+		self.setLayout(layout)
+
+	def getScheduledTime(self):
+		"""
+		Returns the time as a integer (Python time)
+		"""
+		return self._dateTimePicker.selectedDateTime().toTime_t()
 
 
 ################################################################################
@@ -210,12 +254,15 @@ class WJobTreeWidget(QTreeWidget):
 			jobId = item.getId()
 			state = item.getState()
 			type_ = item.getType()
-			action = menu.addAction("View log...", lambda: self._viewLog(jobId))
-			menu.addSeparator()
+			if not state in [ 'waiting' ]:
+				action = menu.addAction("View log...", lambda: self._viewLog(jobId))
+				menu.addSeparator()
 			if type_ == 'campaign':
 				if state in [ 'running' ]:			
 					action = menu.addAction("Cancel", lambda: self._sendSignal(jobId, 'cancel'))
 				elif state in [ 'waiting' ]:
+					action = menu.addAction("Start now", lambda: self._client.rescheduleJob(jobId, 0.0))
+					action = menu.addAction("Reschedule...", lambda: self._reschedule(jobId))
 					action = menu.addAction("Cancel", lambda: self._sendSignal(jobId, 'cancel'))
 			else: # ATS
 				if state in [ 'running' ]:			
@@ -226,6 +273,8 @@ class WJobTreeWidget(QTreeWidget):
 					action = menu.addAction("Resume", lambda: self._sendSignal(jobId, 'resume'))
 					action = menu.addAction("Cancel", lambda: self._sendSignal(jobId, 'cancel'))
 				elif state in [ 'waiting' ]:
+					action = menu.addAction("Start now", lambda: self._client.rescheduleJob(jobId, 0.0))
+					action = menu.addAction("Reschedule...", lambda: self._reschedule(jobId))
 					action = menu.addAction("Cancel", lambda: self._sendSignal(jobId, 'cancel'))
 
 			menu.addSeparator()
@@ -243,6 +292,16 @@ class WJobTreeWidget(QTreeWidget):
 
 	def _viewLog(self, jobId):
 		self.emit(SIGNAL('showLog(int)'), jobId)	
+	
+	def _reschedule(self, jobId):
+		"""
+		Displays a scheduling dialog.
+		"""
+		scheduleDialog = WRescheduleDialog(parent = self)
+		scheduleDialog.setWindowTitle("Reschedule job %s" % jobId)
+		if scheduleDialog.exec_() == QDialog.Accepted:
+			scheduledTime = scheduleDialog.getScheduledTime()
+			res = self._client.rescheduleJob(jobId, scheduledTime)
 
 	def onItemActivated(self, item, col):
 		if item:

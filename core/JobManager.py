@@ -255,7 +255,9 @@ class Job(object):
 				# Never started. Keep start/stop and running time to None.
 				getLogger().info("%s aborted" % (str(self)))
 		
+		self.notifyStateChange()
 
+	def notifyStateChange(self):
 		# Dispatch notifications through the Event Manager
 		jobDict = self.toDict()
 		EventManager.instance().dispatchNotification(createJobEventNotification(self.getUri(), jobDict))
@@ -309,6 +311,7 @@ class Job(object):
 		if self._scheduledStartTime > time.time():
 			self.setScheduledStartTime(at)
 			self._unlock()
+			self.notifyStateChange()
 			return True
 		else:
 			self._unlock()

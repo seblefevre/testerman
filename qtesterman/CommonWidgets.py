@@ -666,9 +666,6 @@ class WEnhancedTabWidget(QTabWidget):
 		QTabBar.setTabTextColor(self.tabBar(), index, QColor("black"))
 		return QTabWidget.setTabText(self, index, name)
 
-	def addTab(self, child, text):
-		return QTabWidget.addTab(self, child, self.getClosestTabText(-1, text))
-
 	def addTab(self, child, icon, text):
 		return QTabWidget.addTab(self, child, icon, self.getClosestTabText(-1, text))
 
@@ -740,6 +737,7 @@ class WDeleteFileConfirmation(QDialog):
 			return self.checkBox.isChecked()
 		return 0
 
+
 ################################################################################
 # Enhanced Question dialog
 ################################################################################
@@ -796,6 +794,7 @@ class WUserQuestion(QDialog):
 			return self._checkBoxes[index].isChecked()
 		else:
 			return False
+
 
 ################################################################################
 # Message + Template viewer
@@ -961,7 +960,7 @@ class WTemplateView(QTreeWidget):
 
 	def __createItem(self, parent, element, suggestedName = None):
 		"""
-		Recursive function to create a tree of QTemplateWidgetItem.
+		Recursive function to create a tree of QTemplateWidgetItems.
 		
 		@type  element: QDomElement
 		@param element: the element to turn into a node
@@ -1068,6 +1067,66 @@ class WTransientWindow(QDialog):
 		self.show()
 		QApplication.instance().processEvents()
 
+
+###############################################################################
+# Date + Time picket
+###############################################################################
+
+class WTimePicker(QWidget):
+	"""
+	No time picker in Qt.. ??
+	"""
+	def __init__(self, time_ = None, parent = None):
+		QWidget.__init__(self, parent)
+		if time_ is None:
+			time_ = QTime.currentTime()
+		self.__createWidgets(time_)
+
+	def __createWidgets(self, time_):
+		layout = QHBoxLayout()
+		# 2 spin boxes
+		layout.addWidget(QLabel("Hour:"))
+		self._hourSpinBox = QSpinBox()
+		self._hourSpinBox.setRange(0, 23)
+		self._hourSpinBox.setValue(time_.hour())
+		layout.addWidget(self._hourSpinBox)
+		layout.addWidget(QLabel("Min:"))
+		self._minuteSpinBox = QSpinBox()
+		self._minuteSpinBox.setRange(0, 59)
+		self._minuteSpinBox.setValue(time_.minute())
+		layout.addWidget(self._minuteSpinBox)
+		layout.addStretch()
+		self.setLayout(layout)
+	
+	def selectedTime(self):
+		return QTime(self._hourSpinBox.value(), self._minuteSpinBox.value())
+
+class WDateTimePicker(QWidget):
+	"""
+	No date + time picker by default in Qt...??
+	"""
+	def __init__(self, dateTime = None, parent = None):
+		QWidget.__init__(self, parent)
+		if dateTime is None:
+			dateTime = QDateTime.currentDateTime()
+		self.__createWidgets(dateTime)
+	
+	def __createWidgets(self, dateTime):
+		layout = QVBoxLayout()
+		# Date picker
+		self._calendar = QCalendarWidget()
+		self._calendar.setMinimumDate(QDate.currentDate())
+		self._calendar.setSelectedDate(dateTime.date())
+		layout.addWidget(self._calendar)
+		# Time picker
+		self._timePicker = WTimePicker()
+		layout.addWidget(self._timePicker)
+		self.setLayout(layout)
+	
+	def selectedDateTime(self):
+		return QDateTime(self._calendar.selectedDate(), self._timePicker.selectedTime())
+
+		
 
 ###############################################################################
 # MIME data

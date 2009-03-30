@@ -13,8 +13,14 @@ import os
 import os.path
 import tempfile
 import sys
-import md5
 import tempfile
+
+try:
+	# Python 2.5+ preferred hash lib
+	import hashlib as md5
+except:
+	import md5
+
 
 def log(txt):
 	print txt
