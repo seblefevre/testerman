@@ -1,7 +1,7 @@
 This is QTesterman, a PyQt4-based GUI for Testerman.
 ================================================================================
 
-1.1.1:
+1.1.99:
 - Added: preferences support to enable/disable code autocompletion
   (experimental - now disabled by default)
 - Added: scheduled run and rescheduling support
