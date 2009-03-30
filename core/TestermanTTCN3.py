@@ -442,8 +442,11 @@ class TestComponent:
 	STATE_STOPPED = 3
 
 	# Static events - emitted conditionally on done, killed
-	_ALL_DONE_EVENT = { 'event': 'ac.done' }
-	_ALL_KILLED_EVENT = { 'event': 'ac.killed' }
+	_ALL_DONE_EVENT = { 'event': 'all.c.done' }
+	_ALL_KILLED_EVENT = { 'event': 'all.c.killed' }
+
+	_ANY_DONE_EVENT = { 'event': 'any.c.done' }
+	_ANY_KILLED_EVENT = { 'event': 'any.c.killed' }
 	
 	def __init__(self, name = None, alive = False):
 		"""
@@ -1058,6 +1061,12 @@ class Behaviour:
 		body = getattr(self, 'body')
 		if callable(body):
 			body(**kwargs)
+	
+	def stop(self):
+		"""
+		TTCN-3: stop interface from within a PTC - equivalent to the stop statement. 
+		"""
+		stop()
 		
 
 ################################################################################
@@ -1252,6 +1261,12 @@ class TestCase:
 		@param message: the message to log
 		"""
 		self._mtc._log(message)
+
+	def stop(self):
+		"""
+		TTCN-3: the stop operation can be applied to the MTC too.
+		"""
+		stop()
 
 
 ################################################################################
@@ -1755,14 +1770,36 @@ def alt(alternatives):
 					# We ignore the from in systemQueue
 					for (guard, condition, actions) in alternatives:
 						# Guard is ignored for internal messages (we shouldn't have one, anyway)
-						# Ignore the decoded message: must be the same as encoded for internal events.
-						(match, _) = templateMatch(message, condition.template)
-						if match:
-							matchedInfo = (guard, condition, actions, message, None) # None: decodedMessage
-							# Consume the message
-							port._messageQueue.remove((message, from_))
-							# Exit the port alternative loop, with matchedInfo
-							break
+						
+						# Special message matches (NB: we're suppose to have only dict messages in the system queue)
+						if isinstance(message, dict) and condition.template['event'].startswith('any.'):
+							# "Wildcard"-based match: we do not expect this exact event in the queue.
+							# Instead, we match any 'ressembling' event.
+							if condition.template['event'] == 'any.c.done':
+								# We match is we have any 'done' in our queue
+								if message.get('event') == 'done':
+									match = True
+							elif condition.template['event'] == 'any.c.killed':
+								# We match is we have any 'killed' in our queue
+								if message.get('event') == 'killed':
+									match = True
+							
+							if match:
+								matchedInfo = (guard, condition, actions, message, None) # None: decodedMessage
+								# In this case, we do NOT consume the message: left for
+								# other ptc.KILLED, or other any component killed, ...
+								break
+						
+						# Standard system message matches - consumed if matched
+						else:
+							# Ignore the decoded message: must be the same as encoded for internal events.
+							(match, _) = templateMatch(message, condition.template)
+							if match:
+								matchedInfo = (guard, condition, actions, message, None) # None: decodedMessage
+								# Consume the message
+								port._messageQueue.remove((message, from_))
+								# Exit the port alternative loop, with matchedInfo
+								break
 					
 					if matchedInfo:
 						# Exit the loop on messages directly.
@@ -1783,9 +1820,18 @@ def alt(alternatives):
 					elif branch == 'killed':
 						# killed-branch selected
 						logKilledBranchSelected(id_ = str(condition.template['ptc']))
-					elif branch == 'ac.done':
+					elif branch == 'all.c.done':
 						# all component-done branch selected
 						logDoneBranchSelected(id_ = 'all')
+					elif branch == 'all.c.killed':
+						# all component-killed branch selected
+						logKilledBranchSelected(id_ = 'all')
+					elif branch == 'any.c.done':
+						# any component-done branch selected
+						logDoneBranchSelected(id_ = 'any')
+					elif branch == 'any.c.killed':
+						# all component-killed branch selected
+						logKilledBranchSelected(id_ = 'any')
 					else:
 						# Other system messages are for internal purpose only and does not have TTCN-3 branch equivalent
 						logInternal('system event received in system queue: %s' % repr(condition.template))
@@ -2863,6 +2909,11 @@ def deactivate(id_):
 class all_component:
 	"""
 	Defined as a static class.
+
+	FIXME: the exception when the testcase is None are not correct:
+	- the testcase is assumed to be always available in any context,
+	- we need to implement an explicit way to know if we're in the MTC thread
+	  or not
 	"""
 
 	DONE = _BranchCondition(_getSystemQueue(), TestComponent._ALL_DONE_EVENT)
@@ -2887,8 +2938,11 @@ class all_component:
 	@classmethod
 	def done(cls):
 		"""
-		Could have been implemented as:
+		Equivalent to:
 		alt([[cls.DONE]])
+		
+		FIXME: according to TTCN-3, all component.done matches also when no component
+		has been created. This is not the case here for now.
 		"""
 		testcase = getLocalContext().getTestCase()
 		if not testcase:
@@ -2907,6 +2961,9 @@ class all_component:
 		testcase = getLocalContext().getTestCase()
 		if not testcase:
 			raise TestermanTtcn3Exception("'all component.running' can only be called from the MTC")
+		# No PTC -> none running
+		if not testcase._ptcs:
+			return False
 		for ptc in testcase._ptcs:
 			if not ptc.running():
 				return False
@@ -2917,11 +2974,70 @@ class all_component:
 		testcase = getLocalContext().getTestCase()
 		if not testcase:
 			raise TestermanTtcn3Exception("'all component.alive' can only be called from the MTC")
+		# No PTC -> none alive.
+		if not testcase._ptcs:
+			return False
 		for ptc in testcase._ptcs:
 			if not ptc.alive():
 				return False
 		return True
 			
+
+################################################################################
+# any component / all timer / ...
+################################################################################
+
+class any_component:
+	"""
+	Defined as a static class.
+	
+	FIXME: the exception when the testcase is None are not correct:
+	- the testcase is assumed to be always available in any context,
+	- we need to implement an explicit way to know if we're in the MTC thread
+	  or not
+	"""
+
+	DONE = _BranchCondition(_getSystemQueue(), TestComponent._ANY_DONE_EVENT)
+	KILLED = _BranchCondition(_getSystemQueue(), TestComponent._ANY_KILLED_EVENT)
+	
+	@classmethod
+	def done(cls):
+		"""
+		Equivalent to:
+		alt([[cls.DONE]])
+		"""
+		testcase = getLocalContext().getTestCase()
+		if not testcase:
+			raise TestermanTtcn3Exception("'any component.done' can only be called from the MTC")
+		alt([[cls.DONE]])
+
+	@classmethod
+	def killed(cls):
+		testcase = getLocalContext().getTestCase()
+		if not testcase:
+			raise TestermanTtcn3Exception("'any component.killed' can only be called from the MTC")
+		alt([[cls.KILLED]])
+
+	@staticmethod
+	def running()	:
+		testcase = getLocalContext().getTestCase()
+		if not testcase:
+			raise TestermanTtcn3Exception("'any component.running' can only be called from the MTC")
+		for ptc in testcase._ptcs:
+			if ptc.running():
+				return True
+		return False
+
+	@staticmethod
+	def alive():
+		testcase = getLocalContext().getTestCase()
+		if not testcase:
+			raise TestermanTtcn3Exception("'any component.alive' can only be called from the MTC")
+		for ptc in testcase._ptcs:
+			if ptc.alive():
+				return True
+		return False
+
 
 ################################################################################
 # convenience functions: log level management
