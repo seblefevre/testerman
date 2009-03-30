@@ -1,4 +1,4 @@
-# Auto-generated at Mon, 30 Mar 2009 14:42:40 +0000
+# Auto-generated at Mon, 30 Mar 2009 16:16:35 +0000
 # with the following command line:
 # ./py_output.py --implicit asn/MAP-All.asn
 import Yapasn1 as asn1
@@ -81,6 +81,7 @@ TraceReference2=asn1.OCTSTRING
 KSI=asn1.OCTSTRING
 CCBS_Index=asn1.INTEGER_class ([],1,5)
 GERAN_Classmark=asn1.OCTSTRING
+MAP_CloseInfo=asn1.SEQUENCE ([], seq_name = 'MAP-CloseInfo')
 OfferedCamel4Functionalities=asn1.BITSTRING_class ([('initiateCallAttempt',0),('splitLeg',1),('moveLeg',2),('disconnectLeg',3),('entityReleased',4),('dfc-WithArgument',5),('playTone',6),('dtmf-MidCall',7),('chargingIndicator',8),('alertingDP',9),('locationAtAlerting',10),('changeOfPositionDP',11),('or-Interactions',12),('warningToneEnhancements',13),('cf-Enhancements',14),('subscribedEnhancedDialledServices',15),('servingNetworkEnhancedDialledServices',16),('criteriaForChangeOfPositionDP',17),('serviceChangeDP',18),('collectInformation',19)],None,None)
 DefaultGPRS_Handling=asn1.ENUM({'continueTransaction':0,'releaseTransaction':1})
 AUTS=asn1.OCTSTRING
@@ -132,6 +133,7 @@ EraseCC_EntryArg=asn1.SEQUENCE ([('ss-Code',None,asn1.TYPE(asn1.IMPLICIT(0,cls=a
     ('ccbs-Index',None,asn1.TYPE(asn1.IMPLICIT(1,cls=asn1.CONTEXT_FLAG),CCBS_Index),1,None)], seq_name = 'EraseCC-EntryArg')
 BMSC_EventList=asn1.BITSTRING_class ([('mbmsMulticastServiceActivation',0)],None,None)
 Ext_QoS_Subscribed=asn1.OCTSTRING
+MAP_AcceptInfo=asn1.SEQUENCE ([], seq_name = 'MAP-AcceptInfo')
 TraceNE_TypeList=asn1.BITSTRING_class ([('msc-s',0),('mgw',1),('sgsn',2),('ggsn',3),('rnc',4),('bm-sc',5)],None,None)
 CallReferenceNumber=asn1.OCTSTRING
 InterCUG_Restrictions=asn1.OCTSTRING
@@ -172,6 +174,7 @@ NSAPI=asn1.INTEGER_class ([],0,15)
 Long_GroupId=TBCD_STRING
 SM_RP_MTI=asn1.INTEGER_class ([],0,10)
 MatchType=asn1.ENUM({'inhibiting':0,'enabling':1})
+ProcedureCancellationReason=asn1.ENUM({'handoverCancellation':0,'radioChannelRelease':1,'networkPathRelease':2,'callRelease':3,'associatedProcedureFailure':4,'tandemDialogueRelease':5,'remoteOperationsFailure':6})
 AllowedServices=asn1.BITSTRING_class ([('firstServiceAllowed',0),('secondServiceAllowed',1)],None,None)
 TargetCellOutsideGCA_Param=asn1.SEQUENCE ([('extensionContainer',None,ExtensionContainer,1,None)], seq_name = 'TargetCellOutsideGCA-Param')
 AbsentSubscriberSM_Param=asn1.SEQUENCE ([('absentSubscriberDiagnosticSM',None,AbsentSubscriberDiagnosticSM,1,None),
@@ -220,12 +223,14 @@ LCSClientInternalID=asn1.ENUM({'broadcastService':0,'o-andM-HPLMN':1,'o-andM-VPL
 Ext_NoRepCondTime=asn1.INTEGER_class ([],1,100)
 NumberPortabilityStatus=asn1.ENUM({'notKnownToBePorted':0,'ownNumberPortedOut':1,'foreignNumberPortedToForeignNetwork':2,'ownNumberNotPortedOut':4,'foreignNumberPortedIn':5})
 KeyStatus=asn1.ENUM({'old':0,'new':1})
+MAP_ProviderAbortReason=asn1.ENUM({'abnormalDialogue':0,'invalidPDU':1})
 FailureCauseParam=asn1.ENUM({'limitReachedOnNumberOfConcurrentLocationRequests':0})
 T_BcsmCamelTDPData=asn1.SEQUENCE ([('t-BcsmTriggerDetectionPoint',None,T_BcsmTriggerDetectionPoint,0,None),
     ('serviceKey',None,ServiceKey,0,None),
     ('gsmSCF-Address',None,asn1.TYPE(asn1.IMPLICIT(0,cls=asn1.CONTEXT_FLAG),ISDN_AddressString),0,None),
     ('defaultCallHandling',None,asn1.TYPE(asn1.IMPLICIT(1,cls=asn1.CONTEXT_FLAG),DefaultCallHandling),0,None),
     ('extensionContainer',None,asn1.TYPE(asn1.IMPLICIT(2,cls=asn1.CONTEXT_FLAG),ExtensionContainer),1,None)], seq_name = 'T-BcsmCamelTDPData')
+Reason=asn1.ENUM({'noReasonGiven':0,'invalidDestinationReference':1,'invalidOriginatingReference':2})
 IllegalSS_OperationParam=asn1.SEQUENCE ([('extensionContainer',None,ExtensionContainer,1,None)], seq_name = 'IllegalSS-OperationParam')
 GlobalCellId=asn1.OCTSTRING
 Ext_ForwOptions=asn1.OCTSTRING
@@ -311,6 +316,9 @@ M_CSI=asn1.SEQUENCE ([('mobilityTriggers',None,MobilityTriggers,0,None),
     ('csi-Active',None,asn1.TYPE(asn1.IMPLICIT(3,cls=asn1.CONTEXT_FLAG),asn1.NULL),1,None)], seq_name = 'M-CSI')
 LSAIdentity=asn1.OCTSTRING
 TMSI=asn1.OCTSTRING
+MAP_OpenInfo=asn1.SEQUENCE ([('destinationReference',None,asn1.TYPE(asn1.IMPLICIT(0,cls=asn1.CONTEXT_FLAG),AddressString),1,None),
+    ('originationReference',None,asn1.TYPE(asn1.IMPLICIT(1,cls=asn1.CONTEXT_FLAG),AddressString),1,None)], seq_name = 'MAP-OpenInfo')
+ResourceUnavailableReason=asn1.ENUM({'shortTermResourceLimitation':0,'longTermResourceLimitation':1})
 PermittedEncryptionAlgorithms=asn1.OCTSTRING
 GSN_Address=asn1.OCTSTRING
 TraceReference=asn1.OCTSTRING
@@ -675,10 +683,12 @@ ForwardingFeature=asn1.SEQUENCE ([('basicService',None,BasicServiceCode,1,None),
     ('forwardedToSubaddress',None,asn1.TYPE(asn1.IMPLICIT(8,cls=asn1.CONTEXT_FLAG),ISDN_SubaddressString),1,None),
     ('forwardingOptions',None,asn1.TYPE(asn1.IMPLICIT(6,cls=asn1.CONTEXT_FLAG),ForwardingOptions),1,None),
     ('noReplyConditionTime',None,asn1.TYPE(asn1.IMPLICIT(7,cls=asn1.CONTEXT_FLAG),NoReplyConditionTime),1,None)], seq_name = 'ForwardingFeature')
+MAP_RefuseInfo=asn1.SEQUENCE ([('reason',None,Reason,0,None)], seq_name = 'MAP-RefuseInfo')
 GPRSSubscriptionDataWithdraw=asn1.CHOICE ([('allGPRSData',None,asn1.NULL),
     ('contextIdList',None,ContextIdList)])
 IST_CommandArg=asn1.SEQUENCE ([('imsi',None,asn1.TYPE(asn1.IMPLICIT(0,cls=asn1.CONTEXT_FLAG),IMSI),0,None),
     ('extensionContainer',None,asn1.TYPE(asn1.IMPLICIT(1,cls=asn1.CONTEXT_FLAG),ExtensionContainer),1,None)], seq_name = 'IST-CommandArg')
+MAP_ProviderAbortInfo=asn1.SEQUENCE ([('map-ProviderAbortReason',None,MAP_ProviderAbortReason,0,None)], seq_name = 'MAP-ProviderAbortInfo')
 ProvideRoamingNumberArg=asn1.SEQUENCE ([('imsi',None,asn1.TYPE(asn1.IMPLICIT(0,cls=asn1.CONTEXT_FLAG),IMSI),0,None),
     ('msc-Number',None,asn1.TYPE(asn1.IMPLICIT(1,cls=asn1.CONTEXT_FLAG),ISDN_AddressString),0,None),
     ('msisdn',None,asn1.TYPE(asn1.IMPLICIT(2,cls=asn1.CONTEXT_FLAG),ISDN_AddressString),1,None),
@@ -752,6 +762,10 @@ CheckIMEI_Res=asn1.SEQUENCE ([('equipmentStatus',None,EquipmentStatus,1,None),
     ('extensionContainer',None,asn1.TYPE(asn1.IMPLICIT(0,cls=asn1.CONTEXT_FLAG),ExtensionContainer),1,None)], seq_name = 'CheckIMEI-Res')
 Ext_BasicServiceCode=asn1.CHOICE ([('ext-BearerService',None,asn1.TYPE(asn1.IMPLICIT(2,cls=asn1.CONTEXT_FLAG),Ext_BearerServiceCode)),
     ('ext-Teleservice',None,asn1.TYPE(asn1.IMPLICIT(3,cls=asn1.CONTEXT_FLAG),Ext_TeleserviceCode))])
+MAP_UserAbortChoice=asn1.CHOICE ([('userSpecificReason',None,asn1.TYPE(asn1.IMPLICIT(0,cls=asn1.CONTEXT_FLAG),asn1.NULL)),
+    ('userResourceLimitation',None,asn1.TYPE(asn1.IMPLICIT(1,cls=asn1.CONTEXT_FLAG),asn1.NULL)),
+    ('resourceUnavailable',None,asn1.TYPE(asn1.IMPLICIT(2,cls=asn1.CONTEXT_FLAG),ResourceUnavailableReason)),
+    ('applicationProcedureCancellation',None,asn1.TYPE(asn1.IMPLICIT(3,cls=asn1.CONTEXT_FLAG),ProcedureCancellationReason))])
 NoteMsPresentForGprsArg=asn1.SEQUENCE ([('imsi',None,asn1.TYPE(asn1.IMPLICIT(0,cls=asn1.CONTEXT_FLAG),IMSI),0,None),
     ('sgsn-Address',None,asn1.TYPE(asn1.IMPLICIT(1,cls=asn1.CONTEXT_FLAG),GSN_Address),0,None),
     ('ggsn-Address',None,asn1.TYPE(asn1.IMPLICIT(2,cls=asn1.CONTEXT_FLAG),GSN_Address),1,None),
@@ -775,6 +789,7 @@ GPRS_CSI=asn1.SEQUENCE ([('gprs-CamelTDPDataList',None,asn1.TYPE(asn1.IMPLICIT(0
     ('extensionContainer',None,asn1.TYPE(asn1.IMPLICIT(2,cls=asn1.CONTEXT_FLAG),ExtensionContainer),1,None),
     ('notificationToCSE',None,asn1.TYPE(asn1.IMPLICIT(3,cls=asn1.CONTEXT_FLAG),asn1.NULL),1,None),
     ('csi-Active',None,asn1.TYPE(asn1.IMPLICIT(4,cls=asn1.CONTEXT_FLAG),asn1.NULL),1,None)], seq_name = 'GPRS-CSI')
+MAP_UserAbortInfo=asn1.SEQUENCE ([('map-UserAbortChoice',None,MAP_UserAbortChoice,0,None)], seq_name = 'MAP-UserAbortInfo')
 T_CSI=asn1.SEQUENCE ([('t-BcsmCamelTDPDataList',None,T_BcsmCamelTDPDataList,0,None),
     ('extensionContainer',None,ExtensionContainer,1,None)], seq_name = 'T-CSI')
 ModificationRequestFor_CF_Info=asn1.SEQUENCE ([('ss-Code',None,asn1.TYPE(asn1.IMPLICIT(0,cls=asn1.CONTEXT_FLAG),SS_Code),0,None),
@@ -806,6 +821,12 @@ IST_AlertArg=asn1.SEQUENCE ([('imsi',None,asn1.TYPE(asn1.IMPLICIT(0,cls=asn1.CON
     ('extensionContainer',None,asn1.TYPE(asn1.IMPLICIT(1,cls=asn1.CONTEXT_FLAG),ExtensionContainer),1,None)], seq_name = 'IST-AlertArg')
 CallBarringFeature=asn1.SEQUENCE ([('basicService',None,BasicServiceCode,1,None),
     ('ss-Status',None,asn1.TYPE(asn1.IMPLICIT(4,cls=asn1.CONTEXT_FLAG),SS_Status),1,None)], seq_name = 'CallBarringFeature')
+MAP_DialoguePDU=asn1.CHOICE ([('map-open',None,asn1.TYPE(asn1.IMPLICIT(0,cls=asn1.CONTEXT_FLAG),MAP_OpenInfo)),
+    ('map-accept',None,asn1.TYPE(asn1.IMPLICIT(1,cls=asn1.CONTEXT_FLAG),MAP_AcceptInfo)),
+    ('map-close',None,asn1.TYPE(asn1.IMPLICIT(2,cls=asn1.CONTEXT_FLAG),MAP_CloseInfo)),
+    ('map-refuse',None,asn1.TYPE(asn1.IMPLICIT(3,cls=asn1.CONTEXT_FLAG),MAP_RefuseInfo)),
+    ('map-userAbort',None,asn1.TYPE(asn1.IMPLICIT(4,cls=asn1.CONTEXT_FLAG),MAP_UserAbortInfo)),
+    ('map-providerAbort',None,asn1.TYPE(asn1.IMPLICIT(5,cls=asn1.CONTEXT_FLAG),MAP_ProviderAbortInfo))])
 VLR_Capability=asn1.SEQUENCE ([('supportedCamelPhases',None,asn1.TYPE(asn1.IMPLICIT(0,cls=asn1.CONTEXT_FLAG),SupportedCamelPhases),1,None),
     ('extensionContainer',None,ExtensionContainer,1,None)], seq_name = 'VLR-Capability')
 SupportedCodecsList=asn1.SEQUENCE ([('utranCodecList',None,asn1.TYPE(asn1.IMPLICIT(0,cls=asn1.CONTEXT_FLAG),CodecList),1,None),
