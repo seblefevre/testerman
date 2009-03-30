@@ -1,4 +1,5 @@
 #!/usr/bin/env python
+# -*- coding: utf-8 -*-
 ##
 # This file is part of Testerman, a test automation system.
 # Copyright (c) 2008-2009 Sebastien Lefevre and other contributors
@@ -14,7 +15,6 @@
 ##
 
 ##
-# -*- coding: utf-8 -*-
 # A command-line interface testerman minimal client.
 #
 # Suitable for test execution from a higher-level script or 
@@ -33,7 +33,7 @@ import time
 import logging
 
 
-VERSION = "0.0.1"
+VERSION = "0.0.2"
 
 
 def getVersion():
@@ -201,6 +201,15 @@ class TestermanCliClient:
 		ret = self.__client.updateAgent(agentName, branch, version)
 		print str(ret)
 
+	def getLog(self, jobId):
+		try:
+			ret = self.__client.getJobLog(jobId)
+			if not ret:
+				raise Exception("No log available (job not started or delete logs)")
+		except Exception, e:
+			sys.stdout.write("Unable to get current log for job ID %s: %s\n" % (jobId, str(e)))
+			return 1
+		print ret
 
 def main():
 	parser = optparse.OptionParser(version = getVersion())
@@ -214,6 +223,8 @@ def main():
 	parser.add_option("--nowait", dest = "waitForAtsCompletion", action = "store_false", help = "when executing an ATS, immediately returns without waiting for its completion (default: false)", default = True)
 
 	parser.add_option("--monitor", dest = "monitorUri", metavar = "URI", help = "monitor events on URI", default = None)
+
+	parser.add_option("--get-log", dest = "logJobId", metavar = "ID", help = "get the current logs for job ID", default = None)
 
 	parser.add_option("--deploy", dest = "deployProbeName", metavar = "NAME", help = "deploy a probe named NAME", default = None)
 	parser.add_option("--undeploy", dest = "undeployProbeName", metavar = "NAME", help = "undeploy a probe named NAME", default = None)
@@ -268,8 +279,11 @@ def main():
 			client.monitor(options.monitorUri)
 			client.stopXc()
 		
+		elif options.logJobId:
+			return client.getLog(int(options.logJobId))
+		
 		elif options.sendSignal and options.jobId:
-			client.sendSignal(options.jobId, options.sendSignal)
+			client.sendSignal(int(options.jobId), options.sendSignal)
 		
 		elif options.deployProbeName and options.deployProbeType and options.deployAgentName:
 			client.deployProbe(options.deployAgentName, options.deployProbeName, options.deployProbeType)
