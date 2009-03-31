@@ -68,6 +68,89 @@ def string2tbcd(digits, filler = 0x0f):
 	return ''.join(map(chr, bytes))
 
 
+###############################################################################
+# 7-bit Packet (3GPP TS 23.038, ...)
+###############################################################################
+
+def encode_7bitpacked(s):
+	"""
+	Encodes a 7-bit string (already in the correct alphabet)
+	to a 7-bit packed buffer.
+	
+	Used for 7-bit SMS packing, USSD packing, CBS packing...
+	
+	For instance:
+
+	One character in one octet:
+	the bits numbers in the output are:
+	7  6  5  4  3  2  1  0
+	0  1a 1b 1c 1d 1e 1f 1g
+	
+	Two characters in two octets:
+	7  6  5  4  3  2  1  0
+	2g 1a 1b 1c 1d 1e 1f 1g
+	0  0  2a 2b 2c 2d 2e 2f
+	
+	etc.
+	 
+	"""
+	# available bits in the previous encoded byte: ranges from 0
+	# (fully packed) to 7 (we will be able to inject a complete new 7-bit character)
+	available_bits_in_previous_byte = 0
+	ret = []
+	for c in s:
+		c = ord(c) & 0x7f # limit to 7 bit, left-pad with bit 0
+		# some bits to inject in the previous byte ?
+		if available_bits_in_previous_byte:
+			ret[-1] = ret[-1] | (c << (8-available_bits_in_previous_byte) ) & 0xff
+
+		if available_bits_in_previous_byte < 7:
+			# and inject the others in the current byte if it was not enough
+			ret.append(c >> available_bits_in_previous_byte & 0x7f)
+			available_bits_in_previous_byte += 1
+		else:
+			# was 7. We packed the entire character in the previous byte,
+			# nothing to add.
+			available_bits_in_previous_byte = 0
+	
+	return ''.join(map(chr, ret))
+
+def decode_7bitpacked(s):
+	"""
+	s is a 7-bit packed string.
+	
+	Decodes it to 8-bit characters.
+	"""
+	# nb of bits participating to the current caracter encoding
+	# in the previous encoded byte.
+	available_bits_in_previous_byte = 0
+	ret = []
+	i = 0
+	while i < len(s):
+		c = ord(s[i])
+		lsb = 0x00 # least significant bits, from the previous byte
+		if available_bits_in_previous_byte:
+			# Let's extract the bits from the previous byte in s
+			lsb = ((ord(s[i-1]) >> (8-available_bits_in_previous_byte)) & 0x7f)
+
+		if available_bits_in_previous_byte < 7:
+			# We have some additional bits in the current byte
+			# (7-available_bits_in_previous_byte bits exactly)
+			ret.append( ((c << available_bits_in_previous_byte) | lsb) & 0x7f)
+			available_bits_in_previous_byte += 1
+			i += 1 # next coding byte
+		else:
+			# No more coding bits in the current byte
+			ret.append(lsb)
+			available_bits_in_previous_byte = 0
+			
+	return ''.join(map(chr, ret))
+
+
+###############################################################################
+# Codecs
+###############################################################################
+
 class TbcdCodec(CodecManager.Codec):
 	"""
 	Converts a template:
@@ -246,3 +329,22 @@ if __name__ == "__main__":
 		print "decoded: %s" % repr(decoded)
 		assert(decoded == d)
 
+
+	print
+	print 80*'-'
+	print "7-bit packed Codec unit tests"
+	print 80*'-'
+	tests = [
+		('hellohello', o("e8329bfd4697d9ec37")),
+	]
+	
+	for d, c in tests:
+		print "Testing '%s':" % d
+		e = encode_7bitpacked('hellohello')
+		print "Encoded:  %s" % oo(e)
+		print "Expected: %s" % oo(c)
+		assert(e == c)
+		rd = decode_7bitpacked(c)
+		print "Decoded:  %s" % rd
+		print "Expected: %s" % d
+		assert(d == rd)
