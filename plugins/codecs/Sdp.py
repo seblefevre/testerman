@@ -23,48 +23,99 @@ import CodecManager
 
 class SdpCodec(CodecManager.Codec):
 	"""
-	Encode/decode from to:
+	= Identification and Properties =
 	
+	Codec ID: `sdp`
+	
+	Properties:
+	|| '''Name''' || '''Type''' || '''Default value''' || '''Description''' ||
+	|| `name` || string || `"Testerman SDP"` || A default session name to use for encoding, if none is provided by the user ||
+	|| `version` || string || `'0'` || A default SDP version to use for encoding, if none is provided by the user ||
+	
+	= Overview =
+	
+	This codec encodes/decodes Session Description Protocol (SDP) payloads
+	as defined in RFC4566.
+	
+	== Decoding ==
+	
+	This codec decodes a multi-line string describing a session to
+	a high level Testerman message structure.
+	
+	Unknown fields are not decoded, and do not cause any error.
+	
+	If mandatory SDP attributes are missing, the decoding still successes
+	(this behaviour may change the future).
+	
+	Attributes that can be repeated are decoded to a list, and as an
+	empty list if they are now present at all in the encoded message.
+	
+	== Encoding ==
+	
+	This codec encodes a Testerman dict structure `Sdp` to a
+	multi-line string (`\\n`-terminated), suitable 
+	for a direct inclusion in a SIP/RTSP body whose Content-Type is `application/sdp`.
+
+	If no `name` is provided, it is defaulted to the value of the `name` codec property.[[BR]]
+	If no `version` is provided, it is defaulted to the value of the `version` codec property.[[BR]]
+	
+	If mandatory SDP attributes are missing, the encoding fails; since a default value is
+	provided for both mandatory attributes `name` (`s=`) and `version` (`v=`), this mainly
+	involves the `originator` (`o=`) attribute.
+
+	== Availability ==
+
+	All platforms.
+
+	== Dependencies ==
+
+	None.
+
+	== See Also ==
+	
+	
+	= TTCN-3 Types Equivalence =
+	
+	This codec decodes to/encode from the Testerman structure whose the TTCN-3 equivalent
+	is the type `SdpMessage` below:
+	{{{
 	type record Media
 	{
-		charstring name_transport, // m=
-		charstring title optional, // i=
+		charstring name_transport,      // m=
+		charstring title optional,      // i=
 		charstring connection optional, // c=
-		list of charstring bandwidths, // b=
-		charstring key optional, // k =
-		list of charstring attributes, // a=
+		record of charstring bandwidths,  // b=
+		charstring key optional,        // k =
+		record of charstring attributes,  // a=
 	}
 	
-	type recode Sdp
+	type record Sdp
 	{
 		// Session parameters
-		charstring version optional, // v= - set to the default if missing
-		charstring originator, // and session ; o=
-		charstring name optional, // s= - use the default if missing
-		charstring information optional, // i=
+		charstring version optional,         // v= - set to the default if missing
+		charstring originator,               // and session ; o=
+		charstring name optional,            // s= - use the default if missing
+		charstring information optional,     // i=
 		charstring description_uri optional, // u=
-		charstring email_address optional, // e=
-		charstring phone_number optional, // p=
-		charstring connection optional, // c=
-		list of charstring bandwidths, // b=
-		charstring key optional, // k=
-		list of charstring attibutes, // a=
-		charstring time optional, // t=
-		list of charstring repeats, // r=
+		charstring email_address optional,   // e=
+		charstring phone_number optional,    // p=
+		charstring connection optional,      // c=
+		record of charstring bandwidths,       // b=
+		charstring key optional,             // k=
+		record of charstring attibutes,        // a=
+		charstring time optional,            // t=
+		record of charstring repeats,          // r=
 		// Media descriptions
-		list of Media media,
+		record of Media media,
 	}
-	
-	If you need additional parsing for an entry, use the additional codecs below.
-	
-	
+	}}}
 	
 	"""
 	def __init__(self):
 		CodecManager.Codec.__init__(self)
 		# Some default (encoding) properties
 		self.setDefaultProperty('version', '0')
-		self.setDefaultProperty('name', 'testerman SDP')
+		self.setDefaultProperty('name', 'Testerman SDP')
 	
 	def encode(self, template):
 		version = template.get('version', self['version'])
