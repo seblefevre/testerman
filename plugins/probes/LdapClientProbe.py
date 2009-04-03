@@ -27,80 +27,136 @@ import threading
 
 class LdapClientProbe(ProbeImplementationManager.ProbeImplementation):
 	"""
+	= Identification and Properties =
 
-type union LdapCommand
-{
-	BindCommand   bind,    // binds to the server set in properties, with the defaut or given credentials
-	UnbindCommand unbind,  // unbinds from the server
-	SearchCommand search,  // searches entries according to a ldap search filter
-	WriteCommand  write,   // updates or adds a new entry or attribute
-	DeleteCommand delete,   // deletes an entry
-	AbandonCommand abandon, // abandon the current command, if any
-	CancelCommand abandon,  // cancel the current command, if any (only supported on RFC3909 compliant server)
-}
-
-type record BindCommand {
-	charstring username optional, // the distinguished name of the entry to bind
-	charstring password optional,
-}
-
-type any UnbindCommand;
-
-type record SearchCommand {
-	charstring baseDn,
-	charstring filter, // should we use a default filter (objectClass=*) ?
-	charstring scope optional, // enum in 'base', 'subtree', 'onelevel', defaulted to 'base'
-	record of charstring attributes optional, // defaulted to an empty list, i.e. all attributes are returned
-}
-
-type record WriteCommand {
-	charstring dn,
-	record of Attribute attributes optional, // defaulted to an empty list
-}
-
-type record Attribute {
-	<name> // dynamic names, natural types (charstring/universal charstring, int, double, octetstring, ...)
-}
-
-type record DeleteCommand {
-	charstring dn,
-}
-
-type any AbandonCommand;
-
-type any CancelCommand;
-
-type union LdapResponse
-{
-	BindResult bindResult,
-	SearchResult searchResult,
-	WriteResult writeResult,
-	ErrorResponse error,
-}
-
-type charstring ErrorResponse;
-
-type port LdapPortType message
-{
-	in  LdapCommand;
-	out LdapResponse;
-}
+	Probe Type ID: `ldap.client`
 
 	Properties:
-	|| || || ||
+	|| '''Name''' || '''Type''' || '''Default value''' || '''Description''' ||
 	|| `server_url` || string || `'ldap://127.0.0.1:389'` || LDAP server url, including protocol to use (ldap or ldaps) ||
 	|| `ldap_version` || integer || 2 || LDAP server version
 	|| `username` || string || None (undefined) || The DN entry to bind, if not provided through a request ||
 	|| `password` || string || empty || The password to use by default for binding ||
 	|| `timeout` || float || 60.0 || The maximum amount of time allowed to perform a search/write/delete operation before raising an error response ||
 	
+	(no properties)
+
+	= Overview =
+
+	This probe simulates a LDAP client that can connect to a LDAP server
+	to perform the following LDAP operations:
+	 * bind
+	 * unbind
+	 * search
+	 * add and update
+	 * delete
+	
+	It can connect to LDAP v2 and v3 servers, using a standard or a secure (ldaps, SSL/TLS)
+	connection.
+	
+	SASL connections are currently not interfaced.
+
 	By default, the probe automatically binds using the `default_username` and `default_password` prior
 	to execute a search/write/delete command, unless an explicit bind command was performed by the user before.
 
 	The probe automatically unbinds on unmap.
 	
-	Bind and unbind operations are synchronous, i.e. it's not use arming a timer to cancel them from the userland: they
-	are not cancellable, and only returns when they are complete.
+	Notes:
+	 * Bind and unbind operations are synchronous, i.e. it's not use arming a timer to cancel them from the userland: they
+	are not cancellable, and only return when they are complete. However, you still must wait for a `BindResult`
+	before assuming the binding is complete.
+	 * The synchronous bind implementation may be replaced with an asynchronous equivalent one day. This
+	won't have any impact on your testcases if you wait for the `BindResult` as explained above.
+
+	== Availability ==
+
+	All platforms.
+
+	== Dependencies ==
+
+	This probe depends on the openldap library and its associated Python wrapper.
+	
+	On Debian-based system, this is `python-ldap` and its dependencies.
+
+	== See Also ==
+	
+	
+	= TTCN-3 Types Equivalence =
+
+	The test system interface port bound to such a probe complies with the `LdapPortType` port type as specified below:
+	{{{
+	type union LdapCommand
+	{
+		BindCommand   bind,     // binds to the server set in properties, with the defaut or given credentials
+		UnbindCommand unbind,   // unbinds from the server
+		SearchCommand search,   // searches entries according to a ldap search filter
+		WriteCommand  write,    // updates or adds a new entry or attribute
+		DeleteCommand delete,   // deletes an entry
+		AbandonCommand abandon, // abandon the current command, if any
+		CancelCommand abandon,  // cancel the current command, if any (only supported on RFC3909 compliant server)
+	}
+
+	type record BindCommand {
+		charstring username optional, // the distinguished name of the entry to bind
+		charstring password optional,
+	}
+
+	type any UnbindCommand;
+
+	type record SearchCommand {
+		charstring baseDn,
+		charstring filter, // should we use a default filter (objectClass=*) ?
+		charstring scope optional, // enum in 'base', 'subtree', 'onelevel', defaulted to 'base'
+		record of charstring attributes optional, // defaulted to an empty list, i.e. all attributes are returned
+	}
+
+	type record WriteCommand {
+		charstring dn,
+		record of Attribute attributes optional, // defaulted to an empty list
+	}
+
+	type record Attribute {
+		record of <natural type> <name> // dynamic names, natural types (charstring/universal charstring, int, double, octetstring, ...)
+	}
+
+	type record DeleteCommand {
+		charstring dn,
+	}
+
+	type any AbandonCommand;
+
+	type any CancelCommand;
+	
+	type boolean DeleteResult;
+	
+	type boolean BindResult;
+	
+	type record of SearchEntry SearchResult;
+	
+	type record SearchEntry {
+		charstring dn,
+		record of Attribute attributes,
+	}
+	
+	type boolean WriteResult;
+
+	type charstring ErrorResponse;
+
+	type union LdapResponse
+	{
+		BindResult bindResult,
+		DeleteResulet deleteResult,
+		SearchResult searchResult,
+		WriteResult writeResult,
+		ErrorResponse error,
+	}
+
+	type port LdapPortType message
+	{
+		in  LdapCommand;
+		out LdapResponse;
+	}
+	}}}
 	"""
 	def __init__(self):
 		ProbeImplementationManager.ProbeImplementation.__init__(self)
@@ -228,30 +284,6 @@ type port LdapPortType message
 		# Generates an exception in case of a binding (or connection) error.
 		self._server.bind_s(username, password)
 	
-	def bind(self, username, password):
-		try:
-			self._bind(username, password)
-			self.triEnqueueMsg(('bindResult', {}))
-		except Exception, e:
-			self.triEnqueueMsg(('error', 'Error while binding: %s' % str(e)), self['server_url'])
-	
-	def search(self, basedn, filter_, scope, attributes):
-		self.getLogger().debug('Searching %s from %s (scope %s, attributes: %s)' % (filter_, basedn, scope, attributes))
-		if scope == 'subtree':
-			s = ldap.SCOPE_SUBTREE
-		elif scope == 'onelevel':
-			s = ldap.SCOPE_ONELEVEL
-		elif scope == 'base':
-			s = ldap.SCOPE_BASE
-		else:
-			raise Exception('Invalid scope (%s): only the following are supported: subtree, oneleve, base' % scope)
-		if not self._ensureBind():
-			return
-		self._pendingRequest = self._server.search(basedn, s, filter_, attributes)
-		# Now starts a thread to wait for our results.
-		th = threading.Thread(target = self._waitForSearchResult, kwargs = dict(request = self._pendingRequest, timeout = self['timeout']))
-		th.start()
-	
 	def _onResult(self, request, result, operationName):
 		"""
 		Called by the waiting thread when receiving a result.
@@ -294,6 +326,30 @@ type port LdapPortType message
 			self.getLogger().warning("Late (and discarded) error response received for request %s: %s" % (request, errorString))
 		self._pendingRequest = None
 	
+	def bind(self, username, password):
+		try:
+			self._bind(username, password)
+			self.triEnqueueMsg(('bindResult', True))
+		except Exception, e:
+			self.triEnqueueMsg(('error', 'Error while binding: %s' % str(e)), self['server_url'])
+	
+	def search(self, basedn, filter_, scope, attributes):
+		self.getLogger().debug('Searching %s from %s (scope %s, attributes: %s)' % (filter_, basedn, scope, attributes))
+		if scope == 'subtree':
+			s = ldap.SCOPE_SUBTREE
+		elif scope == 'onelevel':
+			s = ldap.SCOPE_ONELEVEL
+		elif scope == 'base':
+			s = ldap.SCOPE_BASE
+		else:
+			raise Exception('Invalid scope (%s): only the following are supported: subtree, oneleve, base' % scope)
+		if not self._ensureBind():
+			return
+		self._pendingRequest = self._server.search(basedn, s, filter_, attributes)
+		# Now starts a thread to wait for our results.
+		th = threading.Thread(target = self._waitForSearchResult, kwargs = dict(request = self._pendingRequest, timeout = self['timeout']))
+		th.start()
+	
 	def _waitForSearchResult(self, request, timeout):
 		"""
 		Executed in a dedicated thread.
@@ -318,35 +374,71 @@ type port LdapPortType message
 		if res:
 			self._onResult(request, resultSet, 'search')
 
-#		# Previous implementation, manual cancel/timeout	
-#		startTime = time.time()
-#		try:
-#			# Let's pool the result regularly, while we have a pending request.
-#			while self.getPendingRequest():
-#				resultType, resultData = self._server.result(request, 0)
-#				if not resultData:
-#					if time.time() - startTime >= timeout:
-#						self.abandon()
-#						raise Exception('Request timeout')
-#					else:
-#						time.sleep(0.001)
-#				else:
-#					resultSet.append(resultData[1]) # resultData is a tuple (a, b) where b is a dict of list of values, a is .. ?
-#		except ldap.USER_CANCELLED:
-#			pass
-#		except Exception, e:
-#			self._onError(request, str(e))
-
-	
 	def delete(self, dn):
 		if not self._ensureBind():
 			return
-		pass
+		self._pendingRequest = self._server.search(basedn, s, filter_, attributes)
+		# Now starts a thread to wait for our results.
+		th = threading.Thread(target = self._waitForDeleteResult, kwargs = dict(request = self._pendingRequest, timeout = self['timeout']))
+		th.start()
+
+	def _waitForDeleteResult(self, request, timeout):
+		"""
+		Executed in a dedicated thread.
+		"""
+		res = False
+		deleteResult = False
+		try:
+			# Let's pool the result regularly, while we have a pending request.
+			resultType, resultData = self._server.result(request, timeout = timeout)
+			self.getLogger().debug('Delete result: %s' % resultData)
+			res = True
+			# FIXME: check what a ldap database reports in these cases
+			deleteResult = resultData 
+		except ldap.USER_CANCELLED:
+			pass
+		except ldap.NO_SUCH_OBJECT:
+			res = True
+			deleteResult = False
+		except Exception, e:
+			self._onError(request, ProbeImplementationManager.getBacktrace())
+	
+		if res:
+			self._onResult(request, deleteResult, 'delete')
 	
 	def write(self, dn, attributes):
+		"""
+		Synchronous implementation for now...
+		"""
 		if not self._ensureBind():
 			return
-		pass
+
+		completed = False
+		try:
+			try:
+				# a lift of (dn, attribute dict)
+				searchResult = self._server.search_s(dn, ldap.SCOPE_BASE)
+				if not searchResult:
+					# Let's add it
+					self._server.add_s(dn, ldap.modlist.addModlist(attributes))
+					completed = True
+				elif len(searchResult) == 1:
+					# Let's modify the entry
+					self._server.modify_s(dn, ldap.modlist.modifyModlist(searchResult[0][1], attributes, 1))
+					completed = True
+				else:
+					# Cannot write multiple DNs.
+					self.triEnqueueMsg(('error', 'Multiple entries correspond to this dn, cannot update'), self['server_url'])
+			except ldap.NO_SUCH_OBJECT:
+				# Let's add it
+				self._server.add_s(dn, ldap.modlist.addModlist(attributes))
+				completed = True
+		except Exception, e:
+			self.triEnqueueMsg(('error', 'Error while updating/adding some data:\n%s' % ProbeImplementationManager.getBacktrace()), self['server_url'])
+
+		if completed:
+			self.triEnqueueMsg(('writeResult', True))
+		
 	
 	def _ensureBind(self):
 		"""
