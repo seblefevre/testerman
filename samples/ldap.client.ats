@@ -4,9 +4,10 @@
 # <description>description</description>
 # <prerequisites>prerequisites</prerequisites>
 # <parameters>
-# <parameter name="PX_PASSWORD" default="" type="string"><![CDATA[Password to use for LDAP bind]]></parameter>
+# <parameter name="PX_USERNAME" default="cn=admin" type="string"><![CDATA[DN to use for LDAP bind (prepended to the base_dn)]]></parameter>
+# <parameter name="PX_BASE_DN" default="dc=grenoble,dc=ferma" type="string"><![CDATA[]]></parameter>
+# <parameter name="PX_PASSWORD" default="admin" type="string"><![CDATA[Password to use for LDAP bind]]></parameter>
 # <parameter name="PX_SERVER_IP" default="127.0.0.1" type="string"><![CDATA[LDAP server IP address]]></parameter>
-# <parameter name="PX_USERNAME" default="" type="string"><![CDATA[DN to use for LDAP bind]]></parameter>
 # </parameters>
 # </metadata>
 # __METADATA__END__
@@ -17,18 +18,39 @@
 #
 ##
 
-class TC_LDAP_CLIENT_SEARCH(TestCase):
+class TC_LDAP_CLIENT(TestCase):
 	"""
-	In this sample,
-	we test a simple LDAP search with implicit binding.
+	Prerequisites:
+	a working LDAP server using the default LDAPv2 user
+	schema
+	
+	In this sample, using implicit binding only, we:
+	- search for the dn that enabled us to bind
+	- create a new sibling entry, named 'cn=test' by default
+	- modify its description once created
+	- delete this new entry 
+
+	Each step is verified with proper ldap search requests.
 	"""
-	def body(self, server_ip_port = "127.0.0.1:60009"):
+	def body(self, baseDn, newEntry = "test"):
 		
 		def m_ldapSearch(basedn, filter_ = '(objectClass=*)', scope = 'subtree'):
 			return ('search', {'filter': filter_, 'baseDn': basedn, 'scope': scope})
 		
 		def mw_ldapSearchResult(template = any_or_none()):
 			return ('searchResult', template)
+		
+		def m_ldapWrite(dn, attributes = []):
+			return ('write', { 'dn': dn, 'attributes': attributes })
+		
+		def m_ldapDelete(dn):
+			return ('delete', { 'dn': dn })
+		
+		def mw_writeResult(res = True):
+			return ('writeResult', res)
+		
+		def mw_deleteResult(res = True):
+			return ('deleteResult', res)
 		
 		def mw_ldapError():
 			return ('error', any())
@@ -54,27 +76,110 @@ class TC_LDAP_CLIENT_SEARCH(TestCase):
 		])
 
 		# Search something
-		ldapPort.send(m_ldapSearch(basedn = 'dc=nodomain', filter = ('cn=admin')))
+		ldapPort.send(m_ldapSearch(basedn = baseDn, filter_ = ('cn=admin')))
 		alt([
-			[ ldapPort.RECEIVE(mw_ldapSearchResult()),
+			[ ldapPort.RECEIVE(mw_ldapSearchResult(any())),
 				lambda: log("search results received"),
 			],
+			[ ldapPort.RECEIVE(),
+				lambda: log("expected search result not received"),
+				lambda: setverdict('fail'),
+				lambda: stop(),
+			]
 		])
-		self.setverdict("pass")
 		
+		# Add an entry
+		dn = 'cn=%s,%s' % (newEntry, baseDn)
+		ldapPort.send(m_ldapWrite(dn = dn, attributes = { 
+			'cn': ['test'], 
+			'userPassword': ['{crypt}cRYOhjF5wqBRk'],
+			'objectClass': [ 'simpleSecurityObject', 'organizationalRole' ],
+			'description': [ 'testerman ldap.client test objet' ],
+			}))
+		alt([
+			[ ldapPort.RECEIVE(mw_writeResult(True)),
+				lambda: log("Entry created/updated successfully"),
+			],
+			[ ldapPort.RECEIVE(),
+				lambda: log("Unable to create/update a test entry"),
+				lambda: setverdict('fail'),
+				lambda: stop(),
+			]
+		])
+
+		ldapPort.send(m_ldapSearch(basedn = baseDn, filter_ = ('cn=%s' % newEntry)))
+		alt([
+			[ ldapPort.RECEIVE(mw_ldapSearchResult([ { 'dn': dn, 'attributes': { 'description': [ 'testerman ldap.client test objet' ] }}])),
+				lambda: log("added entry found"),
+			],
+			[ ldapPort.RECEIVE(),
+				lambda: log("added entry not found"),
+				lambda: setverdict('fail'),
+				lambda: stop(),
+			]
+		])
+
+		# Update the entry - update the description
+		ldapPort.send(m_ldapWrite(dn = dn, attributes = { 'description': [ 'modified description' ]}))
+		alt([
+			[ ldapPort.RECEIVE(mw_writeResult(True)),
+				lambda: log("Entry created/updated successfully"),
+			],
+			[ ldapPort.RECEIVE(),
+				lambda: log("Unable to create/update a test entry"),
+				lambda: setverdict('fail'),
+				lambda: stop(),
+			]
+		])
+		ldapPort.send(m_ldapSearch(basedn = baseDn, filter_ = ('cn=%s' % newEntry)))
+		alt([
+			[ ldapPort.RECEIVE(mw_ldapSearchResult([ { 'dn': dn, 'attributes': { 'description': [ 'modified description' ] }}])),
+				lambda: log("entry modified correctly"),
+			],
+			[ ldapPort.RECEIVE(),
+				lambda: log("modified entry not found"),
+				lambda: setverdict('fail'),
+				lambda: stop(),
+			]
+		])
+		
+		# Finally, delete the test entry
+		ldapPort.send(m_ldapDelete(dn = dn))
+		alt([
+			[ ldapPort.RECEIVE(mw_deleteResult(True)),
+				lambda: log("Entry deleted successfully"),
+			],
+			[ ldapPort.RECEIVE(),
+				lambda: log("Unable to delete the test entry"),
+				lambda: setverdict('fail'),
+				lambda: stop(),
+			]
+		])
+		# Check the deletion
+		ldapPort.send(m_ldapSearch(basedn = baseDn, filter_ = ('cn=%s' % newEntry)))
+		alt([
+			[ ldapPort.RECEIVE(mw_ldapSearchResult([])),
+				lambda: log("entry deleted correctly"),
+			],
+			[ ldapPort.RECEIVE(),
+				lambda: log("test entry not deleted correctly"),
+				lambda: setverdict('fail'),
+				lambda: stop(),
+			]
+		])
+		
+		self.setverdict("pass")
+
 
 ##
 # Test Adapter Configurations
 ##
 
 conf = TestAdapterConfiguration('local')
-conf.bindByUri('ldapServer', 'probe:ldap01', 'ldap.client', server_url = 'ldap://%s' % get_variable('PX_SERVER_IP'), username = '', password = '')
+conf.bindByUri('ldapServer', 'probe:ldap01', 'ldap.client', server_url = 'ldap://%s' % get_variable('PX_SERVER_IP'), username = '%s,%s' % (get_variable('PX_USERNAME'), get_variable('PX_BASE_DN')), password = get_variable('PX_PASSWORD'))
 
 ##
 # Control definition
 ##
-
-enable_debug_logs()
-
 useTestAdapterConfiguration('local')
-TC_LDAP_CLIENT_SEARCH(id_suffix = 'LOCAL').execute()
+TC_LDAP_CLIENT(id_suffix = 'LOCAL').execute(baseDn = get_variable('PX_BASE_DN'))

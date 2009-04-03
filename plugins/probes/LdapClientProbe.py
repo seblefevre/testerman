@@ -59,14 +59,24 @@ class LdapClientProbe(ProbeImplementationManager.ProbeImplementation):
 	By default, the probe automatically binds using the `default_username` and `default_password` prior
 	to execute a search/write/delete command, unless an explicit bind command was performed by the user before.
 
-	The probe automatically unbinds on unmap.
+	The probe automatically unbinds on unmap.[[BR]]
+	
+	To add or update an entry, use a `WriteCommand` message. The probe
+	automatically detects if it should be a new entry (don't forget mandatory
+	attributes according to the entry's schema) or an update. In case of an update:
+	 * only provided attributes are modified. The other ones are left unchanged
+	 * all values of the existing attributes are replaced with the new ones (no values merge)
+	 * you can delete an attribute by specifying an empty value list for it
 	
 	Notes:
-	 * Bind and unbind operations are synchronous, i.e. it's not use arming a timer to cancel them from the userland: they
-	are not cancellable, and only return when they are complete. However, you still must wait for a `BindResult`
-	before assuming the binding is complete.
-	 * The synchronous bind implementation may be replaced with an asynchronous equivalent one day. This
-	won't have any impact on your testcases if you wait for the `BindResult` as explained above.
+	 * Bind, write and unbind operations are synchronous, i.e. 
+	it's not use arming a timer to cancel them from the userland: they
+	are not cancellable, and only return when they are complete. However,
+	you still must wait for a `BindResult` or `WriteResult`
+	before assuming the operation is complete.
+	 * The synchronous bind and write implementations may be replaced with asynchronous
+	equivalent ones day. This 	won't have any impact on your testcases
+	if you wait for the `BindResult` and `WriteResult` as explained above.
 
 	== Availability ==
 
@@ -130,6 +140,8 @@ class LdapClientProbe(ProbeImplementationManager.ProbeImplementation):
 	type boolean DeleteResult;
 	
 	type boolean BindResult;
+
+	type boolean UnbindResult;
 	
 	type record of SearchEntry SearchResult;
 	
@@ -145,6 +157,7 @@ class LdapClientProbe(ProbeImplementationManager.ProbeImplementation):
 	type union LdapResponse
 	{
 		BindResult bindResult,
+		UnbindResult unbindResult,
 		DeleteResulet deleteResult,
 		SearchResult searchResult,
 		WriteResult writeResult,
@@ -174,22 +187,22 @@ class LdapClientProbe(ProbeImplementationManager.ProbeImplementation):
 	def onTriUnmap(self):
 		self.getLogger().debug("onTriUnmap()")
 		self.abandon()
-		self.unbind()
+		self._unbind()
 
 	def onTriMap(self):
 		self.getLogger().debug("onTriMap()")
 		self.abandon()
-		self.unbind()
+		self._unbind()
 	
 	def onTriSAReset(self):
 		self.getLogger().debug("onTriSAReset()")
 		self.abandon()
-		self.unbind()
+		self._unbind()
 	
 	def onTriExecuteTestCase(self):
 		self.getLogger().debug("onTriExecuteTestCase()")
 		self.abandon()
-		self.unbind()
+		self._unbind()
 
 	def onTriSend(self, message, sutAddress):
 		# Exceptions are turned into Error messages sent back to userand, according of the current
@@ -252,11 +265,18 @@ class LdapClientProbe(ProbeImplementationManager.ProbeImplementation):
 	def _unlock(self):
 		self._mutex.release()
 	
-	def unbind(self):
+	def _unbind(self):
 		if self._server:
 			self._server.unbind()
 			self._bound = False
 			self._server = None
+
+	def unbind(self):
+		try:
+			self._unbind()
+			self.triEnqueueMsg(('unbindResult', True))
+		except Exception, e:
+			self.triEnqueueMsg(('error', 'Error while binding: %s' % str(e)), self['server_url'])
 	
 	def abandon(self):
 		self._lock()
@@ -377,7 +397,7 @@ class LdapClientProbe(ProbeImplementationManager.ProbeImplementation):
 	def delete(self, dn):
 		if not self._ensureBind():
 			return
-		self._pendingRequest = self._server.search(basedn, s, filter_, attributes)
+		self._pendingRequest = self._server.delete(dn)
 		# Now starts a thread to wait for our results.
 		th = threading.Thread(target = self._waitForDeleteResult, kwargs = dict(request = self._pendingRequest, timeout = self['timeout']))
 		th.start()
@@ -393,8 +413,9 @@ class LdapClientProbe(ProbeImplementationManager.ProbeImplementation):
 			resultType, resultData = self._server.result(request, timeout = timeout)
 			self.getLogger().debug('Delete result: %s' % resultData)
 			res = True
-			# FIXME: check what a ldap database reports in these cases
-			deleteResult = resultData 
+			# resultData is an empty list if OK
+			# deleteResult = resultData 
+			deleteResult = True
 		except ldap.USER_CANCELLED:
 			pass
 		except ldap.NO_SUCH_OBJECT:
@@ -416,7 +437,7 @@ class LdapClientProbe(ProbeImplementationManager.ProbeImplementation):
 		completed = False
 		try:
 			try:
-				# a lift of (dn, attribute dict)
+				# a list of tuples (dn, attribute dict)
 				searchResult = self._server.search_s(dn, ldap.SCOPE_BASE)
 				if not searchResult:
 					# Let's add it
@@ -424,7 +445,8 @@ class LdapClientProbe(ProbeImplementationManager.ProbeImplementation):
 					completed = True
 				elif len(searchResult) == 1:
 					# Let's modify the entry
-					self._server.modify_s(dn, ldap.modlist.modifyModlist(searchResult[0][1], attributes, 1))
+					# modifyMolist(previous values, new values)
+					self._server.modify_s(dn, ldap.modlist.modifyModlist(searchResult[0][1], attributes, ignore_oldexistent = 1))
 					completed = True
 				else:
 					# Cannot write multiple DNs.
