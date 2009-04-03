@@ -47,7 +47,7 @@ def tbcd2string(tbcd):
 
 def string2tbcd(digits, filler = 0x0f):
 	"""
-	Returns a buffer corresponding to the Telephoby BCD representation
+	Returns a buffer corresponding to the Telephony BCD representation
 	of digits, which is digits in a string.
 	
 	Example: "123" -> "\x21\xf3"
@@ -174,6 +174,26 @@ class TbcdCodec(CodecManager.Codec):
 
 CodecManager.registerCodecClass('tbcd', TbcdCodec)
 
+
+class Packed7bitCodec(CodecManager.Codec):
+	"""
+	Converts a template:
+	type octetstring Template;
+	"""
+	def __init__(self):
+		CodecManager.Codec.__init__(self)
+		
+	def encode(self, template):
+		"""
+		Template is a string of human readable digits
+		"""
+		return (encode_7bitpacked(template,), template)
+	
+	def decode(self, data):
+		ret = decode_7bitpacked(data)
+		return (ret, ret)
+
+CodecManager.registerCodecClass('packed.7bit', Packed7bitCodec)
 
 ###############################################################################
 # AddressString as used in GSM: 1 byte for NOA/NPI, then digits as TBCD strings
@@ -317,6 +337,7 @@ if __name__ == "__main__":
 	samples = [
 		('\x80\x21\xf3', { 'digits': "123", 'numberingPlanIndicator': 'unknown', 'natureOfAddress': 'unknown' }),
 		('\x91\x21\x43', { 'digits': "1234", 'numberingPlanIndicator': 'isdn', 'natureOfAddress': 'international' }),
+		('\x91\x09\x56\x43\x21\x78', { 'digits': "9065341287", 'numberingPlanIndicator': 'isdn', 'natureOfAddress': 'international' }),
 	]
 
 	for e, d in samples:
