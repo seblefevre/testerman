@@ -25,6 +25,38 @@ import ber.TcapAsn as TcapAsn
 import ber.TcapDialoguePdusAsn as TcapDialoguePdusAsn
 
 class TcapCodec(BerCodec.BerCodec):
+	"""
+	= Identification and Properties =
+	
+	Codec IDs: `tcap.*`
+	 * `tcap.DialoguePDU`
+	
+	Properties:
+	|| '''Name''' || '''Type''' || '''Default value''' || '''Description''' ||
+	
+	= Overview =
+	
+	== Decoding ==
+	
+	...
+	
+	== Encoding ==
+	
+	...
+
+	== Availability ==
+
+	All platforms.
+
+	== Dependencies ==
+
+	None.
+
+	== See Also ==
+	
+	The mapping between ASN.1 and Testerman structures is documented [Asn1ToTesterman here].
+
+	"""
 	PDU = TcapAsn.TCMessage
 
 	def getSummary(self, message):
