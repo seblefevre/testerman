@@ -19,7 +19,7 @@
 ##
 
 #: Main TS implementation version
-TESTERMAN_SERVER_VERSION = '1.1.0'
+TESTERMAN_SERVER_VERSION = '1.2.0'
 
 #: Main TACS implementation version
 TESTERMAN_AGENT_CONTROLLER_VERSION = '1.1.0'
@@ -29,7 +29,7 @@ TESTERMAN_AGENT_CONTROLLER_VERSION = '1.1.0'
 #: minor += 1 if feature-enriched, backward compatible
 XC_VERSION = '1.1'
 IA_VERSION = '1.1'
-WS_VERSION = '1.1'
+WS_VERSION = '1.2'
 IL_VERSION = '1.0'
 XA_VERSION = '1.1'
 

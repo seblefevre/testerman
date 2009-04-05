@@ -39,8 +39,10 @@ import logging
 import os
 import parser
 import re
+import shutil
 import signal
 import sys
+import tempfile
 import threading
 import time
 
@@ -51,6 +53,17 @@ import time
 
 def getLogger():
 	return logging.getLogger('TS.JobManager')
+
+################################################################################
+# Exceptions
+################################################################################
+
+class PrepareException(Exception):
+	"""
+	This exception can be raised from Job.prepare() in case of
+	an application-level error (i.e. not an Internal error)
+	"""
+	pass
 
 ################################################################################
 # The usual tools
@@ -101,7 +114,7 @@ class Job(object):
 
 	# Job states.
 	# Basic state machine: initializing -> waiting -> running -> complete
-	STATE_INITIALIZING = "initializing"
+	STATE_INITIALIZING = "initializing" # (i.e. preparing)
 	STATE_WAITING = "waiting"
 	STATE_RUNNING = "running"
 	STATE_KILLING = "killing"
@@ -155,6 +168,10 @@ class Job(object):
 		self._logFilename = None
 		
 		self._username = None
+		# The docroot path to the source, for server-based execution.
+		# client-based source and non-source based jobs set it to None
+		# You may see it as a 'working (docroot) directory' for the job.
+		self._path = None
 
 		self._mutex = threading.RLock()
 	
@@ -254,6 +271,7 @@ class Job(object):
 			else:
 				# Never started. Keep start/stop and running time to None.
 				getLogger().info("%s aborted" % (str(self)))
+			self.cleanup()
 		
 		self.notifyStateChange()
 
@@ -280,7 +298,8 @@ class Job(object):
 		'start-time': self._startTime, 'stop-time': self._stopTime,
 		'running-time': runningTime, 'parent-id': parentId,
 		'state': self.getState(), 'result': self._result, 'type': self._type,
-		'username': self._username, 'scheduled-at': self._scheduledStartTime }
+		'username': self._username, 'scheduled-at': self._scheduledStartTime,
+		'path': self._path }
 		return ret
 	
 	def __str__(self):
@@ -329,7 +348,18 @@ class Job(object):
 		@param sig: the signal sent to this job.
 		"""	
 		getLogger().warning("%s received signal %s, no handler implemented" % (str(self), sig))
-	
+
+	def prepare(self):
+		"""
+		Prepares a job for a run.
+		Called in state INITIALIZING. At the end, if OK, should be switched to WAITING
+		or ERROR in case of a preparation error.
+		
+		@raises PrepareException: in case of any preparatin error.
+		@rtype: None
+		"""
+		pass
+		
 	def run(self, inputSession = {}):
 		"""
 		Called by the scheduler to run the job.
@@ -349,10 +379,20 @@ class Job(object):
 
 	def getLog(self):
 		"""
-		TODO.
+		Returns the current job's logs. 
+		The result should be XML compliant. No prologue is required, however.
+		
+		@rtype: string (utf-8)
+		@returns: the current job's logs, as an XML string. Returns None
+		          if no log is available.
 		"""		
-		pass
+		return None
 
+	def cleanup(self):
+		"""
+		Called when the job is complete, regardless of its status.
+		"""
+		pass
 
 ################################################################################
 # Job subclass: ATS
@@ -368,17 +408,35 @@ class AtsJob(Job):
 	"""
 	_type = "ats"
 
-	def __init__(self, name, source):
+	def __init__(self, name, source, path):
 		"""
 		@type  name: string
 		@type  source: string (utf-8)
 		@param source: the complete ats file (containing metadata)
+		
+		@type  path: string (docroot path, for server-based source, or None (client-based source)
 		"""
 		Job.__init__(self, name)
 		# string (as utf-8)
 		self._source = source
 		# The PID of the forked TE executable
 		self._tePid = None
+
+		self._path = path
+		if self._path is None:
+			# Fallback method for compatibility with old clients (Ws API < 1.2),
+			# for which no path is provided by the client, even for server-based source jobs.
+			#
+			# So here we try to detect a repository path in its id/label/name:
+			# We consider the atsPath to be /repository/ + the path indicated in
+			# the ATS name. So the name (constructed by the client) should follow some rules 
+			# to make it work correctly.
+			self._path = '/%s/%s' % (ConfigManager.get('constants.repository'), '/'.join(self.getName().split('/')[:-1]))
+		# Basic normalization
+		if not self._path.startswith('/'):
+			self._path = '/%s' % self._path
+		
+		self._tePreparedPackageDirectory = None
 	
 	def handleSignal(self, sig):
 		getLogger().info("%s received signal %s" % (str(self), sig))
@@ -423,56 +481,48 @@ class AtsJob(Job):
 		except Exception, e:
 			getLogger().error("%s: unable to handle signal %s: %s" % (str(self), sig, str(e)))
 
-	def run(self, inputSession = {}):
+	def cleanup(self):
+		getLogger().info("%s: cleaning up..." % (str(self)))
+		# Delete the prepared TE, if any
+		if self._tePreparedPackageDirectory:
+			try:
+				shutil.rmtree(self._tePreparedPackageDirectory, ignore_errors = True)
+			except Exception, e:
+				getLogger().warning("%s: unable to remove temporary TE package directory '%s': %s" % (str(self), self._tePreparedPackageDirectory, str(e)))
+
+	def prepare(self):
 		"""
-		Prepares the TE, starts it, and only returns when it's over.
+		Prepare a job for a run
+		Called in state INITIALIZING. At the end, if OK, should be switched to WAITING
+		or ERROR in case of a preparation error.
 		
-		inputSession contains parameters values that overrides default ones.
-		The default ones are extracted (during the TE preparation) from the
-		metadata embedded within the ATS source.
+		For an ATS, this:
+		- verifies that the dependencies are found.
+		- build the TE and its dependencies into a temporary TE directory tree
+		- this temporary TE directory tree will be moved to /archives/ upon run().
 		
-		The TE execution tree is this one:
-		execution root:
-		%(docroot)/%(archives)/%(ats_name)/
-		contains:
-			%Y%m%d-%H%M%S_%(user).log : the execution logs
-			%Y%m%d-%H%M%S_%(user) : directory containing the TE package:
-				te_mtc.py : the main TE
-				repository/... : the (userland) modules the TE depends on
-				This directory is planned to be packaged to be executed on
-				any Testerman environment. (it may still evolve until so)
+		This avoids the user change any source code after submitting the job.
 		
-		The TE execution is performed from the directory containing the TE package.
-		The module search path is set to:
-		- first the path of the ATS (for local ATSes, defaulted to 'repository') as a docroot-path,
-		- then 'repository'
-		- then the Testerman system include paths
+		@raises Exception: in case of any preparatin error.
 		
-		@type  inputSession: dict[unicode] of unicode
-		@param inputSession: the override session parameters.
-		
-		@rtype: int
-		@returns: the TE return code
+		@rtype: None
 		"""
-	
+		
+		def handleError(code, desc):
+			getLogger().error("%s: %s" % (str(self), desc))
+			self.setResult(code)
+			self.setState(self.STATE_ERROR)
+			raise PrepareException(desc)
+		
 		# Build the TE
-		# TODO: (maybe): shoud we add a "preparing/compiling" state ?
 
 		getLogger().info("%s: resolving dependencies..." % str(self))
 		try:
-			# (Dirty) trick: ATSes that are not saved in the repository have no atspath on it.
-			# Unfortunately, there is no way to know if the ATS scheduled via Ws was on the
-			# repo or was only a local file.
-			# By default, we consider the atsPath to be /repository/ + the path indicated in
-			# the ATS name. So the name (constructed by the client) should follow some rules 
-			# to make it work correctly.
-			atsPath = '/%s/%s' % (ConfigManager.get('constants.repository'), '/'.join(self.getName().split('/')[:-1]))
-			deps = TEFactory.getDependencyFilenames(self._source, atsPath)
+			deps = TEFactory.getDependencyFilenames(self._source, self._path)
 		except Exception, e:
-			getLogger().error("%s: unable to resolve dependencies: %s" % (str(self), str(e)))
-			self.setResult(25)
-			self.setState(self.STATE_ERROR)
-			return self.getResult()
+			desc = "unable to resolve dependencies: %s" % str(e)
+			return handleError(25, desc)
+
 		getLogger().info("%s: resolved deps:\n%s" % (str(self), deps))
 
 		getLogger().info("%s: creating TE..." % str(self))
@@ -488,34 +538,18 @@ class AtsJob(Job):
 			t = te.split('\n')
 			line = t[e.lineno]
 			context = '\n'.join([ "%s: %s" % (x, t[x]) for x in range(e.lineno-5, e.lineno+5)])
-			getLogger().error("%s: syntax/parse error: %s:\n%s\ncontext:\n%s" % (str(self), str(e), line, context))
-			self.setResult(21)
-			self.setState(self.STATE_ERROR)
-			return self.getResult()
+			desc = "syntax/parse error: %s:\n%s\ncontext:\n%s" % (str(e), line, context)
+			return handleError(21, desc)
 		except Exception, e:
-			getLogger().error("%s: unable to check TE: %s" % (str(self), str(e)))
-			self.setResult(22)
-			self.setState(self.STATE_ERROR)
-			return self.getResult()
+			desc = "unable to check TE: %s" % (str(e))
+			return handleError(22, desc)
 
 		getLogger().info("%s: preparing TE files..." % str(self))
-		# relative path in $docroot
-		baseDocRootDirectory = os.path.normpath("/%s/%s" % (ConfigManager.get("constants.archives"), self.getName()))
-		# Corresponding absolute local path
-		baseDirectory = os.path.normpath("%s%s" % (ConfigManager.get("testerman.document_root"), baseDocRootDirectory))
-		# Base name for execution log and TE package dir
-		basename = "%s_%s" % (time.strftime("%Y%m%d-%H%M%S", time.localtime(time.time())), self.getUsername())
-		# TE package dir (absolute local path)
-		tePackageDirectory = "%s/%s" % (baseDirectory, basename)
-		try:
-			os.makedirs(tePackageDirectory)
-		except:
-			pass
+		# Now create a TE temporary package directory containing the prepared TE and all its dependencies.
+		# Will be moved to archives/ upon run()
+		self._tePreparedPackageDirectory = tempfile.mkdtemp()
+		tePackageDirectory = self._tePreparedPackageDirectory
 
-		# self._logFilename is a docroot-path for a retrieval via Ws
-		self._logFilename = "%s/%s.log" % (baseDocRootDirectory, basename)
-		# whereas logFilename is an absolute local path (execution)
-		logFilename = "%s/%s.log" % (baseDirectory, basename)
 		# The TE bootstrap is in main_te.py
 		teFilename = "%s/main_te.py" % (tePackageDirectory)
 		try:
@@ -523,10 +557,8 @@ class AtsJob(Job):
 			f.write(te)
 			f.close()
 		except Exception, e:
-			getLogger().error('%s: unable to write TE to "%s": %s' % (str(self), teFilename, str(e)))
-			self.setResult(20)
-			self.setState(self.STATE_ERROR)
-			return self.getResult()
+			desc = 'unable to write TE to "%s": %s' % (teFilename, str(e))
+			return handleError(20, desc)
 		
 		# Copy dependencies to the TE base dir
 		getLogger().info("%s: preparing dependencies..." % (str(self)))
@@ -559,8 +591,63 @@ class AtsJob(Job):
 				f.write(depContent)
 				f.close()
 		except Exception, e:
-			getLogger().error('%s: unable to create dependency %s to "%s": %s' % (str(self), filename, targetFilename, str(e)))
-			self.setResult(20)
+			desc = 'unable unable to create dependency %s to "%s": %s' % (filename, targetFilename, str(e))
+			return handleError(20, desc)
+		
+		# OK, we're ready.
+		self.setState(self.STATE_WAITING)
+
+	def run(self, inputSession = {}):
+		"""
+		Prepares the TE, Starts a prepared TE, and only returns when it's over.
+		
+		inputSession contains parameters values that overrides default ones.
+		The default ones are extracted (during the TE preparation) from the
+		metadata embedded within the ATS source.
+		
+		The TE execution tree is this one (prepared by a call to self.prepare())
+		execution root:
+		%(docroot)/%(archives)/%(ats_name)/
+		contains:
+			%Y%m%d-%H%M%S_%(user).log : the execution logs
+			%Y%m%d-%H%M%S_%(user) : directory containing the TE package:
+				te_mtc.py : the main TE
+				repository/... : the (userland) modules the TE depends on
+				This directory is planned to be packaged to be executed on
+				any Testerman environment. (it may still evolve until so)
+		
+		The TE execution is performed from the directory containing the TE package.
+		The module search path is set to:
+		- first the path of the ATS (for local ATSes, defaulted to 'repository') as a docroot-path,
+		- then 'repository'
+		- then the Testerman system include paths
+		
+		@type  inputSession: dict[unicode] of unicode
+		@param inputSession: the override session parameters.
+		
+		@rtype: int
+		@returns: the TE return code
+		"""
+	
+		# Create some paths related to the final TE tree in the docroot
+
+		# docroot-path for all TE packages for this ATS
+		baseDocRootDirectory = os.path.normpath("/%s/%s" % (ConfigManager.get("constants.archives"), self.getName()))
+		# Corresponding absolute local path
+		baseDirectory = os.path.normpath("%s%s" % (ConfigManager.get("testerman.document_root"), baseDocRootDirectory))
+		# Base name for execution log and TE package dir
+		# FIXME: possible name collisions if the same user schedules 2 same ATSes at the same time...
+		basename = "%s_%s" % (time.strftime("%Y%m%d-%H%M%S", time.localtime(time.time())), self.getUsername())
+		# final TE package dir (absolute local path)
+		tePackageDirectory = "%s/%s" % (baseDirectory, basename)
+
+		# Move the prepared, temporary TE folder tree to its final location in archives
+		try:
+			shutil.move(self._tePreparedPackageDirectory, tePackageDirectory)
+			self._tePreparedPackageDirectory = None
+		except Exception, e:
+			getLogger().error('%s: unable to move prepared TE and its dependencies to their final locations: %s' % (str(self), str(e)))
+			self.setResult(24)
 			self.setState(self.STATE_ERROR)
 			return self.getResult()
 
@@ -606,10 +693,15 @@ class AtsJob(Job):
 			return self.getResult()
 		
 		getLogger().info("%s: building TE command line..." % str(self))
+		# self._logFilename is a docroot-path for a retrieval via Ws
+		self._logFilename = "%s/%s.log" % (baseDocRootDirectory, basename)
+		# whereas teLogFilename is an absolute local path (execution)
+		teLogFilename = "%s/%s.log" % (baseDirectory, basename)
+		teFilename = "%s/main_te.py" % (tePackageDirectory)
 		# module paths relative to the TE package dir
-		modulePaths = [ atsPath[1:], 'repository' ] # we strip the leading / of the atspath
+		modulePaths = [ self._path[1:], 'repository' ] # we strip the leading / of the atspath
 		# Get the TE command line options
-		cmd = TEFactory.createCommandLine(jobId = self.getId(), teFilename = teFilename, logFilename = logFilename, inputSessionFilename = inputSessionFilename, outputSessionFilename = outputSessionFilename, modulePaths = modulePaths)
+		cmd = TEFactory.createCommandLine(jobId = self.getId(), teFilename = teFilename, logFilename = teLogFilename, inputSessionFilename = inputSessionFilename, outputSessionFilename = outputSessionFilename, modulePaths = modulePaths)
 		executable = cmd['executable']
 		args = cmd['args']
 		env = cmd['env']
@@ -720,7 +812,7 @@ class CampaignJob(Job):
 	"""
 	_type = "campaign"
 
-	def __init__(self, name, source):
+	def __init__(self, name, source, path):
 		"""
 		@type  name: string
 		@type  source: string (utf-8)
@@ -731,6 +823,20 @@ class CampaignJob(Job):
 		self._source = source
 		# The PID of the forked TE executable
 		self._tePid = None
+
+		self._path = path
+		if self._path is None:
+			# Fallback method for compatibility with old clients (Ws API < 1.2),
+			# for which no path is provided by the client, even for server-based source jobs.
+			#
+			# So here we try to detect a repository path in its id/label/name:
+			# We consider the atsPath to be /repository/ + the path indicated in
+			# the ATS name. So the name (constructed by the client) should follow some rules 
+			# to make it work correctly.
+			self._path = '/%s/%s' % (ConfigManager.get('constants.repository'), '/'.join(self.getName().split('/')[:-1]))
+		# Basic normalization
+		if not self._path.startswith('/'):
+			self._path = '/%s' % self._path
 	
 	def handleSignal(self, sig):
 		"""
@@ -751,6 +857,32 @@ class CampaignJob(Job):
 		except Exception, e:
 			getLogger().error("%s: unable to handle signal %s: %s" % (str(self), sig, str(e)))
 
+	def prepare(self):
+		"""
+		Prepares the campaign, verifying the availability of each included job.
+
+		During the campaign preparation, we just check that all child job sources
+		are present within the directory.
+		WARNING: we do not snapshot all ATSes and campaigns nor prepare them prior to 
+		executing the campaign. 
+		In particular, if an child ATS is changed after the campaign has been started
+		or scheduled, before the child ATS is started, the updated ATS will be taken
+		into account.
+		"""
+		# First step, parse
+		getLogger().info("%s: parsing..." % str(self))
+		try:
+			self._parse()
+		except Exception, e:
+			desc = "%s: unable to prepare the campaign: %s" % (str(self), str(e))
+			getLogger().error(desc)
+			self.setResult(25) # Consider a dependency error ?
+			self.setState(self.STATE_ERROR)
+			raise PrepareException(e)
+		
+		getLogger().info("%s: parsed OK" % str(self))
+		self.setState(self.STATE_WAITING)
+
 	def run(self, inputSession = {}):
 		"""
 		Prepares the campaign, starts it, and only returns when it's over.
@@ -770,14 +902,6 @@ class CampaignJob(Job):
 		Each ATS job created from this campaigns are prepared and executed as if they
 		were executed separately.
 		
-		During the campaign preparation, we just check that all child job sources
-		are present within the directory.
-		WARNING: we do not snapshot all ATSes and campaigns nor prepare them prior to 
-		executing the campaign. 
-		In particular, if an child ATS is changed after the campaign has been started
-		or scheduled, before the child ATS is started, the updated ATS will be taken
-		into account.
-		
 		A campaign always schedules a child job for an immediate execution, i.e. no
 		child job is prepared/scheduled in advance.
 		
@@ -787,21 +911,9 @@ class CampaignJob(Job):
 		@rtype: int
 		@returns: the campaign return code
 		"""
-		# First step, parse
-		getLogger().info("%s: parsing..." % str(self))
-		try:
-			self._parse()
-		except Exception, e:
-			getLogger().error("%s: unable to prepare the campaign: %s" % (str(self), str(e)))
-			self.setResult(25) # Same as dependencies error ?
-			self.setState(self.STATE_ERROR)
-			return self.getResult()
-		
-		getLogger().info("%s: parsed OK..." % str(self))
-		
 		# Now, execute the child jobs
 		self.setState(self.STATE_RUNNING)
-		self._run(callingJob = self, inputSession = self.getScheduledSession())
+		self._run(callingJob = self, inputSession = inputSession)
 		if self.getState() == self.STATE_RUNNING:
 			self.setResult(0) # a campaign always returns OK for now. Unless cancelled, etc ?
 			self.setState(self.STATE_COMPLETE)
@@ -822,19 +934,37 @@ class CampaignJob(Job):
 		# Now, the child jobs according to the branch
 		for job in callingJob._childBranches[branch]:
 			instance().registerJob(job)
-			getLogger().info("%s: starting child job %s, invoked by %s, on branch %s" % (str(self), str(job), str(callingJob), branch))
-			# Prepare a new thread, execute the job
-			jobThread = threading.Thread(target = lambda: job.run(inputSession))
-			jobThread.start()
-			# Now wait for the job to complete.
-			jobThread.join()
-			ret = job.getResult()
-			getLogger().info("%s: started child job %s, invoked by %s, on branch %s returned %s" % (str(self), str(job), str(callingJob), branch, ret))
+
+			getLogger().info("%s: preparing child job %s, invoked by %s, on branch %s" % (str(self), str(job), str(callingJob), branch))
+			prepared = False
+			try:
+				job.prepare()
+				prepared = True
+			except Exception:
+				prepared = False
+
+			if prepared:
+				getLogger().info("%s: starting child job %s, invoked by %s, on branch %s" % (str(self), str(job), str(callingJob), branch))
+				# Prepare a new thread, execute the job
+				jobThread = threading.Thread(target = lambda: job.run(inputSession))
+				jobThread.start()
+				# Now wait for the job to complete.
+				jobThread.join()
+				ret = job.getResult()
+				getLogger().info("%s: started child job %s, invoked by %s, on branch %s returned %s" % (str(self), str(job), str(callingJob), branch, ret))
+			else:
+				ret = job.getResult()
+
 			if ret == 0:
 				nextBranch = self.BRANCH_SUCCESS
+				nextInputSession = job.getOutputSession()
 			else:
 				nextBranch = self.BRANCH_ERROR
-			nextInputSession = job.getOutputSession()
+				# In case of an error, the output session may be empty. If empty, we use the initial session.
+				nextInputSession = job.getOutputSession()
+				if not nextInputSession:
+					nextInputSession = inputSession
+
 			self._run(job, nextInputSession, nextBranch)
 
 	def _parse(self):
@@ -866,8 +996,7 @@ class CampaignJob(Job):
 		getLogger().info("%s: parsing campaign file" % str(self))
 
 		# The path of the campaign within the docroot.
-		# It assumes that the job name is a path within the repository.
-		path = '/%s/%s' % (ConfigManager.get('constants.repository'), '/'.join(self.getName().split('/')[:-1]))
+		path = self._path
 		
 		indent = 0
 		currentParent = self
@@ -933,9 +1062,9 @@ class CampaignJob(Job):
 			if source is None:
 				raise Exception('File %s is not in the repository.' % name)
 			if type_ == 'ats':
-				job = AtsJob(name = name, source = source)
+				job = AtsJob(name = name, source = source, path = filename)
 			else: # campaign
-				job = CampaignJob(name = name, source = source)
+				job = CampaignJob(name = name, source = source, path = filename)
 			job.setUsername(self.getUsername())
 			currentParent.addChild(job, branch)
 			getLogger().info('%s: child job %s has been created, branch %s' % (str(self), str(job), branch))
@@ -1042,8 +1171,15 @@ class JobManager:
 		@returns: the submitted job Id
 		"""
 		self.registerJob(job)
-		# Triggers the job state notification
-		job.setState(Job.STATE_WAITING)
+		# Initialize the job (i.e. prepare it)
+		# Raises exceptions in case of an error
+		try:
+			job.prepare()
+		except Exception, e:
+			getLogger().warning("JobManager: new job submitted: %s, scheduled to start on %s, unable to initialize" % (str(job), time.strftime("%Y%m%d, at %H:%H:%S", time.localtime(job.getScheduledStartTime()))))
+			# Forward to the caller
+			raise e
+
 		getLogger().info("JobManager: new job submitted: %s, scheduled to start on %s" % (str(job), time.strftime("%Y%m%d, at %H:%H:%S", time.localtime(job.getScheduledStartTime()))))
 		# Wake up the scheduler. Maybe an instant run is here.
 		self._scheduler.notify()

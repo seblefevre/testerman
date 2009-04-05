@@ -92,7 +92,7 @@ def getXcVersion():
 # Job management
 ################################################################################
 
-def scheduleAts(source, atsId, username, session, at):
+def scheduleAts(source, atsId, username, session, at, path = None):
 	"""
 	Schedule an ATS to start at <at>
 	
@@ -107,6 +107,11 @@ def scheduleAts(source, atsId, username, session, at):
 	@type  at: float, or None
 	@param at: the timestamp at which the ats should be started.
 	           If set to None or lower than current (server) time, immediate start.
+	@type  path: string, or None
+	@param path: the complete docroot-path to the file associated to the source,
+	             if any. For source files not located on the server, set to None.
+	             For the other ones, enables to know where to search dependencies
+	             from.
 	
 	@throws Exception: in case of an internal error
 
@@ -131,7 +136,7 @@ def scheduleAts(source, atsId, username, session, at):
 		
 		source = source.encode('utf-8')
 		
-		job = JobManager.AtsJob(atsId, source)
+		job = JobManager.AtsJob(atsId, source, path)
 		job.setUsername(username)
 		job.setScheduledStartTime(at)
 		job.setScheduledSession(s)
@@ -143,14 +148,14 @@ def scheduleAts(source, atsId, username, session, at):
 			message = "will start on %s" % time.strftime("%Y%m%d, at %H:%M:%S", time.localtime(job.getScheduledStartTime()))
 		res = { 'job-id': jobId, 'job-uri': job.getUri(), 'message': "ATS scheduled, %s. Its job ID is %d" % (message, jobId) }
 	except Exception, e:
-		e =  Exception("Unable to perform operation: %s\n%s" % (str(e), Tools.getBacktrace()))
-		getLogger().info("<< scheduleAts(...): Fault:\n%s" % str(e))
+		e =  Exception("Scheduling error: %s" % (str(e)))
+		getLogger().info("<< scheduleAts(...): Fault:\n%s" % Tools.getBacktrace())
 		raise(e)
 
 	getLogger().info("<< scheduleAts(...): %s" % str(res))
 	return res
 
-def scheduleCampaign(source, campaignId, username, session, at):
+def scheduleCampaign(source, campaignId, username, session, at, path = None):
 	"""
 	Schedule an ATS to start at <at>
 	
@@ -165,6 +170,11 @@ def scheduleCampaign(source, campaignId, username, session, at):
 	@type  at: float, or None
 	@param at: the timestamp at which the ats should be started.
 	           If set to None or lower than current (server) time, immediate start.
+	@type  path: string, or None
+	@param path: the complete docroot-path to the file associated to the source,
+	             if any. For source files not located on the server, set to None.
+	             For the other ones, enables to know where to search dependencies
+	             from.
 	
 	@throws Exception: in case of an internal error
 
@@ -189,7 +199,7 @@ def scheduleCampaign(source, campaignId, username, session, at):
 		
 		source = source.encode('utf-8')
 		
-		job = JobManager.CampaignJob(campaignId, source)
+		job = JobManager.CampaignJob(campaignId, source, path)
 		job.setUsername(username)
 		job.setScheduledStartTime(at)
 		job.setScheduledSession(s)
@@ -201,8 +211,8 @@ def scheduleCampaign(source, campaignId, username, session, at):
 			message = "will start on %s" % time.strftime("%Y%m%d, at %H:%M:%S", time.localtime(job.getScheduledStartTime()))
 		res = { 'job-id': jobId, 'job-uri': job.getUri(), 'message': "Campaign scheduled, %s. Its job ID is %d" % (message, jobId) }
 	except Exception, e:
-		e =  Exception("Unable to perform operation: %s\n%s" % (str(e), Tools.getBacktrace()))
-		getLogger().info("<< scheduleCampaign(...): Fault:\n%s" % str(e))
+		e =  Exception("Scheduling error: %s" % (str(e)))
+		getLogger().info("<< scheduleCampaign(...): Fault:\n%s" % Tools.getBacktrace())
 		raise(e)
 
 	getLogger().info("<< scheduleCampaign(...): %s" % str(res))
@@ -223,6 +233,7 @@ def getJobInfo(jobId = None):
 	        'duration': float or None, 'result': integer or None, 'username': string, 
 					'start-time': float or None, 'stop-time': float or None, 'scheduled-at': float,
 	        'type': string in ['ats', 'campaign'],
+					'path': string (docroot-based path for jobs whose source is in docroot) or None (client-based source)
 	       }
 	@returns: a list of info for the given job, or for all jobs in the queue if jobId is None.
 	"""

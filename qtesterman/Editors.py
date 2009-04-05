@@ -1,9 +1,21 @@
-##
 # -*- coding: utf-8 -*-
+##
+# This file is part of Testerman, a test automation system.
+# Copyright (c) 2009 QTesterman contributors
 #
+# This program is free software; you can redistribute it and/or modify it under
+# the terms of the GNU General Public License as published by the Free Software
+# Foundation; either version 2 of the License, or (at your option) any later
+# version.
+# This program is distributed in the hope that it will be useful, but WITHOUT
+# ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
+# FOR A PARTICULAR PURPOSE.  See the GNU General Public License for more
+# details.
+##
+
+##
 # Editors for ATS, Campaign, Modules.
 #
-# $Id$
 ##
 
 import PyQt4.Qsci as sci
@@ -33,8 +45,6 @@ import TemplateManager
 # A WDocument is either a WModuleDocument, WAtsDocument, or a WCampaignDocument.
 #
 ##
-
-
 
 ###############################################################################
 # Common stuff
@@ -463,33 +473,34 @@ class WAtsDocument(WDocument):
 		# A find widget
 		self.find = WSciFind(self.editor, self)
 
-		self.runMenu = QMenu('Run', self)
-		self.runWithParametersAction = self.runMenu.addAction("With parameters...", self.runWithParam)
-		self.scheduleRunAction = self.runMenu.addAction("Scheduled run...", self.scheduleRun)
-
 		# By default, icon sizes are 24x24. We resize them to 16x16 to avoid to big buttons.
 		self.testButton = QPushButton("Check syntax")
 		self.testButton.setIcon(icon(':/icons/check.png'))
 		self.testButton.setIconSize(QSize(16, 16))
 		self.connect(self.testButton, SIGNAL("clicked()"), self.verify)
-		# Instant run
-		self.runButton = QPushButton("Run")
-		self.runButton.setIcon(icon(':/icons/run.png'))
+		
+		# Run actions
+		self.runAction = TestermanAction(self, "&Run", self.run, "Run now")
+		self.runAction.setIcon(icon(':/icons/run.png'))
+		self.runWithParametersAction = TestermanAction(self, "Run with &parameters...", self.runWithParameters, "Set parameters, then run")
+		self.scheduleRunAction = TestermanAction(self, "&Scheduled run...", self.scheduleRun, "Schedule a run")
+		self.runMenu = QMenu('Run', self)
+		self.runMenu.addAction(self.runWithParametersAction)
+		self.runMenu.addAction(self.scheduleRunAction)
+		
+		self.runButton = QToolButton()
+		self.runButton.setDefaultAction(self.runAction)
+		self.runButton.setMenu(self.runMenu)
 		self.runButton.setIconSize(QSize(16, 16))
-		self.connect(self.runButton, SIGNAL("clicked()"), self.run)
-
-		self.runOptionsButton = QPushButton("Special run")
-		self.runOptionsButton.setIcon(icon(':/icons/run.png'))
-		self.runOptionsButton.setIconSize(QSize(16, 16))
-		self.runOptionsButton.setMenu(self.runMenu)
-
+		self.runButton.setToolButtonStyle(Qt.ToolButtonTextBesideIcon)
+		self.runButton.setPopupMode(QToolButton.MenuButtonPopup)
+		
 		self.launchLog = QCheckBox("Display runtime log")
 		self.launchLog.setChecked(True)
 
 		actionLayout.addWidget(self.find)
 		actionLayout.addStretch()
 		actionLayout.addWidget(self.testButton)
-		actionLayout.addWidget(self.runOptionsButton)
 		actionLayout.addWidget(self.runButton)
 		actionLayout.addWidget(self.launchLog)
 		actionLayout.setMargin(2)
@@ -527,6 +538,21 @@ class WAtsDocument(WDocument):
 			self.editor.setFocus(Qt.OtherFocusReason)
 		return 0
 
+	def _schedule(self, session, at = None):
+		"""
+		Returns the job ID is ok, None otherwise.
+		Takes care of the user notifications.
+		"""
+		if at is None:
+			at = time.time() + 1.0
+		try:
+			res = getProxy().scheduleAts(self.model.getDocument(), unicode(self.model.getName()), unicode(QApplication.instance().username()), session, at)
+		except Exception, e:
+			systemError(self, str(e))
+			return None
+		QApplication.instance().get('gui.statusbar').showMessage(res['message'])
+		return res['job-id']
+
 	##
 	# Run actions
 	##
@@ -537,15 +563,17 @@ class WAtsDocument(WDocument):
 		# we 'commit' and verify the modified view of the script
 		if not self.verify(0):
 			return
-		session = None # Use the default parameters
-		res = getProxy().scheduleAts(self.model.getDocument(), unicode(self.model.getName()), unicode(QApplication.instance().username()), session, at = time.time() + 1.0)
-		QApplication.instance().get('gui.statusbar').showMessage(res['message'])
+		
+		jobId = self._schedule(session = None)
+		if jobId is None:
+			return
+
 		if self.launchLog.isChecked():
 			logViewer = LogViewer.WLogViewer(parent = self)
-			logViewer.openJob(res['job-id'])
+			logViewer.openJob(jobId)
 			logViewer.show()
 
-	def runWithParam(self):
+	def runWithParameters(self):
 		"""
 		Runs the script after asking for specific session parameters.
 		"""
@@ -561,11 +589,13 @@ class WAtsDocument(WDocument):
 			QApplication.instance().get('gui.statusbar').showMessage('Operation cancelled')
 			return
 
-		res = getProxy().scheduleAts(self.model.getDocument(), unicode(self.model.getName()), unicode(QApplication.instance().username()), session, at = time.time() + 1.0)
-		QApplication.instance().get('gui.statusbar').showMessage(res['message'])
+		jobId = self._schedule(session = session)
+		if jobId is None:
+			return
+
 		if self.launchLog.isChecked():
 			logViewer = LogViewer.WLogViewer(parent = self)
-			logViewer.openJob(res['job-id'])
+			logViewer.openJob(jobId)
 			logViewer.show()
 	
 	def scheduleRun(self):
@@ -585,10 +615,8 @@ class WAtsDocument(WDocument):
 		else:
 			QApplication.instance().get('gui.statusbar').showMessage('Operation cancelled')
 			return
-
-		res = getProxy().scheduleAts(self.model.getDocument(), unicode(self.model.getName()), unicode(QApplication.instance().username()), session, scheduledTime)
-		QApplication.instance().get('gui.statusbar').showMessage(res['message'])
-		# Never shows the realtime log on scheduling.
+		
+		self._schedule(session, scheduledTime)
 
 ###############################################################################
 # Campaign Edition
@@ -624,23 +652,24 @@ class WCampaignDocument(WDocument):
 		# The action bar below
 		actionLayout = QHBoxLayout()
 
-		self.testButton = QPushButton("Check")
-		self.testButton.setIcon(icon(':/icons/check.png'))
-		self.testButton.setIconSize(QSize(16, 16))
-		self.connect(self.testButton, SIGNAL("clicked()"), self.verify)
-		self.runButton = QPushButton("Run")
-		self.runButton.setIcon(icon(':/icons/run.png'))
+		# Run actions
+		self.runAction = TestermanAction(self, "&Run", self.run, "Run now")
+		self.runAction.setIcon(icon(':/icons/run.png'))
+		self.runWithParametersAction = TestermanAction(self, "Run with &parameters...", self.runWithParameters, "Set parameters, then run")
+		self.scheduleRunAction = TestermanAction(self, "&Scheduled run...", self.scheduleRun, "Schedule a run")
+		self.runMenu = QMenu('Run', self)
+		self.runMenu.addAction(self.runWithParametersAction)
+		self.runMenu.addAction(self.scheduleRunAction)
+		
+		self.runButton = QToolButton()
+		self.runButton.setDefaultAction(self.runAction)
+		self.runButton.setMenu(self.runMenu)
 		self.runButton.setIconSize(QSize(16, 16))
-		self.connect(self.runButton, SIGNAL("clicked()"), self.run)
-		self.runWithParamButton = QPushButton("Run with params")
-		self.runWithParamButton.setIcon(icon(':/icons/run.png'))
-		self.runWithParamButton.setIconSize(QSize(16, 16))
-		self.connect(self.runWithParamButton, SIGNAL("clicked()"), self.runWithParam)
+		self.runButton.setToolButtonStyle(Qt.ToolButtonTextBesideIcon)
+		self.runButton.setPopupMode(QToolButton.MenuButtonPopup)
 
 		actionLayout.addStretch()
-#		actionLayout.addWidget(self.testButton)
 		actionLayout.addWidget(self.runButton)
-		actionLayout.addWidget(self.runWithParamButton)
 	
 		actionLayout.setMargin(2)
 		layout.addLayout(actionLayout)
@@ -657,33 +686,63 @@ class WCampaignDocument(WDocument):
 		replaceBox = WSciReplace(self.editor, self)
 		replaceBox.show()
 
-	def verify(self):
-		self.updateModel()
-		QMessageBox.information(self, getClientName(), "This feature is not implemented yet.")
-
-	def run(self):
-		self.updateModel()
-		session = None # Use the default parameters
-		res = getProxy().scheduleCampaign(self.model.getDocument(), unicode(self.model.getName()), unicode(QApplication.instance().username()), session)
+	def _schedule(self, session, at = None):
+		"""
+		Returns the job ID is ok, None otherwise.
+		Takes care of the user notifications.
+		"""
+		if at is None:
+			at = time.time() + 1.0
+		try:
+			res = getProxy().scheduleCampaign(self.model.getDocument(), unicode(self.model.getName()), unicode(QApplication.instance().username()), session, at)
+		except Exception, e:
+			systemError(self, str(e))
+			return None
 		QApplication.instance().get('gui.statusbar').showMessage(res['message'])
 		QMessageBox.information(self, getClientName(), res['message'], QMessageBox.Ok)
+		return res['job-id']
 
-	def runWithParam(self):
+	##
+	# Run actions
+	##
+	def run(self):
+		# we 'commit' the modified view of the script
+		self.updateModel()
+		self._schedule(session = None)
+
+	def runWithParameters(self):
 		# we 'commit' the modified view of the script
 		self.updateModel()
 
 		session = None
-
 		paramEditorDialog = WSessionParameterEditorDialog(self.model.getMetadataModel(), self)
 		if paramEditorDialog.exec_() == QDialog.Accepted:
 			session = paramEditorDialog.getSessionDict()
 		else:
 			QApplication.instance().get('gui.statusbar').showMessage('Operation cancelled')
 			return
+		
+		self._schedule(session = session)
 
-		res = getProxy().scheduleCampaign(self.model.getDocument(), unicode(self.model.getName()), unicode(QApplication.instance().username()), session)
-		QApplication.instance().get('gui.statusbar').showMessage(res['message'])
-		QMessageBox.information(self, getClientName(), res['message'], QMessageBox.Ok)
+	def scheduleRun(self):
+		"""
+		Displays a dialog box to schedule a run.
+		"""
+		# we 'commit' the modified view of the script
+		self.updateModel()
+
+		session = None
+		scheduledTime = None
+		paramEditorDialog = WScheduleDialog(self.model.getMetadataModel(), self)
+		if paramEditorDialog.exec_() == QDialog.Accepted:
+			session = paramEditorDialog.getSessionDict()
+			scheduledTime = paramEditorDialog.getScheduledTime()
+		else:
+			QApplication.instance().get('gui.statusbar').showMessage('Operation cancelled')
+			return
+		
+		self._schedule(session, scheduledTime)
+	
 
 ###############################################################################
 # Main Document Manager: a notebook widget opening/closing documents.

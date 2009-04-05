@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 ##
 # This file is part of Testerman, a test automation system.
-# Copyright (c) 2008-2009 Sebastien Lefevre and other contributors
+# Copyright (c) 2009 QTesterman contributors
 #
 # This program is free software; you can redistribute it and/or modify it under
 # the terms of the GNU General Public License as published by the Free Software
@@ -31,6 +31,8 @@ from PyQt4.Qt import *
 # Some Client-wide actions, callable from anywhere.
 ################################################################################
 
+# FIXME: only used from LogViewer, not adapted to the Testerman 1.1
+# TE tree structure.
 def deleteAssociatedFiles(path, force = False, selectAssociatedFiles = True):
 	"""
 	Perform the necessary actions to delete the file 'path', according to
@@ -99,67 +101,4 @@ def deleteAssociatedFiles(path, force = False, selectAssociatedFiles = True):
 
 	# other pathtype not supported (.py for modules, directories, etc)
 
-
-def deleteFile(path, force = False):
-	"""
-	Perform the necessary actions to delete the file 'path'.
-	Ask for a confirmation if force = False
-
-	returns 1 if the action was performed, 0 if it was cancelled.
-	"""
-
-	(basedir, basename) = os.path.split(path)
-	pathtype = basename.split('.')[-1]
-#	basename = '.'.join(basename.split('.')[:-1]) # without the extension
-
-	canDelete = False
-	if force:
-		canDelete = True
-	else:
-		msg = "Are you sure you want to delete the file %s ?" % basename
-		ret = QMessageBox.question(QApplication.instance().get('gui.mainwindow'), getClientName(), msg, QMessageBox.Yes | QMessageBox.No)
-		canDelete = (ret == QMessageBox.Yes)
-
-	if canDelete:
-		ret = getProxy().removeFile(path)
-		if not ret:
-			return 1
-		else:
-			# Display an error message: cannot remove this folder: not empty.
-			msg = "Unable to remove this file: " + str(ret)
-			QMessageBox.information(QApplication.instance().get('gui.mainwindow'), getClientName(), msg)
-			return 0
-	else:
-		return 0
-
-
-def deleteDirectory(path, force = False):
-	"""
-	Perform the necessary actions to delete the directory 'path'.
-
-	Ask for a confirmation if force = False.
-	The current server implementation only accept to delete empty folders.
-
-	returns 1 if the action was performed, 0 if it was cancelled or not feasible on the server.
-	"""
-
-	canDelete = False
-	if force:
-		canDelete = True
-	else:
-		msg = "Are you sure you want to delete the folder %s ?" % path
-		ret = QMessageBox.question(QApplication.instance().get('gui.mainwindow'), getClientName(), msg, QMessageBox.Yes | QMessageBox.No)
-		canDelete = (ret == QMessageBox.Yes)
-
-	if canDelete:
-		ret = getProxy().removeFile(path)
-		if not ret:
-			return 1
-		else:
-			# Display an error message: cannot remove this folder: not empty.
-			msg = "Cannot remove this folder: not empty."
-			QMessageBox.information(QApplication.instance().get('gui.mainwindow'), getClientName(), msg)
-			return 0
-	else:
-		return 0
 

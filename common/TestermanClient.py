@@ -215,7 +215,7 @@ class Client(Nodes.ConnectingNode):
 			return self.__proxy.scheduleAts(ats.encode('utf-8'), atsId.encode('utf-8'), username.encode('utf-8'), s, at)
 		except xmlrpclib.Fault, e:
 			self.getLogger().error("ATS Scheduling fault: " + str(e))
-			raise(e)
+			raise Exception(e.faultString)
 
 	def scheduleCampaign(self, source, campaignId, username, session = {}, at = 0.0):
 		"""
@@ -247,7 +247,7 @@ class Client(Nodes.ConnectingNode):
 			return self.__proxy.scheduleCampaign(source.encode('utf-8'), campaignId.encode('utf-8'), username.encode('utf-8'), s, at)
 		except xmlrpclib.Fault, e:
 			self.getLogger().error("Campaign Scheduling fault: " + str(e))
-			raise(e)
+			raise Exception(e.faultString)
 		
 	def rescheduleJob(self, jobId, at):
 		"""
