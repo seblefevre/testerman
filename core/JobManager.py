@@ -1059,12 +1059,13 @@ class CampaignJob(Job):
 			getLogger().debug('%s: creating child job based on file docroot:%s' % (str(self), filename))
 			source = FileSystemManager.instance().read(filename)
 			name = filename[len('/repository/'):] # TODO: clean this mess up. Not clean at all.
+			jobpath = '/'.join(filename.split('/')[:-1])
 			if source is None:
 				raise Exception('File %s is not in the repository.' % name)
 			if type_ == 'ats':
-				job = AtsJob(name = name, source = source, path = filename)
+				job = AtsJob(name = name, source = source, path = jobpath)
 			else: # campaign
-				job = CampaignJob(name = name, source = source, path = filename)
+				job = CampaignJob(name = name, source = source, path = jobpath)
 			job.setUsername(self.getUsername())
 			currentParent.addChild(job, branch)
 			getLogger().info('%s: child job %s has been created, branch %s' % (str(self), str(job), branch))
