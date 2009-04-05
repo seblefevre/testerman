@@ -185,7 +185,7 @@ class Client(Nodes.ConnectingNode):
 		else:
 			return None
 
-	def scheduleAts(self, ats, atsId, username, session = {}, at = 0.0):
+	def scheduleAts(self, ats, atsId, username, session = {}, at = 0.0, path = None):
 		"""
 		Schedules an ATS to be executed at 'at' time.
 		If 'at' is lower than the current server's time, an immediate execution occurs. 
@@ -200,6 +200,11 @@ class Client(Nodes.ConnectingNode):
 		@param at: timestamp of the scheduled start
 		@type  username: string
 		@param username: username identifying the user scheduling the ATS
+		@type  path: string, or None
+		@param path: the complete docroot-path to the file associated to the source,
+	            	 if any. For source files not located on the server, set to None.
+	            	 For the other ones, enables to know where to search dependencies
+	            	 from.
 		
 		@throws Exception in case of a scheduling error.
 		
@@ -212,12 +217,12 @@ class Client(Nodes.ConnectingNode):
 				for (k, v) in session.items():
 					s[k.encode('utf-8')] = v.encode('utf-8')
 			
-			return self.__proxy.scheduleAts(ats.encode('utf-8'), atsId.encode('utf-8'), username.encode('utf-8'), s, at)
+			return self.__proxy.scheduleAts(ats.encode('utf-8'), atsId.encode('utf-8'), username.encode('utf-8'), s, at, path)
 		except xmlrpclib.Fault, e:
 			self.getLogger().error("ATS Scheduling fault: " + str(e))
 			raise Exception(e.faultString)
 
-	def scheduleCampaign(self, source, campaignId, username, session = {}, at = 0.0):
+	def scheduleCampaign(self, source, campaignId, username, session = {}, at = 0.0, path = None):
 		"""
 		Schedules a campaign to be executed at 'at' time.
 		If 'at' is lower than the current server's time, an immediate execution occurs. 
@@ -232,6 +237,11 @@ class Client(Nodes.ConnectingNode):
 		@param at: timestamp of the scheduled start
 		@type  username: string
 		@param username: username identifying the user scheduling the ATS
+		@type  path: string, or None
+		@param path: the complete docroot-path to the file associated to the source,
+	            	 if any. For source files not located on the server, set to None.
+	            	 For the other ones, enables to know where to search dependencies
+	            	 from.
 		
 		@throws Exception in case of a scheduling error.
 		
@@ -244,7 +254,7 @@ class Client(Nodes.ConnectingNode):
 				for (k, v) in session.items():
 					s[k.encode('utf-8')] = v.encode('utf-8')
 			
-			return self.__proxy.scheduleCampaign(source.encode('utf-8'), campaignId.encode('utf-8'), username.encode('utf-8'), s, at)
+			return self.__proxy.scheduleCampaign(source.encode('utf-8'), campaignId.encode('utf-8'), username.encode('utf-8'), s, at, path)
 		except xmlrpclib.Fault, e:
 			self.getLogger().error("Campaign Scheduling fault: " + str(e))
 			raise Exception(e.faultString)
