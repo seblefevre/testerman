@@ -20,6 +20,15 @@
 # Implemented as a client of the TL (Test Logger) module which
 # is embedded into the Testerma Server as the EventManager.
 #
+#
+# A log event contains a class, which is an "application-oriented" classification.
+#
+# It is also associated to a log level; log levels and classes are independent
+# (even if their names ressemble each others).
+# 
+# Log levels are configurable from the userland. However, some levels cannot
+# be deactivated ('core', 'action').
+#
 ##
 
 import TestermanMessages as Messages
@@ -111,23 +120,24 @@ def finalize():
 # Log level selection
 ################################################################################
 
-ExcludedLogClasses = [ 'internal' ]
+ExcludedLogLevels = [ 'internal' ]
 
-def setExcludedLogClasses(classes):
-	global ExcludedLogClasses
-	ExcludedLogClasses = classes
+def setExcludedLogLevels(levels):
+	# Cannot exclude some low-level levels
+	global ExcludedLogLevels
+	ExcludedLogLevels = filter(lambda x: not x in [ 'core', 'action' ], levels)
 
-def getExcludedLogClasses():
-	return ExcludedLogClasses
+def getExcludedLogLevels():
+	return ExcludedLogLevels
 
 def enableDebugLogs():
-	setExcludedLogClasses([])
+	setExcludedLogLevels([])
 
 def disableLogs():
-	setExcludedLogClasses([ 'internal', 'system', 'event', 'user' ]) # 'action' is always enabled
+	setExcludedLogLevels([ 'internal', 'system', 'event', 'user' ]) # 'action' is always enabled
 
 def enableLogs():
-	setExcludedLogClasses([ 'internal' ])
+	setExcludedLogLevels([ 'internal' ])
 
 
 ################################################################################
@@ -135,16 +145,14 @@ def enableLogs():
 # Implemented to redirect things to a TL-like module.
 ################################################################################
 
-# WARNING: duplicated info for class and timestamp: both are available in the payload and in the notification header.
-
 def toXml(element, attributes, value = ''):
 	return u'<%s %s>%s</%s>' % (element, " ".join(map(lambda e: '%s="%s"' % (e[0], str(e[1])), attributes.items())), value, element)
 
 def logAtsStarted(id_):
-	tliLog('event', toXml('ats-started', { 'class': 'event', 'timestamp': time.time(), 'id': id_ }))
+	tliLog('core', toXml('ats-started', { 'class': 'event', 'timestamp': time.time(), 'id': id_ }))
 
 def logAtsStopped(id_, result, message):
-	tliLog('event', toXml('ats-stopped', { 'class': 'event', 'timestamp': time.time(), 'id': id_, 'result': str(result) }, '<![CDATA[%s]]>' % message))
+	tliLog('core', toXml('ats-stopped', { 'class': 'event', 'timestamp': time.time(), 'id': id_, 'result': str(result) }, '<![CDATA[%s]]>' % message))
 
 def logUser(message, tc = None):
 	if tc is None:
@@ -165,13 +173,13 @@ def logMessageSent(fromTc, fromPort, toTc, toPort, message, address = None):
 		logUser(unicode(e) + u'\n' + unicode(ret))
 
 def logTestcaseCreated(id_):
-	tliLog('event', toXml('testcase-created', { 'class': 'event', 'timestamp': time.time(), 'id': id_ }))
+	tliLog('core', toXml('testcase-created', { 'class': 'event', 'timestamp': time.time(), 'id': id_ }))
 
 def logTestcaseStarted(id_, title):
-	tliLog('event', toXml('testcase-started', { 'class': 'event', 'timestamp': time.time(), 'id': id_ }, '<![CDATA[%s]]>' % title))
+	tliLog('core', toXml('testcase-started', { 'class': 'event', 'timestamp': time.time(), 'id': id_ }, '<![CDATA[%s]]>' % title))
 
 def logTestcaseStopped(id_, verdict, description):
-	tliLog('event', toXml('testcase-stopped', { 'class': 'event', 'timestamp': time.time(), 'id': id_, 'verdict': verdict }, '<![CDATA[%s]]>' % description))
+	tliLog('core', toXml('testcase-stopped', { 'class': 'event', 'timestamp': time.time(), 'id': id_, 'verdict': verdict }, '<![CDATA[%s]]>' % description))
 
 def logTimerStarted(id_, tc, duration):
 	tliLog('event', toXml('timer-started', { 'class': 'event', 'timestamp': time.time(), 'id': id_, 'duration': str(duration), 'tc': tc }))
@@ -243,11 +251,10 @@ def logActionRequested(message, timeout, tc):
 def logActionCleared(reason, tc):
 	tliLog('action', toXml('action-cleared', { 'class': 'action', 'timestamp': time.time(), 'tc': tc, 'reason': reason }))
 
-def tliLog(logClass, xml):
-#	print "DEBUG| %s | %s" % (logClass, xml)
-	if not logClass in getExcludedLogClasses():
+def tliLog(level, xml):
+	if not level in getExcludedLogLevels():
 		# Fire a log event
-		TheIlClient.sendLogNotification(logClass, xml)
+		TheIlClient.sendLogNotification(level, xml)
 	
 ################################################################################
 # Main Testerman log format: XML serializer
