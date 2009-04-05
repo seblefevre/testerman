@@ -309,7 +309,7 @@ class Timer:
 	
 	The actual timer low-level implementation lies in TestermanPA.
 	"""
-	def __init__(self, duration, name = None):
+	def __init__(self, duration = None, name = None):
 		self._name = name
 		self._timerId = None
 		self._defaultDuration = duration
