@@ -20,7 +20,6 @@
 # Suitable for test execution from a higher-level script or 
 # continuous integration system.
 #
-# $Id$
 ##
 
 import TestermanClient
@@ -33,7 +32,7 @@ import time
 import logging
 
 
-VERSION = "0.0.2"
+VERSION = "0.1.0"
 
 
 def getVersion():
@@ -114,67 +113,208 @@ class TestermanCliClient:
 	# High level functions
 	##
 	
-	def scheduleAts(self, atsFilename, username, parameterFilename = None, sessionFilename = None, at = None):
+	def scheduleAtsByFilename(self, sourceFilename, username = None, sessionFilename = None, at = None):
 		"""
-		Returns one scheduled.
+		Reads an ATS file locally and schedule it.
+		
+		Returns the jobId once scheduled, or None in case of an error.
 		"""
-
 		# Load the file
 		try:
-			f = open(atsFilename)
-			ats = f.read()
+			f = open(sourceFilename)
+			source = f.read().decode('utf-8')
 			f.close()
 		except Exception, e:
-			err = "Error: unable to read ATS file %s (%s)" % (atsFilename, str(e))
+			err = "Error: unable to read ATS file %s (%s)" % (sourceFilename, str(e))
 			self.log(err)
-			return err
+			return None
+
+		label = sourceFilename.split('/')[-1].replace(' ', '.')
+		if not username:
+			username = "cliclient-user"
+		return self._scheduleAts(source, label, username, sessionFilename, at, path = None)		
+	
+	def scheduleAtsByPath(self, sourcePath, username = None, sessionFilename = None, at = None):
+		"""
+		Gets an ATS by path locally and schedule it.
 		
+		Returns the jobId once scheduled, or None in case of an error.
+		"""
+		# Load the file
+		try:
+			source = self.__client.getFile('/repository/%s' % sourcePath).decode('utf-8')
+		except Exception, e:
+			err = "Error: unable to get ATS from the server path %s." % (sourcePath)
+			self.log(err)
+			return None
+
+		label = sourcePath.split('/')[-1].replace(' ', '.')
+		if not username:
+			username = "cliclient-user"
+
+		# Reconstruct the server path
+		path = '/'.join(('/repository/%s' % sourcePath).split('/')[:-1])
+		return self._scheduleAts(source, label, username, sessionFilename, at, path = path)		
+
+	def _scheduleAts(self, source, label, username, sessionFilename = None, at = None, path = None):
+		"""
+		Schedule an ATS whose source is provided by source and returns its JobID once scheduled,
+		or None in case of an error.
+		"""
 		# TODO: parameter and sessionFilename read
 		
 		# Prepare Ws.scheduleAts() parameters
 		self.log("Scheduling ATS...")
-		atsId = atsFilename.split('/')[-1].replace(' ', '.')
-		user = "cliclient-user"
+		session = {} # for now
+
+		# Schedule the job		
+		try:
+			ret = self.__client.scheduleAts(source, label, username, session, at, path)
+			jobId = ret['job-id']
+			header = [ ('job-id', 'job-id'), ('message', 'message') ]
+			self.log("Schedule ATS result: %s" % ret['message'])
+			return jobId
+		except Exception, e:
+			self.log(str(e))
+			return None
+
+	def scheduleCampaignByFilename(self, sourceFilename, username = None, sessionFilename = None, at = None):
+		"""
+		Reads a Campaign file locally and schedule it.
+		
+		Returns the jobId once scheduled, or None in case of an error.
+		"""
+		# Load the file
+		try:
+			f = open(sourceFilename)
+			source = f.read().decode('utf-8')
+			f.close()
+		except Exception, e:
+			err = "Error: unable to read Campaign file %s (%s)" % (sourceFilename, str(e))
+			self.log(err)
+			return None
+
+		label = sourceFilename.split('/')[-1].replace(' ', '.')
+		if not username:
+			username = "cliclient-user"
+		return self._scheduleCampaign(source, label, username, sessionFilename, at, path = None)		
+	
+	def scheduleCampaignByPath(self, sourcePath, username = None, sessionFilename = None, at = None):
+		"""
+		Gets a Campaign by path locally and schedule it.
+		
+		Returns the jobId once scheduled, or None in case of an error.
+		"""
+		# Load the file
+		try:
+			source = self.__client.getFile('/repository/%s' % sourcePath).decode('utf-8')
+		except Exception, e:
+			err = "Error: unable to get Campaign from the server path %s." % (sourcePath)
+			self.log(err)
+			return None
+
+		label = sourcePath.split('/')[-1].replace(' ', '.')
+		if not username:
+			username = "cliclient-user"
+
+		# Reconstruct the server path
+		path = '/'.join(('/repository/%s' % sourcePath).split('/')[:-1])
+		return self._scheduleCampaign(source, label, username, sessionFilename, at, path = path)		
+
+	def _scheduleCampaign(self, source, label, username, sessionFilename = None, at = None, path = None):
+		"""
+		Schedule a Campaign whose source is provided by source and returns its JobID once scheduled,
+		or None in case of an error.
+		"""
+		# TODO: parameter and sessionFilename read
+		
+		# Prepare Ws.scheduleCampaign() parameters
+		self.log("Scheduling Campaign...")
 		session = {} # for now
 
 		# Schedule the ATS		
-		ret = self.__client.scheduleAts(ats, atsId, user, session, at)
-		jobId = ret['job-id']
-		header = [ ('job-id', 'job-id'), ('message', 'message') ]
-		print prettyPrintDictList(header, [ ret ])
-		
-		return jobId
+		try:
+			ret = self.__client.scheduleCampaign(source, label, username, session, at, path)
+			jobId = ret['job-id']
+			header = [ ('job-id', 'job-id'), ('message', 'message') ]
+			self.log("Schedule Campaign result:\n%s" % prettyPrintDictList(header, [ ret ]))
+			return jobId
+		except Exception, e:
+			self.log(str(e))
+			return None
 	
 	def listRegisteredProbes(self):
+		"""
+		Displays the currently registered probes
+		"""
 		ret = self.__client.getRegisteredProbes()
 		header = [ ('name', 'name'), ('type', 'type'), ('contact', 'location') ]
 		print prettyPrintDictList(header, ret)
 
 	def monitor(self, uri):
+		"""
+		Monitors, in real time, an uri, displaying:
+		- LOG events as a very simple log line,
+		- JOB-EVENT state change only
+		
+		Other events are not displayed.
+		
+		Only returns on user interruption.
+		"""
+		def _onNotification(notification):
+			if notification.getMethod() == "LOG":
+				self.log("%s | %s\n%s" % (str(notification.getUri()), notification.getHeader('Log-Class'), notification.getBody()))
+			elif notification.getMethod() == "JOB-EVENT":
+				state = notification.getApplicationBody()['state']
+				result = notification.getApplicationBody()['result']
+				id_ = notification.getApplicationBody()['id']
+				self.log("%s | state changed to %s" % (str(notification.getUri()), state))
+
 		try:
-			self.__client.subscribe(uri, self.onNotification)
+			self.__client.subscribe(uri, _onNotification)
 		except KeyboardInterrupt:
-			self.__client.unsubscribe(uri, self.onNotification)
+			self.__client.unsubscribe(uri, _onNotification)
 
-	def onNotification(self, notification, jobId = None):
-		if notification.getMethod() == "LOG":
-			self.log("%s | %s\n%s" % (str(notification.getUri()), notification.getHeader('Log-Class'), notification.getBody()))
-		elif notification.getMethod() == "JOB-EVENT":
-			state = notification.getApplicationBody()['state']
-			result = notification.getApplicationBody()['result']
-			id_ = notification.getApplicationBody()['id']
-			self.log("%s | state changed to %s" % (str(notification.getUri()), state))
-			if jobId and str(jobId) == str(id_) and result is not None:
-				self.__jobCompleteEvent.set()
-				self.__jobCompleteResult = notification.getApplicationBody()['result']
+	def monitorUntilCompletion(self, jobId, delay = 5.0):
+		"""
+		Starts monitoring a job via Xc, and returns its result upon completion.
+		
+		In parallel, performs Ws status check for the job to be sure it is still
+		running.
+		This check is performed every delay seconds.
+		"""
+		def _onNotification(notification):
+			if notification.getMethod() == "JOB-EVENT":
+				state = notification.getApplicationBody()['state']
+				result = notification.getApplicationBody()['result']
+				id_ = notification.getApplicationBody()['id']
+				self.log("%s | state changed to %s" % (str(notification.getUri()), state))
+				if str(jobId) == str(id_) and result is not None:
+					self.__jobCompleteEvent.set()
+					self.__jobCompleteResult = notification.getApplicationBody()['result']
 
-	def monitorUntilCompletion(self, jobId):
+		previousTick = 0.0
+		self.__jobCompleteResult = None
 		self.__jobCompleteEvent.clear()
-		onJobNotification = lambda x: self.onNotification(x, jobId)
-		self.__client.subscribe("job:%s" % jobId, onJobNotification)
+		self.__client.subscribe("job:%s" % jobId, _onNotification)
+		self.log("Waiting for job completion...")
 		while not self.__jobCompleteEvent.isSet():
 			time.sleep(0.1)
-		self.__client.unsubscribe("job:%s" % jobId, onJobNotification)
+			now = time.time()
+			if now - previousTick > delay:
+				# "Manual" check
+				previousTick = now
+				try:
+					jobInfo = self.__client.getJobInfo(jobId)
+					result = jobInfo['result']
+					if result is not None:
+						self.__jobCompleteResult = result
+						self.__jobCompleteEvent.set()
+				except Exception, e:
+					self.log("Sorry, the job is not available on this server any more. Stopping monitoring (%s)" % str(e))
+					return None
+				
+		self.__client.unsubscribe("job:%s" % jobId, _onNotification)
 		return self.__jobCompleteResult
 
 	def sendSignal(self, jobId, signal):
@@ -207,9 +347,12 @@ class TestermanCliClient:
 			if not ret:
 				raise Exception("No log available (job not started or delete logs)")
 		except Exception, e:
-			sys.stdout.write("Unable to get current log for job ID %s: %s\n" % (jobId, str(e)))
-			return 1
-		print ret
+			self.log("Unable to get current log for job ID %s: %s\n" % (jobId, str(e)))
+			return None
+		return ret
+
+
+RETCODE_EXECUTION_ERROR = 70
 
 def main():
 	parser = optparse.OptionParser(version = getVersion())
@@ -219,8 +362,12 @@ def main():
 	parser.add_option("-u", "--username", dest = "username", metavar = "USERNAME", help = "use USERNAME as Testerman user (default: %default)", default = os.environ.get('LOGNAME', None))
 
 	# Actions
-	parser.add_option("--execute-ats", dest = "atsFilename", metavar = "FILENAME", help = "execute ATS FILENAME, monitor it and wait for its completion", default = None)
-	parser.add_option("--nowait", dest = "waitForAtsCompletion", action = "store_false", help = "when executing an ATS, immediately returns without waiting for its completion (default: false)", default = True)
+	parser.add_option("--run-local-ats", dest = "atsFilename", metavar = "FILENAME", help = "run FILENAME as an ATS, monitor it and wait for its completion", default = None)
+	parser.add_option("--run-ats", dest = "atsPath", metavar = "PATH", help = "run an ATS whose path in the repository is PATH, monitor it and wait for its completion", default = None)
+	parser.add_option("--run-local-campaign", dest = "campaignFilename", metavar = "FILENAME", help = "run FILENAME as a campaign, monitor it and wait for its completion", default = None)
+	parser.add_option("--run-campaign", dest = "campaignPath", metavar = "PATH", help = "run a campaign whose path in the repository is PATH, monitor it and wait for its completion", default = None)
+	parser.add_option("--nowait", dest = "waitForJobCompletion", action = "store_false", help = "when executing an ATS, immediately returns without waiting for its completion (default: false)", default = True)
+	parser.add_option("--output-filename", dest = "outputFilename", metavar = "FILENAME", help = "if used with --run-* without the --nowait option, dump the execution logs into FILENAME once the execution is complete", default = None)
 
 	parser.add_option("--monitor", dest = "monitorUri", metavar = "URI", help = "monitor events on URI", default = None)
 
@@ -255,20 +402,44 @@ def main():
 	client = TestermanCliClient(options.serverUrl)
 	
 	try:
-		if options.atsFilename:
+		if options.atsFilename or options.atsPath or options.campaignFilename or options.campaignPath:
 			client.startXc()
-			jobId = client.scheduleAts(options.atsFilename, options.username)
-			if jobId:
-				result = None
+			# First, schedule the ATS (either a local or a repository one)
+			if options.atsFilename:
+				jobId = client.scheduleAtsByFilename(options.atsFilename, options.username)
+			elif options.atsPath:
+				jobId = client.scheduleAtsByPath(options.atsPath, options.username)
+			elif options.campaignFilename:
+				jobId = client.scheduleCampaignByFilename(options.campaignFilename, options.username)
 			else:
-				result = 1
-			if options.waitForAtsCompletion:
-				if jobId:
+				jobId = client.scheduleCampaignByPath(options.campaignPath, options.username)
+			if jobId is None:
+				client.stopXc()
+				return RETCODE_EXECUTION_ERROR
+			
+			# Now, if we are in synchronous execution, let's wait
+			if options.waitForJobCompletion:
+				try:
+					result = client.monitorUntilCompletion(jobId)
+				except KeyboardInterrupt:
+					client.stopXc()
+					return RETCODE_EXECUTION_ERROR
+				
+				# Optionally, get the log and dump it to a file.
+				if result is not None and options.outputFilename:
 					try:
-						result = client.monitorUntilCompletion(str(jobId))
-					except KeyboardInterrupt:
-						result = 1
+						log = client.getLog(jobId)
+						f = open(options.outputFilename, 'w')
+						f.write(log)
+						f.close()
+						client.log("Execution logs available in '%s'" % options.outputFilename)
+					except Exception, e:
+						client.log("Unable to dump execution logs to '%s': %s" % (options.outputFilename, str(e)))
+						client.stopXc()
+						return RETCODE_EXECUTION_ERROR
+					
 			client.stopXc()
+			# If result == 40, no log available.
 			return result
 
 		elif options.listProbes:
@@ -280,7 +451,12 @@ def main():
 			client.stopXc()
 		
 		elif options.logJobId:
-			return client.getLog(int(options.logJobId))
+			log = client.getLog(int(options.logJobId))
+			if log:
+				print log
+				return 0
+			else:
+				return 1
 		
 		elif options.sendSignal and options.jobId:
 			client.sendSignal(int(options.jobId), options.sendSignal)
@@ -296,6 +472,9 @@ def main():
 
 		elif options.updateAgentName:
 			client.updateAgent(options.updateAgentName)
+		
+		else:
+			parser.print_help()
 			
 	except Exception, e:
 		print str(e)
