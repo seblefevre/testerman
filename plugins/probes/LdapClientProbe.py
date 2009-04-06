@@ -41,6 +41,7 @@ class LdapClientProbe(ProbeImplementationManager.ProbeImplementation):
 	|| `base_dn` || string || (empty) || A base DN to suffix all DNs used in search/write/delete operations. It is not used for the  ||
 	
 	Deprecated properties:
+	|| '''Name''' || '''Type''' || '''Default value''' || '''Description''' ||
 	|| `username` || string || `None` (undefined) || Kept for compatibility. Use `bind_dn` instead. ||
 	
 
@@ -72,24 +73,18 @@ class LdapClientProbe(ProbeImplementationManager.ProbeImplementation):
 	 * you can delete an attribute by specifying an empty value list for it
 	
 	To make ATSes more portable and more simple to manage, you may use the `base_dn` property
-	to set a DN that will be appended to all DNs in used in:
+	to set a DN that will be appended to all DNs in use in:
 	 * delete operation (`dn` parameter)
 	 * write operation (`dn` parameter)
 	 * search operation (`baseDn` parameter)
-	and automatically removed from the dn values as returned in `SearchResult.SearchEntry.dn` structures
+	and automatically removed from the dn values as returned in `SearchResult.SearchEntry.dn` structures.[[BR]]
 	In other words, all the dn values, in the userland, will be relative to that `base_dn`.
 	
 	This `base_dn`, however, won't be suffixed to the `bind_dn`.
 	
 	Notes:
-	 * Bind, write and unbind operations are synchronous, i.e. 
-	it's not use arming a timer to cancel them from the userland: they
-	are not cancellable, and only return when they are complete. However,
-	you still must wait for a `BindResult` or `WriteResult`
-	before assuming the operation is complete.
-	 * The synchronous bind and write implementations may be replaced with asynchronous
-	equivalent ones one day. This 	won't have any impact on your testcases
-	if you wait for the `BindResult` and `WriteResult` as explained above.
+	 * Bind, write and unbind operations are synchronous, i.e. it's not use arming a timer to cancel them from the userland: they are not cancellable, and only return when they are complete. However, you still must wait for a `BindResult` or `WriteResult` before assuming the operation is complete.
+	 * The synchronous bind and write implementations may be replaced with asynchronous equivalent ones one day. This 	won't have any impact on your testcases if you wait for the `BindResult` and `WriteResult` as explained above.
 
 	== Availability ==
 
@@ -128,7 +123,7 @@ class LdapClientProbe(ProbeImplementationManager.ProbeImplementation):
 
 	type record SearchCommand {
 		charstring baseDn, // suffixed by the probe's base_dn property, if any
-		charstring filter, // should we use a default filter (objectClass=*) ?
+		charstring filter, 
 		charstring scope optional, // enum in 'base', 'subtree', 'onelevel', defaulted to 'base'
 		record of charstring attributes optional, // defaulted to an empty list, i.e. all attributes are returned
 	}
