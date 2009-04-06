@@ -34,12 +34,15 @@ class LdapClientProbe(ProbeImplementationManager.ProbeImplementation):
 	Properties:
 	|| '''Name''' || '''Type''' || '''Default value''' || '''Description''' ||
 	|| `server_url` || string || `'ldap://127.0.0.1:389'` || LDAP server url, including protocol to use (ldap or ldaps) ||
-	|| `ldap_version` || integer || 2 || LDAP server version
-	|| `username` || string || None (undefined) || The DN entry to bind, if not provided through a request ||
-	|| `password` || string || empty || The password to use by default for binding ||
-	|| `timeout` || float || 60.0 || The maximum amount of time allowed to perform a search/write/delete operation before raising an error response ||
+	|| `ldap_version` || integer || `2` || LDAP server version
+	|| `bind_dn` || string || `None` (undefined) || The DN entry to bind, if not provided through a request ||
+	|| `password` || string || (empty) || The password to use by default for binding ||
+	|| `timeout` || float || `60.0` || The maximum amount of time allowed to perform a search/write/delete operation before raising an error response ||
+	|| `base_dn` || string || (empty) || A base DN to suffix all DNs used in search/write/delete operations. It is not used for the  ||
 	
-	(no properties)
+	Deprecated properties:
+	|| `username` || string || `None` (undefined) || Kept for compatibility. Use `bind_dn` instead. ||
+	
 
 	= Overview =
 
@@ -56,10 +59,10 @@ class LdapClientProbe(ProbeImplementationManager.ProbeImplementation):
 	
 	SASL connections are currently not interfaced.
 
-	By default, the probe automatically binds using the `default_username` and `default_password` prior
-	to execute a search/write/delete command, unless an explicit bind command was performed by the user before.
+	By default, the probe automatically binds using the properties `bind_dn` and `password` prior
+	to executing a search/write/delete command, unless an explicit bind command was performed by the user before.
 
-	The probe automatically unbinds on unmap.[[BR]]
+	The probe automatically unbinds on unmap.
 	
 	To add or update an entry, use a `WriteCommand` message. The probe
 	automatically detects if it should be a new entry (don't forget mandatory
@@ -68,6 +71,16 @@ class LdapClientProbe(ProbeImplementationManager.ProbeImplementation):
 	 * all values of the existing attributes are replaced with the new ones (no values merge)
 	 * you can delete an attribute by specifying an empty value list for it
 	
+	To make ATSes more portable and more simple to manage, you may use the `base_dn` property
+	to set a DN that will be appended to all DNs in used in:
+	 * delete operation (`dn` parameter)
+	 * write operation (`dn` parameter)
+	 * search operation (`baseDn` parameter)
+	and automatically removed from the dn values as returned in `SearchResult.SearchEntry.dn` structures
+	In other words, all the dn values, in the userland, will be relative to that `base_dn`.
+	
+	This `base_dn`, however, won't be suffixed to the `bind_dn`.
+	
 	Notes:
 	 * Bind, write and unbind operations are synchronous, i.e. 
 	it's not use arming a timer to cancel them from the userland: they
@@ -75,7 +88,7 @@ class LdapClientProbe(ProbeImplementationManager.ProbeImplementation):
 	you still must wait for a `BindResult` or `WriteResult`
 	before assuming the operation is complete.
 	 * The synchronous bind and write implementations may be replaced with asynchronous
-	equivalent ones day. This 	won't have any impact on your testcases
+	equivalent ones one day. This 	won't have any impact on your testcases
 	if you wait for the `BindResult` and `WriteResult` as explained above.
 
 	== Availability ==
@@ -107,21 +120,21 @@ class LdapClientProbe(ProbeImplementationManager.ProbeImplementation):
 	}
 
 	type record BindCommand {
-		charstring username optional, // the distinguished name of the entry to bind
+		charstring bindDn optional, // the distinguished name of the entry to bind
 		charstring password optional,
 	}
 
 	type any UnbindCommand;
 
 	type record SearchCommand {
-		charstring baseDn,
+		charstring baseDn, // suffixed by the probe's base_dn property, if any
 		charstring filter, // should we use a default filter (objectClass=*) ?
 		charstring scope optional, // enum in 'base', 'subtree', 'onelevel', defaulted to 'base'
 		record of charstring attributes optional, // defaulted to an empty list, i.e. all attributes are returned
 	}
 
 	type record WriteCommand {
-		charstring dn,
+		charstring dn, // suffixed by the probe's base_dn property, if any
 		record of Attribute attributes optional, // defaulted to an empty list
 	}
 
@@ -130,7 +143,7 @@ class LdapClientProbe(ProbeImplementationManager.ProbeImplementation):
 	}
 
 	type record DeleteCommand {
-		charstring dn,
+		charstring dn, // suffixed by the probe's base_dn property, if any
 	}
 
 	type any AbandonCommand;
@@ -146,7 +159,7 @@ class LdapClientProbe(ProbeImplementationManager.ProbeImplementation):
 	type record of SearchEntry SearchResult;
 	
 	type record SearchEntry {
-		charstring dn,
+		charstring dn, // does not contain the base_dn property part, if any
 		record of Attribute attributes,
 	}
 	
@@ -178,7 +191,7 @@ class LdapClientProbe(ProbeImplementationManager.ProbeImplementation):
 		self._pendingRequest = None
 		self.setDefaultProperty('server_url', 'ldap://127.0.0.1:389')
 		self.setDefaultProperty('ldap_version', 2)
-		self.setDefaultProperty('username', None)
+		self.setDefaultProperty('bind_dn', None)
 		self.setDefaultProperty('password', '')
 		self.setDefaultProperty('timeout', 60.0)
 
@@ -212,8 +225,8 @@ class LdapClientProbe(ProbeImplementationManager.ProbeImplementation):
 		command, args = message
 		
 		if command == 'bind':
-			self._checkArgs(args, [ ('username', self['username']), ('password', self['password']) ])
-			self.bind(args['username'], args['password'])
+			self._checkArgs(args, [ ('bind_dn', self.getBindDn()), ('password', self['password']) ])
+			self.bind(args['bind_dn'], args['password'])
 		
 		elif command == 'unbind':
 			self.unbind()
@@ -247,6 +260,13 @@ class LdapClientProbe(ProbeImplementationManager.ProbeImplementation):
 		
 		else:
 			raise Exception("Invalid command (%s)" % command)
+	
+	def getBindDn(self):
+		# Compatibility management: property 'username' replaced by 'bind_dn'
+		if self['bind_dn']:
+			return self['bind_dn']
+		else:
+			return self['username']
 	
 	def _getPendingRequest(self):
 		self._lock()
@@ -298,11 +318,11 @@ class LdapClientProbe(ProbeImplementationManager.ProbeImplementation):
 		else:
 			self._unlock()
 	
-	def _bind(self, username, password):
-		self.getLogger().debug('Binding to %s as %s/%s...' % (self['server_url'], username, password))
+	def _bind(self, bindDn, password):
+		self.getLogger().debug('Binding to %s as %s/%s...' % (self['server_url'], bindDn, password))
 		self._server = ldap.initialize(self['server_url'])
 		# Generates an exception in case of a binding (or connection) error.
-		self._server.bind_s(username, password)
+		self._server.bind_s(bindDn, password)
 	
 	def _onResult(self, request, result, operationName):
 		"""
@@ -346,14 +366,15 @@ class LdapClientProbe(ProbeImplementationManager.ProbeImplementation):
 			self.getLogger().warning("Late (and discarded) error response received for request %s: %s" % (request, errorString))
 		self._pendingRequest = None
 	
-	def bind(self, username, password):
+	def bind(self, bindDn, password):
 		try:
-			self._bind(username, password)
+			self._bind(bindDn, password)
 			self.triEnqueueMsg(('bindResult', True))
 		except Exception, e:
 			self.triEnqueueMsg(('error', 'Error while binding: %s' % str(e)), self['server_url'])
 	
 	def search(self, basedn, filter_, scope, attributes):
+		basedn = self._addBaseDn(basedn)
 		self.getLogger().debug('Searching %s from %s (scope %s, attributes: %s)' % (filter_, basedn, scope, attributes))
 		if scope == 'subtree':
 			s = ldap.SCOPE_SUBTREE
@@ -381,7 +402,7 @@ class LdapClientProbe(ProbeImplementationManager.ProbeImplementation):
 			resultType, resultData = self._server.result(request, timeout = timeout)
 			self.getLogger().debug('Search result: %s' % resultData)
 			for (dn, attributes) in resultData:
-				resultSet.append({'dn': dn, 'attributes': attributes}) 
+				resultSet.append({'dn': self._stripBaseDn(dn), 'attributes': attributes}) 
 			res = True
 		except ldap.USER_CANCELLED:
 			pass
@@ -395,6 +416,8 @@ class LdapClientProbe(ProbeImplementationManager.ProbeImplementation):
 			self._onResult(request, resultSet, 'search')
 
 	def delete(self, dn):
+		dn = self._addBaseDn(dn)
+
 		if not self._ensureBind():
 			return
 		self._pendingRequest = self._server.delete(dn)
@@ -431,6 +454,7 @@ class LdapClientProbe(ProbeImplementationManager.ProbeImplementation):
 		"""
 		Synchronous implementation for now...
 		"""
+		dn = self._addBaseDn(dn)
 		if not self._ensureBind():
 			return
 
@@ -461,7 +485,6 @@ class LdapClientProbe(ProbeImplementationManager.ProbeImplementation):
 		if completed:
 			self.triEnqueueMsg(('writeResult', True))
 		
-	
 	def _ensureBind(self):
 		"""
 		Makes sure we are bound to a server.
@@ -470,15 +493,37 @@ class LdapClientProbe(ProbeImplementationManager.ProbeImplementation):
 		ret = False
 		if not self._server:
 			try:
-				self._bind(self['username'], self['password'])
+				self._bind(self.getBindDn(), self['password'])
 				ret = True
 			except Exception, e:
 				self.triEnqueueMsg(('error', 'Error while binding: %s' % str(e)), self['server_url'])
 		else:
 			ret = True
 		return ret
+
+	def _addBaseDn(self, dn):
+		"""
+		Append the base_dn property, if any
+		"""	
+		baseDn = self['base_dn']
+		if baseDn:
+			return ','.join(filter(lambda x: x.strip(), dn.split(',') + baseDn.split(',')))
+		else:
+			return dn
+	
+	def _stripBaseDn(self, dn):
+		"""
+		If the dn ends with the base_dn property, strips it.
+		"""
+		baseDn = self['base_dn']
+		if baseDn:
+			baseDn = ','.join(filter(lambda x: x.strip(), self['base_dn'].split(',')))
+			if dn.lower().endswith(baseDn.lower()):
+				dn = dn[:-len(baseDn)]
+				if dn.endswith(','):
+					dn = dn[:-1]
+		return dn
 		
-				
 	
 ProbeImplementationManager.registerProbeImplementationClass('ldap.client', LdapClientProbe)
 
