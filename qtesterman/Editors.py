@@ -120,7 +120,11 @@ class WDocument(QWidget):
 
 	def getEditorPluginActions(self):
 		# For now, we just have code writer plugins.
-		ret = getCodeWriterPluginActions(self.editor, self.model.getDocumentType())
+		ret = getCodeWriterPluginActions(self.editor, self.model.getDocumentType(), self.editor)
+		return ret
+	
+	def getDocumentationPluginActions(self):
+		ret = getDocumentationPluginActions(self.model, self.model.getDocumentType(), self.editor)
 		return ret
 
 	def setTabWidget(self, tabWidget):
@@ -473,12 +477,28 @@ class WAtsDocument(WDocument):
 		# A find widget
 		self.find = WSciFind(self.editor, self)
 
-		# By default, icon sizes are 24x24. We resize them to 16x16 to avoid to big buttons.
-		self.testButton = QPushButton("Check syntax")
-		self.testButton.setIcon(icon(':/icons/check.png'))
-		self.testButton.setIconSize(QSize(16, 16))
-		self.connect(self.testButton, SIGNAL("clicked()"), self.verify)
-		
+		# Actions associated with ATS edition:
+		# syntax check,
+		# documentation via ATS documentation plugins,
+		# run with several options (session parameters, scheduling)
+		# By default, icon sizes are 24x24. We resize them to 16x16 to avoid too large buttons.
+
+		# Syntax check action
+		self.syntaxCheckAction = TestermanAction(self, "Check syntax", self.verify, "Check ATS syntax")
+		self.syntaxCheckAction.setIcon(icon(':/icons/check.png'))
+		self.syntaxCheckButton = QToolButton()
+		self.syntaxCheckButton.setIconSize(QSize(16, 16))
+		self.syntaxCheckButton.setDefaultAction(self.syntaxCheckAction)
+
+		# Documentation actions
+		self.documentationButton = QToolButton()
+		self.documentationButton.setIcon(icon(':/icons/documentation'))
+		self.documentationButton.setIconSize(QSize(16, 16))
+		self.documentationPluginsMenu = QMenu('Documentation', self)
+		self.connect(self.documentationPluginsMenu, SIGNAL("aboutToShow()"), self.prepareDocumentationPluginsMenu)
+		self.documentationButton.setMenu(self.documentationPluginsMenu)
+		self.documentationButton.setPopupMode(QToolButton.InstantPopup)
+
 		# Run actions
 		self.runAction = TestermanAction(self, "&Run", self.run, "Run now")
 		self.runAction.setIcon(icon(':/icons/run.png'))
@@ -487,20 +507,20 @@ class WAtsDocument(WDocument):
 		self.runMenu = QMenu('Run', self)
 		self.runMenu.addAction(self.runWithParametersAction)
 		self.runMenu.addAction(self.scheduleRunAction)
-		
 		self.runButton = QToolButton()
 		self.runButton.setDefaultAction(self.runAction)
 		self.runButton.setMenu(self.runMenu)
 		self.runButton.setIconSize(QSize(16, 16))
 		self.runButton.setToolButtonStyle(Qt.ToolButtonTextBesideIcon)
 		self.runButton.setPopupMode(QToolButton.MenuButtonPopup)
-		
+
 		self.launchLog = QCheckBox("Display runtime log")
 		self.launchLog.setChecked(True)
 
 		actionLayout.addWidget(self.find)
 		actionLayout.addStretch()
-		actionLayout.addWidget(self.testButton)
+		actionLayout.addWidget(self.documentationButton)
+		actionLayout.addWidget(self.syntaxCheckButton)
 		actionLayout.addWidget(self.runButton)
 		actionLayout.addWidget(self.launchLog)
 		actionLayout.setMargin(2)
@@ -617,6 +637,12 @@ class WAtsDocument(WDocument):
 			return
 		
 		self._schedule(session, scheduledTime)
+
+	def prepareDocumentationPluginsMenu(self):
+		self.documentationPluginsMenu.clear()
+		for action in getDocumentationPluginActions(self.model, self.model.getDocumentType(), self):
+			print "DEBUG: adding action in plugin contextual menu..." + unicode(action.text())
+			self.documentationPluginsMenu.addAction(action)
 
 ###############################################################################
 # Campaign Edition
@@ -1043,18 +1069,18 @@ class WDocumentManager(QWidget):
 # Code Writers plugins
 ################################################################################
 
-class PluginAction(TestermanAction):
-	def __init__(self, editor, label, pluginInstance):
-		TestermanAction.__init__(self, editor, label, self.activatePlugin)
-		self.editor = editor
-		self.pluginInstance = pluginInstance
+class CodeWriterPluginAction(TestermanAction):
+	def __init__(self, editor, label, pluginInstance, parent):
+		TestermanAction.__init__(self, parent, label, self.activatePlugin)
+		self._editor = editor
+		self._pluginInstance = pluginInstance
 
 	def activatePlugin(self):
-		ret = self.pluginInstance.activate()
+		ret = self._pluginInstance.activate()
 		if ret:
-			self.editor.insert(ret)
+			self._editor.insert(ret)
 
-def getCodeWriterPluginActions(editor, documentType):
+def getCodeWriterPluginActions(editor, documentType, parent):
 	"""
 	Create a list containing valid plugin actions according to the editor type.
 
@@ -1065,9 +1091,34 @@ def getCodeWriterPluginActions(editor, documentType):
 	for p in PluginManager.getPluginClasses(Plugin.TYPE_CODE_WRITER):
 		if p['activated'] and p['class']:
 			# Verify plugin/codeType compliance
-			plugin = p['class'](editor)
+			plugin = p['class'](parent)
 			if plugin.isDocumentTypeSupported(documentType):
-				ret.append(PluginAction(editor, p['label'], plugin))
+				ret.append(CodeWriterPluginAction(editor, p['label'], plugin, parent))
+	return ret
+
+class DocumentationPluginAction(TestermanAction):
+	def __init__(self, model, label, pluginInstance, parent):
+		TestermanAction.__init__(self, parent, label, self.activatePlugin)
+		self._model = model
+		self._pluginInstance = pluginInstance
+
+	def activatePlugin(self):
+		ret = self._pluginInstance.activate(self._model)
+
+def getDocumentationPluginActions(model, documentType, parent):
+	"""
+	Create a list containing valid plugin actions according to the document type.
+
+	documentType in module/ats/campaign (for now)
+	"""
+	print "DEBUG: getting documentation plugins for " + str(documentType)
+	ret = []
+	for p in PluginManager.getPluginClasses(Plugin.TYPE_DOCUMENTATION_GENERATOR):
+		if p['activated'] and p['class']:
+			# Verify plugin/codeType compliance
+			plugin = p['class'](parent)
+			if plugin.isDocumentTypeSupported(documentType):
+				ret.append(DocumentationPluginAction(model, p['label'], plugin, parent))
 	return ret
 
 
@@ -1258,6 +1309,12 @@ class WPythonCodeEditor(sci.QsciScintilla):
 			self.menu.addMenu(self.editorPluginsMenu)
 			self.connect(self.editorPluginsMenu, SIGNAL("aboutToShow()"), self.prepareEditorPluginsMenu)
 
+		if hasattr(self.parent(), "getDocumentationPluginActions"):
+			self.menu.addSeparator()
+			self.documentationPluginsMenu = QMenu("Documentation")
+			self.menu.addMenu(self.documentationPluginsMenu)
+			self.connect(self.documentationPluginsMenu, SIGNAL("aboutToShow()"), self.prepareDocumentationPluginsMenu)
+
 		self.menu.addSeparator()
 		self.templatesMenu = QMenu("Templates")
 		self.menu.addMenu(self.templatesMenu)
@@ -1298,6 +1355,12 @@ class WPythonCodeEditor(sci.QsciScintilla):
 		for action in self.parent().getEditorPluginActions():
 			print "DEBUG: adding action in plugin contextual menu..." + unicode(action.text())
 			self.editorPluginsMenu.addAction(action)
+
+	def prepareDocumentationPluginsMenu(self):
+		self.documentationPluginsMenu.clear()
+		for action in self.parent().getDocumentationPluginActions():
+			print "DEBUG: adding action in plugin contextual menu..." + unicode(action.text())
+			self.documentationPluginsMenu.addAction(action)
 
 	def onPopupMenu(self, event):
 		self.menu.popup(QCursor.pos())

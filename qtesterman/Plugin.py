@@ -23,6 +23,7 @@ from PyQt4.Qt import *
 
 TYPE_CODE_WRITER = "code-writer"
 TYPE_REPORT_VIEW = "report-view"
+TYPE_DOCUMENTATION_GENERATOR = "documentation"
 
 ###############################################################################
 # Base plugin configuration widget. The same for all plugin types.
@@ -159,4 +160,41 @@ class CodeWriter(QObject):
 		"""
 		return True
 
-	
+###############################################################################
+# DocumentationGenerator: module/campaign or ATS low level documentation,
+# Test Specification extraction and reporting, ...
+###############################################################################
+
+class DocumentationGenerator(QObject):
+	pluginType = TYPE_DOCUMENTATION_GENERATOR
+	def __init__(self, parent = None):
+		QObject.__init__(self, parent)
+
+	def activate(self, model):
+		"""
+		Called to activate the plugin.
+
+		@type  model: DocumentModels.DocumentModel
+		@param model: the model on which the documentation generation should be
+		applied
+		
+		@rtype: None.
+		@returns: None.
+		"""
+
+	def isDocumentTypeSupported(self, documentType):
+		"""
+		Called to filter plugins list according to the document/model type
+		we display them.
+		documentType is a DocumentModels.TYPE_*
+
+		By default, all types are supported.
+		
+		@type  documentType: DocumentModels.TYPE_*
+		@param documentType: the document type to announce support for
+
+		@rtype: bool
+		@returns: True if code generation for document type is supported, False otherwise.
+		"""
+		return True
+
