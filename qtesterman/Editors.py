@@ -118,6 +118,33 @@ class WDocument(QWidget):
 		self.editor = None
 		self.filenameTemplate = "Any file (*.*)"
 
+	def getCategorizedPluginActions(self):
+		"""
+		Returns a list of categorized actions associated to the
+		possible plugins for the current document.
+		May be structured into several menu actions, depending on the document type.
+		
+		This function is called to create the main window "plugins" menu,
+		and may be used by the WDocument itself to add entry points
+		to plugins according to the local GUI (context menu, explicit buttons, ...).
+		
+		@rtype: list of tuple (label, list of QAction)
+		@returns: a list of categories labelled with a label and a list
+		of plugin QActions that fits into this category.
+		"""
+		ret = []
+		# Editor plugins
+		category = []
+		for action in self.getEditorPluginActions():
+			category.append(action)
+		ret.append(('Editor', category))
+		# Documentation
+		category = []
+		for action in self.getDocumentationPluginActions():
+			category.append(action)
+		ret.append(('Documentation', category))
+		return ret
+
 	def getEditorPluginActions(self):
 		# For now, we just have code writer plugins.
 		ret = getCodeWriterPluginActions(self.editor, self.model.getDocumentType(), self.editor)
@@ -158,7 +185,7 @@ class WDocument(QWidget):
 			f.write(self.model.getDocument().encode('utf-8'))
 			f.close()
 			QApplication.instance().get('gui.statusbar').showMessage("Successfully saved as %s" % (filename))
-			self.model.setSavedAttributes(url = QUrl('file://%s' % filename), timestamp = time.time())
+			self.model.setSavedAttributes(url = QUrl.fromLocalFile(filename), timestamp = time.time())
 			self.model.resetModificationFlag()
 			QApplication.instance().get('gui.statusbar').setFileLocation(self.model.getUrl())
 			return True
@@ -201,6 +228,19 @@ class WDocument(QWidget):
 			QApplication.instance().get('gui.statusbar').showMessage("Unable to put save file to repository: %s" % error)
 			return False
 
+	def aboutToSave(self):
+		"""
+		Called before saving a document.
+		Enables last-second checks before saving.
+		May be overriden in the WDocument subclasses.
+
+		The default implementation does nothing and allows saving the doc.
+
+		@rtype: boolean
+		@returns: True if OK to save, False otherwise.
+		"""
+		return True
+
 	def save(self):
 		"""
 		This is a dispatcher.
@@ -212,6 +252,9 @@ class WDocument(QWidget):
 		@rtype: bool
 		@returns: True if OK, False if the file was not saved.
 		"""
+		if not self.aboutToSave():
+			return False
+
 		# Is it a resave ?
 		if self.model.getUrl().scheme() != 'unsaved':
 			if self.model.isRemote():
@@ -383,20 +426,42 @@ class WModuleDocument(WDocument):
 		actionLayout = QHBoxLayout()
 		actionLayout.addWidget(self.find)
 
+		# Actions associated with ATS edition:
+		# syntax check,
+		# documentation via ATS documentation plugins,
+		# run with several options (session parameters, scheduling)
+		# By default, icon sizes are 24x24. We resize them to 16x16 to avoid too large buttons.
+
+		# Syntax check action
+		self.syntaxCheckAction = TestermanAction(self, "Check syntax", self.verify, "Check Module syntax")
+		self.syntaxCheckAction.setIcon(icon(':/icons/check.png'))
+		self.syntaxCheckButton = QToolButton()
+		self.syntaxCheckButton.setIconSize(QSize(16, 16))
+		self.syntaxCheckButton.setDefaultAction(self.syntaxCheckAction)
+
+		# Documentation actions - needs switching to a plugin architecture
+		self.documentationButton = QToolButton()
+		self.documentationButton.setIcon(icon(':/icons/documentation'))
+		self.documentationButton.setIconSize(QSize(16, 16))
+		self.documentationAction = TestermanAction(self, "Display documentation", self.showDocumentation, "Display Epydoc-like documentation")
+		self.documentationAction.setIcon(icon(':/icons/documentation'))
+		self.documentationButton.setDefaultAction(self.documentationAction)
+#		self.documentationPluginsMenu = QMenu('Documentation', self)
+#		self.connect(self.documentationPluginsMenu, SIGNAL("aboutToShow()"), self.prepareDocumentationPluginsMenu)
+#		self.documentationButton.setMenu(self.documentationPluginsMenu)
+#		self.documentationButton.setPopupMode(QToolButton.InstantPopup)
+
 		actionLayout.addStretch()
-		self.testButton = QPushButton("Check syntax")
-		self.testButton.setIcon(icon(':/icons/check.png'))
-		self.testButton.setIconSize(QSize(16, 16))
-		self.connect(self.testButton, SIGNAL("clicked()"), self.verify)
-		actionLayout.addWidget(self.testButton)
-		self.docButton = QPushButton("Documentation")
-		self.connect(self.docButton, SIGNAL("clicked()"), self.showDocumentation)
-		actionLayout.addWidget(self.docButton)
+		actionLayout.addWidget(self.documentationButton)
+		actionLayout.addWidget(self.syntaxCheckButton)
 
 		actionLayout.setMargin(2)
 		layout.addLayout(actionLayout)
 		layout.setMargin(0)
 		self.setLayout(layout)
+
+	def aboutToSave(self):
+		return self.verify(False)
 
 	def updateModel(self):
 		self.model.setBody(self.editor.getCode())
@@ -418,7 +483,7 @@ class WModuleDocument(WDocument):
 		else:
 			QMessageBox.warning(self, getClientName(), "Unable to generate documentation, the file must be saved", QMessageBox.Ok)
 
-	def verify(self, displayNoError = 1):
+	def verify(self, displayNoError = True):
 		self.updateModel()
 		self.editor.clearHighlight()
 		try:
@@ -427,13 +492,13 @@ class WModuleDocument(WDocument):
 			compiler.parse(body)
 			if displayNoError:
 				QMessageBox.information(self, getClientName(), "No syntax problem was found in this module.", QMessageBox.Ok)
-			return 1
+			return True
 		except SyntaxError, e:
 			self.editor.highlight(e.lineno - 1)
 			self.editor.goTo(e.lineno - 1, e.offset)
 			userError(self, "Syntax error on line %s: <br />%s" % (str(e.lineno), e.msg))
 			self.editor.setFocus(Qt.OtherFocusReason)
-		return 0
+		return False
 
 
 ###############################################################################
@@ -826,13 +891,13 @@ class WDocumentManager(QWidget):
 		Returns True if OK.
 		"""
 		log("Opening url: %s" % url.toString())
-		path = url.path()
 		fileTimestamp = None
 		contents = None
 
 		if url.scheme() == 'file':
 			log("Opening local file: %s" % url.toString())
 			try:
+				path = url.toLocalFile()
 				f = open(unicode(path), 'r')
 				contents = f.read()
 				f.close()
@@ -844,6 +909,7 @@ class WDocumentManager(QWidget):
 		elif url.scheme() == 'testerman':
 			log("Opening remote file: %s" % url.toString())
 			try:
+				path = url.path() # ignore the server
 				contents = getProxy().getFile(unicode(path))
 				info = getProxy().getFileInfo(unicode(path))
 			except:
@@ -860,7 +926,7 @@ class WDocumentManager(QWidget):
 			log("Unknown URL scheme. Not opening.")
 			return False
 
-		# We store files as UTF-8. Decodes then to unicode.
+		# We store files as UTF-8. Decode then to unicode.
 		contents = contents.decode('utf-8')
 		
 		if path.endsWith('.campaign'):
@@ -935,31 +1001,39 @@ class WDocumentManager(QWidget):
 				return
 
 		# OK, now we can reload it.
+		contents = None
+		fileTimestamp = None
+
 		if model.isRemote():
 			log("Reloading remote file...")
-			contents = getProxy().getFile(unicode(model.getUrl().path()))
-			info = getProxy().getFileInfo(unicode(model.getUrl().path()))
+			path = model.getUrl().path()
+			contents = getProxy().getFile(unicode(path))
+			info = getProxy().getFileInfo(unicode(path))
 			if contents and info:
 				fileTimestamp = info['timestamp']
-				model.setDocument(contents)
-				model.setSavedAttributes(url = model.getUrl(), timestamp = fileTimestamp)
-				model.resetModificationFlag()
-				QApplication.instance().get('gui.statusbar').showMessage('Document reloaded.', 5000)
 			else:
 				systemError(self, "Unable to reload file from the repository: the file does not seem to exist anymore")
 		else:
 			log("Reloading local file...")
 			try:
-				f = open(unicode(model.getUrl().path()), 'r')
+				path = model.getUrl().toLocalFile()
+				f = open(unicode(path), 'r')
 				contents = f.read().decode('utf-8')
 				f.close()
-				fileTimestamp = os.stat(unicode(model.getUrl().path())).st_mtime
+				fileTimestamp = os.stat(unicode(path)).st_mtime
+			except Exception, e:
+				systemError(self, 'Unable to open %s: %s' % (model.getUrl().toString(), unicode(e)))
+
+		if contents is not None and fileTimestamp is not None:
+			try:
+				# We store files as UTF-8. Decode then to unicode.
+				contents = contents.decode('utf-8')
 				model.setDocument(contents)
 				model.setSavedAttributes(url = model.getUrl(), timestamp = fileTimestamp)
 				model.resetModificationFlag()
 				QApplication.instance().get('gui.statusbar').showMessage('Document reloaded.', 5000)
 			except Exception, e:
-				systemError(self, 'Unable to open %s: %s' % (model.getUrl().toString(), unicode(e)))
+				systemError(self, 'Unable to reload %s: %s' % (model.getUrl().toString(), unicode(e)))
 
 	def newAts(self):
 		"""
@@ -1303,17 +1377,11 @@ class WPythonCodeEditor(sci.QsciScintilla):
 		self.menu.addAction(self.replayKeystrokesAction)
 		# WARNING: Adding this sub-menu makes the PythonCodeEditor not suitable for integration in any 
 		# widget, but only in WDocument.
-		if hasattr(self.parent(), "getEditorPluginActions"):
+		if hasattr(self.parent(), "getCategorizedPluginActions"):
 			self.menu.addSeparator()
-			self.editorPluginsMenu = QMenu("Plugins")
-			self.menu.addMenu(self.editorPluginsMenu)
-			self.connect(self.editorPluginsMenu, SIGNAL("aboutToShow()"), self.prepareEditorPluginsMenu)
-
-		if hasattr(self.parent(), "getDocumentationPluginActions"):
-			self.menu.addSeparator()
-			self.documentationPluginsMenu = QMenu("Documentation")
-			self.menu.addMenu(self.documentationPluginsMenu)
-			self.connect(self.documentationPluginsMenu, SIGNAL("aboutToShow()"), self.prepareDocumentationPluginsMenu)
+			self.pluginsMenu = QMenu("Plugins")
+			self.menu.addMenu(self.pluginsMenu)
+			self.connect(self.pluginsMenu, SIGNAL("aboutToShow()"), self.preparePluginsMenu)
 
 		self.menu.addSeparator()
 		self.templatesMenu = QMenu("Templates")
@@ -1350,17 +1418,12 @@ class WPythonCodeEditor(sci.QsciScintilla):
 		self.autoCompleteTemplate.setShortcutContext(Qt.WidgetShortcut)
 		self.addAction(self.autoCompleteTemplate)
 
-	def prepareEditorPluginsMenu(self):
-		self.editorPluginsMenu.clear()
-		for action in self.parent().getEditorPluginActions():
-			print "DEBUG: adding action in plugin contextual menu..." + unicode(action.text())
-			self.editorPluginsMenu.addAction(action)
-
-	def prepareDocumentationPluginsMenu(self):
-		self.documentationPluginsMenu.clear()
-		for action in self.parent().getDocumentationPluginActions():
-			print "DEBUG: adding action in plugin contextual menu..." + unicode(action.text())
-			self.documentationPluginsMenu.addAction(action)
+	def preparePluginsMenu(self):
+		self.pluginsMenu.clear()
+		for (label, actions) in self.parent().getCategorizedPluginActions():
+			menu = self.pluginsMenu.addMenu(label)
+			for action in actions:
+				menu.addAction(action)
 
 	def onPopupMenu(self, event):
 		self.menu.popup(QCursor.pos())

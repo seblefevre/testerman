@@ -418,13 +418,19 @@ class WSciFind(QWidget):
 		self.connect(self.findLineEdit, SIGNAL('returnPressed()'), lambda:self.onNextClicked(True))
 		self.connect(self.scintilla, SIGNAL('copyAvailable(bool)'), self.onCopyAvailableChange)
 		layout.addWidget(self.findLineEdit)
-		self.nextButton = QPushButton("Next", self)
-		self.nextButton.setShortcut('F3')
-		self.connect(self.nextButton, SIGNAL('clicked()'), lambda:self.onNextClicked(True))
+		self.nextAction = TestermanAction(self, "Next", lambda: self.onNextClicked(True), "Find next occurrence")
+		self.nextAction.setShortcut('F3')
+		self.nextAction.setIcon(QApplication.instance().icon(':/icons/find-next'))
+		self.nextButton = QToolButton()
+		self.nextButton.setIconSize(QSize(16, 16))
+		self.nextButton.setDefaultAction(self.nextAction)
 		layout.addWidget(self.nextButton)
-		self.previousButton = QPushButton("Previous", self)
-		self.previousButton.setShortcut('Shift+F3')		
-		self.connect(self.previousButton, SIGNAL('clicked()'), lambda:self.onNextClicked(False))
+		self.previousAction = TestermanAction(self, "Previous", lambda: self.onNextClicked(False), "Find previous occurrence")
+		self.previousAction.setShortcut('Shift+F3')
+		self.previousAction.setIcon(QApplication.instance().icon(':/icons/find-previous'))
+		self.previousButton = QToolButton()
+		self.previousButton.setIconSize(QSize(16, 16))
+		self.previousButton.setDefaultAction(self.previousAction)
 		layout.addWidget(self.previousButton)
 		self.setLayout(layout)
 		self.defaultPalette = QPalette(self.findLineEdit.palette())
@@ -518,10 +524,22 @@ class WFind(QWidget):
 		#self.connect(self.findLineEdit, SIGNAL('editingFinished()'), self.onNextClicked)
 		self.connect(self.textEdit, SIGNAL('copyAvailable(bool)'), self.onCopyAvailableChange)
 		layout.addWidget(self.findLineEdit)
-		self.nextButton = QPushButton("Next", self)
-		self.nextButton.setShortcut('F3')
-		self.connect(self.nextButton, SIGNAL('clicked()'), self.onNextClicked)
+
+		self.nextAction = TestermanAction(self, "Next", lambda: self.onNextClicked(True), "Find next occurrence")
+		self.nextAction.setShortcut('F3')
+		self.nextAction.setIcon(QApplication.instance().icon(':/icons/find-next'))
+		self.nextButton = QToolButton()
+		self.nextButton.setIconSize(QSize(16, 16))
+		self.nextButton.setDefaultAction(self.nextAction)
 		layout.addWidget(self.nextButton)
+#		self.previousAction = TestermanAction(self, "Previous", lambda: self.onNextClicked(False), "Find previous occurrence")
+#		self.previousAction.setShortcut('Shift+F3')
+#		self.previousAction.setIcon(QApplication.instance().icon(':/icons/find-previous'))
+#		self.previousButton = QToolButton()
+#		self.previousButton.setIconSize(QSize(16, 16))
+#		self.previousButton.setDefaultAction(self.previousAction)
+#		layout.addWidget(self.previousButton)
+
 		self.setLayout(layout)
 		self.defaultPalette = QPalette(self.findLineEdit.palette())
 		self.alternatePalette = QPalette(self.defaultPalette)
@@ -535,19 +553,23 @@ class WFind(QWidget):
 	def getAction(self):
 		return self.action
 
-	def find(self, text, excludeCurrentSelection = 1):
+	def find(self, text, excludeCurrentSelection = 1, forward = True):
+		options = 0
+		if not forward:
+			options = QTextDocument.FindBackward
+
 		if not text.length():
 			self.findLineEdit.setPalette(self.defaultPalette)
 			return
 		if excludeCurrentSelection:
 			# Starts after the end of the selection (ideal for "next")
-			cursor = self.textEdit.document().find(text, self.textEdit.textCursor())
+			cursor = self.textEdit.document().find(text, self.textEdit.textCursor()) #, options)
 		else:
 			# Starts from the beginning of the selection (ideal for incremental)
-			cursor = self.textEdit.document().find(text, self.textEdit.textCursor().selectionStart())
+			cursor = self.textEdit.document().find(text, self.textEdit.textCursor().selectionStart()) #, options)
 		if cursor.isNull():
 			# we make a second try starting at the beginning
-			cursor = self.textEdit.document().find(text, 0)
+			cursor = self.textEdit.document().find(text, 0) #, options)
 		if not cursor.isNull():
 			self.textEdit.setTextCursor(cursor)
 			self.findLineEdit.setPalette(self.defaultPalette)
@@ -560,7 +582,7 @@ class WFind(QWidget):
 	def onTextChanged(self, text):
 		self.find(text, 0)
 
-	def onNextClicked(self):
+	def onNextClicked(self, forward = True):
 		if self.isCopyAvailable:
 			self.textEdit.copy()
 			self.findLineEdit.setText('')
@@ -568,7 +590,7 @@ class WFind(QWidget):
 		elif self.findLineEdit.text() == '':
 			self.getFocus()
 			return
-		self.find(self.findLineEdit.text())
+		self.find(self.findLineEdit.text(), forward = forward)
 
 
 ################################################################################

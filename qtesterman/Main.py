@@ -804,9 +804,7 @@ class WMainWindow(QMainWindow):
 		self.windowsMenu.addAction(self.toggleFullScreenAction)
 
 		self.pluginsMenu = self.menuBar().addMenu("&Plugins")
-		self.editorPluginsMenu = QMenu("Editor plugins")
-		self.connect(self.editorPluginsMenu, SIGNAL("aboutToShow()"), self.prepareEditorPluginsMenu)
-		self.pluginsMenu.addMenu(self.editorPluginsMenu)
+		self.connect(self.pluginsMenu, SIGNAL("aboutToShow()"), self.preparePluginsMenu)
 
 		self.toolsMenu = self.menuBar().addMenu("&Tools")
 		self.toolsMenu.addAction(self.preferencesAction)
@@ -825,15 +823,22 @@ class WMainWindow(QMainWindow):
 		else:
 			self.showFullScreen()
 
-	def prepareEditorPluginsMenu(self):
+	def preparePluginsMenu(self):
 		"""
-		Fills the editor plugins menu with possible plugins according to the current document.
+		Fills the plugins menu with:
+		- main plugins
+		- current-document dependent plugins
 		"""
-		self.editorPluginsMenu.clear()
+		self.pluginsMenu.clear()
+
+		# The document-related plugins
+		# We extract them from the current document view
 		documentView = self.documentManager.getCurrentDocumentView()
 		if documentView:
-			for action in documentView.getEditorPluginActions():
-				self.editorPluginsMenu.addAction(action)
+			for (label, actions) in documentView.getCategorizedPluginActions():
+				menu = self.pluginsMenu.addMenu(label)
+				for action in actions:
+					menu.addAction(action)
 
 	def open(self):
 		"""
@@ -1059,8 +1064,9 @@ def runLogAnalyzer(logFilename):
 	Called when run in log Analyzer mode
 	"""
 	import LogViewer
-	
+	print "DEBUG: %s" % logFilename
 	logFilename = os.path.normpath(os.path.realpath(logFilename))
+	print "DEBUG: %s" % logFilename
 
 	# OK, now we can create some Qt objects.
 	app = QApplication.instance()
@@ -1079,7 +1085,7 @@ def runLogAnalyzer(logFilename):
 
 	logAnalyzer = LogViewer.WLogViewer(standalone = True)
 	logAnalyzer.setTitle("Testerman Log Analyzer")
-	logAnalyzer.openUrl(QUrl("file://" + logFilename))
+	logAnalyzer.openUrl(QUrl.fromLocalFile(logFilename))
 	logAnalyzer.show()
 
 	return app.exec_()

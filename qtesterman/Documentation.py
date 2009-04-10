@@ -14,7 +14,7 @@
 ##
 
 ##
-# Documentation functions.
+# Documentation-related functions.
 #
 # Epydoc-like metadata parsing on functions and classes,
 # special TestCase docstring handling for test specification extraction.
@@ -24,11 +24,15 @@
 #
 ##
 
+
+
+
 import re
 
+##############################################################################
 # docstring trimmer - from PEP 257 sample code
-# Used to trim descriptions from old Testerman versions that
-# did not trim the docstrings by themselves
+##############################################################################
+
 def trim(docstring):
 	if not docstring:
 		return ''
@@ -55,9 +59,13 @@ def trim(docstring):
 	# Return a single string:
 	return '\n'.join(trimmed)
 
+##############################################################################
+# Tag-based Docstring parsers
+##############################################################################
+
 class TagValue:
 	"""
-	Represents a valued instance of a tag, optionally parametered.
+	Represents a valued instance of a tag, with optional arguments.
 	
 	For instance:
 	 @mytag: value,
@@ -89,6 +97,12 @@ class TagValue:
 		ret = '   arguments: %s\n' % ', '.join(self._arguments)
 		ret += '  body:\n%s\n' % self._body
 		return ret
+	
+	def getBody(self):
+		return self._body
+	
+	def getArguments(self):
+		return self._arguments
 
 class Tag:
 	"""
@@ -113,8 +127,27 @@ class Tag:
 			ret.append(" Value:")
 			ret.append(str(v))
 		return '\n'.join(ret)
+	
+	def getName(self):
+		return self._name
+	
+	def getValues(self):
+		return self._values
 
-class ParsedDocstring:
+	def value(self, default = ''):
+		"""
+		First value's body, if any.
+		"""
+		if self._values:
+			return self._values[0].getBody()
+		else:
+			return default
+
+	def __getitem__(self, index):
+		return self._values[index]
+
+
+class TaggedDocstring:
 	"""
 	Represents a parsed docstring that used epydoc-like @-based tags.
 	
@@ -190,7 +223,8 @@ class ParsedDocstring:
 		elif tagName in self._tags:
 			return self._tags[tagName]
 		else:
-			return None
+			# Create a default tag
+			return Tag(tagName)
 
 
 
@@ -215,7 +249,7 @@ if __name__ == '__main__':
 	previous tag.
 	"""
 
-	pds = ParsedDocstring()
+	pds = TaggedDocstring()
 	pds.parse(sample)
 	print str(pds)
 

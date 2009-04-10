@@ -48,8 +48,8 @@ pyrcc4 resources.qrc -o Resources.py
 	<file alias="list.png">resources/format-list-unordered.png</file>
 	<file alias="new-window.png">resources/window-new.png</file>
 	<file alias="windows.png">resources/window-duplicate.png</file>
-	<file alias="find-next">resources/go-next.png</file>
-	<file alias="find-previous">resources/go-previous.png</file>
+	<file alias="find-next">resources/go-down.png</file>
+	<file alias="find-previous">resources/go-up.png</file>
 	<!-- specific actions -->
 	<file alias="save-to-repository.png">resources/go-top.png</file>
 	<file alias="campaign-new.png">resources/folder-yellow.png</file>

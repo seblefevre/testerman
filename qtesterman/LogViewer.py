@@ -223,7 +223,7 @@ class WLogViewer(QWidget):
 		@type  url: QUrl
 		@param url: the file to open
 		"""
-		log("DEBUG: opening %s" % unicode(url.toString()))
+		log("DEBUG: opening '%s'" % unicode(url.toString()))
 		self._url = url
 		self.updateFromSource()
 		self.updateWindowTitle()
@@ -515,8 +515,9 @@ class WLogViewer(QWidget):
 					state = jobInfo['state']
 
 			elif self._url.scheme() == "file": # local file
-				log("Updating from local file %s..." % self._url.path())
-				f = open(unicode(self._url.path()), 'r')
+				log("Updating from local file %s..." % self._url.toString())
+				path = self._url.toLocalFile()
+				f = open(unicode(path), 'r')
 				logfile = f.read()
 				f.close()
 				# If this is not a real xml file but a "log" file, add some basic xml headers.

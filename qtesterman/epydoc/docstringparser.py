@@ -4,7 +4,6 @@
 # Author: Edward Loper <edloper@loper.org>
 # URL: <http://epydoc.sf.net>
 #
-# $Id: docstringparser.py,v 1.1 2008/06/01 17:57:51 slefevr Exp $
 
 """
 Parse docstrings and handle any fields it defines, such as C{@type}
