@@ -118,17 +118,12 @@ class WPreferences(QTabWidget):
 		self.addTab(page, "User interface")
 
 		page = WPreferencesPage(self)
-		self._docSettings = WDocumentationSettings()
-		page.addWidget(self._docSettings)
-		self.addTab(page, "Documentation")
-
-		page = WPreferencesPage(self)
 		self._pluginsSettings = WPluginsSettings()
 		page.addWidget(self._pluginsSettings)
 		self.addTab(page, "Plugins")
 
-		self._settings = [ self._connectionSettings, self._uiSettings, 
-			self._docSettings, self._logsSettings, 
+		self._settings = [ self._connectionSettings, self._uiSettings,
+			self._logsSettings,
 			self._autoUpdateSettings, self._pluginsSettings,
 			self._editorSettings ]
 
@@ -253,62 +248,6 @@ class WConnectionSettings(WSettings):
 			QErrorMessage(self).showMessage('You must enter a username')
 			return False
 		return True
-
-
-###############################################################################
-# Documentation related settings
-###############################################################################
-
-class WDocumentationSettings(WSettings):
-	def __init__(self, parent = None):
-		WSettings.__init__(self, parent)
-		self.__createWidgets()
-
-	def __createWidgets(self):
-		"""
-		The model is in the saved settings.
-		"""
-		# Read the settings
-		settings = QSettings()
-		documentationCache = settings.value('documentation/cacheDir', QVariant(QString(QApplication.instance().get('documentationcache')))).toString()
-		vlayout = QVBoxLayout()
-		layout = QGridLayout()
-		# Documentation cache location + browse directory button
-		layout.addWidget(QLabel("Documentation cache:"), 0, 0, 1, 2)
-		self.documentationCacheLineEdit = QLineEdit(documentationCache)
-		self.browseDirectoryButton = QPushButton("...")
-		self.connect(self.browseDirectoryButton, SIGNAL('clicked()'), self.browseForCacheDirectory)
-		layout.addWidget(self.documentationCacheLineEdit, 1, 0)
-		layout.addWidget(self.browseDirectoryButton, 1, 1)
-		# Documentation cache clean button
-		self.cleanDocumentationCacheButton = QPushButton("Clean cache now")
-		self.connect(self.cleanDocumentationCacheButton, SIGNAL('clicked()'), self.cleanDocumentationCache)
-		layout.addWidget(self.cleanDocumentationCacheButton, 2, 0, 1, 2)
-		vlayout.addLayout(layout)
-		vlayout.addStretch()
-		self.setLayout(vlayout)
-
-	def browseForCacheDirectory(self):
-		documentationCache = QFileDialog.getExistingDirectory(self, "Documentation cache root directory", self.documentationCacheLineEdit.text())
-		if not documentationCache.isEmpty():
-			self.documentationCacheLineEdit.setText(os.path.normpath(unicode(documentationCache)))
-
-	def cleanDocumentationCache(self):
-		# The cache is actually a subdir "docCache" within the configuration dir.
-		# This keeps the user from selecting an existing directory that contains other things than the pure cache data,
-		# and click "clean". For instance, it would be trivial to delete a complete Program Files (or windows...) directory without this 
-		# additional suffix.
-		documentationCache = os.path.normpath(unicode(self.documentationCacheLineEdit.text()) + "/docCache")
-		print "DEBUG: cleaning " + unicode(documentationCache) + "..."
-		shutil.rmtree(documentationCache, ignore_errors = True)
-		userInformation(self, "Documentation cache directory cleaned up.")
-
-	def updateModel(self):
-		documentationCache = self.documentationCacheLineEdit.text()
-		# We save them as settings
-		settings = QSettings()
-		settings.setValue('documentation/cacheDir', QVariant(documentationCache))
-
 
 ###############################################################################
 # General interface related settings

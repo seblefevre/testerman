@@ -35,7 +35,6 @@ from CommonWidgets import *
 import CommonWidgets
 
 import LogViewer
-import DocumentationManager
 import PluginManager
 import Plugin
 import TemplateManager
@@ -228,19 +227,6 @@ class WDocument(QWidget):
 			QApplication.instance().get('gui.statusbar').showMessage("Unable to put save file to repository: %s" % error)
 			return False
 
-	def aboutToSave(self):
-		"""
-		Called before saving a document.
-		Enables last-second checks before saving.
-		May be overriden in the WDocument subclasses.
-
-		The default implementation does nothing and allows saving the doc.
-
-		@rtype: boolean
-		@returns: True if OK to save, False otherwise.
-		"""
-		return True
-
 	def save(self):
 		"""
 		This is a dispatcher.
@@ -372,9 +358,38 @@ class WDocument(QWidget):
 
 	def replace(self):
 		"""
-		function to be overriden
+		Function to override in dedicated subclasses.
 		"""
 		return
+	
+	def aboutToSave(self):
+		"""
+		Called before saving a document.
+		Enables last-second checks before saving.
+		May be overriden in the WDocument subclasses.
+
+		The default implementation does nothing and allows saving the doc.
+
+		@rtype: boolean
+		@returns: True if OK to save, False otherwise.
+		"""
+		return True
+
+	def aboutToDocument(self):
+		"""
+		Called before documenting the viewed model.
+		Useful to intercept a documentation action to perform
+		some view to model commit and optional syntax checks.
+		May be overriden in the WDocument subclasses.
+
+		The default implementation does nothing and allows proceeding with 
+		creating the documentation.
+
+		@rtype: boolean
+		@returns: True if OK to document, False otherwise.
+		"""
+		return True
+
 
 ###############################################################################
 # Module Edition
@@ -443,13 +458,10 @@ class WModuleDocument(WDocument):
 		self.documentationButton = QToolButton()
 		self.documentationButton.setIcon(icon(':/icons/documentation'))
 		self.documentationButton.setIconSize(QSize(16, 16))
-		self.documentationAction = TestermanAction(self, "Display documentation", self.showDocumentation, "Display Epydoc-like documentation")
-		self.documentationAction.setIcon(icon(':/icons/documentation'))
-		self.documentationButton.setDefaultAction(self.documentationAction)
-#		self.documentationPluginsMenu = QMenu('Documentation', self)
-#		self.connect(self.documentationPluginsMenu, SIGNAL("aboutToShow()"), self.prepareDocumentationPluginsMenu)
-#		self.documentationButton.setMenu(self.documentationPluginsMenu)
-#		self.documentationButton.setPopupMode(QToolButton.InstantPopup)
+		self.documentationPluginsMenu = QMenu('Documentation', self)
+		self.connect(self.documentationPluginsMenu, SIGNAL("aboutToShow()"), self.prepareDocumentationPluginsMenu)
+		self.documentationButton.setMenu(self.documentationPluginsMenu)
+		self.documentationButton.setPopupMode(QToolButton.InstantPopup)
 
 		actionLayout.addStretch()
 		actionLayout.addWidget(self.documentationButton)
@@ -476,13 +488,6 @@ class WModuleDocument(WDocument):
 		replaceBox = WSciReplace(self.editor, self)
 		replaceBox.show()
 
-	def showDocumentation(self):
-		if self.model.getUrl() is not None:
-			self.updateModel()
-			DocumentationManager.showContentDocumentation(content = self.model.getBody(), key = self.model.getUrl().toString(), parent = self)
-		else:
-			QMessageBox.warning(self, getClientName(), "Unable to generate documentation, the file must be saved", QMessageBox.Ok)
-
 	def verify(self, displayNoError = True):
 		self.updateModel()
 		self.editor.clearHighlight()
@@ -500,6 +505,14 @@ class WModuleDocument(WDocument):
 			self.editor.setFocus(Qt.OtherFocusReason)
 		return False
 
+	def prepareDocumentationPluginsMenu(self):
+		self.documentationPluginsMenu.clear()
+		for action in getDocumentationPluginActions(self.model, self.model.getDocumentType(), self):
+			print "DEBUG: adding action in plugin contextual menu..." + unicode(action.text())
+			self.documentationPluginsMenu.addAction(action)
+
+	def aboutToDocument(self):
+		return self.verify(False)
 
 ###############################################################################
 # ATS Edition
@@ -708,6 +721,9 @@ class WAtsDocument(WDocument):
 		for action in getDocumentationPluginActions(self.model, self.model.getDocumentType(), self):
 			print "DEBUG: adding action in plugin contextual menu..." + unicode(action.text())
 			self.documentationPluginsMenu.addAction(action)
+
+	def aboutToDocument(self):
+		return self.verify(False)
 
 ###############################################################################
 # Campaign Edition
@@ -1172,11 +1188,18 @@ def getCodeWriterPluginActions(editor, documentType, parent):
 
 class DocumentationPluginAction(TestermanAction):
 	def __init__(self, model, label, pluginInstance, parent):
+		"""
+		The parent must be a WDocument
+		"""
 		TestermanAction.__init__(self, parent, label, self.activatePlugin)
 		self._model = model
 		self._pluginInstance = pluginInstance
+		self._documentView = parent
 
 	def activatePlugin(self):
+		if hasattr(self._documentView, 'aboutToDocument'):
+			if not self._documentView.aboutToDocument():
+				return
 		ret = self._pluginInstance.activate(self._model)
 
 def getDocumentationPluginActions(model, documentType, parent):

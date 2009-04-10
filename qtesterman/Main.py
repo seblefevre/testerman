@@ -1101,8 +1101,6 @@ def run():
 	app.set('qtestermanpath', os.path.normpath(os.path.realpath(os.path.dirname(sys.modules[globals()['__name__']].__file__))))
 	# basepath contains the path to the qtesterman.py diversion and the TestermanClient.py; this is the base path for an update.
 	app.set('basepath', os.path.normpath(os.path.realpath(app.get('qtestermanpath') + "/..")))
-	# Default documentation cache root
-	app.set('documentationcache', os.path.normpath(unicode(QDir.homePath()) + "/.testerman/"))
 
 	logFilename = None
 
