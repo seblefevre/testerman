@@ -22,14 +22,13 @@ from PyQt4.Qt import *
 import PyQt4.QtXml as QtXml
 
 from Base import *
-from EventMonitor import *
 from CommonWidgets import *
-from VisualLogView import WVisualTestCaseView
+import VisualLogView
+import EventMonitor
 import Actions
 import PluginManager
 
 import gc
-import sys
 import os.path
 import base64
 
@@ -209,7 +208,7 @@ class WLogViewer(QWidget):
 		self.useRawView = settings.value('logs/raws', QVariant(True)).toBool()
 
 		# Dialog box that may appear if an action is required by the user
-		self.actionRequiredDialog = None
+		self.actionRequestedDialog = None
 		
 		self.__createWidgets()
 		self.resize(QSize(800, 600))
@@ -238,7 +237,7 @@ class WLogViewer(QWidget):
 		# we should register to receive JOB-EVENT and LOG notifications asap, but:
 		# - there is no garantee we don't miss any
 		# - since we also need to retrieve the current job log, we may mix events.
-		self.eventMonitor = EventMonitor(parent = self)
+		self.eventMonitor = EventMonitor.EventMonitor(parent = self)
 		self.connect(self.eventMonitor, SIGNAL("subscribedEvent"), self.onSubscribedEvent)
 		self.eventMonitor.subscribe("job:%d" % self.jobId)
 		self.updateFromSource()
@@ -274,7 +273,7 @@ class WLogViewer(QWidget):
 
 		self.testCaseView = WTestCaseView()
 		self.textualLogView = WTextualLogView()
-		self.visualLogView = WVisualTestCaseView()
+		self.visualLogView = VisualLogView.WVisualTestCaseView()
 		self.templateView = WMixedTemplateView()
 
 		self.analyzerTab.addTab(self.textualLogView, "Textual log view")
@@ -331,7 +330,7 @@ class WLogViewer(QWidget):
 		self.connect(self.logParser, SIGNAL("testCaseStopped(QString, QDomElement)"), self.summary.onTestCaseStopped)
 
 		# Action management
-		self.connect(self.logParser, SIGNAL("actionRequired(QString, float)"), self.onActionRequired)
+		self.connect(self.logParser, SIGNAL("actionRequested(QString, float)"), self.onActionRequired)
 		self.connect(self.logParser, SIGNAL("actionCleared()"), self.onActionCleared)
 
 		# Inter widget connections
@@ -547,15 +546,19 @@ class WLogViewer(QWidget):
 				transient = WTransientWindow("Log Viewer", self)
 				transient.showTextLabel("Preparing views...")
 			self.textualLogView.clearLog()
-			self.textualLogView.displayPartialLog(newItem.domElements)
+			self.textualLogView.displayPartialLog(newItem.getElements())
 			self.visualLogView.clearLog()
-			self.visualLogView.displayPartialLog(newItem.domElements)
+			self.visualLogView.displayPartialLog(newItem.getElements())
 			if not self.trackingActivated:
 				transient.hide()
 				transient.setParent(None)
 
 	def setLog(self, xmlLog):
-		return self.setLog_Dom(xmlLog)
+		log("Loading log...")
+		start = time.time()
+		ret = self.setLog_Dom(xmlLog)
+		log("Loading duration: %s" % (time.time() - start))
+		return ret
 
 	def setLog_Sax(self, xmlLog):
 		"""
@@ -603,12 +606,50 @@ class WLogViewer(QWidget):
 				"""
 				QString
 				"""
-				if self.currentXmlEvent:
-					self.currentXmlEvent += s
+				if self.currentLevel >= 2:
+					self.currentXmlEvent.append(s)
 					pass
 				return True
 
 			def startElement(self, namespaceUri, localName, qName, attrs):
+				"""
+				QString
+				QString
+				QString
+				QXmlAttributes
+
+				Generate a QDomElement based on this element.
+				"""
+#				print "starting element " + str(qName.toUtf8())
+				if self.currentLevel == 1:
+		#			print "initializing new domElement..."
+					self.currentXmlEvent = []
+				if self.currentLevel >= 1:
+					self.currentXmlEvent.append('<%s' % qName)
+					for i in range(0, attrs.count()):
+						self.currentXmlEvent.append(' %s="%s"' % (attrs.qName(i).toUtf8(), attrs.value(i).toUtf8()))
+					self.currentXmlEvent.append('>')
+				self.currentLevel += 1
+				return True
+
+			def endElement(self, namespaceUri, localName, qName):
+				self.currentLevel -= 1
+#				print "ending element " + str(qName.toUtf8()) + "level %d" % self.currentLevel
+				if self.currentLevel >= 1:
+					self.currentXmlEvent.append('</%s>' % qName)
+				if self.currentLevel == 1:
+					# Now that we have a new reserialized XML string, parse it using the DOM parser
+					currentXmlEvent = '<?xml version="1.0" encoding="utf-8" ?>' + ''.join(map(unicode, self.currentXmlEvent))
+#					print self.currentXmlEvent
+					xmlDoc = QtXml.QDomDocument()
+					(res, errormessage, errorline, errorcol) = xmlDoc.setContent(currentXmlEvent, 0)
+					if res:
+						# Theorically, since the SAX parser parsed it, the currentXmLEvent should be parsable to create the DomElement.
+						self.callback(xmlDoc.documentElement())
+					self.currentXmlEvent = None
+				return True
+
+			def startElement_old(self, namespaceUri, localName, qName, attrs):
 				"""
 				QString
 				QString
@@ -629,7 +670,7 @@ class WLogViewer(QWidget):
 				self.currentLevel += 1
 				return True
 
-			def endElement(self, namespaceUri, localName, qName):
+			def endElement_old(self, namespaceUri, localName, qName):
 				self.currentLevel -= 1
 #				print "ending element " + str(qName.toUtf8()) + "level %d" % self.currentLevel
 				if self.currentLevel >= 1:
@@ -730,8 +771,9 @@ class WLogViewer(QWidget):
 			while not element.isNull() and not progress.wasCanceled():
 				self.logParser.onEvent(element)
 				count += 1
-				progress.setValue(count)
-				QApplication.instance().processEvents()
+				if not (count % 50):
+					progress.setValue(count)
+					QApplication.instance().processEvents()
 				element = element.nextSiblingElement()
 
 			# Enable to drop the self -> progress reference, and thus free the QProgressDialog.
@@ -769,24 +811,24 @@ class WLogViewer(QWidget):
 	def onActionRequired(self, message, timeout):
 		# Only display a user input in realtime mode
 		if self.isRealtimeMode():
-			self.actionRequiredDialog = QMessageBox(self)
-			self.actionRequiredDialog.addButton(QMessageBox.Ok)
-			self.actionRequiredDialog.setText(message)
-			self.actionRequiredDialog.setInformativeText("(or wait %.3fs)" % timeout)
-			self.actionRequiredDialog.setWindowTitle("User action requested")
-			if self.actionRequiredDialog.exec_() == QMessageBox.Ok:
+			self.actionRequestedDialog = QMessageBox(self)
+			self.actionRequestedDialog.addButton(QMessageBox.Ok)
+			self.actionRequestedDialog.setText(message)
+			self.actionRequestedDialog.setInformativeText("(or wait %.3fs)" % timeout)
+			self.actionRequestedDialog.setWindowTitle("User action requested")
+			if self.actionRequestedDialog.exec_() == QMessageBox.Ok:
 				getProxy().sendSignal(self.jobId, "action_performed")
-			self.actionRequiredDialog = None
+			self.actionRequestedDialog = None
 	
 	def onActionCleared(self):
-		if self.actionRequiredDialog:
-			self.actionRequiredDialog.reject()
-		self.actionRequiredDialog = None
+		if self.actionRequestedDialog:
+			self.actionRequestedDialog.reject()
+		self.actionRequestedDialog = None
+
 
 ###############################################################################
 # Textual Log View: item and treewidget
 ###############################################################################
-
 
 class WTextualLogViewItem(QTreeWidgetItem):
 	"""
@@ -1122,12 +1164,12 @@ class WTextualLogView(QTreeWidget):
 		# event is a QDomElement
 		self.append(event)
 
-	def append(self, xmlDomElement):
+	def append(self, domElement):
 		"""
 		Online/real-time view: let's add a new xml log line to our log.
-		xmlDoc is an Testerman2 xml log line parsed into a QDomElement. <$(class) time="...">$(parameters, serialized in xml)<//$(class)>
+		domElement is an Testerman2 xml log line parsed into a QDomElement. <$(class) time="...">$(parameters, serialized in xml)<//$(class)>
 		"""
-		item = WTextualLogViewItem(None, xmlDomElement)
+		item = WTextualLogViewItem(None, domElement)
 		self.root.addChild(item)
 		item.parse()
 		item.applyFilter(self.currentHiddenLogClasses)
@@ -1149,34 +1191,21 @@ class WTextualLogView(QTreeWidget):
 # Event formatting
 ################################################################################
 
-previousts = ''
-eventCount = 0
-
-formatDomTime = 0.0
-
-def printStats():
-	print "Time spent to format xml to domElement: " + str(formatDomTime)
-
 def formatEventToDomElement(event):
 	"""
 	event is TestermanClient.Event.
 	First format to XML, then parse it to a DomElement.
 	Returns the domElement.
 	"""
-	global formatDomTime, formatXmlTime
-
-	xmlLogLine = event.getBody() # contains XML data
+	xmlLog = event.getBody() # contains the event as XML data
 
 	# First we parse the logline into an xml Doc
-	start = time.clock()
 	xmlDoc = QtXml.QDomDocument()
-	(res, errormessage, errorline, errorcol) = xmlDoc.setContent(xmlLogLine, 0)
-	stop = time.clock()
-	formatDomTime += (stop - start)
+	(res, errormessage, errorline, errorcol) = xmlDoc.setContent(xmlLog, 0)
 	if res:
 		return xmlDoc.documentElement()
 	else:
-		print "WARNING: Unable to xml-parse xmlLogLine: " + str(errormessage)
+		print "WARNING: Unable to parse XML event: " + str(errormessage)
 		return None
 
 class LogParser(QObject):
@@ -1185,7 +1214,7 @@ class LogParser(QObject):
 	and generates appropriate SIGNAL events according to the XML event.
 	Widgets connect to this parser to be informed of new events to display.
 	The ability to emit some high-level, interesting signals avoids parsing these
-	signals is some widgets.
+	signals in some widgets.
 	However, most widgets will also need to parsing other events. In this case,
 	the event is simply "forwarded" as received, creating a useless indirection.
 	(cost ?)
@@ -1195,6 +1224,7 @@ class LogParser(QObject):
 	atsStopped(QString status, QDomElement)
 	testCaseStarted(QString identifier, QDomElement)
 	testCaseStopped(QString verdict, QDomElement)
+	actionRequested(QString label, float timeout)
 
 	And a low level signal:
 	testermanEvent(QDomElement element)
@@ -1205,8 +1235,12 @@ class LogParser(QObject):
 
 	def onLogEvent(self, event):
 		"""
-		event is TestermanClient.Event, representing an event as received on Ex interface.
-		We parse it into a domElement, then we can emit higher level signals.
+		EventMonitor callback.
+		Parses the event into a Qt DOM element, then forwards it
+		to the "standard" DOM-based event processing chain.
+
+		@type  event: TestermanClient.Event
+		@param event: an event as received on Xc interface.
 		"""
 		domElement = formatEventToDomElement(event)
 		if domElement:
@@ -1214,11 +1248,11 @@ class LogParser(QObject):
 
 	def onEvent(self, domElement):
 		"""
-		For each XML element from the qt-parsed XML model, we analyze it and emits appropriated signals.
+		For each XML element from the Qt-parsed DOM model,
+		interprets the event and emits appropriate signals.
 		"""
-
 		eventType = domElement.tagName()
-		
+
 		if eventType == "ats-started":
 			self.emit(SIGNAL("atsStarted(QDomElement)"), domElement)
 
@@ -1241,24 +1275,51 @@ class LogParser(QObject):
 		elif eventType == "action-requested":
 			timeout = float(domElement.attribute('timeout'))
 			message = domElement.firstChildElement('message').text()
-			self.emit(SIGNAL("actionRequired(QString, float)"), QString(message), timeout)
+			self.emit(SIGNAL("actionRequested(QString, float)"), QString(message), timeout)
 
 		elif eventType == "action-cleared":
 			self.emit(SIGNAL("actionCleared()"))
 
-		# In any case, emit the raw signal
+		# In any case, forward the initial signal
 		self.emit(SIGNAL('testermanEvent(QDomElement)'), domElement)
+
 
 ###############################################################################
 # TestCase View (list)
 ###############################################################################
 
+class WTestCaseTreeWidgetItem(QTreeWidgetItem):
+	"""
+	Represents a TestCase in the TestCase tree view.
+	Also stores the dom elements corresponding to the
+	testcase, so that they can be handled when the TestCase item
+	is selected.
+	"""
+	def __init__(self, parent):
+		QTreeWidgetItem.__init__(self, parent)
+		self._domElements = []
+		self.finished = False # indicate if the TestCase corresponding to the node is over or not.
+
+	def onEvent(self, domElement):
+		"""
+		Adds a dom element corresponding to this test case.
+		"""
+		self._domElements.append(domElement)
+
+	def getElements(self):
+		"""
+		Returns a list of elements corresponding to this test case
+		"""
+		return self._domElements
+
 class WTestCaseView(QTreeWidget):
 	"""
-	This widget lists the TestCase, colorizing them according to their status.
-	When a TestCase is selected, emits a signal:
-	testCaseSelected(QXmlDomElement)
-	where the element is the "testcase-started" Testerman Event XML element.
+	This widget lists the TestCases, colorizing them according to their status.
+
+	Acts as a domElement dispatcher that dispatches a read domElement
+	to the associated test case. 
+	Each test case is directly represented by a TestCaseView Item that
+	stores the domElements for the test case.
 	"""
 	def __init__(self, parent = None):
 		QTreeWidget.__init__(self, parent)
@@ -1279,9 +1340,6 @@ class WTestCaseView(QTreeWidget):
 		self.setHeaderLabels(labels)
 		self.setColumnWidth(0, 180) # well.. it may depends on the font
 		self.setContextMenuPolicy(Qt.CustomContextMenu)
-#		self.connect(self, SIGNAL("customContextMenuRequested(const QPoint&)"), self.onPopupMenu)
-#		self.connect(self, SIGNAL("itemActivated(QTreeWidgetItem*, int)"), self.onItemActivated)
-#		self.connect(self, SIGNAL("currentItemChanged(QTreeWidgetItem*, QTreeWidgetItem*)"), self.onCurrentItemChanged)
 
 	def __createActions(self):
 		pass
@@ -1301,38 +1359,40 @@ class WTestCaseView(QTreeWidget):
 
 	def onEvent(self, domElement):
 		"""
-		Log event handler, as emitted by EventMonitor (parsed domElement)
+		Called when a new domElement has been read (either in realtime
+		or from a file).
+		If this is a new test case, creates a new item in the
+		treeview.
+		If not, just forward/dispatch the event to the proper test case.
+		
+		@type  domElement: QDomElement
+		@param domElement: a new log event, already parsed as a QDomElement.
 		"""
-
-		class WTestCaseTreeWidgetItem(QTreeWidgetItem):
-			def __init__(self, parent):
-				QTreeWidgetItem.__init__(self, parent)
-				self.domElements = []
-				self.finished = False # indicate if the TestCase corresponding to the node is over or not.
-
-		eventType = domElement.tagName()
-
+		# If a test case is currently "open" to receive new events,
+		# forward them to it.
 		if self.__currentTestCaseItem:
-			self.__currentTestCaseItem.domElements.append(domElement)
+			self.__currentTestCaseItem.onEvent(domElement)
 
+		# If we selected an item whose corresponding testcase is not finished yet,
+		# We should forward the domElement to the views as well for real time update
+		# Note: in case of a missed "testcase-stopped" event, this creates garbages, of course.
 		if self.currentItem() and not self.currentItem().finished:
-			# If we selected an item whose corresponding testcase is not finished yet,
-			# We should forward the domElement to the views as well for real time update
-			# Note: in case of a missed "testcase-stopped" event, this creates garbages, of course.
 			self.emit(SIGNAL("testermanEvent(QDomElement)"), domElement)
 
-		# We intercept interesting events at Ats level: testcase start/stop events
+		# Now we intercept interesting events at Ats level: testcase start/stop events
+		eventType = domElement.tagName()
 		if eventType == "testcase-created":
-			# Let's create a new node and view
+			# Let's create and 'open' a new node
 			item = WTestCaseTreeWidgetItem(self)
 			item.setText(0, domElement.attribute('id'))
 			self.__currentTestCaseItem = item
-			self.__currentTestCaseItem.domElements.append(domElement)
+			self.__currentTestCaseItem.onEvent(domElement)
 			# Automatic tracking
 			# WARNING: this greatly decrease performance - due to signal emitting ?
 			if self.trackingActivated:
 				self.setCurrentItem(item)
 		elif eventType == "testcase-stopped":
+			# Let's 'close' our current test case
 			verdict = domElement.attribute('verdict')
 			if self.__currentTestCaseItem:
 				# we update the color according to the verdict
