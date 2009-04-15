@@ -92,22 +92,7 @@ class IlServer(Nodes.ListeningNode):
 	
 	def onNotification(self, channel, notification):
 		self.getLogger().debug("New notification received")
-		method = notification.getMethod()
-		if method == "LOG":
-			# Add server-side/TL control here
-			filename = notification.getHeader('Log-Filename')
-			if filename:
-				try:
-					f = open(filename, 'a')
-					f.write('%s\n' % notification.getBody())
-					f.close()
-				except Exception, e:
-					self.getLogger().error("Unable to write log for %s: %s" % (notification.getUri(), str(e)))		
-		else:
-			self.getLogger().warning("Received unsupported notification method: " + method)
-		
-		# Dispath
-		self._manager.dispatchNotification(notification)
+		self._manager.handleIlNotification(notification)
 	
 	def onResponse(self, channel, transactionId, response):
 		self.getLogger().warning("Unexpected asynchronous response received, discarding")
@@ -239,6 +224,24 @@ class Manager:
 	
 	def getLogger(self):
 		return logging.getLogger('TS.TL')
+
+	def handleIlNotification(self, notification):
+		method = notification.getMethod()
+		if method == "LOG":
+			# Add server-side/TL control here
+			filename = notification.getHeader('Log-Filename')
+			if filename:
+				try:
+					f = open(filename, 'a')
+					f.write('%s\n' % notification.getBody())
+					f.close()
+				except Exception, e:
+					self.getLogger().error("Unable to write log for %s: %s" % (notification.getUri(), str(e)))		
+		else:
+			self.getLogger().warning("Received unsupported notification method: " + method)
+
+		# Dispath
+		self.dispatchNotification(notification)
 
 
 ################################################################################
