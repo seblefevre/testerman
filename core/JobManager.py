@@ -214,7 +214,7 @@ class Job(object):
 		
 		@type  job: a Job instance
 		@param job: the job to add as a child
-		@type  branch: int in self.BRANCHES
+		@type  branch: integer in self.BRANCHES
 		@param branch: the child branch
 		"""
 		self._childBranches[branch].append(job)
@@ -224,9 +224,33 @@ class Job(object):
 		self._result = result
 
 	def getResult(self):
+		"""
+		Returns the job return code/result.
+		Its value is job-type dependent.
+		However, the following classification applies:
+		0: complete
+		1: cancelled
+		2: killed
+		3: runtime low-level error (process segfault, ...)
+		4-9: other low-level errors 
+		10-19: reserved
+		20-29: preparation errors (not executed)
+		30-49: reserved
+		50-99: reserved for client-side retcode
+		100+: userland set retcode
+		
+		@rtype: integer
+		@returns: the job return code
+		"""
 		return self._result
 	
 	def getLogFilename(self):
+		"""
+		Returns a docroot-path to the job's log filename.
+		
+		@rtype: string
+		@returns: the docroot-path to the job's log filename
+		"""
 		return self._logFilename
 
 	def _lock(self):
@@ -276,14 +300,17 @@ class Job(object):
 		self.notifyStateChange()
 
 	def notifyStateChange(self):
-		# Dispatch notifications through the Event Manager
+		"""
+		Dispatches JOB-EVENT
+		notifications through the Event Manager
+		"""
 		jobDict = self.toDict()
 		EventManager.instance().dispatchNotification(createJobEventNotification(self.getUri(), jobDict))
 		EventManager.instance().dispatchNotification(createJobEventNotification('system:jobs', jobDict))
 
 	def toDict(self):
 		"""
-		Returns job info as a dict
+		Returns the job info as a dict
 		"""
 		runningTime = None		
 		if self._stopTime:
@@ -837,6 +864,8 @@ class CampaignJob(Job):
 		# Basic normalization
 		if not self._path.startswith('/'):
 			self._path = '/%s' % self._path
+		
+		self._absoluteLogFilename = None
 	
 	def handleSignal(self, sig):
 		"""
@@ -911,7 +940,24 @@ class CampaignJob(Job):
 		@rtype: int
 		@returns: the campaign return code
 		"""
+		
+		# docroot-path for all files related to this job
+		baseDocRootDirectory = os.path.normpath("/%s/%s" % (ConfigManager.get("constants.archives"), self.getName()))
+		# Corresponding absolute local path
+		baseDirectory = os.path.normpath("%s%s" % (ConfigManager.get("testerman.document_root"), baseDocRootDirectory))
+		# FIXME: possible name collisions if the same user schedules 2 same ATSes at the same time...
+		basename = "%s_%s" % (time.strftime("%Y%m%d-%H%M%S", time.localtime(time.time())), self.getUsername())
+		self._logFilename = "%s/%s.log" % (baseDocRootDirectory, basename)
+
+		self._absoluteLogFilename = "%s/%s.log" % (baseDirectory, basename)
+
+		try:
+			os.mkdir(baseDirectory)
+		except: 
+			pass
+
 		# Now, execute the child jobs
+		self._logEvent('event', 'campaign-started', {'job-id': self._id, 'id': self._name})
 		self.setState(self.STATE_RUNNING)
 		self._run(callingJob = self, inputSession = inputSession)
 		if self.getState() == self.STATE_RUNNING:
@@ -920,8 +966,31 @@ class CampaignJob(Job):
 		elif self.getState() == self.STATE_CANCELLING:
 			self.setResult(1)
 			self.setState(self.STATE_CANCELLED)
+		self._logEvent('event', 'campaign-stopped', {'id': self._name, 'result': self.getResult()})
 		
 		return self.getResult()
+
+	def toXml(self, element, attributes, value = ''):
+		return u'<%s %s>%s</%s>' % (element, " ".join(map(lambda e: '%s="%s"' % (e[0], str(e[1])), attributes.items())), value, element)
+
+	def _logEvent(self, level, event, attributes, logClass = 'event', value = ''):
+		"""
+		Sends a log event notification through Il.
+		Will be dumped by Il server.
+		"""
+		attributes['class'] = logClass
+		attributes['timestamp'] = time.time()
+		xml = self.toXml(event, attributes, value)
+		
+		notification = Messages.Notification("LOG", self.getUri(), "Il", "1.0")
+		if self._absoluteLogFilename:
+			notification.setHeader("Log-Filename", self._absoluteLogFilename)
+		notification.setHeader("Log-Class", level)
+		notification.setHeader("Log-Timestamp", time.time())
+		notification.setHeader("Content-Encoding", "utf-8")
+		notification.setHeader("Content-Type", "application/xml")
+		notification.setBody(xml.encode('utf-8'))
+		EventManager.instance().handleIlNotification(notification)
 
 	def _run(self, callingJob, inputSession, branch = Job.BRANCH_SUCCESS):
 		"""
@@ -948,9 +1017,11 @@ class CampaignJob(Job):
 				# Prepare a new thread, execute the job
 				jobThread = threading.Thread(target = lambda: job.run(inputSession))
 				jobThread.start()
+				self._logEvent('event', 'job-started', {'job-id': job.getId(), 'id': job.getName(), 'log-filename': job.getLogFilename()})
 				# Now wait for the job to complete.
 				jobThread.join()
 				ret = job.getResult()
+				self._logEvent('event', 'job-stopped', {'job-id': job.getId(), 'id': job.getName(), 'result': ret})
 				getLogger().info("%s: started child job %s, invoked by %s, on branch %s returned %s" % (str(self), str(job), str(callingJob), branch, ret))
 			else:
 				ret = job.getResult()
@@ -1079,16 +1150,13 @@ class CampaignJob(Job):
 		Returns the current known log.
 		"""
 		if self._logFilename:
-			# Why not use the FileSystemManager acccess instead of an absolute, local path ?
-			# Because of the file lock only ?
-			absoluteLogFilename = os.path.normpath("%s%s" % (ConfigManager.get("testerman.document_root"), self._logFilename))
-			f = open(absoluteLogFilename, 'r')
+			f = open(self._absoluteLogFilename, 'r')
 			fcntl.flock(f.fileno(), fcntl.LOCK_EX)
 			res = '<?xml version="1.0" encoding="utf-8" ?>\n<campaign version="1.0">\n%s</campaign>' % f.read()
 			f.close()
 			return res
 		else:
-			return '<?xml version="1.0" encoding="utf-8" ?><campaign></campaign>'
+			return '<?xml version="1.0" encoding="utf-8" ?><campaign version="1.0"></campaign>'
 
 ################################################################################
 # The Scheduler Thread
