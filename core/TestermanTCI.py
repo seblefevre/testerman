@@ -152,16 +152,16 @@ def logAtsStarted(id_):
 	tliLog('core', toXml('ats-started', { 'class': 'event', 'timestamp': time.time(), 'id': id_ }))
 
 def logAtsStopped(id_, result, message):
-	tliLog('core', toXml('ats-stopped', { 'class': 'event', 'timestamp': time.time(), 'id': id_, 'result': str(result) }, '<![CDATA[%s]]>' % message))
+	tliLog('core', toXml('ats-stopped', { 'class': 'event', 'timestamp': time.time(), 'id': id_, 'result': str(result) }, cgi.escape(message)))
 
 def logUser(message, tc = None):
 	if tc is None:
-		tliLog('user', toXml('user', { 'class': 'user', 'timestamp': time.time() }, '<![CDATA[%s]]>' % message))
+		tliLog('user', toXml('user', { 'class': 'user', 'timestamp': time.time() }, cgi.escape(message)))
 	else:
-		tliLog('user', toXml('user', { 'class': 'user', 'timestamp': time.time(), 'tc': tc }, '<![CDATA[%s]]>' % message))
+		tliLog('user', toXml('user', { 'class': 'user', 'timestamp': time.time(), 'tc': tc }, cgi.escape(message)))
 
 def logInternal(message):
-	tliLog('internal', toXml('internal', { 'class': 'internal', 'timestamp': time.time() }, '<![CDATA[%s]]>' % message))
+	tliLog('internal', toXml('internal', { 'class': 'internal', 'timestamp': time.time() }, cgi.escape(message)))
 	
 def logMessageSent(fromTc, fromPort, toTc, toPort, message, address = None):
 	if not address:
@@ -176,10 +176,10 @@ def logTestcaseCreated(id_):
 	tliLog('core', toXml('testcase-created', { 'class': 'event', 'timestamp': time.time(), 'id': id_ }))
 
 def logTestcaseStarted(id_, title):
-	tliLog('core', toXml('testcase-started', { 'class': 'event', 'timestamp': time.time(), 'id': id_ }, '<![CDATA[%s]]>' % title))
+	tliLog('core', toXml('testcase-started', { 'class': 'event', 'timestamp': time.time(), 'id': id_ }, cgi.escape(title)))
 
 def logTestcaseStopped(id_, verdict, description):
-	tliLog('core', toXml('testcase-stopped', { 'class': 'event', 'timestamp': time.time(), 'id': id_, 'verdict': verdict }, '<![CDATA[%s]]>' % description))
+	tliLog('core', toXml('testcase-stopped', { 'class': 'event', 'timestamp': time.time(), 'id': id_, 'verdict': verdict }, cgi.escape(description)))
 
 def logTimerStarted(id_, tc, duration):
 	tliLog('event', toXml('timer-started', { 'class': 'event', 'timestamp': time.time(), 'id': id_, 'duration': str(duration), 'tc': tc }))
@@ -197,10 +197,10 @@ def logTestComponentStarted(id_, behaviour):
 	tliLog('event', toXml('tc-started', { 'class': 'event', 'timestamp': time.time(), 'id': id_, 'behaviour': behaviour }))
 
 def logTestComponentStopped(id_, verdict, message = ''):
-	tliLog('event', toXml('tc-stopped', { 'class': 'event', 'timestamp': time.time(), 'id': id_, 'verdict': verdict }, '<![CDATA[%s]]>' % message))
+	tliLog('event', toXml('tc-stopped', { 'class': 'event', 'timestamp': time.time(), 'id': id_, 'verdict': verdict }, cgi.escape(message)))
 
 def logTestComponentKilled(id_, message = ''):
-	tliLog('event', toXml('tc-killed', { 'class': 'event', 'timestamp': time.time(), 'id': id_, }, '<![CDATA[%s]]>' % message))
+	tliLog('event', toXml('tc-killed', { 'class': 'event', 'timestamp': time.time(), 'id': id_, }, cgi.escape(message)))
 
 def logVerdictUpdated(tc, verdict):
 	tliLog('event', toXml('verdict-updated', { 'class': 'event', 'timestamp': time.time(), 'tc': tc, 'verdict': verdict }))
@@ -363,7 +363,7 @@ def _testermanToXml(obj):
 			encoding = "base64"
 
 	if not encoding:
-		ret = cgi.escape(ret) # u'<![CDATA[%s]]>' % ret
+		ret = cgi.escape(ret)
 	
 	return (ret, encoding)
 	
