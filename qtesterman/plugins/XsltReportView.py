@@ -38,6 +38,13 @@ to extract interesting things according to your needs. <br />
 The XSLT files should be named with the ".xslt" extension and located in <br />
 the configured directory to make them appear from the report view."""
 
+try:
+	import libxslt
+	import libxml2
+	DependenciesAvailable = True
+except ImportError:
+	DependenciesAvailable = False
+	log("Unable to import libxslt and libxml2 modules : XSLT report plugin cannot be loaded")
 
 class WXsltLogView(Plugin.WReportView):
 	def __init__(self, parent = None):
@@ -68,12 +75,9 @@ class WXsltLogView(Plugin.WReportView):
 		self.connect(self.refreshTransformationButton, SIGNAL('clicked()'), self.refreshTransformationsList)
 
 		# We display XSLT transformation options only if we have the required librairies
-		try:
-			import libxslt
-			import libxml2
+		if DependenciesAvailable:
 			layout.addLayout(buttonLayout)
-		except ImportError:
-			log("Unable to import libxslt and libxml2 modules : XSLT report plugin cannot be loaded")
+		else:
 			layout.addWidget(QLabel("Unable to import libxslt and libxml2 modules : XSLT report plugin cannot be loaded"))
 			layout.addWidget(QLabel("Please install libxml2 (and libxslt1 under unixes) python package(s) for your python/OS versions."))
 
@@ -122,8 +126,6 @@ class WXsltLogView(Plugin.WReportView):
 		transient.showTextLabel("Applying XSLT...")
 		xml = '<?xml version="1.0" encoding="utf-8"?><root>' + str(self.xml.toUtf8()) + '</root>'
 		try:
-			import libxslt
-			import libxml2
 			xmlDoc = libxml2.parseDoc(xml)
 			xsltDoc = libxml2.parseDoc(xslt)
 			style = libxslt.parseStylesheetDoc(xsltDoc)
@@ -147,8 +149,9 @@ class WXsltLogView(Plugin.WReportView):
 			self.textView.setHtml(transformedXml)
 
 	def onEvent(self, domElement):
-		# Accumulate the events into pure txt form.
-		domElement.save(QTextStream(self.xml), 0)
+		if DependenciesAvailable:
+			# Accumulate the events into pure txt form.
+			domElement.save(QTextStream(self.xml), 0)
 	
 	def displayLog(self):
 		pass
