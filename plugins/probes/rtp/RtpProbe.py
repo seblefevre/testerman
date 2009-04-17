@@ -28,6 +28,7 @@
 import ProbeImplementationManager
 import DefaultPayloads
 # Modified version to support any codec
+# (the standard Python wave module fails if the payload type is unknown to it)
 import wave
 
 import cStringIO as StringIO
@@ -73,6 +74,82 @@ def getPacketSizeAndSampleRate(payloadType, frameSize):
 
 class RtpProbe(ProbeImplementationManager.ProbeImplementation):
 	"""
+	= Identification and Properties =
+
+	Probe Type ID: `rtp`
+
+	Properties:
+	|| '''Name''' || '''Type''' || '''Default value''' || '''Description''' ||
+	|| `listening_ip` || string || `'0.0.0.0'` || Default listening IP address, when starting listening without providing one explicitly || 
+	|| `listening_port` || integer || `0` || Default listening UDP port, when starting listening without providing one expliclity. `0` means a system-assigned port. ||
+	|| `local_ip` || string || (empty) || Default source IP address when sending packets, if not provided explicitly when starting sending. An empty value means a system-assigned IP address. ||
+	|| `local_port` || integer ||  `0` || Default UDP source port when sending packets, if not provided explicitly when starting sending. An empty value means a system-assigned port. ||
+	|| `stream_timeout` || float || `0.5` || The maximum interruption interval allowed, in second, before considering an incoming stream has been stopped ||
+	|| `ssrc` || integer || `1000` || The default SSRC to use in sent RTP packets, if not provided explicitly when starting sending a stream ||
+	|| `payload_type` || integer || `8` || The default payload type to use in sent RTP packets, if not provided explicitly when starting sending a stream ||
+	|| `frame_size` || integer || `20` || The default frame size to use when sending RTP packets, if not provided explicitly when starting sending a stream ||
+	|| `packet_size` || integer || `160` || The default packet size to use when sending RTP packets, if not provided explicitly when starting sending a stream ||
+	|| `sample_rate` || integer || `8000` || The default sample rate to use in sent RTP packets, if not provided explicitly when starting sending a stream ||
+	
+	The default payload type/frame size/packet size/sample rate values are chosen
+	to enable a default stream in G.711 a-law (PCMA) / 20.
+	
+	= Overview =
+	
+	Through this probe, you can control sending and receiving RTP (Real Time Protocol)
+	streams.[[BR]]
+	It can be used as a probe companion of a UDP transport probe to simulate a SIP
+	endpoint, or with a RTSP probe to act as a , and of course any other cases where
+	controlling sending and receiving of RTP streams is required, without requiring to
+	inspect each RTP packets individually.
+	
+	This probe is based on "signals" that change its state. You can:
+	 * start sending a new RTP stream to a remote destination, setting the payload characteristics that will be used until the stream is stopped,
+	 * stop sending a started stream
+	 * start listening for, i.e. waiting for a possible incoming stream
+	 * stop listening
+	And you may receive the following "notifications" if the probe was in listening state:
+	 * `StartedReceivingEvent`, indicating the payload properties (source ip/port, ssrc, payload type), when a new stream is detected or has been updated,
+	 * `StoppedReceivingEvent`, when a stream being received was interrupted (or updated its properties
+
+	Additionally, you may inject at any time while sending RTP
+	a recorded payload using the `PlayCommand`. Currently the probe only support WAV file format, and
+	the contained payload must be encoded with the correct codec (payload type).[[BR]]
+	The probe won't check it, and will stick to packetize the payload according
+	to the current frame size parameter. No transcoding mechanism is provided. 
+	
+	By default, when starting sending a RTP stream, a default sound is played according
+	to the payload type:
+	
+	|| '''Payload type''' || Default sound ||
+	|| 0 (PCMU/G711 u-law) || a 400Hz tone ||
+	|| 8 (PCMA/G711 a-law) || almost a 400Hz tone ||
+	|| other codec || Some very scratchy sound ||
+	
+	Anyway, the idea is that, by default, the probe makes some sound or noise.[[BR]]
+	
+	
+	Notes:
+	 * A probe can send/receive at most one stream in a way (i.e. can send, receive, or send+receive).
+	 * No RTCP support for now
+	 * No RFC2833 support for now (excepted by playing a wav file with RFC2833 payload, but this is not integrated enough to be usable)
+
+	 
+	== Availability ==
+
+	All platforms. Tested on Linux (kernel 2.6), Solaris 8, Solaris 10.
+
+	== Dependencies ==
+
+	None.
+
+	== See Also ==
+
+
+	= TTCN-3 Types Equivalence =
+	
+	The test system interface port bound to such a probe complies with the `RtpPortType` port type as specified below:
+	{{{
 	type record StartSendingCommand
 	{
 		integer payloadType optional, // default: payload_type (8)
@@ -114,9 +191,7 @@ class RtpProbe(ProbeImplementationManager.ProbeImplementation):
 	{
 		integer fromPort,
 		charstring fromIp,
-		charstring reason, // enum: 
-		// interrupted, payloadTypeChanged, sourceIpChanged, sourcePortChanged, 
-		// ssrcChanged
+		enum { interrupted, updated } reason,
 	}
 	
 	type record PlayCommand
@@ -135,29 +210,18 @@ class RtpProbe(ProbeImplementationManager.ProbeImplementation):
 		PlayCommand play
 	}
 	
-	type union Event
+	type union Notification
 	{
-		StartedReceivingEvent startedReceivingRtp,
-		StoppedReceivingEvent stoppedReceivingRtp
+		StartedReceivingNotification startedReceivingRtp,
+		StoppedReceivingNotification stoppedReceivingRtp
 	}
 	
-	type port message RtpProbePortType
+	type port message RtpPortType
 	{
 		in Command,
-		out Event
+		out Notification
 	}
-	
-	
-	Properties:
-	listening_ip
-	listening_port
-	local_ip
-	local_port
-	stream_timeout
-	
-	A probe can send/receive at most one stream in a way
-	(i.e. can send, receive, or send+receive).
-	
+	}}}	
 	"""
 	def __init__(self):
 		ProbeImplementationManager.ProbeImplementation.__init__(self)
