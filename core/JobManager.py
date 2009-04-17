@@ -341,6 +341,9 @@ class Job(object):
 		"""
 		return "job:%s" % self._id
 	
+	def getType(self):
+		return self._type
+	
 	def reschedule(self, at):
 		"""
 		Reschedule the job.
@@ -384,6 +387,15 @@ class Job(object):
 		
 		@raises PrepareException: in case of any preparatin error.
 		@rtype: None
+		"""
+		pass
+		
+	def aboutToRun(self):
+		"""
+		Called by the scheduler when just about to call run() in a dedicated thread.
+		
+		Prepares the files that will be used for execution.
+		In particular, enables to fill what is needed to provide a getLogFilename().
 		"""
 		pass
 		
@@ -463,7 +475,13 @@ class AtsJob(Job):
 		if not self._path.startswith('/'):
 			self._path = '/%s' % self._path
 		
+		# Some internal variables persisted to 
+		# transit from prepare/aboutToRun/Run
 		self._tePreparedPackageDirectory = None
+		self._baseDocRootDirectory = None
+		self._baseName = None
+		self._baseDirectory = None
+		self._tePackageDirectory = None
 	
 	def handleSignal(self, sig):
 		getLogger().info("%s received signal %s" % (str(self), sig))
@@ -624,6 +642,27 @@ class AtsJob(Job):
 		# OK, we're ready.
 		self.setState(self.STATE_WAITING)
 
+	def aboutToRun(self):
+		"""
+		Called by the scheduler when just about to call run() in a dedicated thread.
+		
+		Prepares the files that will be used for execution.
+		In particular, enables to fill what is needed to provide a getLogFilename().
+		"""
+		# Create some paths related to the final TE tree in the docroot
+
+		# docroot-path for all TE packages for this ATS
+		self._baseDocRootDirectory = os.path.normpath("/%s/%s" % (ConfigManager.get("constants.archives"), self.getName()))
+		# Base name for execution log and TE package dir
+		# FIXME: possible name collisions if the same user schedules 2 same ATSes at the same time...
+		self._basename = "%s_%s" % (time.strftime("%Y%m%d-%H%M%S", time.localtime(time.time())), self.getUsername())
+		# Corresponding absolute local path
+		self._baseDirectory = os.path.normpath("%s%s" % (ConfigManager.get("testerman.document_root"), self._baseDocRootDirectory))
+		# final TE package dir (absolute local path)
+		self._tePackageDirectory = "%s/%s" % (self._baseDirectory, self._basename)
+		# self._logFilename is a docroot-path for a retrieval via Ws
+		self._logFilename = "%s/%s.log" % (self._baseDocRootDirectory, self._basename)
+
 	def run(self, inputSession = {}):
 		"""
 		Prepares the TE, Starts a prepared TE, and only returns when it's over.
@@ -655,18 +694,10 @@ class AtsJob(Job):
 		@rtype: int
 		@returns: the TE return code
 		"""
-	
-		# Create some paths related to the final TE tree in the docroot
-
-		# docroot-path for all TE packages for this ATS
-		baseDocRootDirectory = os.path.normpath("/%s/%s" % (ConfigManager.get("constants.archives"), self.getName()))
-		# Corresponding absolute local path
-		baseDirectory = os.path.normpath("%s%s" % (ConfigManager.get("testerman.document_root"), baseDocRootDirectory))
-		# Base name for execution log and TE package dir
-		# FIXME: possible name collisions if the same user schedules 2 same ATSes at the same time...
-		basename = "%s_%s" % (time.strftime("%Y%m%d-%H%M%S", time.localtime(time.time())), self.getUsername())
-		# final TE package dir (absolute local path)
-		tePackageDirectory = "%s/%s" % (baseDirectory, basename)
+		baseDocRootDirectory = self._baseDocRootDirectory
+		baseDirectory = self._baseDirectory
+		tePackageDirectory = self._tePackageDirectory
+		basename = self._basename
 
 		# Move the prepared, temporary TE folder tree to its final location in archives
 		try:
@@ -720,9 +751,7 @@ class AtsJob(Job):
 			return self.getResult()
 		
 		getLogger().info("%s: building TE command line..." % str(self))
-		# self._logFilename is a docroot-path for a retrieval via Ws
-		self._logFilename = "%s/%s.log" % (baseDocRootDirectory, basename)
-		# whereas teLogFilename is an absolute local path (execution)
+		# teLogFilename is an absolute local path
 		teLogFilename = "%s/%s.log" % (baseDirectory, basename)
 		teFilename = "%s/main_te.py" % (tePackageDirectory)
 		# module paths relative to the TE package dir
@@ -817,11 +846,11 @@ class AtsJob(Job):
 			absoluteLogFilename = os.path.normpath("%s%s" % (ConfigManager.get("testerman.document_root"), self._logFilename))
 			f = open(absoluteLogFilename, 'r')
 			fcntl.flock(f.fileno(), fcntl.LOCK_EX)
-			res = '<?xml version="1.0" encoding="utf-8" ?>\n<ats version="2.0">\n%s</ats>' % f.read()
+			res = '<?xml version="1.0" encoding="utf-8" ?>\n<ats>\n%s</ats>' % f.read()
 			f.close()
 			return res
 		else:
-			return '<?xml version="1.0" encoding="utf-8" ?><ats></ats>'
+			return '<?xml version="1.0" encoding="utf-8" ?>\n<ats>\n</ats>'
 	
 
 ################################################################################
@@ -912,6 +941,25 @@ class CampaignJob(Job):
 		getLogger().info("%s: parsed OK" % str(self))
 		self.setState(self.STATE_WAITING)
 
+	def aboutToRun(self):
+		"""
+		Prepares the files that will be used for execution.
+		In particular, enables to fill what is needed to provide a getLogFilename().
+		"""
+		# docroot-path for all files related to this job
+		baseDocRootDirectory = os.path.normpath("/%s/%s" % (ConfigManager.get("constants.archives"), self.getName()))
+		# Corresponding absolute local path
+		baseDirectory = os.path.normpath("%s%s" % (ConfigManager.get("testerman.document_root"), baseDocRootDirectory))
+		# FIXME: possible name collisions if the same user schedules 2 same ATSes at the same time...
+		basename = "%s_%s" % (time.strftime("%Y%m%d-%H%M%S", time.localtime(time.time())), self.getUsername())
+		self._logFilename = "%s/%s.log" % (baseDocRootDirectory, basename)
+		self._absoluteLogFilename = "%s/%s.log" % (baseDirectory, basename)
+
+		try:
+			os.mkdir(baseDirectory)
+		except: 
+			pass
+		
 	def run(self, inputSession = {}):
 		"""
 		Prepares the campaign, starts it, and only returns when it's over.
@@ -941,23 +989,8 @@ class CampaignJob(Job):
 		@returns: the campaign return code
 		"""
 		
-		# docroot-path for all files related to this job
-		baseDocRootDirectory = os.path.normpath("/%s/%s" % (ConfigManager.get("constants.archives"), self.getName()))
-		# Corresponding absolute local path
-		baseDirectory = os.path.normpath("%s%s" % (ConfigManager.get("testerman.document_root"), baseDocRootDirectory))
-		# FIXME: possible name collisions if the same user schedules 2 same ATSes at the same time...
-		basename = "%s_%s" % (time.strftime("%Y%m%d-%H%M%S", time.localtime(time.time())), self.getUsername())
-		self._logFilename = "%s/%s.log" % (baseDocRootDirectory, basename)
-
-		self._absoluteLogFilename = "%s/%s.log" % (baseDirectory, basename)
-
-		try:
-			os.mkdir(baseDirectory)
-		except: 
-			pass
-
 		# Now, execute the child jobs
-		self._logEvent('event', 'campaign-started', {'job-id': self._id, 'id': self._name})
+		self._logEvent('event', 'campaign-started', {'id': self._name})
 		self.setState(self.STATE_RUNNING)
 		self._run(callingJob = self, inputSession = inputSession)
 		if self.getState() == self.STATE_RUNNING:
@@ -1015,13 +1048,14 @@ class CampaignJob(Job):
 			if prepared:
 				getLogger().info("%s: starting child job %s, invoked by %s, on branch %s" % (str(self), str(job), str(callingJob), branch))
 				# Prepare a new thread, execute the job
+				job.aboutToRun()
+				self._logEvent('core', '%s-started' % job.getType(), {'id': job.getName(), 'link': job.getLogFilename()}, logClass = 'core')
 				jobThread = threading.Thread(target = lambda: job.run(inputSession))
 				jobThread.start()
-				self._logEvent('event', 'job-started', {'job-id': job.getId(), 'id': job.getName(), 'log-filename': job.getLogFilename()})
 				# Now wait for the job to complete.
 				jobThread.join()
 				ret = job.getResult()
-				self._logEvent('event', 'job-stopped', {'job-id': job.getId(), 'id': job.getName(), 'result': ret})
+				self._logEvent('core', '%s-stopped' % job.getType(), {'id': job.getName(), 'link': job.getLogFilename(), 'result': ret}, logClass = 'core')
 				getLogger().info("%s: started child job %s, invoked by %s, on branch %s returned %s" % (str(self), str(job), str(callingJob), branch, ret))
 			else:
 				ret = job.getResult()
@@ -1152,11 +1186,12 @@ class CampaignJob(Job):
 		if self._logFilename:
 			f = open(self._absoluteLogFilename, 'r')
 			fcntl.flock(f.fileno(), fcntl.LOCK_EX)
-			res = '<?xml version="1.0" encoding="utf-8" ?>\n<campaign version="1.0">\n%s</campaign>' % f.read()
+			# FIXME: we generate a 'ats' root element. Is that correct ?
+			res = '<?xml version="1.0" encoding="utf-8" ?>\n<ats>\n%s</ats>' % f.read()
 			f.close()
 			return res
 		else:
-			return '<?xml version="1.0" encoding="utf-8" ?><campaign version="1.0"></campaign>'
+			return '<?xml version="1.0" encoding="utf-8" ?>\n<ats>\n</ats>'
 
 ################################################################################
 # The Scheduler Thread
@@ -1191,6 +1226,7 @@ class Scheduler(threading.Thread):
 			if job.getScheduledStartTime() < time.time():
 				getLogger().info("Scheduler: starting new job: %s" % str(job))
 				# Prepare a new thread, execute the job
+				job.aboutToRun()
 				jobThread = threading.Thread(target = lambda: job.run(job.getScheduledSession()))
 				jobThread.start()
 

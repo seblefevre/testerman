@@ -151,7 +151,7 @@ def toXml(element, attributes, value = ''):
 def logAtsStarted(id_):
 	tliLog('core', toXml('ats-started', { 'class': 'event', 'timestamp': time.time(), 'id': id_ }))
 
-def logAtsStopped(id_, result, message):
+def logAtsStopped(id_, result, message = ''):
 	tliLog('core', toXml('ats-stopped', { 'class': 'event', 'timestamp': time.time(), 'id': id_, 'result': str(result) }, cgi.escape(message)))
 
 def logUser(message, tc = None):

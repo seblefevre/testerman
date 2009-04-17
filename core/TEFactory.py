@@ -195,7 +195,8 @@ def scanPlugins(paths, label):
 					m = m[:-3]
 				try:
 					__import__(m)
-					TestermanTCI.logUser("INFO: analyzed %s %s" % (label, m))
+					# Actually, internal level is never activated at this time...
+					TestermanTCI.logInternal("INFO: analyzed %s %s" % (label, m))
 				except Exception, e:
 					TestermanTCI.logUser("WARNING: unable to import %s %s: %s" % (label, m, str(e)))
 		except Exception, e:
@@ -266,7 +267,8 @@ try:
 	initializeTe(TacsIp, TacsPort)
 except Exception, e:
 	ReturnCode = RETURN_CODE_INIT_FAILURE
-	TestermanTCI.logAtsStopped(id_ = ATS_ID, result = ReturnCode, message = "Unable to initialize Code TE librairies: %%s" %% TestermanTCI.getBacktrace())
+	TestermanTCI.logUser("Unable to initialize Code TE librairies: %%s" %% TestermanTCI.getBacktrace())
+	TestermanTCI.logAtsStopped(id_ = ATS_ID, result = ReturnCode)
 	sys.exit(ReturnCode)
 """ % dict(adapterModuleName = adapterModuleName))
 
@@ -371,7 +373,9 @@ try:
 except:
 	pass
 
-TestermanTCI.logAtsStopped(id_ = ATS_ID, result = ReturnCode, message = ReturnMessage)
+if ReturnMessage:
+	TestermanTCI.logUser(ReturnMessage)
+TestermanTCI.logAtsStopped(id_ = ATS_ID, result = ReturnCode)
 
 try:
 	finalizeLogger()
