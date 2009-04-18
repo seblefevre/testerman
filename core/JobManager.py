@@ -1049,13 +1049,14 @@ class CampaignJob(Job):
 				getLogger().info("%s: starting child job %s, invoked by %s, on branch %s" % (str(self), str(job), str(callingJob), branch))
 				# Prepare a new thread, execute the job
 				job.aboutToRun()
-				self._logEvent('core', '%s-started' % job.getType(), {'id': job.getName(), 'link': job.getLogFilename()}, logClass = 'core')
 				jobThread = threading.Thread(target = lambda: job.run(inputSession))
 				jobThread.start()
 				# Now wait for the job to complete.
 				jobThread.join()
+				# For now, we only log an include event when the child job is over - leading to no realtime support for campaign logs,
+				# but a kind of "half-realtime": a client such as QTesterman will be updated every time a child job is complete.
+				self._logEvent('core', 'include', {'url': "testerman://%s" % job.getLogFilename()}, logClass = 'core')
 				ret = job.getResult()
-				self._logEvent('core', '%s-stopped' % job.getType(), {'id': job.getName(), 'link': job.getLogFilename(), 'result': ret}, logClass = 'core')
 				getLogger().info("%s: started child job %s, invoked by %s, on branch %s returned %s" % (str(self), str(job), str(callingJob), branch, ret))
 			else:
 				ret = job.getResult()

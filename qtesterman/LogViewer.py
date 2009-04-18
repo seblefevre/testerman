@@ -32,6 +32,42 @@ import gc
 import os.path
 import base64
 
+
+###############################################################################
+# Log file loader
+###############################################################################
+
+def loadLog(url):
+	"""
+	Load a log file from an url.
+	
+	@type  url: QUrl
+	@param url: the url locating the log file (testerman://, file://)
+	
+	@rtype: utf-8 string
+	@returns: the log contents, or None if not found
+	"""
+	log("Loading log from '%s'" % unicode(url.toString()))
+
+	content = None
+	if url.scheme() == "file": # local file
+		log("Loading from local file %s..." % url.toString())
+		path = url.toLocalFile()
+		f = open(unicode(path), 'r')
+		content = f.read()
+		f.close()
+
+	else: # remote file
+		log("Loading from server: remote file %s..." % url.path())
+		content = getProxy().getFile(unicode(url.path()))
+
+	# If this is not a well formed xml file but a "log" file (i.e. a list of xml elements only)
+	# add some basic xml headers and a root element.
+	if content and not content.startswith('<?xml'):
+		content = '<?xml version="1.0" encoding="utf-8" ?>\n<ats>\n%s</ats>' % content
+	
+	return content
+
 ###############################################################################
 # Log Summary
 ###############################################################################
@@ -47,21 +83,25 @@ class WSummaryGroupBox(QGroupBox):
 
 	def __createWidgets(self):
 		self.labels = {}
-		for l in [ 'nbPass', 'ratioPass', 'nb', 'nbFail', 'ratioFail' ]:
+		for l in [ 'nbPass', 'ratioPass', 'nb', 'nbFail', 'ratioFail', 'nbAts' ]:
 			self.labels[l] = QLabel()
 
 		layout = QGridLayout()
-		layout.addWidget(QLabel("Performed testcases:"), 0, 0)
+		layout.addWidget(QLabel("Completed testcases:"), 0, 0, Qt.AlignRight)
 		layout.addWidget(self.labels['nb'], 0, 1)
-		layout.addWidget(QLabel("Number of OK:"), 1, 0)
+		layout.addWidget(QLabel("Number of OK:"), 1, 0, Qt.AlignRight)
 		layout.addWidget(self.labels['nbPass'], 1, 1)
 		layout.addWidget(self.labels['ratioPass'], 1, 2)
-		layout.addWidget(QLabel("Number of NOK:"), 2, 0)
+		layout.addWidget(QLabel("Number of NOK:"), 2, 0, Qt.AlignRight)
 		layout.addWidget(self.labels['nbFail'], 2, 1)
 		layout.addWidget(self.labels['ratioFail'], 2, 2)
+		layout.addWidget(QLabel("Completed ATSes:"), 0, 3, Qt.AlignRight)
+		layout.addWidget(self.labels['nbAts'], 0, 4)
 		layout.setColumnStretch(0, 0)
 		layout.setColumnStretch(1, 0)
-		layout.setColumnStretch(2, 20)
+		layout.setColumnStretch(2, 0)
+		layout.setColumnStretch(3, 0)
+		layout.setColumnStretch(4, 20)
 		self.setLayout(layout)
 
 	def onTestCaseStopped(self, verdict, element):
@@ -72,13 +112,15 @@ class WSummaryGroupBox(QGroupBox):
 			self.totalKO += 1
 		self.updateStats()
 
-	def onAtsStarted(self, element):
-		self.clear()
+	def onAtsStopped(self, result, element):
+		self.totalAts += 1
+		self.updateStats()
 
 	def clear(self):
 		self.total = 0
 		self.totalOK = 0
 		self.totalKO = 0
+		self.totalAts = 0
 		self.updateStats()
 
 	def updateStats(self):
@@ -91,6 +133,7 @@ class WSummaryGroupBox(QGroupBox):
 		else:
 			self.labels['ratioPass'].setText("")
 			self.labels['ratioFail'].setText("")
+		self.labels['nbAts'].setText(str(self.totalAts))
 
 ###############################################################################
 # Raw log viewer
@@ -98,8 +141,20 @@ class WSummaryGroupBox(QGroupBox):
 
 class WRawLogView(QWidget):
 	"""
-	A simple composite widget with a read-only text edit, and an option to save
-	and find things.
+	A simple composite widget with a read-only text edit to display
+	raw XML logs,
+	and an option to save and find things in it.
+	
+	Raw logs are not updated on realtime, as appending each event
+	won't create a valid XML file (unless we insert those events
+	before a final root element's closing tag, which would be costly).
+	
+	Instead, they are displayed only when the user updates
+	the logs, i.e. (re)load them from the server.
+	In these case, we have an opportunity to fix the log to make it
+	xml-well-formed, adding requiring missing root element and XML prologue.
+	(this is done in the (re)loading function, i.e. updateFromSource).
+	The "Save as" option is then enabled.
 	"""
 	def __init__(self, parent = None):
 		QWidget.__init__(self, parent)
@@ -116,10 +171,12 @@ class WRawLogView(QWidget):
 		self.textEdit.setUndoRedoEnabled(False)
 
 		layout.addWidget(self.textEdit)
+		self.textEdit.setHtml('<i>Click on Update to load raw logs</i>')
 
 		optionLayout = QHBoxLayout()
 		optionLayout.addWidget(WFind(self.textEdit))
 		self.saveButton = QPushButton("Save as...")
+		self.saveButton.setEnabled(False) # enabled on loading raw logs
 		self.connect(self.saveButton, SIGNAL('clicked()'), self.saveAs)
 		optionLayout.addWidget(self.saveButton)
 
@@ -128,6 +185,13 @@ class WRawLogView(QWidget):
 		self.setLayout(layout)
 
 	def saveAs(self):
+		"""
+		TODO: if the log file contains links to other files,
+		proposes the user to:
+		- save this file only (does not follow links)
+		- save links as external files and updates the links accordingly
+		- expand the log file by including linked files directly in it
+		"""
 		settings = QSettings()
 		directory = settings.value('lastVisitedDirectory', QVariant("")).toString()
 		filename = QFileDialog.getSaveFileName(self, "Save execution log as...", directory, "xml file (*.xml)")
@@ -155,6 +219,7 @@ class WRawLogView(QWidget):
 
 	def setLog(self, txt):
 		self.textEdit.setPlainText(txt)
+		self.saveButton.setEnabled(True)
 
 ###############################################################################
 # Complete Log Viewer
@@ -254,7 +319,7 @@ class WLogViewer(QWidget):
 	
 		# Inner objects (non widget)
 		self.eventMonitor = None
-		self.logParser = LogParser()
+		self._logModel = LogModel()
 
 		layout = QVBoxLayout()
 
@@ -322,16 +387,17 @@ class WLogViewer(QWidget):
 		self.perspectiveTab.addTab(self.rawView, "Raw log")
 
 		# Connection on parser
-		self.connect(self.logParser, SIGNAL("testermanEvent(QDomElement)"), self.testCaseView.onEvent)
+		self.connect(self._logModel, SIGNAL("testermanEvent(QDomElement)"), self.testCaseView.onEvent)
 		for view in self.reportViews:
-			self.connect(self.logParser, SIGNAL("testermanEvent(QDomElement)"), view.onEvent)
+			self.connect(self._logModel, SIGNAL("testermanEvent(QDomElement)"), view.onEvent)
 
 		# Summary connection on parser
-		self.connect(self.logParser, SIGNAL("testCaseStopped(QString, QDomElement)"), self.summary.onTestCaseStopped)
+		self.connect(self._logModel, SIGNAL("testCaseStopped(QString, QDomElement)"), self.summary.onTestCaseStopped)
+		self.connect(self._logModel, SIGNAL("atsStopped(int, QDomElement)"), self.summary.onAtsStopped)
 
-		# Action management
-		self.connect(self.logParser, SIGNAL("actionRequested(QString, float)"), self.onActionRequired)
-		self.connect(self.logParser, SIGNAL("actionCleared()"), self.onActionCleared)
+		# External Action management
+		self.connect(self._logModel, SIGNAL("actionRequested(QString, float)"), self.onActionRequired)
+		self.connect(self._logModel, SIGNAL("actionCleared()"), self.onActionCleared)
 
 		# Inter widget connections
 		self.connect(self.textualLogView, SIGNAL("messageSelected(QDomElement)"), self.templateView.setTemplates)
@@ -455,15 +521,18 @@ class WLogViewer(QWidget):
 			return self.jobState in [ 'complete', 'completed', 'killed', 'cancelled', 'error' ]
 		return True
 
-	def onSubscribedEvent(self, event):
+	def onSubscribedEvent(self, notification):
 		"""
-		Event is a TestermanClient.Event.
-		Dispatch the event to the interesting sub-system: real-time control, or log parser.
+		Dispatches a Xc event to the interesting local sub-system:
+		real-time control, or log parser.
+		
+		@type  notification: TestermanClient.Notification
+		@param notification: a Xc notification related to the subscribed job URI.
 		"""
-		if event.getMethod() == "LOG":
-			self.logParser.onLogEvent(event)
-		elif event.getMethod() == "JOB-EVENT":
-			info = event.getApplicationBody()
+		if notification.getMethod() == "LOG":
+			self._logModel.feedXmlEvent(notification.getApplicationBody())
+		elif notification.getMethod() == "JOB-EVENT":
+			info = notification.getApplicationBody()
 			if info.has_key('state'):
 				self.setJobState(info['state'])
 
@@ -503,6 +572,7 @@ class WLogViewer(QWidget):
 		log("Updating logs from source...")
 
 		self.summary.clear()
+		self._logModel.clear()
 		state = 'n/a'
 		logfile = ""
 		try:
@@ -512,21 +582,8 @@ class WLogViewer(QWidget):
 				jobInfo = getProxy().getJobInfo(self.jobId)
 				if jobInfo and jobInfo.has_key('state'):
 					state = jobInfo['state']
-
-			elif self._url.scheme() == "file": # local file
-				log("Updating from local file %s..." % self._url.toString())
-				path = self._url.toLocalFile()
-				f = open(unicode(path), 'r')
-				logfile = f.read()
-				f.close()
-				# If this is not a real xml file but a "log" file, add some basic xml headers.
-				# We should find something more reliable... and more efficient
-				if not logfile.startswith('<?xml'):
-					logfile = '<?xml version="1.0" encoding="utf-8" ?><ats>%s</ats>' % logfile
-
-			else: # remote file
-				log("Updating from server: remote file %s..." % self._url.path())
-				logfile = '<?xml version="1.0" encoding="utf-8" ?><ats>%s</ats>' % getProxy().getFile(unicode(self._url.path()))
+			else:
+				logfile = loadLog(self._url)
 
 		except Exception, e:
 			QMessageBox.information(self, getClientName(), "Unable to retrieve log: either the logfile has been deleted or the job cannot be found on this server (%s)" % str(e))
@@ -560,183 +617,51 @@ class WLogViewer(QWidget):
 		log("Loading duration: %s" % (time.time() - start))
 		return ret
 
-	def setLog_Sax(self, xmlLog):
+	def setLog_Parse(self, xmlLog):
 		"""
-		A SAX version of log parsing to generate local testerman log events to
-		analyzers and viewers.
-
-		Surprinsingly, this is much slower that the DOM version, but costs
-		a little bit less memory.
+		A XML parser based on the native Qt XML tokenizer.
+		The idea is to avoid creating a whole DOM tree for the complete XML file,
+		but turn an xml file into a list of QDomElements instead.
 		
-		The current implementation is not optimized at all, and looks a bit awkward:
-		we re-create a QDomElement for interesting elements by serializing what have been parsed by the SAX parser
-		into a XML string, and reparsing the result string into a QDomElement using the DOM parser.
-		A better solution is probably
-		- to create the QDomElement manually (adding elements depending on SAX events)
-		- or use an internal structure instead of a QDomElement for all loggers and plugins
-		  (i.e. change the basic event type and onEvent signature).
-		Since we still have to load the whole model into memory, whether it is a DOM or an internal model, using
-		an internal model should not speed up things dramatically.
-
-		So, creating the DOM node without passing by a xml re-serialization could be the best way to follow.
+		Tested to be about 50% slower than the setLog_Dom version,
+		but also takes 33% less memory than setLog_Dom.
 		"""
-		class XmlLogHandler(QtXml.QXmlDefaultHandler):
-			"""
-			This content handler is able to create a QDomElement for each interesting parse XML elements,
-			and calls a callback with the created QDomElement as the single param.
-			"""
-			def __init__(self, callback):
-				QtXml.QXmlDefaultHandler.__init__(self)
-				self.currentXmlEvent = None
-				self.errorStr = QString()
-				self.currentLevel = 0
-				self.callback = callback
+		log("translating...")
+		xml = xmlLog.decode('utf-8').replace('\n', '')
+		log("translated")
+		reader = QXmlStreamReader(xml)
+		level = 0
+		# a list of startOffset, endOffset in the xmlLog string identifying the level-1 xml elements,
+		# which correspond to testerman log events.
+		events = []
+		while not reader.atEnd():
+			cur = reader.characterOffset()
+			reader.readNext()
+			if reader.isStartElement():
+				if level == 1:
+					start = cur
+				level += 1
+			elif reader.isEndElement():
+				level -= 1
+				if level == 1:
+					end = reader.characterOffset()
+#					events.append( (start, end) )
+					#log("Event %s: %s-%s" % (reader.name().toString(), start, end))
+#					events.append(xml[start:end])
+					self._logModel.feedEvent(xmlToDomElement(xml[start:end]))
 
-			def fatalError(self, exception):
-				"""
-				exception is a QXmlParseException
-				"""
-				print "Sorry, error: " + str(exception.message().toUtf8())
-				return False
-
-			def errorString(self):
-				return self.errorStr
-
-			def characters(self, s):
-				"""
-				QString
-				"""
-				if self.currentLevel >= 2:
-					self.currentXmlEvent.append(s)
-					pass
-				return True
-
-			def startElement(self, namespaceUri, localName, qName, attrs):
-				"""
-				QString
-				QString
-				QString
-				QXmlAttributes
-
-				Generate a QDomElement based on this element.
-				"""
-#				print "starting element " + str(qName.toUtf8())
-				if self.currentLevel == 1:
-		#			print "initializing new domElement..."
-					self.currentXmlEvent = []
-				if self.currentLevel >= 1:
-					self.currentXmlEvent.append('<%s' % qName)
-					for i in range(0, attrs.count()):
-						self.currentXmlEvent.append(' %s="%s"' % (attrs.qName(i).toUtf8(), attrs.value(i).toUtf8()))
-					self.currentXmlEvent.append('>')
-				self.currentLevel += 1
-				return True
-
-			def endElement(self, namespaceUri, localName, qName):
-				self.currentLevel -= 1
-#				print "ending element " + str(qName.toUtf8()) + "level %d" % self.currentLevel
-				if self.currentLevel >= 1:
-					self.currentXmlEvent.append('</%s>' % qName)
-				if self.currentLevel == 1:
-					# Now that we have a new reserialized XML string, parse it using the DOM parser
-					currentXmlEvent = '<?xml version="1.0" encoding="utf-8" ?>' + ''.join(map(unicode, self.currentXmlEvent))
-#					print self.currentXmlEvent
-					xmlDoc = QtXml.QDomDocument()
-					(res, errormessage, errorline, errorcol) = xmlDoc.setContent(currentXmlEvent, 0)
-					if res:
-						# Theorically, since the SAX parser parsed it, the currentXmLEvent should be parsable to create the DomElement.
-						self.callback(xmlDoc.documentElement())
-					self.currentXmlEvent = None
-				return True
-
-			def startElement_old(self, namespaceUri, localName, qName, attrs):
-				"""
-				QString
-				QString
-				QString
-				QXmlAttributes
-
-				Generate a QDomElement based on this element.
-				"""
-#				print "starting element " + str(qName.toUtf8())
-				if self.currentLevel == 1:
-		#			print "initializing new domElement..."
-					self.currentXmlEvent = ''
-				if self.currentLevel >= 1:
-					self.currentXmlEvent += '<' + qName
-					for i in range(0, attrs.count()):
-						self.currentXmlEvent += ' %s="%s"' % (attrs.qName(i).toUtf8(), attrs.value(i).toUtf8())
-					self.currentXmlEvent += '>'
-				self.currentLevel += 1
-				return True
-
-			def endElement_old(self, namespaceUri, localName, qName):
-				self.currentLevel -= 1
-#				print "ending element " + str(qName.toUtf8()) + "level %d" % self.currentLevel
-				if self.currentLevel >= 1:
-					self.currentXmlEvent += '</' + qName + '>'
-				if self.currentLevel == 1:
-					# Now that we have a new reserialized XML string, parse it using the DOM parser
-					self.currentXmlEvent = '<?xml version="1.0" encoding="utf-8" ?>' + self.currentXmlEvent
-#					print self.currentDomElement.toUtf8()
-					xmlDoc = QtXml.QDomDocument()
-					(res, errormessage, errorline, errorcol) = xmlDoc.setContent(self.currentXmlEvent, 0)
-					if res:
-						# Theorically, since the SAX parser parsed it, the currentXmLEvent should be parsable to create the DomElement.
-						self.callback(xmlDoc.documentElement())
-					self.currentXmlEvent = None
-
-				return True
-
-
-		transient = WTransientWindow("Log Viewer", self)
-
-		transient.showTextLabel("Clearing views...")
-		log("Clearing views...")
-		# Context preservation: if a TestCase was selected, we'll have to select it after the update.
-		previousSelectedItemIndex = None
-		if self.testCaseView.currentItem():
-			previousSelectedItemIndex = self.testCaseView.indexOfTopLevelItem(self.testCaseView.currentItem())
-		self.testCaseView.clear()
-		self.rawView.clearLog()
-		for view in self.reportViews:
-			view.clearLog()
-
-		transient.showTextLabel("Parsing & analysing events...")
-
-		log("Parsing & analysing events...")
-		xlr = QtXml.QXmlSimpleReader()
-		xis = QtXml.QXmlInputSource()
-		xis.setData(xmlLog)
-		xlh = XmlLogHandler(self.logParser.onEvent)
-		xlr.setContentHandler(xlh)
-		log("Parsing...")
-		res = xlr.parse(xis, False)
-		log("Parsed, res " + str(res))
-		transient.hide()
-
-		transient.showTextLabel("Preparing views...")
-		log("Preparing views...")
-		self.testCaseView.displayLog()
-		if previousSelectedItemIndex is not None:
-			self.testCaseView.setCurrentItem(self.testCaseView.topLevelItem(previousSelectedItemIndex))
-		# This should switch to a "onEvent" raw view feeding
-		if self.useRawView:
-			self.rawView.setLog(xmlLog)
-		for view in self.reportViews:
-			view.displayLog()
-		transient.hide()
-		transient.setParent(None)
-		log("View displayed")
-
-
+#		for s, e in events:
+#			print '[[%s]]' % xml[s:e]
+#			self._logModel.feedEvent(xmlToDomElement(xml[s:e]))
 
 	def setLog_Dom(self, xmlLog):
 		"""
-		Let's format a new log.
-		xmlLog is a string text.
-
-		We always replay the log as if it was in realTime.
+		Takes an XML log content, parses it,
+		creates DOM nodes and forward then to analysers, to
+		simulate a real-time log event source for them.
+	
+		@type  xmlLog: string (utf-8)
+		@param xmlLog: the log content to parse, well formed XML string
 		"""
 		transient = WTransientWindow("Log Viewer", self)
 		transient.showTextLabel("Parsing logs...")
@@ -744,6 +669,7 @@ class WLogViewer(QWidget):
 		log("Parsing logs...")
 		xmlDoc = QtXml.QDomDocument()
 		(res, errormessage, errorline, errorcol) = xmlDoc.setContent(xmlLog, 0)
+		log("Logs parsed, DOM constructed")
 		transient.hide()
 
 		previousSelectedItemIndex = None
@@ -751,9 +677,11 @@ class WLogViewer(QWidget):
 			transient.showTextLabel("Clearing views...")
 			log("Clearing views...")
 			# Context preservation: if a TestCase was selected, we'll have to select it after the update.
+			# Context preservation: if a TestCase was selected, we'll have to select it after the update.
+			# FIXME: need a correct support now that the test case view is a tree
 			if self.testCaseView.currentItem():
 				previousSelectedItemIndex = self.testCaseView.indexOfTopLevelItem(self.testCaseView.currentItem())
-			self.testCaseView.clear()
+			self.testCaseView.clearLog()
 			self.rawView.clearLog()
 			for view in self.reportViews:
 				view.clearLog()
@@ -762,16 +690,17 @@ class WLogViewer(QWidget):
 			log("Analyzing events...")
 			root = xmlDoc.documentElement()
 			# Additional progress bar
-			progress = QProgressDialog("Analyzing log file...", "Cancel", 0, root.childNodes().count(), self)
+			nbChildren = root.childNodes().count()
+			progress = QProgressDialog("Analyzing log file...", "Cancel", 0, nbChildren, self)
 			progress.setWindowTitle("Log Viewer")
-#			progress.setWindowModality(Qt.WindowModal) # useful ?
 
 			element = root.firstChildElement()
 			count = 0
+			onePercent = max(1, nbChildren / 100)
 			while not element.isNull() and not progress.wasCanceled():
-				self.logParser.onEvent(element)
+				self._logModel.feedEvent(element)
 				count += 1
-				if not (count % 50):
+				if not ((count - 1) % onePercent):
 					progress.setValue(count)
 					QApplication.instance().processEvents()
 				element = element.nextSiblingElement()
@@ -806,7 +735,6 @@ class WLogViewer(QWidget):
 		# As a consequence, the widget instance will be garbage collected correctly.
 		self.setParent(None)
 		QWidget.closeEvent(self, event)
-#		event.accept()
 
 	def onActionRequired(self, message, timeout):
 		# Only display a user input in realtime mode
@@ -830,7 +758,7 @@ class WLogViewer(QWidget):
 # Textual Log View: item and treewidget
 ###############################################################################
 
-class WTextualLogViewItem(QTreeWidgetItem):
+class TextualLogItem(QTreeWidgetItem):
 	"""
 	An entry in the Textual log viewer is in fact an entry in a table (time, label).
 	The whole entry is formatted according to the item itself (start, stop, succes, etc)
@@ -980,13 +908,13 @@ class WTextualLogViewItem(QTreeWidgetItem):
 		elif self._element == "testcase-started":
 			self._message = "TestCase %s (%s) started" % (self._domElement.attribute('id'), self._domElement.text())
 			f = self.font(2)
-			f.setBold(1)
+			f.setBold(True)
 			self.setFont(2, f)
 		elif self._element == "testcase-stopped":
 			verdict = self._domElement.attribute('verdict')
 			self._message = "TestCase %s stopped, final verdict is %s" % (self._domElement.attribute('id'), verdict)
 			f = self.font(2)
-			f.setBold(1)
+			f.setBold(True)
 			self.setFont(2, f)
 			# According to the verdict, display different colors.
 			if verdict == "pass":
@@ -999,9 +927,24 @@ class WTextualLogViewItem(QTreeWidgetItem):
 		# ATS events
 		elif self._element == "ats-started":
 			self._message = "ATS started"
+			f = self.font(2)
+			f.setBold(True)
+			self.setFont(2, f)
 		elif self._element == "ats-stopped":
-			result = self._domElement.attribute('result')
-			self._message = "ATS stopped, result " + result
+			result = int(self._domElement.attribute('result'))
+			message = self._domElement.text()
+			if message.isEmpty():
+				self._message = "ATS stopped, result %s" % result
+			else:
+				self._message = "ATS stopped, result %s\n%s" % (result, message)
+			f = self.font(2)
+			f.setBold(True)
+			self.setFont(2, f)
+			if result == 0:
+				self.setForeground(2, QBrush(QColor(Qt.blue)))
+			else:
+				self.setForeground(2, QBrush(QColor(Qt.darkRed)))
+
 
 		# Actions
 		elif self._element == "action-requested":
@@ -1038,19 +981,10 @@ class WTextualLogViewItem(QTreeWidgetItem):
 		else:
 			self.setHidden(0)
 
-
 class WTextualLogView(QTreeWidget):
 	"""
 	A log viewer that can be updated regularly (append mode)
 	that displays the logs as rich text, with filters.
-
-	emit:
-	templateMisMatchSelected(QDomElement, QDomElement)
-	templateMatchSelected(QDomElement, QDomElement)
-	messageSelected(QDomElement)
-	atsStarted()
-	atsStopped()
-	testCaseStopped(QString verdict)
 	"""
 	def __init__(self, parent = None):
 		QTreeWidget.__init__(self, parent)
@@ -1112,7 +1046,7 @@ class WTextualLogView(QTreeWidget):
 		self.createContextMenu().popup(QCursor.pos())
 
 	def onToggledAction(self, logClass, checked):
-		print "DEBUG: levels updated for %s, %s" % (logClass, str(checked))
+		log("Levels updated for %s, %s" % (logClass, str(checked)))
 		# not checked, i.e. we hide it.
 		if not checked:
 			self.currentHiddenLogClasses.append(logClass)
@@ -1151,10 +1085,13 @@ class WTextualLogView(QTreeWidget):
 
 	def displayPartialLog(self, domElements):
 		"""
-		Display elements between first and last (included)
+		Feeds a list of dom elements that corresponds to
+		a portion of a log file.
+		
+		@type  domElements: list of QDomElement
 		"""
 		for e in domElements:
-			item = WTextualLogViewItem(None, e)
+			item = TextualLogItem(None, e)
 			self.root.addChild(item)
 			item.parse()
 
@@ -1166,10 +1103,10 @@ class WTextualLogView(QTreeWidget):
 
 	def append(self, domElement):
 		"""
-		Online/real-time view: let's add a new xml log line to our log.
-		domElement is an Testerman2 xml log line parsed into a QDomElement. <$(class) time="...">$(parameters, serialized in xml)<//$(class)>
+		Appends a new Testerman log event already formatted as a QDomElement
+		to the view.
 		"""
-		item = WTextualLogViewItem(None, domElement)
+		item = TextualLogItem(None, domElement)
 		self.root.addChild(item)
 		item.parse()
 		item.applyFilter(self.currentHiddenLogClasses)
@@ -1184,111 +1121,256 @@ class WTextualLogView(QTreeWidget):
 			self.root.child(i).applyFilter(hiddenLogClasses)
 
 ###############################################################################
-# LogParser - inner object emitting interesting event signals
+# LogModel - inner object emitting interesting event signals
 ###############################################################################
 
-################################################################################
-# Event formatting
-################################################################################
-
-def formatEventToDomElement(event):
+def xmlToDomElement(xmlLog):
 	"""
-	event is TestermanClient.Event.
-	First format to XML, then parse it to a DomElement.
-	Returns the domElement.
+	Constructs a DOM element based on a xml string, and returns it.
+	
+	@type  xmlLog: unicode
+	@param xmlLog: a log event as a xml string
+	
+	@rtype: QDomElement
+	@returns: the parsed element as a DOM node, or None in case of an error
 	"""
-	xmlLog = event.getBody() # contains the event as XML data
-
-	# First we parse the logline into an xml Doc
-	xmlDoc = QtXml.QDomDocument()
-	(res, errormessage, errorline, errorcol) = xmlDoc.setContent(xmlLog, 0)
+	doc = QtXml.QDomDocument()
+	(res, errormessage, errorline, errorcol) = doc.setContent(xmlLog, 0)
 	if res:
-		return xmlDoc.documentElement()
+		return doc.documentElement()
 	else:
-		print "WARNING: Unable to parse XML event: " + str(errormessage)
+		print "WARNING: Unable to parse XML event: %s" % str(errormessage)
 		return None
 
-class LogParser(QObject):
+class TestCaseLogModel:
 	"""
-	This Object is responsible for parsing an XML log or a new event
-	and generates appropriate SIGNAL events according to the XML event.
-	Widgets connect to this parser to be informed of new events to display.
-	The ability to emit some high-level, interesting signals avoids parsing these
-	signals in some widgets.
-	However, most widgets will also need to parsing other events. In this case,
-	the event is simply "forwarded" as received, creating a useless indirection.
-	(cost ?)
+	Stores the events associated to a testcase.
+	Provides additional convenience functions for the usual
+	testcase properties, too.
+	"""
+	def __init__(self):
+		self._domElements = []
+		self._verdict = None
+		self._description = None
+		self._id = None
+	
+	def _feedEvent(self, domElement):
+		"""
+		Local model feeder.
+		Sets the usual properties according to the fed event,
+		and stores it.
+		"""
+		tag = domElement.tagName()
+		if tag == "testcase-created":
+			self._id = domElement.attribute('id')
+		elif tag == "testcase-stopped":
+			self._verdict = domElement.attribute('verdict')
+			self._description = domElement.text()
+		
+		self._domElements.append(domElement)
 
-	Emit some high level signals:
+	##
+	# Public functions usable in log reporters, plugins
+	##	
+	def getDomElements(self):
+		return self._domElements
+	
+	def isComplete(self):
+		return self._verdict is not None
+	
+	def getVerdict(self):
+		return self._verdict
+	
+	def getDescription(self):
+		return self._description
+	
+	def getId(self):
+		return self._id
+
+class AtsLogModel:
+	def __init__(self):
+		self._result = None
+		self._id = None
+		# Local DOM elements (ATS control part)
+		self._domElements = []
+		self._testCases = [] # list of TestCaseModels
+		
+		self._currentTestCase = None
+	
+	def _feedEvent(self, domElement):
+		if self._currentTestCase:
+			self._currentTestCase._feedEvent(domElement)
+		
+		tag = domElement.tagName()
+		
+		if tag == "testcase-created":
+			tclm = TestCaseLogModel()
+			tclm._feedEvent(domElement)
+			self._currentTestCase = tclm
+			self._testCases.append(tclm)
+		elif tag == "testcase-stopped":
+			self._currentTestCase = None
+		elif tag == "ats-started":
+			self._id = domElement.attribute('id')
+			self._domElements.append(domElement)
+		elif tag == "ats-stopped":
+			self._result = domElement.attribute('result')
+			self._domElements.append(domElement)
+		else:
+			self._domElements.append(domElement)
+	
+	##
+	# Public functions usable in log reporters, plugins
+	##	
+	def getDomElements(self):
+		return self._domElements
+	
+	def isComplete(self):
+		return self._result is not None
+	
+	def getId(self):
+		return self._id
+	
+	def getResult(self):
+		return self._result
+	
+	def getTestCases(self):
+		return self._testCases
+
+class LogModel(QObject):
+	"""
+	This represents a complete Testerman log as an internal model
+	suitable for ATS/testcase iteration and so on.
+	
+	It is fed log event by log event, either as XML string or
+	as a single QDomElement.
+	
+	This model interprets the fed event and emits several signals
+	enabling basic statistics and model visualisation during feeding.
+
+	High level signals:
 	atsStarted(QDomElement)
-	atsStopped(QString status, QDomElement)
+	atsStopped(int result, QDomElement)
 	testCaseStarted(QString identifier, QDomElement)
 	testCaseStopped(QString verdict, QDomElement)
 	actionRequested(QString label, float timeout)
 
-	And a low level signal:
+	Low level signal:
 	testermanEvent(QDomElement element)
-	...
 	"""
 	def __init__(self):
 		QObject.__init__(self)
+		self._atses = []
+		# This flag enables to know if we have some include elements quickly.
+		# It is convenient to be aware of such directives
+		# when saving a log file locally, so that we can prompt the user
+		# to ignore/rewrite/expand include files.
+		self._containsIncludes = False
+	
+	def clear(self):
+		self._atses = []
+		self._containsIncludes = False
 
-	def onLogEvent(self, event):
+	def feedXmlEvent(self, xmlLog):
 		"""
-		EventMonitor callback.
-		Parses the event into a Qt DOM element, then forwards it
-		to the "standard" DOM-based event processing chain.
+		Convenience function.
+		
+		Uses the provided event formatted as an xml string
+		to feed the model.
+		
+		@type  xmlLog: unicode
+		@param xmlLog: a log event as a xml string
+		"""
+		self.feedEvent(xmlToDomElement(xmlLog))
 
-		@type  event: TestermanClient.Event
-		@param event: an event as received on Xc interface.
+	def feedEvent(self, domElement):
 		"""
-		domElement = formatEventToDomElement(event)
-		if domElement:
-			self.onEvent(domElement)
+		Feeds the model with a QDomElement, corresponding
+		to a single log event.
+		
+		Emits signals according to the event,
+		then stores the event in the appropriate internal
+		model structures.
+		
+		Automatically follows <include> elements, retrieving
+		requested log file on the fly and feeding itself.
+		
+		@type  domElement: QDomElement
+		@param domElement: a single log event as a DOM element.
+		"""
+		if not domElement:
+			return
 
-	def onEvent(self, domElement):
-		"""
-		For each XML element from the Qt-parsed DOM model,
-		interprets the event and emits appropriate signals.
-		"""
-		eventType = domElement.tagName()
+		tag = domElement.tagName()
 
-		if eventType == "ats-started":
+		if tag == "ats-started":
 			self.emit(SIGNAL("atsStarted(QDomElement)"), domElement)
 
-		elif eventType == "ats-stopped":
-			result = domElement.attribute('result')
-			self.emit(SIGNAL("atsStopped(QString, QDomElement)"), QString(result), domElement)
+		elif tag == "ats-stopped":
+			result = int(domElement.attribute('result'))
+			self.emit(SIGNAL("atsStopped(int, QDomElement)"), result, domElement)
 
-		elif eventType == "testcase-created":
+		elif tag == "testcase-created":
 			identifier = domElement.attribute('id')
 			self.emit(SIGNAL("testCaseCreated(QString, QDomElement)"), QString(identifier), domElement)
 
-		elif eventType == "testcase-started":
+		elif tag == "testcase-started":
 			identifier = domElement.attribute('id')
 			self.emit(SIGNAL("testCaseStarted(QString, QDomElement)"), QString(identifier), domElement)
 
-		elif eventType == "testcase-stopped":
+		elif tag == "testcase-stopped":
 			verdict = domElement.attribute('verdict')
 			self.emit(SIGNAL("testCaseStopped(QString, QDomElement)"), QString(verdict), domElement)
 
-		elif eventType == "action-requested":
+		elif tag == "action-requested":
 			timeout = float(domElement.attribute('timeout'))
 			message = domElement.firstChildElement('message').text()
 			self.emit(SIGNAL("actionRequested(QString, float)"), QString(message), timeout)
 
-		elif eventType == "action-cleared":
+		elif tag == "action-cleared":
 			self.emit(SIGNAL("actionCleared()"))
+		
+		elif tag == "include":
+			url = QUrl(domElement.attribute('url'))
+			self._containsIncludes = True
+			self._processInclude(url)
 
 		# In any case, forward the initial signal
 		self.emit(SIGNAL('testermanEvent(QDomElement)'), domElement)
 
+	def _processInclude(self, url):
+		"""
+		Loads an included file identified by the provided url,
+		and feeds it to itself.
+		
+		@type  url: QUrl
+		@param url: the url locating the file to load containing the included logs.
+		"""
+		xmlLog = loadLog(url)
+		if not xmlLog:
+			log("Warning: unable to get included logs")
+			return
+	
+		log("Parsing included logs...")
+		xmlDoc = QtXml.QDomDocument()
+		(res, errormessage, errorline, errorcol) = xmlDoc.setContent(xmlLog, 0)
+		log("Included Logs parsed, DOM constructed")
 
+		element =  xmlDoc.documentElement().firstChildElement()
+		count = 0
+		while not element.isNull():
+			self.feedEvent(element)
+			count += 1
+			if not (count % 50):
+				QApplication.instance().processEvents()
+			element = element.nextSiblingElement()
+
+	
 ###############################################################################
-# TestCase View (list)
+# TestCase View (tree of ats/testcases)
 ###############################################################################
 
-class WTestCaseTreeWidgetItem(QTreeWidgetItem):
+class TestCaseItem(QTreeWidgetItem):
 	"""
 	Represents a TestCase in the TestCase tree view.
 	Also stores the dom elements corresponding to the
@@ -1297,6 +1379,7 @@ class WTestCaseTreeWidgetItem(QTreeWidgetItem):
 	"""
 	def __init__(self, parent):
 		QTreeWidgetItem.__init__(self, parent)
+		self.setIcon(0, icon(':/icons/testcase'))
 		self._domElements = []
 		self.finished = False # indicate if the TestCase corresponding to the node is over or not.
 
@@ -1309,6 +1392,69 @@ class WTestCaseTreeWidgetItem(QTreeWidgetItem):
 	def getElements(self):
 		"""
 		Returns a list of elements corresponding to this test case
+		"""
+		return self._domElements
+
+class AtsItem(QTreeWidgetItem):
+	"""
+	An ATS item caches the log events
+	corresponding to a single ATS,
+	as a list of QDomElements.
+
+	"""
+	def __init__(self, parent):
+		QTreeWidgetItem.__init__(self, parent)
+		self._domElements = []
+		self.setIcon(0, icon(':/icons/ats'))
+		self.setExpanded(True)
+		self.finished = False # indicate if the ATS corresponding to the node is complete or not.
+		self._currentTestCase = None
+
+	def onEvent(self, domElement):
+		"""
+		Feeds a new log event, as a QDomElement.
+		
+		If it starts a new test case, creates a new Test Case
+		item accordingly.
+		Feeds the current Test Case item, if any.
+		"""
+		if self._currentTestCase:
+			self._currentTestCase.onEvent(domElement)
+		else:
+			self._domElements.append(domElement)
+
+		eventType = domElement.tagName()
+
+		if eventType == "testcase-created":
+			# Let's create and 'open' a new node
+			item = TestCaseItem(self)
+			item.setText(0, domElement.attribute('id'))
+			self._currentTestCase = item
+			self._currentTestCase.onEvent(domElement)
+
+		elif eventType == "testcase-stopped":
+			# Let's 'close' our current test case
+			verdict = domElement.attribute('verdict')
+			if self._currentTestCase:
+				# we update the color according to the verdict
+				if verdict == "pass":
+					self._currentTestCase.setForeground(0, QBrush(QColor(Qt.blue)))
+				elif verdict == "fail":
+					self._currentTestCase.setForeground(0, QBrush(QColor(Qt.red)))
+				else:
+					self._currentTestCase.setForeground(0, QBrush(QColor(Qt.darkRed)))
+				self._currentTestCase.finished = True
+				self._currentTestCase = None
+
+	def setLink(self, uri):
+		"""
+		Associates a link to an uri containing the logs for this ATS.
+		"""
+		self._linkedUri = uri
+
+	def getElements(self):
+		"""
+		Returns a list of elements corresponding to this item
 		"""
 		return self._domElements
 
@@ -1325,20 +1471,19 @@ class WTestCaseView(QTreeWidget):
 		QTreeWidget.__init__(self, parent)
 		self.__createWidgets()
 		self.__createActions()
-		self.__currentTestCaseItem = None
+		self.__currentItem = None
 		self.trackingActivated = False
 
 	def setTracking(self, tracking):
 		self.trackingActivated = tracking
 
 	def __createWidgets(self):
-		self.setRootIsDecorated(False)
 		self.labels = [ 'Testcase' ]
 		labels = QStringList()
 		for l in self.labels:
 			labels.append(l)
 		self.setHeaderLabels(labels)
-		self.setColumnWidth(0, 180) # well.. it may depends on the font
+		self.setColumnWidth(0, 200) # well.. it may depends on the font
 		self.setContextMenuPolicy(Qt.CustomContextMenu)
 
 	def __createActions(self):
@@ -1353,6 +1498,8 @@ class WTestCaseView(QTreeWidget):
 
 	def clearLog(self):
 		self.clear()
+		self._items = []
+		gc.collect()
 
 	def displayLog(self):
 		pass
@@ -1370,8 +1517,8 @@ class WTestCaseView(QTreeWidget):
 		"""
 		# If a test case is currently "open" to receive new events,
 		# forward them to it.
-		if self.__currentTestCaseItem:
-			self.__currentTestCaseItem.onEvent(domElement)
+		if self.__currentItem:
+			self.__currentItem.onEvent(domElement)
 
 		# If we selected an item whose corresponding testcase is not finished yet,
 		# We should forward the domElement to the views as well for real time update
@@ -1381,27 +1528,22 @@ class WTestCaseView(QTreeWidget):
 
 		# Now we intercept interesting events at Ats level: testcase start/stop events
 		eventType = domElement.tagName()
-		if eventType == "testcase-created":
-			# Let's create and 'open' a new node
-			item = WTestCaseTreeWidgetItem(self)
+
+		if eventType == "ats-started":
+			# Let's create a new ATS node
+			item = AtsItem(self)
 			item.setText(0, domElement.attribute('id'))
-			self.__currentTestCaseItem = item
-			self.__currentTestCaseItem.onEvent(domElement)
-			# Automatic tracking
-			# WARNING: this greatly decrease performance - due to signal emitting ?
-			if self.trackingActivated:
-				self.setCurrentItem(item)
-		elif eventType == "testcase-stopped":
-			# Let's 'close' our current test case
-			verdict = domElement.attribute('verdict')
-			if self.__currentTestCaseItem:
+			self.__currentItem = item
+			self.__currentItem.onEvent(domElement)
+
+		elif eventType == "ats-stopped":
+			result = int(domElement.attribute('result'))
+			if self.__currentItem:
 				# we update the color according to the verdict
-				if verdict == "pass":
-					self.__currentTestCaseItem.setForeground(0, QBrush(QColor(Qt.blue)))
-				elif verdict == "fail":
-					self.__currentTestCaseItem.setForeground(0, QBrush(QColor(Qt.red)))
+				if result == 0:
+					self.__currentItem.setForeground(0, QBrush(QColor(Qt.blue)))
 				else:
-					self.__currentTestCaseItem.setForeground(0, QBrush(QColor(Qt.darkRed)))
-				self.__currentTestCaseItem.finished = True
-				self.__currentTestCaseItem = None
+					self.__currentItem.setForeground(0, QBrush(QColor(Qt.darkRed)))
+				self.__currentItem.finished = True
+				self.__currentItem = None
 
