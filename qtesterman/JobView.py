@@ -276,6 +276,8 @@ class WJobTreeWidget(QTreeWidget):
 					action = menu.addAction("Start now", lambda: self._client.rescheduleJob(jobId, 0.0))
 					action = menu.addAction("Reschedule...", lambda: self._reschedule(jobId))
 					action = menu.addAction("Cancel", lambda: self._sendSignal(jobId, 'cancel'))
+				elif state in [ 'cancelling' ]:
+					action = menu.addAction("Kill", lambda: self._sendSignal(jobId, 'kill'))
 
 			menu.addSeparator()
 		

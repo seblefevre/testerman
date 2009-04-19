@@ -93,7 +93,20 @@ class WReportView(QWidget):
 	pluginType = TYPE_REPORT_VIEW
 	def __init__(self, parent = None):
 		QWidget.__init__(self, parent)
+		self.__model = None
 
+	def _setModel(self, model):
+		self.__model = model
+	
+	##
+	# Functions to help create new Report View plugins
+	##
+	def getModel(self):
+		return self.__model
+
+	##
+	# Functions to implement in a Report View plugin
+	##
 	def clearLog(self):
 		"""
 		Called when logs are cleared.
@@ -123,6 +136,26 @@ class WReportView(QWidget):
 		@rtype: None
 		@returns: None
 		"""
+		pass
+	
+	def onModelReady(self):
+		"""
+		Called when a log model has been filled and is ready
+		for analysis and display.
+		
+		Implements this function if you want to benefit from
+		the internal QTesterman-provided log model and if you
+		don't need to display runtime events.
+		In this case, you should probably not implement
+		onEvent() nor displayLog().
+		
+		@type  model: LogViewer.LogModel
+		@param model: the current log model to report
+		
+		@rtype: None
+		@returns: None
+		"""
+		pass
 	
 
 ###############################################################################

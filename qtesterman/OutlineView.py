@@ -109,9 +109,7 @@ class OutlineAstVisitor(compiler.visitor.ASTVisitor):
 #		self.endCurrentVisitedItem(node.lineno)
 		if not parent:
 			parent = self._treeWidget
-#		print "Visiting class %s\n%s" % (node, dir(node))
 		# Let's add an item
-#		print "<< %s >>" % node.bases
 		fromLine = node.lineno
 		toLine = node.code.getChildNodes()[-1].lineno
 		if len(node.bases) > 0 and "TestCase" in [hasattr(x, 'name') and x.name or None for x in node.bases]:
@@ -127,7 +125,6 @@ class OutlineAstVisitor(compiler.visitor.ASTVisitor):
 #		self.endCurrentVisitedItem(node.lineno)
 		if not parent:
 			parent = self._treeWidget
-#		print "Visiting function %s\n%s" % (node, dir(node))
 		# Let's add an item
 		fromLine = node.lineno
 		toLine = node.code.getChildNodes()[-1].lineno
@@ -139,13 +136,7 @@ class OutlineAstVisitor(compiler.visitor.ASTVisitor):
 
 		self._treeWidget.registerItem(item)
 		# Search for inner functions/classes
-#		print "DEBUG: dir(code):\n\n%s\n\n" % dir(node.code.asList())
 		self.walkChildren(node.code, item)
-
-#	def visitName(self, node, parent = None):
-#		if not parent:
-#			print "Visiting main name %s, line %s" % (node.name, node.lineno)
-#			self.endCurrentVisitedItem(node.lineno)
 
 	def endCurrentVisitedItem(self, line = None):
 		"""

@@ -68,6 +68,315 @@ def loadLog(url):
 	
 	return content
 
+# docstring trimmer - from PEP 257 sample code
+# Used to trim descriptions from old Testerman versions that
+# did not trim the docstrings by themselves
+def trim(docstring):
+	if not docstring:
+		return ''
+	maxint = 2147483647
+	# Convert tabs to spaces (following the normal Python rules)
+	# and split into a list of lines:
+	lines = docstring.expandtabs().splitlines()
+	# Determine minimum indentation (first line doesn't count):
+	indent = maxint
+	for line in lines[1:]:
+		stripped = line.lstrip()
+		if stripped:
+			indent = min(indent, len(line) - len(stripped))
+	# Remove indentation (first line is special):
+	trimmed = [lines[0].strip()]
+	if indent < maxint:
+		for line in lines[1:]:
+			trimmed.append(line[indent:].rstrip())
+	# Strip off trailing and leading blank lines:
+	while trimmed and not trimmed[-1]:
+		trimmed.pop()
+	while trimmed and not trimmed[0]:
+		trimmed.pop(0)
+	# Return a single string:
+	return '\n'.join(trimmed)
+
+###############################################################################
+# LogModel - inner object emitting interesting event signals
+###############################################################################
+
+def xmlToDomElement(xmlLog):
+	"""
+	Constructs a DOM element based on a xml string, and returns it.
+	
+	@type  xmlLog: unicode
+	@param xmlLog: a log event as a xml string
+	
+	@rtype: QDomElement
+	@returns: the parsed element as a DOM node, or None in case of an error
+	"""
+	doc = QtXml.QDomDocument()
+	(res, errormessage, errorline, errorcol) = doc.setContent(xmlLog, 0)
+	if res:
+		return doc.documentElement()
+	else:
+		log("WARNING: Unable to parse XML event: %s" % str(errormessage))
+		return None
+
+class TestCaseLogModel:
+	"""
+	Stores the events associated to a testcase.
+	Provides additional convenience functions for the usual
+	testcase properties, too.
+	"""
+	def __init__(self, id_, atsLogModel):
+		self._domElements = []
+		self._atsLogModel = atsLogModel
+		# Set by the main log model
+		self._verdict = None
+		self._description = None
+		self._id = id_
+		self._title = ''
+	
+	def _append(self, domElement):
+		"""
+		Local model feeder, storage only.
+		"""
+		tag = domElement.tagName()
+		if tag == "testcase-started":
+			self._title = unicode(domElement.text()).strip()
+		elif tag == "testcase-stopped":
+			self._description = trim(unicode(domElement.text()))
+			self._verdict = unicode(domElement.attribute('verdict'))
+		
+		self._domElements.append(domElement)
+		
+	##
+	# Public functions usable in log reporters, plugins
+	##	
+	def getDomElements(self):
+		return self._domElements
+	
+	def isComplete(self):
+		return self._verdict is not None
+	
+	def getVerdict(self):
+		return self._verdict
+	
+	def getDescription(self):
+		return self._description
+	
+	def getId(self):
+		return self._id
+	
+	def getTitle(self):
+		return self._title
+	
+	def getAts(self):
+		return self._atsLogModel
+
+class AtsLogModel:
+	def __init__(self, id_):
+		# Local DOM elements (ATS control part)
+		self._domElements = []
+
+		# Set by the main log model
+		self._result = None
+		self._id = id_
+		self._testCases = [] # list of TestCaseModels
+	
+	def _append(self, domElement):
+		"""
+		Local model feeder, storage only.
+		"""
+		tag = domElement.tagName()
+		if tag == "ats-stopped":
+			self._result = int(domElement.attribute('result'))
+		
+		self._domElements.append(domElement)
+	
+	##
+	# Public functions usable in log reporters, plugins
+	##	
+	def getDomElements(self):
+		return self._domElements
+	
+	def isComplete(self):
+		return self._result is not None
+	
+	def getId(self):
+		return self._id
+	
+	def getResult(self):
+		return self._result
+	
+	def getTestCases(self):
+		return self._testCases
+
+class LogModel(QObject):
+	"""
+	This represents a complete Testerman log as an internal model
+	suitable for ATS/testcase iteration and so on.
+	
+	It is fed log event by log event, either as XML string or
+	as a single QDomElement.
+	
+	This model interprets the fed event and emits several signals
+	enabling basic statistics and model visualisation during feeding.
+
+	High level signals:
+	atsStarted(QDomElement)
+	atsStopped(int result, QDomElement)
+	testCaseStarted(QString identifier, QDomElement)
+	testCaseStopped(QString verdict, QDomElement)
+	actionRequested(QString label, float timeout)
+
+	Low level signal:
+	testermanEvent(QDomElement element)
+	"""
+	def __init__(self):
+		QObject.__init__(self)
+		self._atses = []
+		# This flag enables to know if we have some include elements quickly.
+		# It is convenient to be aware of such directives
+		# when saving a log file locally, so that we can prompt the user
+		# to ignore/rewrite/expand include files.
+		self._containsIncludes = False
+		
+		self._currentAts = None
+		self._currentTestCase = None
+	
+	def clear(self):
+		self._atses = []
+		self._containsIncludes = False
+
+	def feedXmlEvent(self, xmlLog):
+		"""
+		Convenience function.
+		
+		Uses the provided event formatted as an xml string
+		to feed the model.
+		
+		@type  xmlLog: unicode
+		@param xmlLog: a log event as a xml string
+		"""
+		self.feedEvent(xmlToDomElement(xmlLog))
+
+	def feedEvent(self, domElement):
+		"""
+		Feeds the model with a QDomElement, corresponding
+		to a single log event.
+		
+		Emits signals according to the event,
+		then stores the event in the appropriate internal
+		model structures.
+		
+		Automatically follows <include> elements, retrieving
+		requested log file on the fly and feeding itself.
+		
+		@type  domElement: QDomElement
+		@param domElement: a single log event as a DOM element.
+		"""
+		if not domElement:
+			return
+
+		tag = domElement.tagName()
+
+		if tag == "ats-started":
+			atsLogModel = AtsLogModel(domElement.attribute('id'))
+			atsLogModel._append(domElement)
+			self._atses.append(atsLogModel)
+			self._currentAts = atsLogModel
+			self.emit(SIGNAL("atsStarted"), atsLogModel)
+			self.emit(SIGNAL('testermanEvent(QDomElement)'), domElement)
+
+		elif tag == "ats-stopped":
+			self.emit(SIGNAL('testermanEvent(QDomElement)'), domElement)
+			if not self._currentAts:
+				log("ATS stopped event received, but missed the started event. Discarding.")
+			else:
+				self._currentAts._append(domElement)
+				self.emit(SIGNAL("atsStopped"), self._currentAts)
+				self._currentAts = None
+				self._currentTestCase = None
+
+		elif tag == "testcase-created": # FIXME: should be -started instead, but MTC/system creation logs are between -created and -started events
+			if not self._currentAts:
+				log("TestCase started event received, but missed the started ATS event. Discarding.")
+			else:
+				testCaseLogModel = TestCaseLogModel(domElement.attribute('id'), self._currentAts)
+				testCaseLogModel._append(domElement)
+				self._currentAts._testCases.append(testCaseLogModel)
+				self._currentTestCase = testCaseLogModel
+				self.emit(SIGNAL("testCaseStarted"), testCaseLogModel)
+			self.emit(SIGNAL('testermanEvent(QDomElement)'), domElement)
+
+		elif tag == "testcase-stopped":
+			self.emit(SIGNAL('testermanEvent(QDomElement)'), domElement)
+			if not self._currentTestCase:
+				log("TestCase stopped event received, but missed the started event. Discarding.")
+			else:
+				self._currentTestCase._append(domElement)
+				self.emit(SIGNAL("testCaseStopped"), self._currentTestCase)
+				self._currentTestCase = None
+
+		elif tag == "action-requested":
+			self.emit(SIGNAL('testermanEvent(QDomElement)'), domElement)
+			timeout = float(domElement.attribute('timeout'))
+			message = domElement.firstChildElement('message').text()
+			self.emit(SIGNAL("actionRequested(QString, float)"), QString(message), timeout)
+			if self._currentTestCase:
+				self._currentTestCase._append(domElement)
+
+		elif tag == "action-cleared":
+			self.emit(SIGNAL('testermanEvent(QDomElement)'), domElement)
+			self.emit(SIGNAL("actionCleared()"))
+			if self._currentTestCase:
+				self._currentTestCase._append(domElement)
+		
+		elif tag == "include":
+			url = QUrl(domElement.attribute('url'))
+			self._containsIncludes = True
+			self._processInclude(url)
+			# Don't forward an include 'event'
+		
+		else:
+			# Store the event into the internal data structure
+			if self._currentTestCase:
+				self._currentTestCase._append(domElement)
+			elif self._currentAts:
+				self._currentAts._append(domElement)
+			self.emit(SIGNAL('testermanEvent(QDomElement)'), domElement)
+
+	def _processInclude(self, url):
+		"""
+		Loads an included file identified by the provided url,
+		and feeds it to itself.
+		
+		@type  url: QUrl
+		@param url: the url locating the file to load containing the included logs.
+		"""
+		xmlLog = loadLog(url)
+		if not xmlLog:
+			log("Warning: unable to get included logs")
+			return
+	
+		log("Parsing included logs...")
+		xmlDoc = QtXml.QDomDocument()
+		(res, errormessage, errorline, errorcol) = xmlDoc.setContent(xmlLog, 0)
+		log("Included Logs parsed, DOM constructed")
+
+		element =  xmlDoc.documentElement().firstChildElement()
+		count = 0
+		while not element.isNull():
+			self.feedEvent(element)
+			count += 1
+			if not (count % 50):
+				QApplication.instance().processEvents()
+			element = element.nextSiblingElement()
+
+	def getAtses(self):
+		"""
+		Iterator version ?
+		"""
+		return self._atses
+
 ###############################################################################
 # Log Summary
 ###############################################################################
@@ -87,7 +396,7 @@ class WSummaryGroupBox(QGroupBox):
 			self.labels[l] = QLabel()
 
 		layout = QGridLayout()
-		layout.addWidget(QLabel("Completed testcases:"), 0, 0, Qt.AlignRight)
+		layout.addWidget(QLabel("Executed testcases:"), 0, 0, Qt.AlignRight)
 		layout.addWidget(self.labels['nb'], 0, 1)
 		layout.addWidget(QLabel("Number of OK:"), 1, 0, Qt.AlignRight)
 		layout.addWidget(self.labels['nbPass'], 1, 1)
@@ -95,7 +404,7 @@ class WSummaryGroupBox(QGroupBox):
 		layout.addWidget(QLabel("Number of NOK:"), 2, 0, Qt.AlignRight)
 		layout.addWidget(self.labels['nbFail'], 2, 1)
 		layout.addWidget(self.labels['ratioFail'], 2, 2)
-		layout.addWidget(QLabel("Completed ATSes:"), 0, 3, Qt.AlignRight)
+		layout.addWidget(QLabel("Executed ATSes:"), 0, 3, Qt.AlignRight)
 		layout.addWidget(self.labels['nbAts'], 0, 4)
 		layout.setColumnStretch(0, 0)
 		layout.setColumnStretch(1, 0)
@@ -104,15 +413,15 @@ class WSummaryGroupBox(QGroupBox):
 		layout.setColumnStretch(4, 20)
 		self.setLayout(layout)
 
-	def onTestCaseStopped(self, verdict, element):
+	def onTestCaseStopped(self, testCaseLogModel):
 		self.total += 1
-		if verdict == "pass":
+		if testCaseLogModel.getVerdict() == "pass":
 			self.totalOK += 1
 		else:
 			self.totalKO += 1
 		self.updateStats()
 
-	def onAtsStopped(self, result, element):
+	def onAtsStopped(self, atsLogModel):
 		self.totalAts += 1
 		self.updateStats()
 
@@ -376,6 +685,7 @@ class WLogViewer(QWidget):
 			if viewPlugin['activated']:
 				view = viewPlugin["class"]()
 				label = viewPlugin["label"]
+				view._setModel(self._logModel)
 				self.reportViews.append(view)
 				self.reportTab.addTab(view, label)
 
@@ -386,17 +696,22 @@ class WLogViewer(QWidget):
 
 		self.perspectiveTab.addTab(self.rawView, "Raw log")
 
-		# Connection on parser
+		# Connection on main log model
+		self.connect(self._logModel, SIGNAL("testCaseStopped"), self.testCaseView.onTestCaseStopped)
+		self.connect(self._logModel, SIGNAL("testCaseStarted"), self.testCaseView.onTestCaseStarted)
+		self.connect(self._logModel, SIGNAL("atsStopped"), self.testCaseView.onAtsStopped)
+		self.connect(self._logModel, SIGNAL("atsStarted"), self.testCaseView.onAtsStarted)
+		# The test case view forwards real-time events to the views corresponding to the currently selected item, if any
 		self.connect(self._logModel, SIGNAL("testermanEvent(QDomElement)"), self.testCaseView.onEvent)
 		for view in self.reportViews:
 			self.connect(self._logModel, SIGNAL("testermanEvent(QDomElement)"), view.onEvent)
 
-		# Summary connection on parser
-		self.connect(self._logModel, SIGNAL("testCaseStopped(QString, QDomElement)"), self.summary.onTestCaseStopped)
-		self.connect(self._logModel, SIGNAL("atsStopped(int, QDomElement)"), self.summary.onAtsStopped)
+		# Summary connection on main log model
+		self.connect(self._logModel, SIGNAL("testCaseStopped"), self.summary.onTestCaseStopped)
+		self.connect(self._logModel, SIGNAL("atsStopped"), self.summary.onAtsStopped)
 
 		# External Action management
-		self.connect(self._logModel, SIGNAL("actionRequested(QString, float)"), self.onActionRequired)
+		self.connect(self._logModel, SIGNAL("actionRequested(QString, float)"), self.onActionRequested)
 		self.connect(self._logModel, SIGNAL("actionCleared()"), self.onActionCleared)
 
 		# Inter widget connections
@@ -409,7 +724,7 @@ class WLogViewer(QWidget):
 		self.connect(self.visualLogView, SIGNAL("templateMatchSelected(QDomElement, QDomElement)"), self.templateView.setTemplates)
 
 		self.connect(self.testCaseView, SIGNAL("currentItemChanged(QTreeWidgetItem*, QTreeWidgetItem*)"), self.onTestCaseItemChanged)
-		# The Test Case view also "forward" domElement in case of an event arriving while the item corresponding to the updated TestCase is selected
+		# The Test Case view also "forwards" domElement in case of an event arriving while the item corresponding to the updated TestCase is selected
 		self.connect(self.testCaseView, SIGNAL("testermanEvent(QDomElement)"), self.textualLogView.onEvent)
 		self.connect(self.testCaseView, SIGNAL("testermanEvent(QDomElement)"), self.visualLogView.onEvent)
 
@@ -487,7 +802,7 @@ class WLogViewer(QWidget):
 		else:
 			self.pauseButton.setEnabled(False)
 		# Kill button
-		if self.jobState in [ 'running', 'paused' ]:
+		if self.jobState in [ 'running', 'paused', 'cancelling' ]:
 			self.killButton.setEnabled(True)
 		else:
 			self.killButton.setEnabled(False)
@@ -519,7 +834,8 @@ class WLogViewer(QWidget):
 	def isJobCompleted(self):
 		if self.isRealtimeMode():
 			return self.jobState in [ 'complete', 'completed', 'killed', 'cancelled', 'error' ]
-		return True
+		else:
+			return True
 
 	def onSubscribedEvent(self, notification):
 		"""
@@ -598,6 +914,12 @@ class WLogViewer(QWidget):
 		self.setTracking(tracking)
 
 	def onTestCaseItemChanged(self, newItem, previousItem):
+		"""
+		A new item has been selected in the TestCase treeview.
+		
+		Updates the current textual and visual views with the
+		selected item log elements.
+		"""
 		if newItem:
 			if not self.trackingActivated:
 				transient = WTransientWindow("Log Viewer", self)
@@ -617,48 +939,11 @@ class WLogViewer(QWidget):
 		log("Loading duration: %s" % (time.time() - start))
 		return ret
 
-	def setLog_Parse(self, xmlLog):
-		"""
-		A XML parser based on the native Qt XML tokenizer.
-		The idea is to avoid creating a whole DOM tree for the complete XML file,
-		but turn an xml file into a list of QDomElements instead.
-		
-		Tested to be about 50% slower than the setLog_Dom version,
-		but also takes 33% less memory than setLog_Dom.
-		"""
-		log("translating...")
-		xml = xmlLog.decode('utf-8').replace('\n', '')
-		log("translated")
-		reader = QXmlStreamReader(xml)
-		level = 0
-		# a list of startOffset, endOffset in the xmlLog string identifying the level-1 xml elements,
-		# which correspond to testerman log events.
-		events = []
-		while not reader.atEnd():
-			cur = reader.characterOffset()
-			reader.readNext()
-			if reader.isStartElement():
-				if level == 1:
-					start = cur
-				level += 1
-			elif reader.isEndElement():
-				level -= 1
-				if level == 1:
-					end = reader.characterOffset()
-#					events.append( (start, end) )
-					#log("Event %s: %s-%s" % (reader.name().toString(), start, end))
-#					events.append(xml[start:end])
-					self._logModel.feedEvent(xmlToDomElement(xml[start:end]))
-
-#		for s, e in events:
-#			print '[[%s]]' % xml[s:e]
-#			self._logModel.feedEvent(xmlToDomElement(xml[s:e]))
-
 	def setLog_Dom(self, xmlLog):
 		"""
 		Takes an XML log content, parses it,
-		creates DOM nodes and forward then to analysers, to
-		simulate a real-time log event source for them.
+		creates DOM nodes and forwards them to analysers, to
+		simulate a real-time log event feeding for them.
 	
 		@type  xmlLog: string (utf-8)
 		@param xmlLog: the log content to parse, well formed XML string
@@ -676,7 +961,6 @@ class WLogViewer(QWidget):
 		if res:
 			transient.showTextLabel("Clearing views...")
 			log("Clearing views...")
-			# Context preservation: if a TestCase was selected, we'll have to select it after the update.
 			# Context preservation: if a TestCase was selected, we'll have to select it after the update.
 			# FIXME: need a correct support now that the test case view is a tree
 			if self.testCaseView.currentItem():
@@ -726,7 +1010,10 @@ class WLogViewer(QWidget):
 
 	def closeEvent(self, event):
 		"""
-		Reimplementation from QWidget. (does not work at WMonitor level ?!)
+		Reimplementated from QWidget.
+		
+		When the window is closed, make sure we unsubscribe to our
+		subscribed events, if any.
 		"""
 		log("LogViewer window closed.")
 		if self.eventMonitor:
@@ -736,7 +1023,7 @@ class WLogViewer(QWidget):
 		self.setParent(None)
 		QWidget.closeEvent(self, event)
 
-	def onActionRequired(self, message, timeout):
+	def onActionRequested(self, message, timeout):
 		# Only display a user input in realtime mode
 		if self.isRealtimeMode():
 			self.actionRequestedDialog = QMessageBox(self)
@@ -809,7 +1096,7 @@ class TextualLogItem(QTreeWidgetItem):
 		self._class = self._domElement.attribute("class")
 		self._element = self._domElement.tagName()
 
-		# According to the element, prepare different formatters
+		# According to the element, prepare different formats
 		if self._element == "internal":
 			self._message = self._domElement.text()
 
@@ -945,7 +1232,6 @@ class TextualLogItem(QTreeWidgetItem):
 			else:
 				self.setForeground(2, QBrush(QColor(Qt.darkRed)))
 
-
 		# Actions
 		elif self._element == "action-requested":
 			self._message = "User action requested by TC %s: %s, timeout %s" % (self._domElement.attribute('tc'), self._domElement.firstChildElement('message').text(), self._domElement.attribute('timeout'))
@@ -1035,11 +1321,9 @@ class WTextualLogView(QTreeWidget):
 
 	def createContextMenu(self):
 		contextMenu = QMenu("Textual log viewer", self)
-
 		# Widget-level contextual menu
 		for action in self.toggleDisplayClassActions:
 			contextMenu.addAction(action)
-
 		return contextMenu
 
 	def onPopupMenu(self, pos):
@@ -1059,7 +1343,7 @@ class WTextualLogView(QTreeWidget):
 
 	def onItemActivated(self, item, col):
 		"""
-		Display the text into a text view.
+		Displays the text into a text view.
 		"""
 		data = item.getAssociatedData()
 		if data:
@@ -1090,16 +1374,21 @@ class WTextualLogView(QTreeWidget):
 		
 		@type  domElements: list of QDomElement
 		"""
-		for e in domElements:
-			item = TextualLogItem(None, e)
+		item = None
+		for domElement in domElements:
+			item = TextualLogItem(None, domElement)
 			self.root.addChild(item)
 			item.parse()
-
 		self.applyFilter(self.currentHiddenLogClasses)
 
-	def onEvent(self, event):
-		# event is a QDomElement
-		self.append(event)
+		if self.trackingActivated and item:
+			self.scrollToItem(item)
+
+	def onEvent(self, domElement):
+		"""
+		Realtime feeding.
+		"""
+		self.append(domElement)
 
 	def append(self, domElement):
 		"""
@@ -1120,343 +1409,69 @@ class WTextualLogView(QTreeWidget):
 		for i in range(0, self.root.childCount()):
 			self.root.child(i).applyFilter(hiddenLogClasses)
 
-###############################################################################
-# LogModel - inner object emitting interesting event signals
-###############################################################################
-
-def xmlToDomElement(xmlLog):
-	"""
-	Constructs a DOM element based on a xml string, and returns it.
-	
-	@type  xmlLog: unicode
-	@param xmlLog: a log event as a xml string
-	
-	@rtype: QDomElement
-	@returns: the parsed element as a DOM node, or None in case of an error
-	"""
-	doc = QtXml.QDomDocument()
-	(res, errormessage, errorline, errorcol) = doc.setContent(xmlLog, 0)
-	if res:
-		return doc.documentElement()
-	else:
-		print "WARNING: Unable to parse XML event: %s" % str(errormessage)
-		return None
-
-class TestCaseLogModel:
-	"""
-	Stores the events associated to a testcase.
-	Provides additional convenience functions for the usual
-	testcase properties, too.
-	"""
-	def __init__(self):
-		self._domElements = []
-		self._verdict = None
-		self._description = None
-		self._id = None
-	
-	def _feedEvent(self, domElement):
-		"""
-		Local model feeder.
-		Sets the usual properties according to the fed event,
-		and stores it.
-		"""
-		tag = domElement.tagName()
-		if tag == "testcase-created":
-			self._id = domElement.attribute('id')
-		elif tag == "testcase-stopped":
-			self._verdict = domElement.attribute('verdict')
-			self._description = domElement.text()
-		
-		self._domElements.append(domElement)
-
-	##
-	# Public functions usable in log reporters, plugins
-	##	
-	def getDomElements(self):
-		return self._domElements
-	
-	def isComplete(self):
-		return self._verdict is not None
-	
-	def getVerdict(self):
-		return self._verdict
-	
-	def getDescription(self):
-		return self._description
-	
-	def getId(self):
-		return self._id
-
-class AtsLogModel:
-	def __init__(self):
-		self._result = None
-		self._id = None
-		# Local DOM elements (ATS control part)
-		self._domElements = []
-		self._testCases = [] # list of TestCaseModels
-		
-		self._currentTestCase = None
-	
-	def _feedEvent(self, domElement):
-		if self._currentTestCase:
-			self._currentTestCase._feedEvent(domElement)
-		
-		tag = domElement.tagName()
-		
-		if tag == "testcase-created":
-			tclm = TestCaseLogModel()
-			tclm._feedEvent(domElement)
-			self._currentTestCase = tclm
-			self._testCases.append(tclm)
-		elif tag == "testcase-stopped":
-			self._currentTestCase = None
-		elif tag == "ats-started":
-			self._id = domElement.attribute('id')
-			self._domElements.append(domElement)
-		elif tag == "ats-stopped":
-			self._result = domElement.attribute('result')
-			self._domElements.append(domElement)
-		else:
-			self._domElements.append(domElement)
-	
-	##
-	# Public functions usable in log reporters, plugins
-	##	
-	def getDomElements(self):
-		return self._domElements
-	
-	def isComplete(self):
-		return self._result is not None
-	
-	def getId(self):
-		return self._id
-	
-	def getResult(self):
-		return self._result
-	
-	def getTestCases(self):
-		return self._testCases
-
-class LogModel(QObject):
-	"""
-	This represents a complete Testerman log as an internal model
-	suitable for ATS/testcase iteration and so on.
-	
-	It is fed log event by log event, either as XML string or
-	as a single QDomElement.
-	
-	This model interprets the fed event and emits several signals
-	enabling basic statistics and model visualisation during feeding.
-
-	High level signals:
-	atsStarted(QDomElement)
-	atsStopped(int result, QDomElement)
-	testCaseStarted(QString identifier, QDomElement)
-	testCaseStopped(QString verdict, QDomElement)
-	actionRequested(QString label, float timeout)
-
-	Low level signal:
-	testermanEvent(QDomElement element)
-	"""
-	def __init__(self):
-		QObject.__init__(self)
-		self._atses = []
-		# This flag enables to know if we have some include elements quickly.
-		# It is convenient to be aware of such directives
-		# when saving a log file locally, so that we can prompt the user
-		# to ignore/rewrite/expand include files.
-		self._containsIncludes = False
-	
-	def clear(self):
-		self._atses = []
-		self._containsIncludes = False
-
-	def feedXmlEvent(self, xmlLog):
-		"""
-		Convenience function.
-		
-		Uses the provided event formatted as an xml string
-		to feed the model.
-		
-		@type  xmlLog: unicode
-		@param xmlLog: a log event as a xml string
-		"""
-		self.feedEvent(xmlToDomElement(xmlLog))
-
-	def feedEvent(self, domElement):
-		"""
-		Feeds the model with a QDomElement, corresponding
-		to a single log event.
-		
-		Emits signals according to the event,
-		then stores the event in the appropriate internal
-		model structures.
-		
-		Automatically follows <include> elements, retrieving
-		requested log file on the fly and feeding itself.
-		
-		@type  domElement: QDomElement
-		@param domElement: a single log event as a DOM element.
-		"""
-		if not domElement:
-			return
-
-		tag = domElement.tagName()
-
-		if tag == "ats-started":
-			self.emit(SIGNAL("atsStarted(QDomElement)"), domElement)
-
-		elif tag == "ats-stopped":
-			result = int(domElement.attribute('result'))
-			self.emit(SIGNAL("atsStopped(int, QDomElement)"), result, domElement)
-
-		elif tag == "testcase-created":
-			identifier = domElement.attribute('id')
-			self.emit(SIGNAL("testCaseCreated(QString, QDomElement)"), QString(identifier), domElement)
-
-		elif tag == "testcase-started":
-			identifier = domElement.attribute('id')
-			self.emit(SIGNAL("testCaseStarted(QString, QDomElement)"), QString(identifier), domElement)
-
-		elif tag == "testcase-stopped":
-			verdict = domElement.attribute('verdict')
-			self.emit(SIGNAL("testCaseStopped(QString, QDomElement)"), QString(verdict), domElement)
-
-		elif tag == "action-requested":
-			timeout = float(domElement.attribute('timeout'))
-			message = domElement.firstChildElement('message').text()
-			self.emit(SIGNAL("actionRequested(QString, float)"), QString(message), timeout)
-
-		elif tag == "action-cleared":
-			self.emit(SIGNAL("actionCleared()"))
-		
-		elif tag == "include":
-			url = QUrl(domElement.attribute('url'))
-			self._containsIncludes = True
-			self._processInclude(url)
-
-		# In any case, forward the initial signal
-		self.emit(SIGNAL('testermanEvent(QDomElement)'), domElement)
-
-	def _processInclude(self, url):
-		"""
-		Loads an included file identified by the provided url,
-		and feeds it to itself.
-		
-		@type  url: QUrl
-		@param url: the url locating the file to load containing the included logs.
-		"""
-		xmlLog = loadLog(url)
-		if not xmlLog:
-			log("Warning: unable to get included logs")
-			return
-	
-		log("Parsing included logs...")
-		xmlDoc = QtXml.QDomDocument()
-		(res, errormessage, errorline, errorcol) = xmlDoc.setContent(xmlLog, 0)
-		log("Included Logs parsed, DOM constructed")
-
-		element =  xmlDoc.documentElement().firstChildElement()
-		count = 0
-		while not element.isNull():
-			self.feedEvent(element)
-			count += 1
-			if not (count % 50):
-				QApplication.instance().processEvents()
-			element = element.nextSiblingElement()
-
 	
 ###############################################################################
-# TestCase View (tree of ats/testcases)
+# TestCase View (tree of ats/testcases mapped to the underlying log models)
 ###############################################################################
 
 class TestCaseItem(QTreeWidgetItem):
 	"""
 	Represents a TestCase in the TestCase tree view.
-	Also stores the dom elements corresponding to the
-	testcase, so that they can be handled when the TestCase item
-	is selected.
+	Maps a TestCaseLogModel object.
 	"""
-	def __init__(self, parent):
+	def __init__(self, model, parent):
 		QTreeWidgetItem.__init__(self, parent)
+		self.setText(0, model.getId())
 		self.setIcon(0, icon(':/icons/testcase'))
-		self._domElements = []
-		self.finished = False # indicate if the TestCase corresponding to the node is over or not.
-
-	def onEvent(self, domElement):
-		"""
-		Adds a dom element corresponding to this test case.
-		"""
-		self._domElements.append(domElement)
+		self._model = model
 
 	def getElements(self):
 		"""
 		Returns a list of elements corresponding to this test case
 		"""
-		return self._domElements
+		return self._model.getDomElements()
+
+	def setComplete(self):
+		verdict = self._model.getVerdict()
+		if verdict == "pass":
+			self.setForeground(0, QBrush(QColor(Qt.blue)))
+			self.setIcon(0, icon(':/icons/job-success.png'))
+		elif verdict == "fail":
+			self.setForeground(0, QBrush(QColor(Qt.red)))
+			self.setIcon(0, icon(':/icons/job-error.png'))
+		else:
+			self.setForeground(0, QBrush(QColor(Qt.darkRed)))
+			self.setIcon(0, icon(':/icons/job-warning.png'))
 
 class AtsItem(QTreeWidgetItem):
 	"""
-	An ATS item caches the log events
-	corresponding to a single ATS,
-	as a list of QDomElements.
-
+	Represents an ATS in the TestCase tree view.
+	Maps a AtsLogModel object.
 	"""
-	def __init__(self, parent):
+	def __init__(self, model, parent):
 		QTreeWidgetItem.__init__(self, parent)
-		self._domElements = []
 		self.setIcon(0, icon(':/icons/ats'))
+		self.setText(0, model.getId())
 		self.setExpanded(True)
-		self.finished = False # indicate if the ATS corresponding to the node is complete or not.
-		self._currentTestCase = None
+		self._model = model
 
-	def onEvent(self, domElement):
-		"""
-		Feeds a new log event, as a QDomElement.
-		
-		If it starts a new test case, creates a new Test Case
-		item accordingly.
-		Feeds the current Test Case item, if any.
-		"""
-		if self._currentTestCase:
-			self._currentTestCase.onEvent(domElement)
+	def setComplete(self):
+		result = self._model.getResult()
+		if result == 0:
+			self.setIcon(0, icon(':/icons/job-success.png'))
+			self.setForeground(0, QBrush(QColor(Qt.blue)))
+		elif result == 1: # Cancelled
+			self.setIcon(0, icon(':/icons/job-warning.png'))
+			self.setForeground(0, QBrush(QColor(Qt.darkRed)))
 		else:
-			self._domElements.append(domElement)
-
-		eventType = domElement.tagName()
-
-		if eventType == "testcase-created":
-			# Let's create and 'open' a new node
-			item = TestCaseItem(self)
-			item.setText(0, domElement.attribute('id'))
-			self._currentTestCase = item
-			self._currentTestCase.onEvent(domElement)
-
-		elif eventType == "testcase-stopped":
-			# Let's 'close' our current test case
-			verdict = domElement.attribute('verdict')
-			if self._currentTestCase:
-				# we update the color according to the verdict
-				if verdict == "pass":
-					self._currentTestCase.setForeground(0, QBrush(QColor(Qt.blue)))
-				elif verdict == "fail":
-					self._currentTestCase.setForeground(0, QBrush(QColor(Qt.red)))
-				else:
-					self._currentTestCase.setForeground(0, QBrush(QColor(Qt.darkRed)))
-				self._currentTestCase.finished = True
-				self._currentTestCase = None
-
-	def setLink(self, uri):
-		"""
-		Associates a link to an uri containing the logs for this ATS.
-		"""
-		self._linkedUri = uri
+			self.setIcon(0, icon(':/icons/job-error.png'))
+			self.setForeground(0, QBrush(QColor(Qt.darkRed)))
 
 	def getElements(self):
 		"""
 		Returns a list of elements corresponding to this item
 		"""
-		return self._domElements
+		return self._model.getDomElements()
 
 class WTestCaseView(QTreeWidget):
 	"""
@@ -1472,6 +1487,7 @@ class WTestCaseView(QTreeWidget):
 		self.__createWidgets()
 		self.__createActions()
 		self.__currentItem = None
+		self._currentAts = None
 		self.trackingActivated = False
 
 	def setTracking(self, tracking):
@@ -1504,46 +1520,30 @@ class WTestCaseView(QTreeWidget):
 	def displayLog(self):
 		pass
 
-	def onEvent(self, domElement):
-		"""
-		Called when a new domElement has been read (either in realtime
-		or from a file).
-		If this is a new test case, creates a new item in the
-		treeview.
-		If not, just forward/dispatch the event to the proper test case.
+	def onAtsStarted(self, atsLogModel):
+		item = AtsItem(atsLogModel, self)
+		self._currentAts = item
+		self.__currentItem = item
+#		self._mapping[atsLogModel] = item
+	
+	def onAtsStopped(self, atsLogModel):
+		self._currentAts.setComplete()
+		self._currentAts = None
+		self.__currentItem = None
+#		self._mapping[atsLogModel].setComplete()
+	
+	def onTestCaseStarted(self, testCaseLogModel):
+		item = TestCaseItem(testCaseLogModel, self._currentAts)
+		self.__currentItem = item
+#		self._mapping[testCaseLogModel] = item
+
+	def onTestCaseStopped(self, testCaseLogModel):
+		self.__currentItem.setComplete()
+		self.__currentItem = None
+#		self._mapping[testCaseLogModel].setComplete()
 		
-		@type  domElement: QDomElement
-		@param domElement: a new log event, already parsed as a QDomElement.
-		"""
-		# If a test case is currently "open" to receive new events,
-		# forward them to it.
-		if self.__currentItem:
-			self.__currentItem.onEvent(domElement)
-
-		# If we selected an item whose corresponding testcase is not finished yet,
-		# We should forward the domElement to the views as well for real time update
-		# Note: in case of a missed "testcase-stopped" event, this creates garbages, of course.
-		if self.currentItem() and not self.currentItem().finished:
+	def onEvent(self, domElement):
+		# If we are currently watching a tree item (i.e. an item is selected),
+		# forward the event to the view to display it.
+		if self.currentItem() and not self.currentItem()._model.isComplete():
 			self.emit(SIGNAL("testermanEvent(QDomElement)"), domElement)
-
-		# Now we intercept interesting events at Ats level: testcase start/stop events
-		eventType = domElement.tagName()
-
-		if eventType == "ats-started":
-			# Let's create a new ATS node
-			item = AtsItem(self)
-			item.setText(0, domElement.attribute('id'))
-			self.__currentItem = item
-			self.__currentItem.onEvent(domElement)
-
-		elif eventType == "ats-stopped":
-			result = int(domElement.attribute('result'))
-			if self.__currentItem:
-				# we update the color according to the verdict
-				if result == 0:
-					self.__currentItem.setForeground(0, QBrush(QColor(Qt.blue)))
-				else:
-					self.__currentItem.setForeground(0, QBrush(QColor(Qt.darkRed)))
-				self.__currentItem.finished = True
-				self.__currentItem = None
-
