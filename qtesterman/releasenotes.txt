@@ -1,7 +1,7 @@
 This is QTesterman, a PyQt4-based GUI for Testerman.
 ================================================================================
 
-1.2.0:
+1.1.99:
 - Added: preferences support to enable/disable code autocompletion
   (experimental - now disabled by default)
 - Added: scheduled run and rescheduling support
@@ -15,6 +15,7 @@ This is QTesterman, a PyQt4-based GUI for Testerman.
   in an ATS tree and can follow 'include' elements in campaign logs.
 - Added: log-reporter plugin interface: added getModel() to retrieve
   the current loaded log model for deferred (non-realtime) reporting
+- Added: simple/sample html-based reporter.
 - Modified: native epydoc-based documentation generator is now a plugin
 - Fixed: several log analysis speed improvements, up to 33% faster
 - Fixed: reloading of a file that contained non-ascii characters did not work
@@ -24,7 +25,8 @@ This is QTesterman, a PyQt4-based GUI for Testerman.
 
 TODO:
 - sutAddress display and message encoding display in log analyzer(s)
-- a default html- or text-based reporter as a sample reporter plugin
+- sample/simple reporter plugin should be customizable
+
 
 1.1.0:
 - Added: experimental outline view, very basic, incomplete, doomed to evolve
