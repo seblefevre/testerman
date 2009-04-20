@@ -663,6 +663,11 @@ class AtsJob(Job):
 		# self._logFilename is a docroot-path for a retrieval via Ws
 		self._logFilename = "%s/%s.log" % (self._baseDocRootDirectory, self._basename)
 
+		try:
+			os.makedirs(self._baseDirectory)
+		except: 
+			pass
+
 	def run(self, inputSession = {}):
 		"""
 		Prepares the TE, Starts a prepared TE, and only returns when it's over.
@@ -956,7 +961,7 @@ class CampaignJob(Job):
 		self._absoluteLogFilename = "%s/%s.log" % (baseDirectory, basename)
 
 		try:
-			os.mkdir(baseDirectory)
+			os.makedirs(baseDirectory)
 		except: 
 			pass
 		
