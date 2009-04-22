@@ -95,11 +95,11 @@ class TagValue:
 
 	def __str__(self):
 		ret = '   arguments: %s\n' % ', '.join(self._arguments)
-		ret += '  body:\n%s\n' % self._body
+		ret += '  body:\n%s\n' % self.getBody()
 		return ret
 	
 	def getBody(self):
-		return self._body
+		return self._body.strip()
 	
 	def getArguments(self):
 		return self._arguments
@@ -160,11 +160,13 @@ class TaggedDocstring:
 	"""
 
 	reTag = re.compile(r'\@(?P<tag>\w+)(\s+(?P<arguments>\w+))?\s*:(?P<content>.*)')
+	# Maps user names to internal tag names.
+	# Should be defined all in lowercase
+	aliases = {}
 
-	def __init__(self, tagAliases = {}):
+	def __init__(self):
 		self._tags = None
-		self._default = None
-		self._aliases = tagAliases
+		self._string = None
 
 	def _convertTag(self, tag):
 		"""
@@ -174,8 +176,8 @@ class TaggedDocstring:
 		@returns: a lowercase tag.
 		"""
 		tag = tag.lower()
-		if tag in self._aliases:
-			tag = self._aliases[tag].lower()
+		if tag in self.aliases:
+			tag = self.aliases[tag].lower()
 		return tag
 
 	def parse(self, docstring):
@@ -183,13 +185,17 @@ class TaggedDocstring:
 		Call this to fill your object with the result of a docstring
 		parsing.
 
-		Once called, you may access the parsed tags using the following
-
+		Once called, you may access the parsed tags using the __getitem__ interface:
+		TaggedDocstring[tag]
+		which returns a Tag object.
 		"""
-		self._default = Tag('')
+		self._string = docstring
+
 		self._tags = {}
 		lines = trim(docstring).splitlines()
-		currentTag = self._default
+		# The 'empty' tag contains all text that is not after a @tag.
+		currentTag = Tag('')
+		self._tags[''] = currentTag
 		currentTag.startValue()
 		for line in lines:
 			m = self.reTag.match(line)
@@ -211,21 +217,48 @@ class TaggedDocstring:
 	def __str__(self):
 		ret = []
 		ret.append("Parse docstring:")
-		ret.append(str(self._default))
+		ret.append(str(self._string))
 		for tag in self._tags.values():
 			ret.append(str(tag))
 		return '\n'.join(ret)
 	
 	def __getitem__(self, tagName):
 		tagName = self._convertTag(tagName)
-		if not tagName:
-			return self._default
-		elif tagName in self._tags:
+		if tagName in self._tags:
 			return self._tags[tagName]
 		else:
 			# Create a default tag
 			return Tag(tagName)
+	
+	def getString(self):
+		"""
+		Returns the raw docstring string
+		"""
+		return self._string
 
+class DictWrapper:
+	"""
+	Wraps a TaggedDocstring
+	into a dict to make access to its tag values
+	more straightforward via __getitem__.
+
+	Only returns the first value of a tag, does not consider
+	any tag argument.
+	Returns an empty string if the tag
+	"""
+	def __init__(self, taggedDocstring):
+		self._taggedDocstring = taggedDocstring
+	
+	def __getitem__(self, name):
+		print "Getting tag %s..." % name
+		try:
+			tagName = self._taggedDocstring._convertTag(name)
+			if tagName in self._taggedDocstring._tags:
+				return self._taggedDocstring._tags[tagName].value()
+			else:
+				raise KeyError(name)
+		except Exception, e:
+			print str(e)
 
 
 if __name__ == '__main__':

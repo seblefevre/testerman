@@ -1,0 +1,45 @@
+<!-- Default Test Execution report template for SimpleReportView plugin -->
+<body>
+<h1>Execution results</h1>
+
+<h2>Summary</h2>
+<table>
+<tr><td>Pass:</td><td><b>${summary.pass_count} (${summary.pass_ratio}%)</b></td></tr>
+<tr><td>Fail:</td><td><b>${summary.fail_count} (${summary.fail_ratio}%)</b></td></tr>
+<tr><td>Inconclusive:</td><td><b>${summary.inconc_count} (${summary.inconc_ratio}%)</b></td></tr>
+</table>
+
+<h2>TestCase Overview</h2>
+<table border="1" cellspacing="0" cellpadding="2" >
+<tr><th>TestCase ID</th><th>Verdict</th></tr>
+#foreach ($testcase in $testcases)
+	#if ($testcase.verdict != "pass")
+		<tr><td>${testcase.id}</td><td><b>${testcase.verdict}</b></td></tr>
+	#else
+		<tr><td>${testcase.id}</td><td>${testcase.verdict}</td></tr>
+	#end
+#end
+</table>
+
+<h2>TestCase Details</h2>
+
+#foreach ($testcase in $testcases)
+<p>
+<h3>$testcase.id</h3>
+<table border="1" width="800" cellspacing="0" cellpadding="2" >
+<tr><td>ID: ${testcase.id}</td><td>Title: ${testcase.title}</td></tr>
+<tr><td>Verdict: $testcase.verdict</td><td></td></tr>
+<tr><td colspan="2">Description:</td></tr>
+<tr><td colspan="2">${testcase.description}</td></tr>
+<tr><td colspan="2">User logs:</td></tr>
+<tr><td colspan="2">
+#foreach ($log in $testcase.userlogs)
+${log.timestamp} ${log.message}<br />
+#end
+</td></tr>
+</table>
+</p>
+<h2>&nbsp;</h2>
+#end
+
+</body>
