@@ -462,9 +462,9 @@ class Placeholder(_Element):
             if self.silent: value = ''
             else: value = self.my_text()
         if xform:
-            stream.write(xform(str(value)))
+            stream.write(xform(unicode(value)))
         else:
-            stream.write(str(value))
+            stream.write(unicode(value))
 
 
 class SimpleReference(_Element):

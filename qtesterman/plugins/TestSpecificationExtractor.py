@@ -296,7 +296,14 @@ class WTestSpecificationDialog(QDialog):
 
 		# The main view
 		self._webView = MyWebView(self)
-		layout.addWidget(self._webView)
+		webViewLayout = QVBoxLayout()
+		webViewLayout.addWidget(self._webView)
+		webViewLayout.setMargin(0)
+		frame = QFrame()
+		frame.setFrameShadow(QFrame.Sunken)
+		frame.setFrameShape(QFrame.StyledPanel)
+		frame.setLayout(webViewLayout)
+		layout.addWidget(frame)
 
 		# Buttons
 		self._okButton = QPushButton("Close")

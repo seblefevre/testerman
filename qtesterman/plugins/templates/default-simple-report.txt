@@ -1,25 +1,58 @@
 <!-- Default Test Execution report template for SimpleReportView plugin -->
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01//EN" "http://www.w3.org/TR/html4/strict.dtd">
+<html>
+<head>
+	<style type="text/css">
+
+table {
+	border-width: 0px;
+	border-spacing: 0px;
+	border-style: outset;
+	border-color: gray;
+	border-collapse: collapse;
+	background-color: \#eeeeee;
+}
+table th {
+	border-width: 1px 1px 1px 1px;
+	padding: 3px;
+	border-style: inset;
+	border-color: gray;
+}
+table.summary tr.pass {
+	background-color: \#ccccff;
+}
+table.summary tr.fail {
+	background-color: \#ffcccc;
+}
+table td {
+	border-width: 1px 1px 1px 1px;
+	padding: 3px;
+	border-style: inset;
+	border-color: gray;
+}
+
+table.testcase {
+	width: 600px;
+}
+
+	</style>
+</head>
+
 <body>
 <h1>Execution results</h1>
 
 <h2>Summary</h2>
 <table>
-<tr><td>Pass:</td><td><b>${summary.pass_count} (${summary.pass_ratio}%)</b></td></tr>
+<tr><td>Pass:</td><td><b>#set($pass = $summary.pass_count) $pass (${summary.pass_ratio}%)</b></td></tr>
 <tr><td>Fail:</td><td><b>${summary.fail_count} (${summary.fail_ratio}%)</b></td></tr>
 <tr><td>Inconclusive:</td><td><b>${summary.inconc_count} (${summary.inconc_ratio}%)</b></td></tr>
 </table>
 
 <h2>TestCase Overview</h2>
-<table border="1" cellspacing="0" cellpadding="2" >
+<table class="summary">
 <tr><th>TestCase ID</th><th>Verdict</th></tr>
 #foreach ($testcase in $testcases)
-	<tr><td><a href="\#${testcase.id}">${testcase.id}</a></td>
-	#if ($testcase.verdict != "pass")
-		<td><b>${testcase.verdict}</b></td>
-	#else
-		<td>${testcase.verdict}</td>
-	#end
-	</tr>
+	<tr class="$testcase.verdict"><td><a href="\#${testcase.id}">${testcase.id}</a></td><td>$testcase.verdict</td></tr>
 #end
 </table>
 
@@ -29,11 +62,11 @@
 <p>
 <a name="${testcase.id}"></a>
 <h3>$testcase.id</h3>
-<table border="1" width="800" cellspacing="0" cellpadding="2" >
+<table class="testcase">
 <tr><td>ID: ${testcase.id}</td><td>Title: ${testcase.title}</td></tr>
 <tr><td>Verdict: $testcase.verdict</td><td></td></tr>
 <tr><td colspan="2">Description:</td></tr>
-<tr><td colspan="2">${testcase.description}</td></tr>
+<tr><td colspan="2">#if ($testcase.description) $testcase.description #else &nbsp; #end</td></tr>
 <tr><td colspan="2">User logs:</td></tr>
 <tr><td colspan="2">
 #foreach ($log in $testcase.userlogs)
@@ -46,3 +79,5 @@ ${log.timestamp} ${log.message}<br />
 #end
 
 </body>
+
+</html>

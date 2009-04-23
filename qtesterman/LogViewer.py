@@ -150,8 +150,11 @@ class TestCaseLogModel:
 	##
 	# Public functions usable in log reporters, plugins
 	##	
-	def getDomElements(self):
-		return self._domElements
+	def getDomElements(self, tagName = None):
+		if tagName:
+			return filter(lambda x: x.tagName() == QString(tagName), self._domElements)
+		else:
+			return self._domElements
 	
 	def isComplete(self):
 		return self._verdict is not None
@@ -194,8 +197,11 @@ class AtsLogModel:
 	##
 	# Public functions usable in log reporters, plugins
 	##	
-	def getDomElements(self):
-		return self._domElements
+	def getDomElements(self, tagName = None):
+		if tagName:
+			return filter(lambda x: x.tagName() == QString(tagName), self._domElements)
+		else:
+			return self._domElements
 	
 	def isComplete(self):
 		return self._result is not None

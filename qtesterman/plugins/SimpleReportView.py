@@ -29,7 +29,6 @@ import Plugin
 import PluginManager
 import Documentation
 
-import string
 import os
 
 # (almost) Velocity-compliant template engine
@@ -51,27 +50,46 @@ are made available to them:
 <li>Global variables:</li>
 <pre>
 	record of Testcase testcases,
-	charstring ats_count,
+	integer ats_count,
+	integer testcase_count,
 	integer pass_count,
 	integer fail_count,
 	integer inconc_count,
 	integer none_count,
-	integer error_count
+	integer error_count,
+	
+	charstring pass_ratio, // percentage
+	charstring fail_ratio, // percentage
+	charstring inconc_ratio, // percentage
+	charstring none_ratio, // percentage
+	charstring error_ratio, // percentage
 </pre>
 <li>Types definition:</li>
 <pre>
-record Testcase {
+type record Testcase {
 	Ats ats,
 	charstring id,
-	charstring title,
+	universal charstring title,
 	charstring verdict,
-	charstring doc, // the full testcase docstring
-	charstring description, // the non-tagged docstring part
+	universal charstring doc, // the full testcase docstring
+	universal charstring description, // the non-tagged docstring part
 	TaggedDescription tag, // a record of @tag names available in the docstring
+	record of Log userlogs,
+	charstring duration,
+	charstring start_time,
+	charstring stop_time,
 }
 
-record Ats {
+type record Ats {
 	charstring id
+	charstring duration,
+	charstring start_time,
+	charstring stop_time,
+}
+
+type record Log {
+	charstring timestamp, // format HH:MM:SS.zzz, relative to start time
+	universal charstring message,
 }
 </pre>
 """
@@ -181,23 +199,50 @@ def saveTemplates(templateModels):
 class AtsVariables:
 	"""
 	Behaves as a dict to access ats-related properties.
+	
+	Note: incomplete ATS models may be passed to this wrapper.
+	As a consequence, some ats-related events may be missing
+	when instanciating the object.
+	
+	That's why, in particular, stopTimestamp may not be 
+	computed in some cases. 
+	
+	Allowing passing incomplete ATS models enables partial
+	reporting of killed or running ATSes.
 	"""
 	def __init__(self, model):
 		self._model = model
 		# extract starttime/stoptime
-		self._startTime = 0.0
+		element = self._model.getDomElements("ats-started")[0]
+		self._startTimestamp = float(element.attribute('timestamp'))
+		
+		try:
+			element = self._model.getDomElements("ats-stopped")[0]
+			self._stopTimestamp = float(element.attribute('timestamp'))
+		except:
+			self._stopTimestamp = None
 
 	def __getitem__(self, name):
 		if name == "id":
 			return self._model.getId()
 		elif name == "result":
 			return self._model.getResult()
+		elif name == "duration":
+			if self._stopTimestamp is not None:
+				return "%.2f" % (self._stopTimestamp - self._startTimestamp)
+			else:
+				return "N/A"
 		else:
 			raise KeyError(name)
 
 class TestCaseVariables:
 	"""
 	Behaves as a dict to access testcase-related properties.
+	
+	Note: only complete testcases models are passed to
+	this wrapper.
+	As a consequence, it can safely assume that all mandatory
+	events for a testcase are present (in particular start/stop events).
 	"""
 	def __init__(self, model):
 		self._model = model
@@ -207,15 +252,13 @@ class TestCaseVariables:
 		self._taggedDescription.parse(self._model.getDescription())
 		self._tags = Documentation.DictWrapper(self._taggedDescription)
 		# extract starttime/stoptime
-		self._startTime = 0.0
-		self._stopTime = 0.0
-		
-		# extract user logs
-		self._userLogs = [] # tuple of (timestamp, message)
 
-	def appendLog(self, timestamp, log):
-		self._logs.append((timestamp, log))
-	
+		element = self._model.getDomElements("testcase-started")[0]
+		self._startTimestamp = float(element.attribute('timestamp'))
+		
+		element = self._model.getDomElements("testcase-stopped")[0]
+		self._stopTimestamp = float(element.attribute('timestamp'))
+
 	def __getitem__(self, name):
 		if name == "ats":
 			return self._atsVariables
@@ -231,15 +274,21 @@ class TestCaseVariables:
 		elif name == "description":
 			# The untagged part of the docstring
 			return self._taggedDescription[''].value()
+		elif name == "duration":
+			return "%.2f" % (self._stopTimestamp - self._startTimestamp)
 		elif name == "tag":
 			return self._tags
 		elif name == "userlogs":
+			# Generated on the fly, as they may not be requested in all templates,
+			# costly to compute, and requested only once per testcase if requested
+			# (i.e. no cache required)
 			ret = []
-			for timestamp, log in self._userLogs:
+			for element in self._model.getDomElements("user"):
+				timestamp = float(element.attribute('timestamp'))
 				delta = timestamp - self._startTimestamp
-				t = QTime().addMSecs(int(delta * 1000))
-				ret.append('%s: %s' % (t.toString('+ hh:mm:ss.zzz'), log))
-			return '\n'.join(ret)
+				t = QTime().addMSecs(int(delta * 1000)).toString('hh:mm:ss.zzz')
+				ret.append({'timestamp': t, 'message': element.text()})
+			return ret
 		else:
 			raise KeyError(name)
 
@@ -296,7 +345,14 @@ class WReportView(Plugin.WReportView):
 
 		# The main view
 		self._webView = MyWebView(self)
-		layout.addWidget(self._webView)
+		webViewLayout = QVBoxLayout()
+		webViewLayout.addWidget(self._webView)
+		webViewLayout.setMargin(0)
+		frame = QFrame()
+		frame.setFrameShadow(QFrame.Sunken)
+		frame.setFrameShape(QFrame.StyledPanel)
+		frame.setLayout(webViewLayout)
+		layout.addWidget(frame)
 
 		self.setLayout(layout)
 
@@ -351,7 +407,6 @@ class WReportView(Plugin.WReportView):
 			counts[s] = 0
 		atsCount = 0
 
-		testcaseSummaries = []
 		for ats in self.getModel().getAtses():
 			atsCount += 1
 			for testcase in ats.getTestCases():
@@ -361,7 +416,8 @@ class WReportView(Plugin.WReportView):
 						counts[v] += 1
 					count += 1
 
-		summary = { 'testcase-count': count,
+		summary = {
+			'testcase_count': count,
 			'ats_count': atsCount,
 			'pass_count': counts['pass'],
 			'fail_count': counts['fail'],
@@ -562,7 +618,7 @@ class TemplateEditDialog(QDialog):
 				self._save()
 			except Exception, e:
 				ret = QMessageBox.warning(self, "Error",
-					"Unable to save template file '%s':\n%s\nContinue anyway ?" % (unicode(filename), str(e)),
+					"Unable to save template file:\n%s\nContinue anyway ?" % (str(e)),
 					QMessageBox.Yes | QMessageBox.No)
 				if ret == QMessageBox.No:
 					return
