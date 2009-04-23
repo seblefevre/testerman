@@ -43,6 +43,48 @@ import rtp.packets
 import rtp.rtcp
 
 
+class LoopablePayload:
+	"""
+	Encapsulates a (string) payload as a cycling buffer,
+	provides a getNextPacket() fonction to get
+	the next packetSize repeated payload.
+	
+	Uses reset() to reset the stream if needed.
+	
+	Can be called indefinitly.
+	
+	"""
+	def __init__(self, payload, packetSize):
+		self._offset = 0
+		self._packetSize = packetSize
+
+		# The internal payload contains at least packetSize,
+		# so that we don't have to manage N loops before
+		# completing a packet
+		self._payload = (packetSize / len(payload) + 1) * payload
+		self._len = len(self._payload)
+	
+	def getNextPacket(self):
+		# payload is at least packetSize.
+		# we start at current offset, loop if needed.
+		
+		# the internal payload has been cycled to garantee
+		# that we'll need to loop at most once to complete
+		# our target packet size
+		start = self._offset
+		end = self._offset + self._packetSize
+		if end > self._len: 
+			end = end % self._len
+			data = self._payload[start:] + self._payload[:end]
+			self._offset = end
+		else:
+			data = self._payload[start:end]
+			self._offset = end
+		return data
+		
+	def reset(self):
+		self._offset = 0
+
 def getWavData(payload):
 	"""
 	Extracts the data frames from a WAV file.
@@ -53,6 +95,20 @@ def getWavData(payload):
 	w.close()
 	s.close()
 	return ret
+
+def loadPayload(payload, format):
+	"""
+	Extracts the actual payload from a higher-level
+	format (wav, raw, ...)
+	"""
+	if not payload:
+		return None
+	elif format == 'raw':
+		return payload
+	elif format == 'wav':
+		return getWavData(payload)
+	else:
+		raise Exception('Cannot load payload: unsupported payload format (%s)' % format)
 
 def getPacketSizeAndSampleRate(payloadType, frameSize):
 	"""
@@ -113,21 +169,31 @@ class RtpProbe(ProbeImplementationManager.ProbeImplementation):
 	 * `StoppedReceivingEvent`, when a stream being received was interrupted (or updated its properties
 
 	Additionally, you may inject at any time while sending RTP
-	a recorded payload using the `PlayCommand`. Currently the probe only support WAV file format, and
-	the contained payload must be encoded with the correct codec (payload type).[[BR]]
-	The probe won't check it, and will stick to packetize the payload according
+	a recorded payload using the `PlayCommand`. Currently the probe only supports:
+	 * WAV file format:	the contained payload must be encoded with the correct codec (payload type). The probe won't check it.
+	 * raw format: the payload is encoded using the correct codec, no header, no container.
+
+	The probe sticks to packetize the payload according
 	to the current frame size parameter. No transcoding mechanism is provided. 
 	
 	By default, when starting sending a RTP stream, a default sound is played according
 	to the payload type:
 	
-	|| '''Payload type''' || Default sound ||
-	|| 0 (PCMU/G711 u-law) || a 400Hz tone ||
-	|| 8 (PCMA/G711 a-law) || almost a 400Hz tone ||
-	|| other codec || Some very scratchy sound ||
+	|| '''Payload type''' || '''Default sound''' ||
+	|| 0 (PCMU/G711 u-law) || a tone ||
+	|| 8 (PCMA/G711 a-law) || another tone ||
+	|| Other codecs || Some very scratchy sound ||
 	
 	Anyway, the idea is that, by default, the probe makes some sound or noise.[[BR]]
+	If you prefer start sending a silent sound, you should set the argument `defaultPayload` of
+	`startSendingRtp` to what fits your need according to the codec. For reference:
 	
+	|| '''Payload type''' || '''Payload to use for a silence''' ||
+	|| 0 (PCMU/G711 u-law) || `'\\xff'` ||
+	|| 8 (PCMA/G711 a-law) || `'\\x00'` ||
+	|| Other codecs || ... ||
+	
+	You may, of course, inject another payload as a default sound.
 	
 	Notes:
 	 * A probe can send/receive at most one stream in a way (i.e. can send, receive, or send+receive).
@@ -161,6 +227,10 @@ class RtpProbe(ProbeImplementationManager.ProbeImplementation):
 		// Local port may be controlled dynamically - useful when negotiating ports via SDP, etc
 		integer fromPort optional, // default: local_port
 		charstring fromIp optional, // default: local_ip
+
+		// Default payload to play (infinite loop)
+		octetstring defaultPayload optional, // default: see above, according to the codec
+		charstring defaultPayloadFormat optional, // choice in wav, raw ; default: wav
 	}
 	
 	type record StopSendingCommand
@@ -198,7 +268,7 @@ class RtpProbe(ProbeImplementationManager.ProbeImplementation):
 	{
 		octetstring payload,
 		integer loopCount optional, // default: 1
-		charstring type optional, // default: wav
+		charstring format optional, // choice in wav, raw ; default: wav
 	}
 	
 	type union Command
@@ -302,7 +372,8 @@ class RtpProbe(ProbeImplementationManager.ProbeImplementation):
 			self._checkArgs(args, [ ('toIp', toIp), ('toPort', toPort), 
 				('fromIp', self['local_ip']),
 				('fromPort', self['local_port']), ('payloadType', self['payload_type']),
-				('frameSize', self['frame_size']), ('ssrc', self['ssrc']) ])
+				('frameSize', self['frame_size']), ('ssrc', self['ssrc']),
+				('defaultPayloadFormat', 'wav'), ('defaultPayload', '') ])
 			
 			toIp = args['toIp']
 			toPort = args['toPort']
@@ -320,8 +391,13 @@ class RtpProbe(ProbeImplementationManager.ProbeImplementation):
 			if args.has_key('sampleRate'):
 				sampleRate = args['sampleRate']
 			
+			defaultPayload = loadPayload(args['defaultPayload'], args['defaultPayloadFormat'])
+			if not defaultPayload:
+				# Fallback to a hardcoded default, depending on the payload type
+				defaultPayload = DefaultPayloads.getDefaultPayload(payloadType)
+			
 			# OK, all parameters have been retrieved.
-			self.startSendingRtp((toIp, toPort), (fromIp, fromPort), payloadType, frameSize, packetSize, sampleRate, ssrc)
+			self.startSendingRtp((toIp, toPort), (fromIp, fromPort), payloadType, frameSize, packetSize, sampleRate, ssrc, defaultPayload)
 		
 		elif cmd == 'startListeningRtp':
 			self._checkArgs(args, [ ('onPort', self['listening_port']), ('onIp', self['listening_ip']),
@@ -340,11 +416,13 @@ class RtpProbe(ProbeImplementationManager.ProbeImplementation):
 			self.stopListeningRtp()
 	
 		elif cmd == 'play':
-			self._checkArgs(args, [ ('payload', None), ('loopCount', 1), ('type', 'wav') ])
+			self._checkArgs(args, [ ('payload', None), ('loopCount', 1), ('format', 'wav') ])
 			payload = args['payload']
 			loopCount = args['loopCount']
 			type_ = args['type']
-			self.playPayload(payload, type_, loopCount)
+
+			data = loadPayload(payload, type_)
+			self.playPayload(data, loopCount)
 
 	def _reset(self):
 		self.stopSendingRtp()
@@ -423,11 +501,12 @@ class RtpProbe(ProbeImplementationManager.ProbeImplementation):
 			self.getLogger().warning("Unable to close socket conditionally: %s" % str(e))
 		self._unlock()
 
-	def startSendingRtp(self, toAddr, fromAddr, payloadType, frameSize, packetSize, sampleRate, ssrc):
+	def startSendingRtp(self, toAddr, fromAddr, payloadType, frameSize, packetSize, sampleRate, ssrc, defaultPayload):
 		self.getLogger().info("Starting sending RTP from %s to %s, pt %s, frame %s, size %s, sample rate %s, ssrc %s..." % (fromAddr, toAddr, payloadType, frameSize, packetSize, sampleRate, ssrc))
 		# Stop our stream if needed
 		self.stopSendingRtp()
 		self._lock()
+		self._defaultPayload = LoopablePayload(defaultPayload, packetSize)
 		try:
 			sock = self._getLocalSocket(fromAddr)
 			self._sendingThread = SendingThread(self, sock, toAddr, payloadType, frameSize, packetSize, sampleRate, ssrc)
@@ -449,7 +528,7 @@ class RtpProbe(ProbeImplementationManager.ProbeImplementation):
 			self.getLogger().error("Unable to start listening RTP: %s" % str(e))
 		self._unlock()
 
-	def playPayload(self, payload, type_, loopCount):
+	def playPayload(self, data, loopCount):
 		"""
 		Plays a payload within an outgoing stream, loopCount times.
 		"""
@@ -457,17 +536,13 @@ class RtpProbe(ProbeImplementationManager.ProbeImplementation):
 		if not self._isSending():
 			return # nothing to do.
 		
-		self.getLogger().info("Playing %s data %s times, payload len is %s" % (type_, loopCount, len(payload)))
-		if type_ == 'wav':
-			data = getWavData(payload)
-		else:
-			raise Exception('Cannot play: unsupported payload format(%s)' % type_)
+		self.getLogger().info("Playing new data %s times, data len is %s" % (loopCount, len(data)))
 
 		# Now inject the data within the outgoing stream
 		self._resetDataToStream()
 		self._setDataToStream(data, loopCount)
 	
-	def getNextPayload(self, payloadType, packetSize):
+	def getNextPacket(self, packetSize):
 		"""
 		Returns the payload of the next RTP packet,
 		which is packetSize in length.
@@ -499,21 +574,14 @@ class RtpProbe(ProbeImplementationManager.ProbeImplementation):
 			except Exception, e:
 				self._unlock()
 				self.getLogger().warning("Unable to read next packet from source data to stream: %s" % str(e))	
-				data = self.getNextDefaultPayload(payloadType, packetSize)
+				data = self._defaultPayload.getNextPacket()
 		else:
 			self._unlock()
 			# No user provided stream to play - using default values
-			data = self.getNextDefaultPayload(payloadType, packetSize)
+			data = self._defaultPayload.getNextPacket()
 		
 		return data
 
-	def getNextDefaultPayload(self, payloadType, packetSize):
-		"""
-		TODO: manage a default stream read from a file, infinitly loopable.
-		Merge it with getDefaultPayload.
-		"""
-		return DefaultPayloads.getDefaultPayload(payloadType)[:packetSize]
-	
 	def _setDataToStream(self, data, count):
 		"""
 		Sets some source data to stream asap.
@@ -603,7 +671,7 @@ class SendingThread(threading.Thread):
 			try:
 				# Let's build a RTP packet
 				# The payload is a packetsize-bytes extract from the current played resource.
-				data = self._probe.getNextPayload(payloadType, packetSize)
+				data = self._probe.getNextPacket(packetSize)
 				packet = rtp.packets.RTPPacket(ssrc, seq, ts, data, payloadType)
 
 				packetBytes = packet.netbytes()
