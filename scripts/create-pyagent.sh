@@ -38,7 +38,7 @@ $CP ${sourcerootdir}/common/*.py $TMPDIR/pyagent/
 # Make sure everything is writable (for autoupdates)
 $CHMOD u+w -R $TMPDIR/*
 
-cd $TMPDIR && $TAR cvf ${TMPDIR}/.pyagent.tar --exclude "*.pyc" --exclude ".svn" pyagent
+cd $TMPDIR && $TAR cvf ${TMPDIR}/.pyagent.tar --exclude "*.asn" --exclude "*.pyc" --exclude ".svn" pyagent
 
 $MV ${TMPDIR}/.pyagent.tar ${target}.tar
 $RM -rf $TMPDIR

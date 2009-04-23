@@ -30,7 +30,7 @@ echo "Packaging qtesterman to $target..."
 $MKDIR -p $TMPDIR/qtesterman || exit 1
 
 $CP -rL  ${sourcerootdir}/qtesterman/* $TMPDIR/qtesterman/
-$CP -L ${sourcerootdir}/common/*.py $TMPDIR/pyagent/
+$CP -L ${sourcerootdir}/common/*.py $TMPDIR/qtesterman/
 # Make sure everything is writable (for autoupdates)
 $CHMOD u+w -R $TMPDIR/*
 
