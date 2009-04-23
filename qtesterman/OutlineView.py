@@ -111,7 +111,10 @@ class OutlineAstVisitor(compiler.visitor.ASTVisitor):
 			parent = self._treeWidget
 		# Let's add an item
 		fromLine = node.lineno
-		toLine = node.code.getChildNodes()[-1].lineno
+		if node.code.getChildNodes():
+			toLine = node.code.getChildNodes()[-1].lineno
+		else:
+			toLine = fromLine + 1
 		if len(node.bases) > 0 and "TestCase" in [hasattr(x, 'name') and x.name or None for x in node.bases]:
 			item = TestCaseOutlineWidgetItem(node.name, fromLine, toLine, parent)
 		else:
@@ -127,7 +130,10 @@ class OutlineAstVisitor(compiler.visitor.ASTVisitor):
 			parent = self._treeWidget
 		# Let's add an item
 		fromLine = node.lineno
-		toLine = node.code.getChildNodes()[-1].lineno
+		if node.code.getChildNodes():
+			toLine = node.code.getChildNodes()[-1].lineno
+		else:
+			toLine = fromLine + 1
 		label = '%s(%s)' % (node.name, ', '.join(node.argnames))
 		if parent is not self._treeWidget and len(node.argnames) and node.argnames[0] == 'self':
 			item = MethodOutlineWidgetItem(label, fromLine, toLine, parent)

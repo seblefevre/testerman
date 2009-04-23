@@ -1227,6 +1227,11 @@ class WPythonCodeEditor(sci.QsciScintilla):
 	def __init__(self, text = None, parent = None, scintillaDocument = None):
 		sci.QsciScintilla.__init__(self, parent)
 		
+		self._outlineUpdateTimer = QTimer()
+		self.connect(self._outlineUpdateTimer, SIGNAL('timeout()'), lambda: QApplication.instance().get('gui.outlineview').updateModel(str(self.text().toUtf8())))
+		self._autoCompletionTimer = QTimer()
+		self.connect(self._autoCompletionTimer, SIGNAL('timeout()'), self.autoCompletion)
+
 		# Macro
 		self.learntKeystrokes = sci.QsciMacro(self)
 		self.learningKeystrokes = False
@@ -1729,12 +1734,13 @@ class WPythonCodeEditor(sci.QsciScintilla):
 		"""
 		Call this whenever the outline may have been updated.
 		"""
-		QApplication.instance().get('gui.outlineview').updateModel(str(self.text().toUtf8()))
+		#FIXME: make sure we stop the timer when switching documents
+		#self._outlineUpdateTimer.start(0)
 
 	def onTextChanged(self):
 		autocompletion = QSettings().value('editor/autocompletion', QVariant(False)).toBool()
 		if autocompletion:
-			QTimer.singleShot(500, self.autoCompletion)
+			self._autoCompletionTimer.start(500)
 
 ################################################################################
 # Session Variable Management

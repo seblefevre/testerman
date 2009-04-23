@@ -229,7 +229,7 @@ class TaggedDocstring:
 		else:
 			# Create a default tag
 			return Tag(tagName)
-	
+
 	def getString(self):
 		"""
 		Returns the raw docstring string
@@ -250,7 +250,6 @@ class DictWrapper:
 		self._taggedDocstring = taggedDocstring
 	
 	def __getitem__(self, name):
-		print "Getting tag %s..." % name
 		try:
 			tagName = self._taggedDocstring._convertTag(name)
 			if tagName in self._taggedDocstring._tags:

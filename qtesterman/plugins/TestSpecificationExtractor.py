@@ -25,6 +25,7 @@
 
 from PyQt4.Qt import *
 from PyQt4.QtXml import *
+import PyQt4.QtWebKit as QtWebKit
 
 from Base import *
 from CommonWidgets import *
@@ -33,7 +34,6 @@ import Plugin
 import PluginManager
 import Documentation
 import DocumentModels
-
 
 import base64
 import compiler
@@ -50,7 +50,7 @@ PLUGIN_DESCRIPTION = "Extracts Test Specification from an ATS"
 PLUGIN_VERSION = "1.0.0"
 
 
-DEFAULT_TEMPLATE_FILENAME = "templates/default-test-specification.txt"
+DEFAULT_TEMPLATE_FILENAME = "templates/default-testcase-specification.txt"
 
 ##############################################################################
 # Template Management (Models Management)
@@ -238,6 +238,24 @@ def getTestCaseVariables(buf):
 
 
 ##############################################################################
+# Custom web view
+##############################################################################
+
+class MyWebView(QtWebKit.QWebView):
+	def __init__(self, manager, parent = None):
+		QtWebKit.QWebView.__init__(self, parent)
+		self._manager = manager
+		self.setTextSizeMultiplier(0.8)
+		reloadAction = self.pageAction(QtWebKit.QWebPage.Reload)
+		reloadAction.setText("(Re)apply template")
+		self.connect(reloadAction, SIGNAL('triggered(bool)'), self.reload)
+
+	def reload(self):
+		print "Reloading..."
+		self._manager._applyTemplate()
+
+
+##############################################################################
 # Output dialog
 ##############################################################################
 
@@ -247,12 +265,14 @@ class WTestSpecificationDialog(QDialog):
 	"""
 	def __init__(self, variables, parent = None):
 		QDialog.__init__(self, parent)
+		self._source = None
 		self._variables = variables
 		self.__createWidgets()
 		self._refreshTemplates()
 		self._applyTemplate()
 
 	def __createWidgets(self):
+		self.setWindowTitle("Test Cases Specification")
 		layout = QVBoxLayout()
 
 		# A button bar with selectable template, save option, display as HTML option
@@ -274,17 +294,9 @@ class WTestSpecificationDialog(QDialog):
 		
 		layout.addLayout(buttonLayout)
 
-		# The text view
-		self._textView = QTextEdit()
-		self._textView.setReadOnly(1)
-		self._textView.setLineWrapMode(QTextEdit.NoWrap)
-
-		self._htmlFont = QFont(self._textView.font())
-		self._fixedFont = QFont("courier", 8)
-		self._fixedFont.setFixedPitch(True)
-		self._fixedFont.setItalic(False)
-
-		layout.addWidget(self._textView)
+		# The main view
+		self._webView = MyWebView(self)
+		layout.addWidget(self._webView)
 
 		# Buttons
 		self._okButton = QPushButton("Close")
@@ -363,7 +375,7 @@ class WTestSpecificationDialog(QDialog):
 			self._templateComboBox.setItemData(self._templateComboBox.count()-1, QVariant(templateModel.displayAsHtml()), Qt.UserRole+1)
 
 	def display(self):
-		print "Displaying..."
+		self._source = None
 		(template, displayAsHtml) = self._getTemplate()
 		if not template:
 			return
@@ -377,18 +389,23 @@ class WTestSpecificationDialog(QDialog):
 		variables = self._variables
 		try:
 			ret = template.merge(variables, xform = xform)
+			self._source = ret
 		except Exception, e:
 			ret = str(e)
 
-		if displayAsHtml:
-			self._textView.setFont(self._htmlFont)
-			self._textView.setHtml(ret)
+		if self._source is None or not displayAsHtml:
+			self._webView.setHtml("<pre>%s</pre>" % ret)
 		else:
-			self._textView.setFont(self._fixedFont)
-			self._textView.setPlainText(ret)
+			self._webView.setHtml(ret)
+
+		if self._source is not None:
+			self._saveButton.setEnabled(True)
+		else:
+			self._saveButton.setEnabled(False)
 
 	def clear(self):
-		self._textView.clear()
+		self._webView.setHtml('')
+
 
 ##############################################################################
 # Plugin
@@ -410,7 +427,11 @@ class WPlugin(Plugin.DocumentationGenerator):
 	def _generateAtsDocumentation(self, model):
 		# Fills ATS-level variables
 		variables = {}
-		variables['ats'] = { 'id': model.getName(), 'path': model.getUrl().toString() }
+		variables['ats'] = { 
+			'id': model.getName(),
+			'url': model.getUrl().toString(),
+			'path': model.getUrl().path(),
+		}
 		# Testcases
 		variables['testcases'] = getTestCaseVariables(model.getBody().encode('utf-8'))
 		return variables

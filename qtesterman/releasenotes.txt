@@ -25,6 +25,8 @@ This is QTesterman, a PyQt4-based GUI for Testerman.
 - Fixed: loading and reloading of local files under Windows, including
   log files when using the --log <file> command line option
 - Fixed: ATSes in "cancelling" state can now be killed if needed
+- Fixed: campaigns document, in remote browser, now have a execution and
+  revisions sub-nodes
 
 TODO:
 - sutAddress display and message encoding display in log analyzer(s)

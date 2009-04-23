@@ -13,11 +13,13 @@
 <table border="1" cellspacing="0" cellpadding="2" >
 <tr><th>TestCase ID</th><th>Verdict</th></tr>
 #foreach ($testcase in $testcases)
+	<tr><td><a href="\#${testcase.id}">${testcase.id}</a></td>
 	#if ($testcase.verdict != "pass")
-		<tr><td>${testcase.id}</td><td><b>${testcase.verdict}</b></td></tr>
+		<td><b>${testcase.verdict}</b></td>
 	#else
-		<tr><td>${testcase.id}</td><td>${testcase.verdict}</td></tr>
+		<td>${testcase.verdict}</td>
 	#end
+	</tr>
 #end
 </table>
 
@@ -25,6 +27,7 @@
 
 #foreach ($testcase in $testcases)
 <p>
+<a name="${testcase.id}"></a>
 <h3>$testcase.id</h3>
 <table border="1" width="800" cellspacing="0" cellpadding="2" >
 <tr><td>ID: ${testcase.id}</td><td>Title: ${testcase.title}</td></tr>

@@ -251,6 +251,11 @@ class CampaignWidgetItem(ExpandableWidgetItem):
 		self.setIcon(0, icon(':/icons/campaign'))
 		self.setText(1, 'campaign')
 
+	def fetchChildItems(self):
+		revisionsItem = RevisionsWidgetItem(self._path)
+		executionLogsItem = ExecutionLogsWidgetItem(self._path)
+		return [ revisionsItem, executionLogsItem ]
+
 class LogWidgetItem(BaseWidgetItem):
 	"""
 	Execution lof file

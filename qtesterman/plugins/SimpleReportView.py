@@ -20,6 +20,7 @@
 
 from PyQt4.Qt import *
 from PyQt4.QtXml import *
+import PyQt4.QtWebKit as QtWebKit
 
 from Base import *
 from CommonWidgets import *
@@ -242,6 +243,21 @@ class TestCaseVariables:
 		else:
 			raise KeyError(name)
 
+##############################################################################
+# Custom web view
+##############################################################################
+
+class MyWebView(QtWebKit.QWebView):
+	def __init__(self, manager, parent = None):
+		QtWebKit.QWebView.__init__(self, parent)
+		self._manager = manager
+		self.setTextSizeMultiplier(0.8)
+		reloadAction = self.pageAction(QtWebKit.QWebPage.Reload)
+		reloadAction.setText("(Re)apply template")
+		self.connect(reloadAction, SIGNAL('triggered(bool)'), self.reload)
+
+	def reload(self):
+		self._manager._applyTemplate()
 
 ##############################################################################
 # Report View Plugin
@@ -250,10 +266,7 @@ class TestCaseVariables:
 class WReportView(Plugin.WReportView):
 	def __init__(self, parent = None):
 		Plugin.WReportView.__init__(self, parent)
-		
-		self._ats = None
-		self._currentTestcase = None
-		
+		self._source = None
 		self.__createWidgets()
 		self._refreshTemplates()
 
@@ -274,25 +287,16 @@ class WReportView(Plugin.WReportView):
 		buttonLayout.addWidget(self._manageTemplatesButton)
 		self.connect(self._applyTemplateButton, SIGNAL('clicked()'), self._applyTemplate)
 		self.connect(self._manageTemplatesButton, SIGNAL('clicked()'), self._manageTemplates)
-		
 		buttonLayout.addStretch()
 		self._saveButton = QPushButton("Save as...")
 		self.connect(self._saveButton, SIGNAL('clicked()'), self._saveAs)
 		buttonLayout.addWidget(self._saveButton)
-		
+		self._saveButton.setEnabled(False)
 		layout.addLayout(buttonLayout)
 
-		# The text view
-		self._textView = QTextEdit()
-		self._textView.setReadOnly(1)
-		self._textView.setLineWrapMode(QTextEdit.NoWrap)
-
-		self._htmlFont = QFont(self._textView.font())
-		self._fixedFont = QFont("courier", 8)
-		self._fixedFont.setFixedPitch(True)
-		self._fixedFont.setItalic(False)
-
-		layout.addWidget(self._textView)
+		# The main view
+		self._webView = MyWebView(self)
+		layout.addWidget(self._webView)
 
 		self.setLayout(layout)
 
@@ -320,7 +324,7 @@ class WReportView(Plugin.WReportView):
 		try:
 			f = open(filename, 'w')
 			# FIXME: won't save HTML code correctly
-			f.write(self._textView.toPlainText())
+			f.write(self._source)
 			f.close()
 			QMessageBox.information(self, getClientName(), "Report saved successfully.", QMessageBox.Ok)
 			return True
@@ -422,7 +426,7 @@ class WReportView(Plugin.WReportView):
 	# Plugin.WReportView reimplementation
 	##
 	def displayLog(self):
-		print "Displaying..."
+		self._source = None
 		(template, displayAsHtml) = self._getTemplate()
 
 		if not template:
@@ -440,21 +444,25 @@ class WReportView(Plugin.WReportView):
 
 		try:
 			ret = template.merge(variables, xform = xform)
+			self._source = ret
 		except Exception, e:
 			ret = str(e)
-	
-		if displayAsHtml:
-			self._textView.setFont(self._htmlFont)
-			self._textView.setHtml(ret)
+
+		if self._source is None or not displayAsHtml:
+			self._webView.setHtml("<pre>%s</pre>" % ret)
 		else:
-			self._textView.setFont(self._fixedFont)
-			self._textView.setPlainText(ret)
+			self._webView.setHtml(ret)
+
+		if self._source is not None:
+			self._saveButton.setEnabled(True)
+		else:
+			self._saveButton.setEnabled(False)
 
 	def clearLog(self):
 		"""
 		Plugin reimplementation.
 		"""
-		self._textView.clear()
+		self._webView.setHtml('')
 
 
 ##############################################################################
