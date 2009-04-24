@@ -563,17 +563,12 @@ class TestComponent:
 
 			self._doStop("PTC %s ended normally" % str(self)) # Non-alive components are automatically killed by a stop.
 			
-			# Push the local verdict to the testcase - after logging the PTC termination.
-			self._updateTestCaseVerdict()
-			
 		except TestermanStopException:
 			self._doStop("PTC %s stopped explicitly" % str(self))
-			# Push the local verdict to the testcase
-			self._updateTestCaseVerdict()
 
 		except TestermanKillException:
 			# In this special case, we don't update the testcase verdict (violent death)
-			self._doStop("PTC %s killed" % str(self))
+			self._doStop("PTC %s killed" % str(self), forward_verdict = False)
 			self._doKill()
 
 		except Exception:
@@ -581,8 +576,7 @@ class TestComponent:
 			self._setverdict(VERDICT_ERROR)
 			logUser(tc = str(self), message = "PTC %s stopped on error:\n%s" % (str(self), getBacktrace()))
 			self._doStop("PTC %s stopped on error" % str(self))
-			self._updateTestCaseVerdict()
-			# Kill it ?
+			# Kill it
 			self._doKill()
 
 	def _setverdict(self, verdict):
@@ -640,11 +634,16 @@ class TestComponent:
 		"""
 		self._testcase._mtc._setverdict(self._verdict)
 
-	def _doStop(self, message):
+	def _doStop(self, message, forward_verdict = True):
 		"""
 		Sets to stopped state, emit signals, additional transitions to killed, etc - if needed
+		
+		If forward_verdict is set, updates the test case (mtc) verdict.
 		"""
 		logTestComponentStopped(id_ = str(self), verdict = self._verdict, message = message)
+		if forward_verdict:
+			self._updateTestCaseVerdict()
+		
 		if not self._alive:
 			if not self._getState() == self.STATE_KILLED:
 				# According to TTCN-3, a stopped non-alive component is a killed component.
