@@ -84,11 +84,14 @@ class TagValue:
 
 	def appendToBody(self, val):
 		if not val.strip():
-			# new line
+			# empty line -> carriage return
 			self._body += '\n'
 		else:
+			# starts with a separator: indicates a new line before
+			if val.startswith(' ') or val.startswith('\t'):
+				self._body += '\n' + val.strip()
 			# string concatenation
-			if not self._body or self._body[-1] in [' ', '\n']:
+			elif not self._body or self._body[-1] in [' ', '\n']:
 				self._body += val.strip()
 			else:
 				self._body += ' ' + val.strip()
@@ -159,7 +162,7 @@ class TaggedDocstring:
 	with the content on a docstring.
 	"""
 
-	reTag = re.compile(r'\@(?P<tag>\w+)(\s+(?P<arguments>\w+))?\s*:(?P<content>.*)')
+	reTag = re.compile(r'\@(?P<tag>\w+)(\s+(?P<arguments>\w+))?\s*:?\s*(?P<content>.*)')
 	# Maps user names to internal tag names.
 	# Should be defined all in lowercase
 	aliases = {}
