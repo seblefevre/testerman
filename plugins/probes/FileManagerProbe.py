@@ -14,14 +14,27 @@
 ##
 
 ##
-# LDAP client probe, based on python-ldap, the Python wrapper over
-# OpenLDAP libraries.
+# File "manager" probe:
+# basic file system operations,
+# file creation from ATS embedded resources.
 #
 ##
 
 import ProbeImplementationManager
 
 import os
+import shutil
+import tempfile
+import threading
+import grp
+import pwd
+
+def fileExists(path):
+	try:
+		os.stat(path)
+		return True
+	except:
+		return False
 
 class FileManagerProbe(ProbeImplementationManager.ProbeImplementation):
 	"""
@@ -76,12 +89,12 @@ class FileManagerProbe(ProbeImplementationManager.ProbeImplementation):
 	{
 		universal charstring name,
 		octetstring content optional, // defaulted to an empty content
-		boolean autorestore optional, // backup existing file, restore it on unmap, defaulted to False
+		boolean autorevert optional, // backup existing file, restore it on unmap, defaulted to False
 	}
 	
 	type record RemoveCommand
 	{
-		universal charstring name,
+		universal charstring path,
 	}
 	
 	type record MoveCommand
@@ -100,7 +113,7 @@ class FileManagerProbe(ProbeImplementationManager.ProbeImplementation):
 	{
 		universal charstring name,
 		universal charstring target,
-		boolean autorestore optional, // backup existing file, restore it on unmap, defaulted to False
+		boolean autorevert optional, // backup existing file, restore it on unmap, defaulted to False
 	}
 	
 	type record CommandStatus
@@ -125,8 +138,10 @@ class FileManagerProbe(ProbeImplementationManager.ProbeImplementation):
 	def __init__(self):
 		ProbeImplementationManager.ProbeImplementation.__init__(self)
 		self._mutex = threading.RLock()
-		self._server = None
-		self._pendingCommand = None
+		# Backup / revert operation lists
+		# Contain absolute paths
+		self._addedFiles = []
+		self._modifiedFiles = [] # modified or deleted
 
 	# ProbeImplementation reimplementation
 
@@ -143,6 +158,7 @@ class FileManagerProbe(ProbeImplementationManager.ProbeImplementation):
 	
 	def onTriExecuteTestCase(self):
 		self.getLogger().debug("onTriExecuteTestCase()")
+		self._cleanup()
 
 	def onTriSend(self, message, sutAddress):
 		# Exceptions are turned into Error messages sent back to userand, according of the current
@@ -152,47 +168,132 @@ class FileManagerProbe(ProbeImplementationManager.ProbeImplementation):
 		command, args = message
 		
 		if command == 'createFile':
-			self._checkArgs(args, [ ('name', None), ('content', ''), ('autorestore', False) ])
-			self.createFile(args['name'], args['content'], args['autorestore'])
+			self._checkArgs(args, [ ('name', None), ('content', ''), ('autorevert', False) ])
+			self.createFile(args['name'], args['content'], args['autorevert'])
 		
 		elif command == 'remove':
-			self._checkArgs(args, [ ('name', None) ])
-			self.remove(args['name'])
+			self._checkArgs(args, [ ('path', None), ('autorevert', False) ])
+			self.remove(args['path'], args['autorevert'])
 		
 		elif command == 'createLink':
-			self._checkArgs(args, [ ('name', None), ('target', None), ('autorestore', False) ])
-			self.createLink(args['name'], args['target'], args['autorestore'])
+			self._checkArgs(args, [ ('name', None), ('target', None), ('autorevert', False) ])
+			self.createLink(args['name'], args['target'], args['autorevert'])
 
 		elif command == 'copy':
-			self._checkArgs(args, [ ('source', None), ('destination', None), ('autorestore', False) ])
-			self.copy(args['source'], args['destination'], args['autorestore'])
+			self._checkArgs(args, [ ('source', None), ('destination', None), ('autorevert', False) ])
+			self.copy(args['source'], args['destination'], args['autorevert'])
 
 		elif command == 'move':
-			self._checkArgs(args, [ ('source', None), ('destination', None), ('autorestore', False) ])
-			self.move(args['source'], args['destination'], args['autorestore'])
+			self._checkArgs(args, [ ('source', None), ('destination', None), ('autorevert', False) ])
+			self.move(args['source'], args['destination'], args['autorevert'])
+
+		elif command == 'chown':
+			self._checkArgs(args, [ ('path', None), ('user', None), ('group', None), ('autorevert', False) ])
+			self.chown(args['path'], args['user'], args['group'], args['autorevert'])
+
+		elif command == 'chmod':
+			self._checkArgs(args, [ ('path', None), ('mode', None), ('autorevert', False) ])
+			self.chmod(args['path'], args['mode'], args['autorevert'])
 
 		else:
 			raise Exception("Invalid command (%s)" % command)
+
+	##
+	# Actions
+	##
+	def createFile(self, name, content, autorevert):
+		if autorevert:
+			self._backupFile(name)
+		
+		dirname, filename = os.path.split(name)
+		if not fileExists(dirname):
+			os.makedirs(dirname)
+		f = open(name, 'wb')
+		f.write(content)
+		f.close()
+
+	def remove(self, path, autorevert):
+		if autorevert:
+			self._backupFileToDelete(path)
+		if os.path.isdir(path):
+			shutil.rmtree(path)
+		else:
+			os.unlink(path)
 	
-	def _getPendingCommand(self):
-		self._lock()
-		ret = self._pendingCommand
-		self._unlock()
-		return ret
+	def chown(self, path, user, group, autorevert):
+		if autorevert:
+			self._backupFile(path)
+		if not isinstance(user, int):
+			user = pwd.getpwnam(user).pw_uid
+		if not isinstance(group, int):
+			group = grp.getgrnam(group).gr_gid
+		os.chown(path, user, group)
+
+	def chmod(self, path, mode, autorevert):
+		if autorevert:
+			self._backupFile(path)
+		os.chmod(path, mode)
 	
-	def _setPendingCommand(self, command):
-		self._lock()
-		self._pendingCommand = command
-		self._unlock()
+	def createLink(self, name, target, autorevert):
+		if autorevert:
+			self._backupFile(name)
+		os.symlink(target, name)
 	
+	def copy(self, source, destination, autorevert):
+		if autorevert:
+			self._backupFile(destination)
+		shutil.copytree(source, destination, True) # preserve symlinks
+
+	def move(self, source, destination, autorevert):
+		if autorevert:
+			self._backupFile(destination)
+		shutil.move(source, destination)
+
 	def _lock(self):
 		self._mutex.acquire()
 	
 	def _unlock(self):
 		self._mutex.release()
+
+	def __del__(self):
+		self._cleanup()
 	
+	def _cleanup(self):
+		"""
+		Reverts modified files/deletes created files.
+		"""
+		for path in self._addedFiles:
+			try:
+				self.getLogger().debug("Removing added file %s..." % path)
+#				shutil.rmtree(path)
+			except Exception, e:
+				self.getLogger().warning("Unable to remove added file %s: %s" % (path, str(e)))
 		
-				
+		for path in self._modifiedFiles:
+			try:
+				self.getLogger().debug("Restoring modified/deleted file %s..." % path)
+				# ...
+			except Exception, e:
+				self.getLogger().warning("Unable to restore modified/deleted file %s: %s" % (path, str(e)))
+
+		self._addedFiles = []
+		self._modifiedFiles = []
 	
+	def _backupFileToDelete(self, path):
+		if not path in self._addedFiles + self._modifiedFiles:
+			pass
+#			targetDir = "%s/
+#			os.makedirs
+#			target = "%s/
+#			self.getLogger().info("Backup up file to delete %s -> %s" % (path, target)
+#			shutil.move(path, target)
+#			self._deletedFiles.append(path)
+	
+	def _backupFile(self, path):
+		if not path in self._addedFiles + self._modifiedFiles:
+			# if fileExists(path):
+			pass
+			
+		
 ProbeImplementationManager.registerProbeImplementationClass('file.manager', FileManagerProbe)
 
