@@ -175,13 +175,15 @@ class WJobTreeWidget(QTreeWidget):
 		self.setWindowIcon(icon(":/icons/job-queue.png"))
 		self.setWindowTitle('Job queue')
 		
-		self._labels = {'id': 'id', 'state': 'state', 'parent-id': 'parent', 'start-time': 'started at', 'running-time': 'run duration', 'scheduled-at': 'scheduled start' }
-		self.setHeaderLabels([self._labels.get(x, x) for x in SECTIONS])
+		self._labels = {
+			'id': 'Job ID', 'state': 'State', 'parent-id': 'Parent', 'start-time': 'Started at', 
+			'running-time': 'Run duration', 'scheduled-at': 'Scheduled start', 
+			}
+		self.setHeaderLabels([self._labels.get(x, x.title()) for x in SECTIONS])
 		self.header().setResizeMode(0, QHeaderView.ResizeToContents)
 		self.setContextMenuPolicy(Qt.DefaultContextMenu)
 		self.connect(self, SIGNAL("itemActivated(QTreeWidgetItem*, int)"), self.onItemActivated)
 		self.connect(self, SIGNAL('jobNotification'), self.onJobNotification)
-#		self.setSortingEnabled(True)
 		
 	def setClient(self, client):
 		"""

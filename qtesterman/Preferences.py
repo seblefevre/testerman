@@ -42,7 +42,7 @@ class WPreferencesDialog(QDialog):
 		self.__createWidgets()
 
 	def __createWidgets(self):
-		self.setWindowTitle(getClientName() + " preferences")
+		self.setWindowTitle("%s preferences" % getClientName())
 
 		layout = QVBoxLayout()
 		self._preferences = WPreferences(self)
@@ -523,7 +523,7 @@ class WPluginsTreeView(QTreeWidget):
 	def __createWidgets(self):
 		self.setRootIsDecorated(False)
 		self.setSortingEnabled(True)
-		self.setHeaderLabels(["name", "type", "active"])
+		self.setHeaderLabels(["Name", "Type", "Active"])
 		self.connect(self, SIGNAL("itemActivated(QTreeWidgetItem*, int)"), self.onItemActivated)
 		self.setContextMenuPolicy(Qt.DefaultContextMenu)
 		self.header().setResizeMode(0, QHeaderView.Interactive)

@@ -49,7 +49,11 @@ try:
 	import Editors
 except Exception, e:
 	log(str(e))
-	pass
+
+
+################################################################################
+# TestermanClient.Client wrapper
+################################################################################
 
 class QTestermanClient(QObject, TestermanClient.Client):
 	"""
@@ -403,20 +407,23 @@ class WAboutDialog(QDialog):
 		self.__createWidgets()
 
 	def __createWidgets(self):
-		self.setWindowTitle("About " + getClientName())
+		self.setWindowTitle("About %s" % getClientName())
 		self.setWindowIcon(icon(':icons/testerman.png'))
 
-		text = """QTesterman %s
-
-This software is licensed under the General Public License 2.0.
-
-Maintainer:
+		licenseText = "This software is licensed under the General Public License 2.0"
+		authorsText = """Maintainer:
 Sebastien Lefevre <seb.lefevre@gmail.com>
 
-Contributors:
-Comverse - Converged IP Commmunications
+Based on a major contribution by
+Comverse - Converged IP Commmunications"""
+		thanksText = """Qt Software
+		
+Riverbank Computing
 
-Thanks to Trolltech and Riverbank Computing""" % (getClientVersion())
+eServGlobal
+
+Anevia
+"""
 
 		layout = QVBoxLayout()
 		layout.setMargin(0)
@@ -427,12 +434,27 @@ Thanks to Trolltech and Riverbank Computing""" % (getClientVersion())
 		splash.setPixmap(pixmap)
 		layout.addWidget(splash)
 
-		# The label
+		# Product/version
 		label = QLabel()
-		label.setText(text)
+		label.setText("<b>%s %s</b>\nPyQt-based client for Testerman" % (getClientName(), getClientVersion()))
 		label.setAlignment(Qt.AlignCenter)
-
 		layout.addWidget(label)
+		
+		# Tab with the usual license/authors/thanks
+		tab = QTabWidget()
+		licenseTextEdit = QTextEdit()
+		licenseTextEdit.setPlainText(licenseText)
+		licenseTextEdit.setReadOnly(True)
+		tab.addTab(licenseTextEdit, "License")
+		authorsTextEdit = QTextEdit()
+		authorsTextEdit.setPlainText(authorsText)
+		authorsTextEdit.setReadOnly(True)
+		tab.addTab(authorsTextEdit, "Authors")
+		thanksTextEdit = QTextEdit()
+		thanksTextEdit.setPlainText(thanksText)
+		thanksTextEdit.setReadOnly(True)
+		tab.addTab(thanksTextEdit, "Thanks to")
+		layout.addWidget(tab)
 
 		# Buttons
 		buttonLayout = QHBoxLayout()
@@ -441,8 +463,8 @@ Thanks to Trolltech and Riverbank Computing""" % (getClientVersion())
 		buttonLayout.addStretch()
 		buttonLayout.addWidget(self.okButton)
 		buttonLayout.setMargin(4)
-
 		layout.addLayout(buttonLayout)
+
 		self.setLayout(layout)
 
 
@@ -632,6 +654,15 @@ class WMainWindow(QMainWindow):
 			QApplication.instance().notifyInitializationProgress("Initializing main window...")
 			self.setWindowTitle(getClientName() + ' ' + getClientVersion())
 			self.setWindowIcon(icon(':/icons/testerman.png'))
+			
+			# Enable left side docks to maximize to full height
+			# (useful for file browsers, etc)
+			self.setCorner(Qt.TopLeftCorner, Qt.LeftDockWidgetArea)
+			self.setCorner(Qt.BottomLeftCorner, Qt.LeftDockWidgetArea)
+			# But keep right side the 'normal' way, enabling expanding horizontal docks (top/bottom) instead
+			# self.setCorner(Qt.TopRightCorner, Qt.RightDockWidgetArea)
+			# self.setCorner(Qt.BottomRightCorner, Qt.RightDockWidgetArea)
+			self.setDockNestingEnabled(True)
 
 			QApplication.instance().notifyInitializationProgress("Initializing document manager...")
 			self.documentManager = Editors.WDocumentManager(self)
@@ -679,6 +710,7 @@ class WMainWindow(QMainWindow):
 			log("Warning: unable to create a widget: %s" % str(e))
 			import TestermanNodes
 			log(TestermanNodes.getBacktrace())
+			sys.exit(1)
 
 	def createActions(self):
 		"""
@@ -880,7 +912,7 @@ class WMainWindow(QMainWindow):
 		settings.beginGroup('mainwindow')
 		self.resize(settings.value('size', QVariant(self.size())).toSize())
 		self.move(settings.value('pos', QVariant(self.pos())).toPoint())
-		self.restoreState(settings.value('state', QVariant(QByteArray())).toByteArray(), 0)
+		self.restoreState(settings.value('state', QVariant(QByteArray())).toByteArray(), 1)
 		settings.endGroup()
 	
 	def writeSettings(self):

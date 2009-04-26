@@ -162,7 +162,6 @@ class AsyncExpander(QObject):
 		"""
 		self.loadingAnimation.stop()
 		self._item.removeChild(self.loadingItem)
-		self.loadingAnimation.stop()
 		del self.loadingItem
 		del self.loadingAnimation
 	
@@ -195,7 +194,6 @@ class ExpandableWidgetItem(BaseWidgetItem):
 		to the child nodes.
 		"""
 		return []
-	
 
 class DirWidgetItem(ExpandableWidgetItem):
 	"""
@@ -214,7 +212,6 @@ class DirWidgetItem(ExpandableWidgetItem):
 		# any DirWidgetItem (all its children are removed in the meanwhile).
 		return self.treeWidget().fetchChildItems(self._path)
 	
-
 class AtsWidgetItem(ExpandableWidgetItem):
 	"""
 	ATS
@@ -373,7 +370,7 @@ class WServerFileSystemTreeWidget(QTreeWidget):
 		
 		self.setWindowIcon(icon(':/icons/browser'))
 		self.setWindowTitle('Remote browser')
-		self.setHeaderLabels([ 'name', 'type' ])
+		self.setHeaderLabels([ 'Name', 'Type' ])
 		self.header().setResizeMode(0, QHeaderView.ResizeToContents)
 		self.header().setResizeMode(1, QHeaderView.Stretch)
 		self.header().resizeSection(1, 70)
