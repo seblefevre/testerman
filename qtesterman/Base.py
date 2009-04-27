@@ -21,6 +21,7 @@
 
 from PyQt4.Qt import *
 
+import logging
 import time
 import re
 
@@ -38,7 +39,7 @@ import Resources
 # A += 1: major design changes. 
 # B += 1: new significant features added
 # C += 1: bugfixes and/or minor features added
-CLIENT_VERSION = "1.1.99-svn-20090420"
+CLIENT_VERSION = "1.1.99-svn-20090427"
 CLIENT_NAME = "QTesterman"
 
 def getClientVersion():
@@ -54,8 +55,11 @@ def getClientName():
 def formatTimestamp(timestamp):
 	return time.strftime("%Y%m%d %H:%M:%S", time.localtime(timestamp))  + ".%3.3d" % int((timestamp * 1000) % 1000) #str(time.ctime())
 
+#def log(txt):
+#	print "%s - " % formatTimestamp(time.time()) + txt
+
 def log(txt):
-	print "%s - " % formatTimestamp(time.time()) + txt
+	logging.getLogger().info(txt)
 
 def getBacktrace():
 	import TestermanNodes

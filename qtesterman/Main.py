@@ -436,7 +436,7 @@ Anevia
 
 		# Product/version
 		label = QLabel()
-		label.setText("<b>%s %s</b>\nPyQt-based client for Testerman" % (getClientName(), getClientVersion()))
+		label.setText("<b>%s %s</b><br />A Qt client for Testerman" % (getClientName(), getClientVersion()))
 		label.setAlignment(Qt.AlignCenter)
 		layout.addWidget(label)
 		
@@ -568,7 +568,6 @@ class WMainWindow(QMainWindow):
 		QMainWindow.__init__(self, parent)
 		QApplication.instance().set('gui.mainwindow', self)
 
-
 		QApplication.instance().notifyInitializationProgress("Initializing widgets...")
 		self.__createWidgets()
 		QApplication.instance().notifyInitializationProgress("Initializing actions...")
@@ -650,6 +649,10 @@ class WMainWindow(QMainWindow):
 
 	def __createWidgets(self):
 		try:
+			# Log window
+			self._logWindow = Logger.WLogger(self)
+			self._logWindow.setWindowFlags(Qt.Window)
+
 			# The central things
 			QApplication.instance().notifyInitializationProgress("Initializing main window...")
 			self.setWindowTitle(getClientName() + ' ' + getClientVersion())
@@ -779,7 +782,10 @@ class WMainWindow(QMainWindow):
 		self.aboutQtAction = TestermanAction(self, "About &Qt...", self.aboutQt, "About Qt")
 
 		# MOTD
-		self.motdAction = TestermanAction(self, "Message of the day...", self.messageOfTheDay, "Message of the Day (from Testerman server)")
+		self.motdAction = TestermanAction(self, "&Message of the day...", self.messageOfTheDay, "Message of the Day (from Testerman server)")
+
+		# Logs
+		self.showLogsAction = TestermanAction(self, "&Logs...", self.showLogs, "Display QTesterman log window")
 
 	def createToolBars(self):
 		self.mainToolBar = self.addToolBar("Main toolbar")
@@ -842,6 +848,8 @@ class WMainWindow(QMainWindow):
 		self.toolsMenu.addAction(self.preferencesAction)
 		self.toolsMenu.addSeparator()
 		self.toolsMenu.addAction(self.motdAction)
+		self.toolsMenu.addSeparator()
+		self.toolsMenu.addAction(self.showLogsAction)
 
 		self.helpMenu = self.menuBar().addMenu("&Help")
 		self.helpMenu.addAction(self.releasesNoteAction)
@@ -920,7 +928,7 @@ class WMainWindow(QMainWindow):
 		settings.beginGroup('mainwindow')
 		settings.setValue('size', QVariant(self.size()))
 		settings.setValue('pos',  QVariant(self.pos()))
-		settings.setValue('state', QVariant(self.saveState(0)))
+		settings.setValue('state', QVariant(self.saveState(1)))
 		settings.endGroup()
 
 	def save(self):
@@ -1001,6 +1009,12 @@ class WMainWindow(QMainWindow):
 				if (dialog.exec_() == QDialog.Accepted) and dialog.getChecked():
 					settings.setValue('motd/lastTimestamp', QVariant(timestamp))
 
+	def showLogs(self):
+		"""
+		Displays the log window
+		"""
+		self._logWindow.show()
+		self._logWindow.raise_()
 
 ################################################################################
 # The runner
@@ -1047,7 +1061,7 @@ def runClient():
 			# A message for linux/unix clients
 			# Under windows, we suggest installing Python 2.5 + the latest pyQt binary package, containing QScintilla as well.
 			msg = """Sorry, you need QScintilla2 for Python to run this client.
-You may install Python 2.5 for Windows (http://www.python.org) as well as the latest PyQt binary package for Windows (http://www.riverbankcomputing.co.uk/software/pyqt/download) to get it."""
+You may install Python 2.5+ for Windows (http://www.python.org) as well as the latest PyQt binary package for Windows (http://www.riverbankcomputing.co.uk/software/pyqt/download) to get it."""
 		else:
 			msg = """Sorry, you need QScintilla2 for Python to run this client.
 Please install the appropriate package for your Linux/Unix distribution or download it from http://www.riverbankcomputing.co.uk/software/qscintilla/download"""
@@ -1163,7 +1177,6 @@ def run():
 			print "Current GC settings: " + str(gc.get_threshold())
 			gc.set_threshold(10, 1, 1)
 			print "Current GC state: " + str(gc.isenabled())
-
 
 	if logFilename:
 		return runLogAnalyzer(logFilename)

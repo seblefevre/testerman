@@ -20,7 +20,24 @@
 
 from PyQt4.Qt import *
 
+import CommonWidgets
+
 DEFAULT_CHANNEL = 'testerman'
+
+class WClearableTextEdit(QTextEdit):
+	"""
+	Slightly modified QTextEdit with a "Clear" context menu action support
+	"""
+	def __init__(self, parent = None):
+		QTextEdit.__init__(self, parent)
+		self._clearAction = CommonWidgets.TestermanAction(self, "Clear", self.clear)
+
+	def contextMenuEvent(self, event):
+		menu = self.createStandardContextMenu()
+		menu.addSeparator()
+		menu.addAction(self._clearAction)
+		menu.exec_(event.globalPos())
+
 
 class WChatView(QWidget):
 	"""
@@ -44,7 +61,7 @@ class WChatView(QWidget):
 		self.setWindowTitle('Chat room')
 		
 		layout = QVBoxLayout()
-		self._mainView = QTextEdit()
+		self._mainView = WClearableTextEdit()
 		self._mainView.setReadOnly(True)
 		layout.addWidget(self._mainView)
 		self._inputLineEdit = QLineEdit()
@@ -56,7 +73,7 @@ class WChatView(QWidget):
 		self.connect(QApplication.instance(), SIGNAL("testermanXcConnected()"), self.onConnected)
 		self.connect(QApplication.instance(), SIGNAL("testermanXcDisconnected()"), self.onDisconnected)
 		self.connect(self, SIGNAL("chatNotification"), self.onChatNotification)
-		
+
 		self.join(DEFAULT_CHANNEL)
 
 		self.synchronizeOnServerStatus()
