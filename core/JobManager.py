@@ -131,7 +131,8 @@ class Job(object):
 
 	BRANCH_SUCCESS = 0 # actually, this is more a "default" or "normal completion"
 	BRANCH_ERROR = 1 # actualy, this is more a "abnormal termination"
-	BRANCHES = [ BRANCH_ERROR, BRANCH_SUCCESS ]
+	BRANCH_UNCONDITIONAL = 2 # actually, this is the list of root jobs, not depending on a previous execution status
+	BRANCHES = [ BRANCH_ERROR, BRANCH_SUCCESS, BRANCH_UNCONDITIONAL ]
 	
 	##
 	# To reimplement in your own subclasses
@@ -147,7 +148,8 @@ class Job(object):
 		self._id = getNewId()
 		self._parent = None
 		# Children Job instances are referenced here, according to their branch
-		self._childBranches = { self.BRANCH_ERROR: [], self.BRANCH_SUCCESS: [] }
+		self._childBranches = {}
+		for branch in self.BRANCHES: self._childBranches[branch] = []
 		self._name = name
 		self._state = self.STATE_INITIALIZING
 		self._scheduledStartTime = time.time() # By default, immediate execution
@@ -1030,9 +1032,12 @@ class CampaignJob(Job):
 		notification.setBody(xml.encode('utf-8'))
 		EventManager.instance().handleIlNotification(notification)
 
-	def _run(self, callingJob, inputSession, branch = Job.BRANCH_SUCCESS):
+	def _run(self, callingJob, inputSession, branch = Job.BRANCH_UNCONDITIONAL):
 		"""
-		Recursively called.
+		Runs all the available jobs in a branch.
+		
+		When a subjob is finished, resursively called according to 
+		its status to execute its selected branch.
 		"""
 		if self.getState() != self.STATE_RUNNING:
 			# We stop our loop/recursion (killed, cancelled, etc).
@@ -1137,18 +1142,11 @@ class CampaignJob(Job):
 				# just add the local campaign path
 				filename = '%s/%s' % (path, filename)
 
-			# Branch validation
-			if branch in [ '*', 'on_error' ]: # * is an alias for the error branch
-				branch = self.BRANCH_ERROR
-			elif not branch or branch in ['on_success']:
-				branch =  self.BRANCH_SUCCESS # the default branch
-			else:
-				raise Exception('Error at line %s: invalid branch (%s)' % (lc, branch))
-
 			# Type validation
 			if not type_ in [ 'ats', 'campaign' ]:
 				raise Exception('Error at line %s: invalid job type (%s)' % (lc, type_))
 
+			# Indentation validation, parent selection
 			if indentDiff > 1:
 				raise Exception('Parse error at line %s: invalid indentation (too deep)' % lc)
 			# Get the current parent
@@ -1165,6 +1163,18 @@ class CampaignJob(Job):
 				# negative indentation. 
 				for _ in range(abs(indentDiff)):
 					currentParent = currentParent.getParent()
+
+			# Branch validation
+			if currentParent == self:
+				# Actually, this is the "native" branch containing root campaign jobs
+				branch = self.BRANCH_UNCONDITIONAL
+			elif branch in [ '*', 'on_error' ]: # * is an alias for the error branch
+				branch = self.BRANCH_ERROR
+			elif not branch or branch in ['on_success']:
+				branch =  self.BRANCH_SUCCESS
+			else:
+				raise Exception('Error at line %s: invalid branch (%s)' % (lc, branch))
+
 			
 			# Now we can create our job.
 			getLogger().debug('%s: creating child job based on file docroot:%s' % (str(self), filename))
