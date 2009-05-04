@@ -1,0 +1,11 @@
+Testerman CLI Client Changelog
+
+0.1.1:
+- Added support for campaign log expansion.
+  When getting a log file with --get-log, you may use an
+  additional --expand-logs flag to follow <include> log elements and
+  perform an inline expansion of the included log files.
+  The resulting log file then contains all the execution traces.
+
+0.1.0:
+- First really usable version.

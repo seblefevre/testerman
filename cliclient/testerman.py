@@ -27,16 +27,25 @@ import TestermanClient
 import optparse
 import os
 import sys
+import re
 import threading
 import time
 import logging
+import urlparse
 
 
-VERSION = "0.1.0"
 
+VERSION = "0.1.1"
 
-def getVersion():
-	return "Testerman Minimal CLI Client %s" % VERSION
+# Returned in case of a job submission-related execution error
+RETCODE_EXECUTION_ERROR = 70
+
+###############################################################################
+# Some utilities
+###############################################################################
+
+def log(txt):
+	logging.getLogger('cli').info(txt)
 
 def prettyPrintDictList(header = [], distList = []):
 	"""
@@ -94,6 +103,54 @@ def prettyPrintDictList(header = [], distList = []):
 	return res
 
 
+###############################################################################
+# Log Expander
+###############################################################################
+
+class LogExpander:
+	"""
+	A Raw log saver that follows include directives
+	to expand the logs inline.
+	
+	Based on *string* parsing, not XML parsing, 
+	and assumes that <include> elements are on a single line.
+	"""
+	def __init__(self, client):
+		self._client = client
+
+	def expand(self, rawLogs):
+		return '\n'.join(self._expand(rawLogs))
+	
+	def _expand(self, rawLogs):
+		ret = []
+
+		for line in rawLogs.split('\n'):
+			if not line.startswith('<include '):
+				ret.append(line)
+			else:
+				m = re.match(r'\<include (?P<prefix>.*)url="(?P<url>.*?)" (?P<suffix>.*)', line)
+				if m:
+					url = m.group('url')
+					includedLogs = self.fetchUrl(url)
+					if includedLogs is not None:
+						ret += self._expand(includedLogs)
+					else:
+						# Warning
+						log("Unable to fetch url '%s'..." % url)
+		return ret
+
+	def fetchUrl(self, url):
+		log("Fetching included url '%s'..." % url)
+		# extract path from url
+		path = os.path.normpath(urlparse.urlparse(url).path)
+		log("Fetching included path '%s'..." % path)
+		return self._client.getFile(path)
+
+
+###############################################################################
+# The CLI Client
+###############################################################################
+
 class TestermanCliClient:
 	def __init__(self, serverUrl):
 		self.__client = TestermanClient.Client(name = "Testerman CLI Client", userAgent = getVersion(), serverUrl = serverUrl)
@@ -101,7 +158,7 @@ class TestermanCliClient:
 		self.__client.setLogger(logging.getLogger('cli'))
 	
 	def log(self, txt):
-		logging.getLogger('cli').info(txt)
+		log(txt)
 
 	def startXc(self):
 		self.__client.startXc()
@@ -180,7 +237,7 @@ class TestermanCliClient:
 
 	def scheduleCampaignByFilename(self, sourceFilename, username = None, sessionFilename = None, at = None):
 		"""
-		Reads a Campaign file locally and schedule it.
+		Reads a Campaign file locally and schedules it.
 		
 		Returns the jobId once scheduled, or None in case of an error.
 		"""
@@ -201,7 +258,7 @@ class TestermanCliClient:
 	
 	def scheduleCampaignByPath(self, sourcePath, username = None, sessionFilename = None, at = None):
 		"""
-		Gets a Campaign by path locally and schedule it.
+		Gets a Campaign by path locally and schedules it.
 		
 		Returns the jobId once scheduled, or None in case of an error.
 		"""
@@ -223,7 +280,7 @@ class TestermanCliClient:
 
 	def _scheduleCampaign(self, source, label, username, sessionFilename = None, at = None, path = None):
 		"""
-		Schedule a Campaign whose source is provided by source and returns its JobID once scheduled,
+		Schedules a Campaign whose source is provided by source and returns its JobID once scheduled,
 		or None in case of an error.
 		"""
 		# TODO: parameter and sessionFilename read
@@ -318,30 +375,49 @@ class TestermanCliClient:
 		return self.__jobCompleteResult
 
 	def sendSignal(self, jobId, signal):
+		"""
+		Sends a signal to a job.
+		"""
 		print "Sending signal %s to %s..." % (signal, jobId)
 		self.__client.sendSignal(jobId, signal)
 
 	def deployProbe(self, agentName, probeName, probeType):
+		"""
+		Deploys a new probe probe:probeName@agentName
+		"""
 		print "Deploying probe..."
 		ret = self.__client.deployProbe(agentName, probeName, probeType)
 		print str(ret)
 
 	def undeployProbe(self, agentName, probeName):
+		"""
+		Undeploys probe:probeName@agentName
+		"""
 		print "Undeploying probe..."
 		ret = self.__client.undeployProbe(agentName, probeName)
 		print str(ret)
 
 	def restartAgent(self, agentName):
+		"""
+		Restarts the agent agent:agentName
+		"""
 		print "Restarting agent..."
 		ret = self.__client.restartAgent(agentName)
 		print str(ret)
 
 	def updateAgent(self, agentName, branch = None, version = None):
+		"""
+		Requests the agent agent:agentName to update
+		"""
 		print "Updating agent..."
 		ret = self.__client.updateAgent(agentName, branch, version)
 		print str(ret)
 
-	def getLog(self, jobId):
+	def getLog(self, jobId, expandLogs):
+		"""
+		Returns the current log for a job;
+		expands include elements if expandLogs is set to True.
+		"""
 		try:
 			ret = self.__client.getJobLog(jobId)
 			if not ret:
@@ -349,10 +425,20 @@ class TestermanCliClient:
 		except Exception, e:
 			self.log("Unable to get current log for job ID %s: %s\n" % (jobId, str(e)))
 			return None
-		return ret
+		
+		if expandLogs:
+			logExpander = LogExpander(self.__client)
+			return logExpander.expand(ret)
+		else:
+			return ret
 
 
-RETCODE_EXECUTION_ERROR = 70
+###############################################################################
+# Main
+###############################################################################
+
+def getVersion():
+	return "Testerman Minimal CLI Client %s" % VERSION
 
 def main():
 	parser = optparse.OptionParser(version = getVersion())
@@ -372,6 +458,7 @@ def main():
 	parser.add_option("--monitor", dest = "monitorUri", metavar = "URI", help = "monitor events on URI", default = None)
 
 	parser.add_option("--get-log", dest = "logJobId", metavar = "ID", help = "get the current logs for job ID", default = None)
+	parser.add_option("--expand-logs", dest = "expandLogs", action = "store_true", help = "expand include elements in retrieved log files", default = False)
 
 	parser.add_option("--deploy", dest = "deployProbeName", metavar = "NAME", help = "deploy a probe named NAME", default = None)
 	parser.add_option("--undeploy", dest = "undeployProbeName", metavar = "NAME", help = "undeploy a probe named NAME", default = None)
@@ -428,7 +515,7 @@ def main():
 				# Optionally, get the log and dump it to a file.
 				if result is not None and options.outputFilename:
 					try:
-						log = client.getLog(jobId)
+						log = client.getLog(jobId, options.expandLogs)
 						f = open(options.outputFilename, 'w')
 						f.write(log)
 						f.close()
@@ -451,7 +538,7 @@ def main():
 			client.stopXc()
 		
 		elif options.logJobId:
-			log = client.getLog(int(options.logJobId))
+			log = client.getLog(int(options.logJobId), options.expandLogs)
 			if log:
 				print log
 				return 0

@@ -1029,11 +1029,13 @@ def usage(txt = None):
     --debug           debug mode
 
 Full Testerman client mode:
--s <IP>               source IP address to use when subscribing to events
+-s ADDRESS            use ADDRESS as source IP address to subscribe on Xc
+                      interface (real-time notifications)
     --force-update    propose to update to the current (stable) server's version
 
 Standalone log analyzer mode:
--l, --log <filename>  run the log analyzer only, offline mode, on <filename>
+-l, --log FILENAME    start the log analyzer on FILENAME, not the full client
+    --online          still connect to a server to retrieve included log files
 """
 
 def showVersion():
@@ -1041,7 +1043,7 @@ def showVersion():
 
 def runClient():
 	"""
-	Called when run in real client mode.
+	Runs the full client.
 	"""
 
 	# OK, now we can create some Qt objects.
@@ -1105,14 +1107,16 @@ Please install the appropriate package for your Linux/Unix distribution or downl
 	mainWindow.onShow()
 	return app.exec_()
 
-def runLogAnalyzer(logFilename):
+def runLogAnalyzer(logFilename, shouldConnect = False):
 	"""
-	Called when run in log Analyzer mode
+	Runs the log analyzer as a standalone application
+	to analyze logFilename.
+	
+	@type  logFilename: unicode
+	@param logFilename: the filename of the log file to open
 	"""
 	import LogViewer
-	print "DEBUG: %s" % logFilename
 	logFilename = os.path.normpath(os.path.realpath(logFilename))
-	print "DEBUG: %s" % logFilename
 
 	# OK, now we can create some Qt objects.
 	app = QApplication.instance()
@@ -1125,10 +1129,16 @@ def runLogAnalyzer(logFilename):
 	app.setStyle(style)
 
 	PluginManager.scanPlugins()
+	
+	# Optional login (to retrieve included files on the server)
+	if shouldConnect:
+		connectionDialog = WConnectionDialog(None)
+		if connectionDialog.exec_() != QDialog.Accepted:
+			sys.exit(0)
+		# No Xc for log analysis
+		QApplication.instance().client().stopXc()
 
-	# Now, we just open a WLogViewer with the read filename.
-	# However, some tabs must be disabled (buginet) and the QTesterman tab settings must not be followed.
-
+	# Open a LogViewer
 	logAnalyzer = LogViewer.WLogViewer(standalone = True)
 	logAnalyzer.setTitle("Testerman Log Analyzer")
 	logAnalyzer.openUrl(QUrl.fromLocalFile(logFilename))
@@ -1137,6 +1147,9 @@ def runLogAnalyzer(logFilename):
 	return app.exec_()
 
 def run():
+	"""
+	Main function.
+	"""
 	AutoUpdate.Restarter.initialize()
 
 	app = QTestermanApplication([])
@@ -1149,10 +1162,11 @@ def run():
 	app.set('basepath', os.path.normpath(os.path.realpath(app.get('qtestermanpath') + "/..")))
 
 	logFilename = None
+	shouldConnect = False
 
 	# Let's parse the command line.
 	try:
-		opts, args = getopt.getopt(sys.argv[1:], "hvs:l:", ["help", "version", "log=", "debug", "force-update"])
+		opts, args = getopt.getopt(sys.argv[1:], "hvs:l:", ["help", "version", "log=", "debug", "force-update", "online"])
 	except Exception, e:
 		usage(str(e))
 		sys.exit(2)
@@ -1170,6 +1184,8 @@ def run():
 			logFilename = arg
 		if opt in ['--force-update']:
 			app.set('autoupdate.force', 1)
+		if opt in ['--online']:
+			shouldConnect = True
 		if opt in ['--debug']:
 			import gc
 			gc.set_debug(gc.DEBUG_STATS)
@@ -1179,7 +1195,7 @@ def run():
 			print "Current GC state: " + str(gc.isenabled())
 
 	if logFilename:
-		return runLogAnalyzer(logFilename)
+		return runLogAnalyzer(logFilename, shouldConnect)
 	else:
 		log("Starting %s %s..." % (getClientName(), getClientVersion()))
 		return runClient()

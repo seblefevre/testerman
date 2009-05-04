@@ -247,7 +247,7 @@ class LogModel(QObject):
 		
 		self._currentAts = None
 		self._currentTestCase = None
-	
+
 	def clear(self):
 		self._atses = []
 		self._containsIncludes = False
@@ -383,6 +383,7 @@ class LogModel(QObject):
 		"""
 		return self._atses
 
+
 ###############################################################################
 # Log Summary
 ###############################################################################
@@ -454,6 +455,48 @@ class WSummaryGroupBox(QGroupBox):
 # Raw log viewer
 ###############################################################################
 
+class WSaveLogOptionDialog(QDialog):
+	def __init__(self, parent = None):
+		QDialog.__init__(self, parent)
+		self.__createWidgets()
+	
+	def __createWidgets(self):
+		self.setWindowTitle("Select raw log exportation method")
+		layout = QVBoxLayout()
+
+		self._group = QButtonGroup()
+		button = QRadioButton("Expand included logs inline\nInclude directives are followed, leading to a single, but possibly large, log file")
+		self._group.addButton(button, 0)
+		layout.addWidget(button)
+		button.setChecked(True)
+		button = QRadioButton("Retrieve included logs as dedicated files\nInclude directives are followed, leading to a master file referencing other files in sub-directories")
+		self._group.addButton(button, 1)
+		layout.addWidget(button)
+		button = QRadioButton("Leave the raw log as is\nDo not follow include directives. The saved log file may contain incomplete contents.")
+		self._group.addButton(button, 2)
+		layout.addWidget(button)
+
+		buttonsLayout = QHBoxLayout()
+		self.okButton = QPushButton("OK")
+		self.connect(self.okButton, SIGNAL('clicked()'), self.accept)
+		self.cancelButton = QPushButton("Cancel")
+		self.connect(self.cancelButton, SIGNAL('clicked()'), self.reject)
+		buttonsLayout.addStretch()
+		buttonsLayout.addWidget(self.okButton)
+		buttonsLayout.addWidget(self.cancelButton)
+		layout.addLayout(buttonsLayout)
+
+		self.setLayout(layout)
+
+	def getSelectedMode(self):
+		id_ = self._group.checkedId()
+		if id_ == 0:
+			return LogSaver.MODE_EXPAND
+		elif id_ == 1:
+			return LogSaver.MODE_REWRITE
+		else:
+			return LogSaver.MODE_RAW
+
 class WRawLogView(QWidget):
 	"""
 	A simple composite widget with a read-only text edit to display
@@ -479,27 +522,37 @@ class WRawLogView(QWidget):
 		layout = QVBoxLayout()
 		self.textEdit = QTextEdit()
 		self.textEdit.setReadOnly(True)
-#		font = self.textEdit.font()
-#		font.setFixedPitch(True)
-#		self.textEdit.setFont(font)
 		self.textEdit.setLineWrapMode(QTextEdit.NoWrap)
 		self.textEdit.setUndoRedoEnabled(False)
 
 		layout.addWidget(self.textEdit)
 		self.textEdit.setHtml('<i>Click on Update to load raw logs</i>')
 
+		# Save actions
+		self.saveRawAction = TestermanAction(self, "Save raw logs", lambda: self.saveAs(LogSaver.MODE_RAW), "Do not follow include directives. The saved log file may contain incomplete content")
+		self.saveExpandAction = TestermanAction(self, "Expand included files inline and save", lambda: self.saveAs(LogSaver.MODE_EXPAND), "Include directives are followed, leading to a single, but possibly large, log file")
+		self.saveRewriteAction = TestermanAction(self, "Follow and save included files", lambda: self.saveAs(LogSaver.MODE_REWRITE), "Include directives are followed, leading to a master file referencing other files in sub-directories")
+		self.saveMenu = QMenu('Save as...', self)
+		self.saveMenu.addAction(self.saveExpandAction)
+#		self.saveMenu.addAction(self.saveRewriteAction) # Not yet
+
+		self.saveAsButton = QToolButton()
+		self.saveAsButton.setDefaultAction(self.saveRawAction)
+		self.saveAsButton.setMenu(self.saveMenu)
+		self.saveAsButton.setIconSize(QSize(16, 16))
+		self.saveAsButton.setToolButtonStyle(Qt.ToolButtonTextBesideIcon)
+		self.saveAsButton.setPopupMode(QToolButton.MenuButtonPopup)
+
 		optionLayout = QHBoxLayout()
 		optionLayout.addWidget(WFind(self.textEdit))
-		self.saveButton = QPushButton("Save as...")
-		self.saveButton.setEnabled(False) # enabled on loading raw logs
-		self.connect(self.saveButton, SIGNAL('clicked()'), self.saveAs)
-		optionLayout.addWidget(self.saveButton)
+		self.saveAsButton.setEnabled(False) # enabled on loading raw logs
+		optionLayout.addWidget(self.saveAsButton)
 
 		layout.addLayout(optionLayout)
 
 		self.setLayout(layout)
 
-	def saveAs(self):
+	def saveAs(self, mode):
 		"""
 		TODO: if the log file contains links to other files,
 		proposes the user to:
@@ -520,9 +573,9 @@ class WRawLogView(QWidget):
 		directory = os.path.dirname(filename)
 		settings.setValue('lastVisitedDirectory', QVariant(directory))
 		try:
-			f = open(filename, 'w')
-			f.write(self.textEdit.toPlainText())
-			f.close()
+			rawLogs = self.textEdit.toPlainText()
+			logSaver = LogSaver(QApplication.instance().client(), mode)
+			logSaver.saveAs(filename, rawLogs)
 			QMessageBox.information(self, getClientName(), "Execution log saved successfully.", QMessageBox.Ok)
 			return True
 		except Exception, e:
@@ -534,7 +587,83 @@ class WRawLogView(QWidget):
 
 	def setLog(self, txt):
 		self.textEdit.setPlainText(txt)
-		self.saveButton.setEnabled(True)
+		self.saveAsButton.setEnabled(True)
+
+
+##############################################################################
+# Client-related Utilities
+##############################################################################
+
+import urlparse
+import os
+
+class LogSaver:
+	"""
+	A Raw log saver that can follow include directives
+	to expand the logs inline or save them into a dedicated
+	sub-directory.
+	
+	Based on *string* parsing, not XML parsing, 
+	and assumes that <include> elements are on a single line.
+	"""
+	MODE_EXPAND = "expand"
+	MODE_REWRITE = "rewrite"
+	MODE_RAW = "raw"
+
+	def __init__(self, client, mode = MODE_RAW):
+		self._client = client
+		self._mode = mode
+
+	def saveAs(self, filename, rawLogs):
+		f = open(filename, 'w')
+		self._save(f, rawLogs, prefix = '.'.join(filename.split('/')[-1].split('.')[-1]))
+		f.close()
+
+	def _save(self, f, rawLogs, prefix = None):
+		if self._mode == self.MODE_RAW:
+			f.write(rawLogs)
+			return
+
+		for line in rawLogs.split('\n'):
+			line = unicode(line).encode('utf-8')
+			if not line.startswith('<include '):
+				f.write(line + '\n')
+			else:
+				m = re.match(r'\<include (?P<prefix>.*)url="(?P<url>.*?)" (?P<suffix>.*)', line)
+				if m:
+					url = m.group('url')
+					if self._mode == self.MODE_EXPAND:
+						includedLogs = self.fetchUrl(url)
+						if includedLogs is not None:
+							self._save(f, includedLogs)
+						else:
+							log("Unable to fetch url '%s'..." % url)
+							# Warning
+							pass
+					elif self._mode == self.MODE_REWRITE:
+						includedLogs = self.fetchUrl(url)
+						if includedLogs is not None:
+							# new file in a new folder
+							dirname = prefix
+							name = url.split('/')[-1]
+							filename = "%s/%s" % (dirname, name)
+							f.write('<include %surl="%s/%s" %s\n' % (m.group('prefix'), filename, m.group('suffix')))
+							# Create the file
+							try:
+								os.makedirs(dirname)
+							except:
+								pass
+							subf = open(filename, 'w')
+							self._save(subf, prefix = '.'.join(name.split('.')[-1]))
+							subf.close()
+
+	def fetchUrl(self, url):
+		log("Fetching included url '%s'..." % url)
+		# extract path from url
+		path = os.path.normpath(urlparse.urlparse(url).path)
+		log("Fetching included path '%s'..." % path)
+		return self._client.getFile(path)
+
 
 ###############################################################################
 # Complete Log Viewer
