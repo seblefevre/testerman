@@ -125,7 +125,7 @@ class ProbeImplementation:
 	def __getitem__(self, name):
 		return self._getProperty(name)
 
-	def logSentPayload(self, label, payload):
+	def logSentPayload(self, label, payload, sutAddress = None):
 		"""
 		Calls this when you need to log a just sent message on the wire.
 		
@@ -133,10 +133,12 @@ class ProbeImplementation:
 		@param label: a human-readable short description of what was sent
 		@type  payload: buffer (as string)
 		@param payload: the sent payload
+		@type  sutAddress: string
+		@param sutAddress: the destination SUT address
 		"""
-		self.__adapter.logSentPayload(label, payload)
+		self.__adapter.logSentPayload(label, payload, sutAddress)
 
-	def logReceivedPayload(self, label, payload):
+	def logReceivedPayload(self, label, payload, sutAddress = None):
 		"""
 		Calls this when you need to log a just received message on the wire.
 		
@@ -144,8 +146,10 @@ class ProbeImplementation:
 		@param label: a human-readable short description of what was sent
 		@type  payload: buffer (as string)
 		@param payload: the received payload
+		@type  sutAddress: string
+		@param sutAddress: the source SUT address
 		"""
-		self.__adapter.logReceivedPayload(label, payload)
+		self.__adapter.logReceivedPayload(label, payload, sutAddress)
 
 	def getLogger(self):
 		"""
@@ -246,8 +250,8 @@ class IProbeImplementationAdapter:
 	def onTriSAReset(self): pass
 
 	# Impl -> Adapter: Adapter provided
-	def logSentPayload(self, label, payload): pass
-	def logReceivedPayload(self, label, payload): pass
+	def logSentPayload(self, label, payload, sutAddress = None): pass
+	def logReceivedPayload(self, label, payload, sutAddress = None): pass
 	def getLogger(self): pass
 	def getProperty(self, name, defaultValue): pass
 	def triEnqueueMsg(self, message, sutAddress = None): pass

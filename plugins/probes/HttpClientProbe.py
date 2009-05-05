@@ -99,7 +99,7 @@ class HttpClientProbe(ProbeImplementationManager.ProbeImplementation):
 
 			# Send our payload
 			self._httpConnection.send(encodedMessage)
-			self.logSentPayload(summary, encodedMessage)
+			self.logSentPayload(summary, encodedMessage, "%s:%s" % self._httpConnection.getpeername())
 			# Now wait for a response asynchronously
 			self.waitResponse()
 		except Exception, e:
@@ -182,9 +182,10 @@ class ResponseThread(threading.Thread):
 						pass
 						
 					if decodedMessage:
+						fromAddr = "%s:%s" % self._socket.getpeername()
 						self._probe.getLogger().debug('message decoded, enqueuing...')
-						self._probe.logReceivedPayload(summary, buf)
-						self._probe.triEnqueueMsg(decodedMessage)
+						self._probe.logReceivedPayload(summary, buf, fromAddr)
+						self._probe.triEnqueueMsg(decodedMessage, fromAddr)
 						self._stopEvent.set()
 			except Exception, e:
 				self._probe.getLogger().error('Error while waiting for http response: %s' % str(e))

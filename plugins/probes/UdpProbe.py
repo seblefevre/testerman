@@ -187,7 +187,7 @@ class UdpProbe(ProbeImplementationManager.ProbeImplementation):
 		return conn
 	
 	def _send(self, sock, data, addr):
-		self.logSentPayload("UDP data", data)
+		self.logSentPayload("UDP data", data, "%s:%s" % addr)
 		self.getLogger().info("Sending data from %s to %s" % (str(sock.getsockname()), str(addr)))
 		sock.sendto(data, addr)
 
@@ -261,19 +261,19 @@ class UdpProbe(ProbeImplementationManager.ProbeImplementation):
 				while len(conn.buffer) >= size:
 					msg = conn.buffer[:size]
 					conn.buffer = conn.buffer[size+1:]
-					self.logReceivedPayload("UDP data", msg)
+					self.logReceivedPayload("UDP data", msg, "%s:%s" % addr)
 					self.triEnqueueMsg(msg, "%s:%s" % addr)
 			elif separator is not None:
 				msgs = conn.buffer.split(separator)
 				for msg in msgs[:-1]:
-					self.logReceivedPayload("UDP data", msg)
+					self.logReceivedPayload("UDP data", msg, "%s:%s" % addr)
 					self.triEnqueueMsg(msg, "%s:%s" % addr)
 				conn.buffer = msgs[-1]
 			else:
 				msg = conn.buffer
 				conn.buffer = ''
 				# No separator or size criteria -> send to userland what we received according to the udp stack
-				self.logReceivedPayload("UDP data", msg)
+				self.logReceivedPayload("UDP data", msg, "%s:%s" % addr)
 				self.triEnqueueMsg(msg, "%s:%s" % addr)
 
 

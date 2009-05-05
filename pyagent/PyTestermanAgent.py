@@ -153,7 +153,7 @@ class ProbeImplementationAdapter(ProbeImplementationManager.IProbeImplementation
 		msg.setHeader("Probe-Name", self.getName())
 		return self.__agent.notify(msg)
 
-	def logSentPayload(self, label, payload):
+	def logSentPayload(self, label, payload, sutAddress = None):
 		"""
 		Creates a LOG notification message over XA and sends it,
 		for "sent" payload logging.
@@ -169,10 +169,12 @@ class ProbeImplementationAdapter(ProbeImplementationManager.IProbeImplementation
 		msg = Messages.Notification(method = "LOG", uri = self.getUri(), protocol = "Xa", version = "1.0")
 		msg.setHeader("Log-Class", "system-sent")
 		msg.setHeader("Probe-Name", self.getName())
-		msg.setApplicationBody({'label': label, 'payload': payload}, profile = Messages.Message.CONTENT_TYPE_PYTHON_PICKLE)
+		body = {'label': label, 'payload': payload}
+		if sutAddress: body['sut-address'] = sutAddress
+		msg.setApplicationBody(body, profile = Messages.Message.CONTENT_TYPE_PYTHON_PICKLE)
 		return self.__agent.notify(msg)
 	
-	def logReceivedPayload(self, label, payload):
+	def logReceivedPayload(self, label, payload, sutAddress = None):
 		"""
 		Creates a LOG notification message over XA and sends it,
 		for "received" payload logging.
@@ -188,7 +190,9 @@ class ProbeImplementationAdapter(ProbeImplementationManager.IProbeImplementation
 		msg = Messages.Notification(method = "LOG", uri = self.getUri(), protocol = "Xa", version = "1.0")
 		msg.setHeader("Log-Class", "system-received")
 		msg.setHeader("Probe-Name", self.getName())
-		msg.setApplicationBody({'label': label, 'payload': payload}, profile = Messages.Message.CONTENT_TYPE_PYTHON_PICKLE)
+		body = {'label': label, 'payload': payload}
+		if sutAddress: body['sut-address'] = sutAddress
+		msg.setApplicationBody(body, profile = Messages.Message.CONTENT_TYPE_PYTHON_PICKLE)
 		return self.__agent.notify(msg)
 
 	def getProperty(self, name, defaultValue):

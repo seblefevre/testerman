@@ -215,7 +215,7 @@ class TcpProbe(ProbeImplementationManager.ProbeImplementation):
 		return conn
 	
 	def _send(self, conn, data):
-		self.logSentPayload("TCP data", data)
+		self.logSentPayload("TCP data", data, "%s:%s" % conn.socket.getpeername())
 		conn.socket.send(data)
 
 	def _disconnect(self, addr, reason):
@@ -314,19 +314,19 @@ class TcpProbe(ProbeImplementationManager.ProbeImplementation):
 				while len(conn.buffer) >= size:
 					msg = conn.buffer[:size]
 					conn.buffer = conn.buffer[size+1:]
-					self.logReceivedPayload("TCP data", msg)
+					self.logReceivedPayload("TCP data", msg, "%s:%s" % addr)
 					self.triEnqueueMsg(msg, "%s:%s" % addr)
 			elif separator is not None:
 				msgs = conn.buffer.split(separator)
 				for msg in msgs[:-1]:
-					self.logReceivedPayload("TCP data", msg)
+					self.logReceivedPayload("TCP data", msg, "%s:%s" % addr)
 					self.triEnqueueMsg(msg, "%s:%s" % addr)
 				conn.buffer = msgs[-1]
 			else:
 				msg = conn.buffer
 				conn.buffer = ''
 				# No separator or size criteria -> send to userland what we received according to the tcp stack
-				self.logReceivedPayload("TCP data", msg)
+				self.logReceivedPayload("TCP data", msg, "%s:%s" % addr)
 				self.triEnqueueMsg(msg, "%s:%s" % addr)
 
 	def _onIncomingConnection(self, sock, addr):

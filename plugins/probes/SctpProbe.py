@@ -192,7 +192,7 @@ class SctpProbe(ProbeImplementationManager.ProbeImplementation):
 		return conn
 	
 	def _send(self, conn, data):
-		self.logSentPayload("SCTP data", data)
+		self.logSentPayload("SCTP data", data, "%s:%s" % conn.socket.getpeername())
 		conn.socket.send(data)
 
 	def _disconnect(self, addr, reason):
@@ -282,7 +282,7 @@ class SctpProbe(ProbeImplementationManager.ProbeImplementation):
 		else:
 			# We are suppose to check for packetization criteria here
 			# (maxsize, timeout, ...)
-			self.logReceivedPayload("SCTP data", data)
+			self.logReceivedPayload("SCTP data", data, "%s:%s" % addr)
 			self.triEnqueueMsg(data, "%s:%s" % addr)
 
 	def _onIncomingConnection(self, sock, addr):

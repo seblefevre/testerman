@@ -275,14 +275,16 @@ def onLogNotification(probeUri, logClass, logInfo):
 		if logClass == "system-sent":
 			label = logInfo["label"]
 			payload = logInfo["payload"]
+			sutAddress = logInfo.get('sut-address', None)
 			# TODO/FIXME: retrieve the tsiPort from the probeUri
-			TestermanTCI.logSystemSent(tsiPort = probeUri, label = label, payload = payload)
+			TestermanTCI.logSystemSent(tsiPort = probeUri, label = label, payload = payload, sutAddress = sutAddress)
 
 		elif logClass == "system-received":
 			label = logInfo["label"]
 			payload = logInfo["payload"]
+			sutAddress = logInfo.get('sut-address', None)
 			# TODO/FIXME: retrieve the tsiPort from the probeUri
-			TestermanTCI.logSystemReceived(tsiPort = probeUri, label = label, payload = payload)
+			TestermanTCI.logSystemReceived(tsiPort = probeUri, label = label, payload = payload, sutAddress = sutAddress)
 
 	except Exception, e:
 		log("Exception in onLogNotification: %s" % str(e))
@@ -504,10 +506,10 @@ class LocalProbeAdapter(ProbeAdapter):
 	def onTriSAReset(self):
 		self.__probeImplementation.onTriSAReset()
 	
-	def logSentPayload(self, label, payload):
-		TestermanTCI.logSystemSent(tsiPort = self.getUri(), label = label, payload = payload)
-	def logReceivedPayload(self, label, payload):
-		TestermanTCI.logSystemReceived(tsiPort = self.getUri(), label = label, payload = payload)
+	def logSentPayload(self, label, payload, sutAddress = None):
+		TestermanTCI.logSystemSent(tsiPort = self.getUri(), label = label, payload = payload, sutAddress = sutAddress)
+	def logReceivedPayload(self, label, payload, sutAddress = None):
+		TestermanTCI.logSystemReceived(tsiPort = self.getUri(), label = label, payload = payload, sutAddress = sutAddress)
 
 
 class RemoteStubAdapter(LocalProbeAdapter):

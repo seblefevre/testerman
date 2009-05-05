@@ -168,7 +168,7 @@ class RtspClientProbe(ProbeImplementationManager.ProbeImplementation):
 
 			# Send our payload
 			self._connection.send(encodedMessage)
-			self.logSentPayload(summary, encodedMessage)
+			self.logSentPayload(summary, encodedMessage, "%s:%s" % self._connection.getpeername())
 			# Now wait for a response asynchronously
 			self.waitResponse(cseq = cseq)
 		except Exception, e:
@@ -257,14 +257,16 @@ class ResponseThread(threading.Thread):
 						pass
 						
 					if decodedMessage:
+						fromAddr = "%s:%s" % self._socket.getpeername()
+					
 						# System log, always
-						self._probe.logReceivedPayload(summary, buf)
+						self._probe.logReceivedPayload(summary, buf, fromAddr)
 						
 						# Should we check the cseq locally ?
 						if self._cseq is None:
 							# Let the user check the cseq
 							self._probe.getLogger().info('message decoded, enqueuing without checking CSeq...')
-							self._probe.triEnqueueMsg(decodedMessage)
+							self._probe.triEnqueueMsg(decodedMessage, fromAddr)
 							self._stopEvent.set()
 						else:
 							# Conditional enqueing - let's found the cseq
@@ -276,7 +278,7 @@ class ResponseThread(threading.Thread):
 									break
 							if cseq == self._cseq:
 								self._probe.getLogger().info('message decoded, CSeq matched, enqueuing...')
-								self._probe.triEnqueueMsg(decodedMessage)
+								self._probe.triEnqueueMsg(decodedMessage, fromAddr)
 								self._stopEvent.set()
 							else:
 								self._probe.getLogger().warning('Invalid CSeq received. Not enqueuing, ignoring message')

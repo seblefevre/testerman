@@ -239,11 +239,13 @@ def logKilledBranchSelected(id_):
 	# in a alt, we selected a tc.KILLED where the tc's id is id_
 	tliLog('alt', toXml('killed-branch', { 'class': 'event', 'timestamp': time.time(), 'id': id_ }))
 
-def logSystemSent(tsiPort, label, payload):
-	tliLog('system', toXml('system-sent', { 'class': 'system', 'timestamp': time.time(), 'tsi-port': tsiPort }, '%s%s' % (testermanToXml(label, 'label'), testermanToXml(payload, 'payload'))))
+def logSystemSent(tsiPort, label, payload, sutAddress = None):
+	if sutAddress is None: sutAddress = ''
+	tliLog('system', toXml('system-sent', { 'class': 'system', 'timestamp': time.time(), 'tsi-port': tsiPort }, '%s%s%s' % (testermanToXml(label, 'label'), testermanToXml(payload, 'payload'), testermanToXml(sutAddress, 'sut-address'))))
 
-def logSystemReceived(tsiPort, label, payload):
-	tliLog('system', toXml('system-received', { 'class': 'system', 'timestamp': time.time(), 'tsi-port': tsiPort }, '%s%s' % (testermanToXml(label, 'label'), testermanToXml(payload, 'payload'))))
+def logSystemReceived(tsiPort, label, payload, sutAddress = None):
+	if sutAddress is None: sutAddress = ''
+	tliLog('system', toXml('system-received', { 'class': 'system', 'timestamp': time.time(), 'tsi-port': tsiPort }, '%s%s%s' % (testermanToXml(label, 'label'), testermanToXml(payload, 'payload'), testermanToXml(sutAddress, 'sut-address'))))
 
 def logActionRequested(message, timeout, tc):
 	tliLog('action', toXml('action-requested', { 'class': 'action', 'timestamp': time.time(), 'timeout': timeout, 'tc': tc }, '%s' % (testermanToXml(message, 'message'))))

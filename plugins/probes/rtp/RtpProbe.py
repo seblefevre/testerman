@@ -678,7 +678,7 @@ class SendingThread(threading.Thread):
 
 				# Log outgoing payloads only on first packet, with a packet as an example.
 				if not seq:
-					self._probe.logSentPayload("Sending RTP...", packetBytes)
+					self._probe.logSentPayload("Sending RTP...", packetBytes, "%s:%s" % toAddr)
 				
 				# the sequence number is linearly incremented by one.
 				# Cycled on 2^48, at least according to Shtoom implementation.
@@ -750,7 +750,7 @@ class ListeningThread(threading.Thread):
 				ssrc = packet.header.ssrc
 				if not lastTime: # i.e. this is our first packet for the stream
 					# Log incoming payloads only on first packet, with a packet as an example.
-					self._probe.logReceivedPayload("Receiving RTP...", data)
+					self._probe.logReceivedPayload("Receiving RTP...", data, "%s:%s" % src)
 					self._probe.triEnqueueMsg(('startedReceivingRtp', {'payloadType': pt, 'ssrc': ssrc, 'fromIp': src[0],
 						'fromPort': src[1]}), "%s:%s" % src)
 					lastTime = time.time()
@@ -760,7 +760,7 @@ class ListeningThread(threading.Thread):
 					if (pt, src[0], src[1], ssrc) != (lastPt, lastSourceIp, lastSourcePort, lastSsrc):
 						# PT or emitter updated: raise a stop then a start event.
 						self._probe.triEnqueueMsg(('stoppedReceivingRtp', {'reason': 'updated'}), "%s:%s" % src)
-						self._probe.logReceivedPayload("Receiving RTP...", data)
+						self._probe.logReceivedPayload("Receiving RTP...", data, "%s:%s" % src)
 						self._probe.triEnqueueMsg(('startedReceivingRtp', {'payloadType': pt, 'ssrc': ssrc, 'fromIp': lastSourceIp,
 							'fromPort': lastSourcePort}), "%s:%s" % src)
 
