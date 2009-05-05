@@ -1440,24 +1440,15 @@ class WTextualLogView(QTreeWidget):
 	def __createActions(self):
 		# logClass togglers
 		self.toggleDisplayClassActions = []
-		for logClass in [ "internal", "event", "user" ]:
+		for logClass in [ "internal", "event", "user", "system" ]:
 			action = QAction("Display " + logClass + " related logs", self)
 			action.setCheckable(True)
 			action.setToolTip("Display/hide %s logs" % logClass)
 			if not (logClass in self.currentHiddenLogClasses):
 				action.setChecked(True)
 			# I'm unable to make a connection correctly work with a lambda using a string as fixed param, sorry.
-			self.connect(action, SIGNAL("toggled(bool)"), getattr(self, "onToggledAction_" + logClass))
+			self.connect(action, SIGNAL("toggled(bool)"), lambda b, logClass=logClass: self.onToggleDisplayClass(logClass, b))
 			self.toggleDisplayClassActions.append(action)
-
-	def onToggledAction_event(self, b):
-		self.onToggledAction("event", b)
-
-	def onToggledAction_user(self, b):
-		self.onToggledAction("user", b)
-
-	def onToggledAction_internal(self, b):
-		self.onToggledAction("internal", b)
 
 	def createContextMenu(self):
 		contextMenu = QMenu("Textual log viewer", self)
@@ -1469,16 +1460,13 @@ class WTextualLogView(QTreeWidget):
 	def onPopupMenu(self, pos):
 		self.createContextMenu().popup(QCursor.pos())
 
-	def onToggledAction(self, logClass, checked):
-		log("Levels updated for %s, %s" % (logClass, str(checked)))
+	def onToggleDisplayClass(self, logClass, checked):
+		log("Class display flag updated for %s, %s" % (logClass, str(checked)))
 		# not checked, i.e. we hide it.
 		if not checked:
 			self.currentHiddenLogClasses.append(logClass)
-		else:
-			try:
-				self.currentHiddenLogClasses.remove(logClass)
-			except:
-				pass
+		elif logClass in self.currentHiddenLogClasses:
+			self.currentHiddenLogClasses.remove(logClass)
 		self.applyFilter(self.currentHiddenLogClasses)
 
 	def onItemActivated(self, item, col):
