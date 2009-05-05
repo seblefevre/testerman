@@ -1092,10 +1092,14 @@ class TestCaseScene(QGraphicsScene):
 				actor = QString('system')
 				itemToAdd = self.__actors[actor].createRightArrowStickerItem(domElement.firstChildElement("label").text(), y)
 				itemToAdd.setMyData(0, domElement.firstChildElement("payload"))
+				if not domElement.firstChildElement("sut-address").isNull():
+					itemToAdd.setToolTip("sent to %s" % domElement.firstChildElement("sut-address").text())
 			elif element == "system-received":
 				actor = QString('system')
 				itemToAdd = self.__actors[actor].createLeftArrowStickerItem(domElement.firstChildElement("label").text(), y)
 				itemToAdd.setMyData(0, domElement.firstChildElement("payload"))
+				if not domElement.firstChildElement("sut-address").isNull():
+					itemToAdd.setToolTip("received from %s" % domElement.firstChildElement("sut-address").text())
 
 			# User log events
 			elif element == "user":
@@ -1228,7 +1232,6 @@ class WVisualTestCaseView(WClickableGraphicsView):
 	def onGraphicsItemSelected(self, item):
 		# if item has 2 data (index 0 and 1), this is a match/mismatch.
 		# if item has only 1 data (index 1), this is a single message.
-		#print "DEBUG: >>>>> selected item " + unicode(item)
 		try:
 			# The itemGroup corresponding to interesting items (Arrow, Boxed/RoungedLabels) is (typically)
 			# never selected (the text/rect item is returned instead; we have to click within the bounbingBox

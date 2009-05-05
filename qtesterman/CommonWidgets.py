@@ -635,8 +635,6 @@ class WEnhancedTabWidget(QTabWidget):
 		self.closeButton.setAutoRaise(1)
 		self.setCornerWidget(self.closeButton)
 		self.connect(self, SIGNAL('currentChanged(int)'), self.onTabChanged)
-#		self.nextTabAction = TestermanAction(self, '', self.nextTab, 'Next document', 'Ctrl+Key_Tab')
-#		self.previousTabAction = TestermanAction(self, '', self.previousTab, 'Previous document', 'Ctrl+Shift+Key_Tab')
 
 	def onTabChanged(self, index):
 		url = QTabWidget.widget(self, self.currentIndex()).model.getUrl()
@@ -691,24 +689,6 @@ class WEnhancedTabWidget(QTabWidget):
 	def addTab(self, child, icon, text):
 		return QTabWidget.addTab(self, child, icon, self.getClosestTabText(-1, text))
 
-#	def nextTab(self):
-#		"""
-#		Activate the next (to the right) tab (wrap to the first one to the left)
-#		"""
-#		print "DEBUG: nexttab"
-#		index = self.currentIndex()
-#		index = (index + 1) % self.count()
-#		if self.currentIndex() != index: self.setCurrentIndex(index)
-#
-#	def previousTab(self):
-#		"""
-#		Activate the previous (to the left) tab (wrap to the first one to the right)
-#		"""
-#		print "DEBUG: previoustab"
-#		index = self.currentIndex()
-#		index = (index - 1 + self.count()) % self.count()
-#		if self.currentIndex() != index: self.setCurrentIndex(index)
-
 
 ################################################################################
 # Enhanced Delete Confirmation dialog
@@ -725,7 +705,7 @@ class WDeleteFileConfirmation(QDialog):
 		"""
 		QDialog.__init__(self, parent)
 		self.__createWidgets(label, checkBox)
-	
+
 	def __createWidgets(self, label, checkBox):
 		self.title = "Remove file"
 		
@@ -825,8 +805,8 @@ class WUserQuestion(QDialog):
 class WMixedTemplateView(QSplitter):
 	"""
 	A high level widget that is able to display:
-	- a single template View for message viewing
-	- a double tempalte View for match/mismatch viewing
+	- a single template view for message viewing
+	- a double template view for match/mismatch (template) viewing
 	"""
 	def __init__(self, parent = None):
 		QSplitter.__init__(self, parent)
@@ -838,14 +818,18 @@ class WMixedTemplateView(QSplitter):
 		self.addWidget(self.templateViewLeft)
 		self.addWidget(self.templateViewRight)
 
-	def setTemplates(self, template1, template2 = None):
-		self.templateViewLeft.setTemplate(template1)
-		self.templateViewRight.setTemplate(template2)
+	def setTemplates(self, message, template = None):
+		self.templateViewLeft.setTemplate(message)
+		self.templateViewRight.setTemplate(template)
 
 def getHexaDisplay(data):
 	"""
-	@param data is an array of bytes / a string with non-ascii characters.
 	Returns an ascii string displaying data as if it was hexdumped.
+
+	@param data: an array of bytes / a string with non-ascii characters.
+
+	@rtype: string
+	@returns: a hexdump + ascii (printable characters only) view
 	"""
 	hexa = binascii.b2a_hex(data)
 	ret = ""
@@ -857,7 +841,6 @@ def getHexaDisplay(data):
 			ret += " "
 		if not (i % 32):
 			ret += "| "
-#			log("debug: displaying %d to %d..." % ( ((i-1) / 32) * 32, i))
 			for j in range(((i-1) / 32) * 32, i, 2):
 				c = data[j / 2]
 				if ord(c) < 127 and ord(c) > 31:
@@ -879,7 +862,6 @@ def getHexaDisplay(data):
 				ret += "."
 		ret += "\n"
 
-#	log("DEBUG:" + ret)
 	return ret
 
 def getPrintableString(data):
@@ -957,7 +939,7 @@ class WTemplateView(QTreeWidget):
 		self.__createWidgets()
 
 	def __createWidgets(self):
-		self.setRootIsDecorated(1)
+		self.setRootIsDecorated(True)
 		self.setHeaderLabels([ 'name', 'value', 'type' ])
 		self.setSortingEnabled(True)
 		self.header().setSortIndicator(0, Qt.AscendingOrder)
@@ -966,10 +948,9 @@ class WTemplateView(QTreeWidget):
 
 	def setTemplate(self, templateElement):
 		"""
-		@type templateElement: QDomElement
-
-		It correspond to <message>...</message> or <template>...</template>
-		with a sub element for each value.
+		@type  templateElement: QDomElement
+		@param templateElement: It corresponds to <message>...</message> or <template>...</template>
+		                        with a sub element for each value.
 		"""
 		self.templateElement = templateElement
 		self.clear()

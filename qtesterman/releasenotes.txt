@@ -14,6 +14,11 @@ This is QTesterman, a PyQt4-based GUI for Testerman.
   errors such as typos.
 - Added: campaign log support. The log viewer now displays testcases
   in an ATS tree and can follow 'include' elements in campaign logs.
+  When saving raw logs, an option is available to expand these included
+  logs inline.
+- Added: online mode support for standalone log viewer.
+  When using -l with --online, the login dialog pops up so that a
+  server can be selected for included logs retrieval.
 - Added: log-reporter plugin interface: added getModel() to retrieve
   the current loaded log model for deferred (non-realtime) reporting
 - Added: simple/sample template-based reporter. Same principle as the
@@ -22,10 +27,14 @@ This is QTesterman, a PyQt4-based GUI for Testerman.
 - Added: logs window (in Tools menu), displaying internal QTesterman logs.
   May be useful for troubleshooting and bug submissions when running in pure
   windows (no console) mode.
+- Added: support for SUT address for system sent/received events in
+  both visual (as a tooltip) and textual viewers.
 - Modified: native epydoc-based documentation generator is now a plugin
 - Modified: main window layout capabilities; left-side docks can now use
   full height. Should be more convenient for the remote browsers when
   used in low screen resolution (1024x768).
+- Modified: "Resource generator" plugin renamed to "Resource importer", as
+  it is used to import files as embedded resources, not to generate them
 - Fixed: several log analysis speed improvements, up to 33% faster
 - Fixed: reloading of a file that contained non-ascii characters did not work
 - Fixed: loading and reloading of local files under Windows, including
@@ -33,11 +42,6 @@ This is QTesterman, a PyQt4-based GUI for Testerman.
 - Fixed: ATSes in "cancelling" state can now be killed if needed
 - Fixed: campaigns document, in remote browser, now have a execution and
   revisions sub-nodes
-
-TODO:
-- sutAddress display and message encoding display in log analyzer(s)
-- propose the user several options when trying to save (locally) a campaign
-  log file that contains <include> elements.
 
 
 1.1.0:

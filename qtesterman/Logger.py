@@ -22,6 +22,7 @@
 from PyQt4.Qt import *
 
 import CommonWidgets
+from Base import *
 
 import logging
 
@@ -64,7 +65,8 @@ class WLogger(QTextEdit):
 	def __init__(self, parent = None):
 		QTextEdit.__init__(self, parent)
 
-		self.setWindowTitle("Logs")
+		self.setWindowTitle("%s logs" % getClientName())
+		self.setWindowIcon(icon(':/icons/log'))
 		self.setReadOnly(True)
 		self.setWordWrapMode(QTextOption.NoWrap)
 		self.resize(QSize(800, 600))
@@ -89,5 +91,5 @@ TheLoggingStream = QLoggingStream()
 def getLoggingStream():
 	return TheLoggingStream
 
-logging.basicConfig(level = logging.DEBUG, format = '%(asctime)s.%(msecs)03d %(levelname)-8s %(name)-20s %(message)s', datefmt = '%Y%m%d %H:%M:%S', stream = getLoggingStream())
+logging.basicConfig(level = logging.DEBUG, format = '%(asctime)s.%(msecs)03d %(levelname)-8s %(name)-8s %(message)s', datefmt = '%Y%m%d %H:%M:%S', stream = getLoggingStream())
 

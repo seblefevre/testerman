@@ -29,9 +29,10 @@ import Actions
 import PluginManager
 
 import gc
-import os.path
 import base64
-
+import urlparse
+import os
+import os.path
 
 ###############################################################################
 # Log file loader
@@ -68,10 +69,12 @@ def loadLog(url):
 	
 	return content
 
-# docstring trimmer - from PEP 257 sample code
-# Used to trim descriptions from old Testerman versions that
-# did not trim the docstrings by themselves
 def trim(docstring):
+	"""
+	docstring trimmer - from PEP 257 sample code
+	Used to trim descriptions from old Testerman versions that
+	did not trim the docstrings by themselves.
+	"""
 	if not docstring:
 		return ''
 	maxint = 2147483647
@@ -96,6 +99,73 @@ def trim(docstring):
 		trimmed.pop(0)
 	# Return a single string:
 	return '\n'.join(trimmed)
+
+class LogSaver:
+	"""
+	A Raw log saver that can follow include directives
+	to expand the logs inline or save them into a dedicated
+	sub-directory.
+	
+	Based on *string* parsing, not XML parsing, 
+	and assumes that <include> elements are on a single line.
+	"""
+	MODE_EXPAND = "expand"
+	MODE_REWRITE = "rewrite"
+	MODE_RAW = "raw"
+
+	def __init__(self, client, mode = MODE_RAW):
+		self._client = client
+		self._mode = mode
+
+	def saveAs(self, filename, rawLogs):
+		f = open(filename, 'w')
+		self._save(f, rawLogs, prefix = '.'.join(filename.split('/')[-1].split('.')[-1]))
+		f.close()
+
+	def _save(self, f, rawLogs, prefix = None):
+		if self._mode == self.MODE_RAW:
+			f.write(rawLogs)
+			return
+
+		for line in rawLogs.split('\n'):
+			line = unicode(line).encode('utf-8')
+			if not line.startswith('<include '):
+				f.write(line + '\n')
+			else:
+				m = re.match(r'\<include (?P<prefix>.*)url="(?P<url>.*?)" (?P<suffix>.*)', line)
+				if m:
+					url = m.group('url')
+					if self._mode == self.MODE_EXPAND:
+						includedLogs = self.fetchUrl(url)
+						if includedLogs is not None:
+							self._save(f, includedLogs)
+						else:
+							# Warning
+							log("Unable to fetch url '%s'..." % url)
+
+					elif self._mode == self.MODE_REWRITE: # Untested code (for now)
+						includedLogs = self.fetchUrl(url)
+						if includedLogs is not None:
+							# new file in a new folder
+							dirname = prefix
+							name = url.split('/')[-1]
+							filename = "%s/%s" % (dirname, name)
+							f.write('<include %surl="%s/%s" %s\n' % (m.group('prefix'), filename, m.group('suffix')))
+							# Create the file
+							try:
+								os.makedirs(dirname)
+							except:
+								pass
+							subf = open(filename, 'w')
+							self._save(subf, prefix = '.'.join(name.split('.')[-1]))
+							subf.close()
+
+	def fetchUrl(self, url):
+		log("Fetching included url '%s'..." % url)
+		# extract path from url
+		path = os.path.normpath(urlparse.urlparse(url).path)
+		log("Fetching included path '%s'..." % path)
+		return self._client.getFile(path)
 
 ###############################################################################
 # LogModel - inner object emitting interesting event signals
@@ -588,82 +658,6 @@ class WRawLogView(QWidget):
 	def setLog(self, txt):
 		self.textEdit.setPlainText(txt)
 		self.saveAsButton.setEnabled(True)
-
-
-##############################################################################
-# Client-related Utilities
-##############################################################################
-
-import urlparse
-import os
-
-class LogSaver:
-	"""
-	A Raw log saver that can follow include directives
-	to expand the logs inline or save them into a dedicated
-	sub-directory.
-	
-	Based on *string* parsing, not XML parsing, 
-	and assumes that <include> elements are on a single line.
-	"""
-	MODE_EXPAND = "expand"
-	MODE_REWRITE = "rewrite"
-	MODE_RAW = "raw"
-
-	def __init__(self, client, mode = MODE_RAW):
-		self._client = client
-		self._mode = mode
-
-	def saveAs(self, filename, rawLogs):
-		f = open(filename, 'w')
-		self._save(f, rawLogs, prefix = '.'.join(filename.split('/')[-1].split('.')[-1]))
-		f.close()
-
-	def _save(self, f, rawLogs, prefix = None):
-		if self._mode == self.MODE_RAW:
-			f.write(rawLogs)
-			return
-
-		for line in rawLogs.split('\n'):
-			line = unicode(line).encode('utf-8')
-			if not line.startswith('<include '):
-				f.write(line + '\n')
-			else:
-				m = re.match(r'\<include (?P<prefix>.*)url="(?P<url>.*?)" (?P<suffix>.*)', line)
-				if m:
-					url = m.group('url')
-					if self._mode == self.MODE_EXPAND:
-						includedLogs = self.fetchUrl(url)
-						if includedLogs is not None:
-							self._save(f, includedLogs)
-						else:
-							log("Unable to fetch url '%s'..." % url)
-							# Warning
-							pass
-					elif self._mode == self.MODE_REWRITE:
-						includedLogs = self.fetchUrl(url)
-						if includedLogs is not None:
-							# new file in a new folder
-							dirname = prefix
-							name = url.split('/')[-1]
-							filename = "%s/%s" % (dirname, name)
-							f.write('<include %surl="%s/%s" %s\n' % (m.group('prefix'), filename, m.group('suffix')))
-							# Create the file
-							try:
-								os.makedirs(dirname)
-							except:
-								pass
-							subf = open(filename, 'w')
-							self._save(subf, prefix = '.'.join(name.split('.')[-1]))
-							subf.close()
-
-	def fetchUrl(self, url):
-		log("Fetching included url '%s'..." % url)
-		# extract path from url
-		path = os.path.normpath(urlparse.urlparse(url).path)
-		log("Fetching included path '%s'..." % path)
-		return self._client.getFile(path)
-
 
 ###############################################################################
 # Complete Log Viewer
@@ -1261,18 +1255,23 @@ class TextualLogItem(QTreeWidgetItem):
 		elif self._element == "system-sent":
 			tsiPort = self._domElement.attribute('tsi-port')
 			if not self._domElement.firstChildElement('label').isNull():
-				self._message = "%s >>> %s" % (tsiPort, self._domElement.firstChildElement('label').text()) # Short description
+				message = "%s >>> %s" % (tsiPort, self._domElement.firstChildElement('label').text()) # Short description
 			else:
-				self._message = "%s >>> <sent payload>" % tsiPort
+				message = "%s >>> <sent payload>" % tsiPort
+			if not self._domElement.firstChildElement('sut-address').isNull():
+				message += ' to %s' % self._domElement.firstChildElement('sut-address').text()
+			self._message = message
 			payloadElement = self._domElement.firstChildElement('payload')
 			self._setAssociatedData(self._domElement.firstChildElement('payload').text(), payloadElement.attribute("encoding") == "base64")
 		elif self._element == "system-received":
 			tsiPort = self._domElement.attribute('tsi-port')
 			if not self._domElement.firstChildElement('label').isNull():
-				self._message = "%s <<< %s" % (tsiPort, self._domElement.firstChildElement('label').text()) # Short description
+				message = "%s <<< %s" % (tsiPort, self._domElement.firstChildElement('label').text()) # Short description
 			else:
-				self._message = "%s <<< <received payload>" % tsiPort
-
+				message = "%s <<< <received payload>" % tsiPort
+			if not self._domElement.firstChildElement('sut-address').isNull():
+				message += ' from %s' % self._domElement.firstChildElement('sut-address').text()
+			self._message = message
 			payloadElement = self._domElement.firstChildElement('payload')
 			self._setAssociatedData(self._domElement.firstChildElement('payload').text(), payloadElement.attribute("encoding") == "base64")
 
