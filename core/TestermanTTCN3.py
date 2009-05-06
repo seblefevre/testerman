@@ -952,7 +952,7 @@ class Port:
 				for port in self._connectedPorts:
 					if not to or port._tc == to or (isinstance(to, list) and port._tc in to):
 						logMessageSent(fromTc = str(self._tc), fromPort = self._name, toTc = str(port._tc), toPort = port._name, message = messageToLog, address = to)
-						port._enqueue(messageToSend, self)
+						port._enqueue(messageToSend, self._tc)
 			return True
 		else:
 			return False
