@@ -35,6 +35,45 @@ class Connection:
 
 class TcpProbe(ProbeImplementationManager.ProbeImplementation):
 	"""
+	= Identification and Properties =
+
+	Probe Type ID: `tcp`
+
+	Properties:
+	|| '''Name''' || '''Type''' || '''Default value''' || '''Description''' ||
+	|| `local_ip` || string || (empty - system assigned) || Local IP address to use when sending packets ||
+	|| `local_port` || integer || `0` (system assigned) || Local port to use when sending packets ||
+	|| `listening_ip` || string || `0.0.0.0` || Listening IP address, if listening mode is activated (see below) ||
+	|| `listening_port` || integer || `0` || Set it to a non-zero port to start listening on mapping ||
+	|| `size` || integer || `0` || Fixed-size packet strategy: if set to non-zero, only raises messages when `size` bytes have been received. All raised messages will hage this constant size. ||
+	|| `separator` || string || `None` || Separator-based packet strategy: if set to a character or a string, only raises messages when `separator` has been encountered; this separator is assumed to be a packet separator, and is not included in the raised message. May be useful for, for instance, \x00-based packet protocols. ||
+	|| `enable_notifications` || boolean || `False` || If set, you may get connection/disconnection notification and connectionConfirm/Error notification messages || ||
+	|| `default_sut_address` || string (ip:port) || `None` || If set, used as a default SUT address if none provided by the user || ||
+	
+
+	= Overview =
+	
+	...
+
+	== Availability ==
+
+	All platforms.
+
+	== Dependencies ==
+
+	None.
+	
+	== See Also ==
+	
+	Other transport-oriented probes:
+	 * ProbeSctp
+	 * ProbeUdp
+
+	
+	= TTCN-3 Types Equivalence =
+
+	The test system interface port bound to such a probe complies with the `TransportProbePortType` port type as specified below:
+	{{{
 	type union NotificationType
 	{
 		record {} connectionNotification, // new incoming connection established
@@ -49,22 +88,13 @@ class TcpProbe(ProbeImplementationManager.ProbeImplementation):
 		any disconnectionRequest, // request a disconnection. Except a disconnectionNotification later
 	}
 	
-	type TcpProbePortType
+	type TransportProbePortType
 	{
 		in RequestType;
 		out NotificationType;
 		in, out octetstring;
 	}
-	
-	Properties:
-	|| `local_ip` || string || (empty - system assigned) || Local IP address to use when sending packets ||
-	|| `local_port` || integer || 0 (system assigned) || Local port to use when sending packets ||
-	|| `listening_ip` || string || 0.0.0.0 || Listening IP address, if listening mode is activated (see below) ||
-	|| `listening_port` || integer || 0 || Set it to a non-zero port to start listening on mapping ||
-	|| `size` || integer || 0 || Fixed-size packet strategy: if set to non-zero, only raises messages when `size` bytes have been received. All raised messages will hage this constant size. ||
-	|| `separator` || string || None || Separator-based packet strategy: if set to a character or a string, only raises messages when `separator` has been encountered; this separator is assumed to be a packet separator, and is not included in the raised message. May be useful for, for instance, \x00-based packet protocols. ||
-	|| `enable_notifications` || boolean || False || If set, you may get connection/disconnection notification and connectionConfirm/Error notification messages || ||
-	|| `default_sut_address` || string (ip:port) || None || If set, used as a default SUT address if none provided by the user || ||
+	}}}
 	"""
 	def __init__(self):
 		ProbeImplementationManager.ProbeImplementation.__init__(self)
