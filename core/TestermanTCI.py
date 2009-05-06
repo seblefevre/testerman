@@ -31,6 +31,19 @@
 #
 ##
 
+class LogLevelDocumentation:
+	"""
+	|| '''Log level''' || '''Generated log class''' || '''Description''' ||
+	|| `core` || `event` || Core events structuring the log file (ats/testcase start/stop). They cannot be deactivated. ||
+	|| `event` || `event` || General TTCN-3 events (object creations, timers, message send...) ||
+	|| `system` || `system` || Test System Interface I/O (message sent to the SUT, received from the SUT) ||
+	|| `action` || `action` || External actions related events. They cannot be deactivated. ||
+	|| `match` || `event` || Alternative branch selection, i.e. template match ||
+	|| `mismatch` || `event` || Template mismatch ||
+	|| `user` || `user` || User-generated logs ||
+	|| `internal` || `internal` || Internal/debug logs ||
+	"""
+
 import TestermanMessages as Messages
 import TestermanNodes as Nodes
 
@@ -134,10 +147,23 @@ def enableDebugLogs():
 	setExcludedLogLevels([])
 
 def disableLogs():
-	setExcludedLogLevels([ 'internal', 'system', 'event', 'user' ]) # 'action' is always enabled
+	setExcludedLogLevels([ 'internal', 'system', 'event', 'user', 'match', 'mismatch' ]) # 'action' is always enabled
 
 def enableLogs():
 	setExcludedLogLevels([ 'internal' ])
+
+def enableLogLevel(level):
+	global ExcludedLogLevels
+	if level in ExcludedLogLevels:
+		ExcludedLogLevels.remove(level)
+
+def disableLogLevel(level):
+	global ExcludedLogLevels
+	if level in ['core', 'action']:
+		# cannot deactivate these levels
+		return
+	if not level in ExcludedLogLevels:
+		ExcludedLogLevels.append(level)
 
 
 ################################################################################
@@ -209,9 +235,9 @@ def logTemplateMatch(tc, port, message, template, encodedMessage = None):
 	try:
 		# Should we call a tliMatch/tliMisMatch ?
 		if encodedMessage:
-			tliLog('event', toXml('template-match', { 'class': 'event', 'timestamp': time.time(), 'tc': tc, 'port': port }, '%s%s%s' % (testermanToXml(message, 'message'), testermanToXml(template, 'template'), testermanToXml(encodedMessage, 'encoded-message'))))
+			tliLog('match', toXml('template-match', { 'class': 'event', 'timestamp': time.time(), 'tc': tc, 'port': port }, '%s%s%s' % (testermanToXml(message, 'message'), testermanToXml(template, 'template'), testermanToXml(encodedMessage, 'encoded-message'))))
 		else:
-			tliLog('event', toXml('template-match', { 'class': 'event', 'timestamp': time.time(), 'tc': tc, 'port': port }, '%s%s' % (testermanToXml(message, 'message'), testermanToXml(template, 'template'))))
+			tliLog('match', toXml('template-match', { 'class': 'event', 'timestamp': time.time(), 'tc': tc, 'port': port }, '%s%s' % (testermanToXml(message, 'message'), testermanToXml(template, 'template'))))
 	except Exception, e:
 		ret = getBacktrace()
 		logUser(unicode(e) + u'\n' + unicode(ret))
@@ -220,24 +246,24 @@ def logTemplateMismatch(tc, port, message, template, encodedMessage = None):
 	try:
 		# Should we call a tliMatch/tliMisMatch ?
 		if encodedMessage:
-			tliLog('event', toXml('template-mismatch', { 'class': 'event', 'timestamp': time.time(), 'tc': tc, 'port': port }, '%s%s%s' % (testermanToXml(message, 'message'), testermanToXml(template, 'template'), testermanToXml(encodedMessage, 'encoded-message'))))
+			tliLog('mismatch', toXml('template-mismatch', { 'class': 'event', 'timestamp': time.time(), 'tc': tc, 'port': port }, '%s%s%s' % (testermanToXml(message, 'message'), testermanToXml(template, 'template'), testermanToXml(encodedMessage, 'encoded-message'))))
 		else:
-			tliLog('event', toXml('template-mismatch', { 'class': 'event', 'timestamp': time.time(), 'tc': tc, 'port': port }, '%s%s' % (testermanToXml(message, 'message'), testermanToXml(template, 'template'))))
+			tliLog('mismatch', toXml('template-mismatch', { 'class': 'event', 'timestamp': time.time(), 'tc': tc, 'port': port }, '%s%s' % (testermanToXml(message, 'message'), testermanToXml(template, 'template'))))
 	except Exception, e:
 		ret = getBacktrace()
 		logUser(unicode(e) + u'\n' + unicode(ret))
 
 def logTimeoutBranchSelected(id_):
 	# in a alt, we selected a timer.TIMEOUT where the timer's id is id_
-	tliLog('alt', toXml('timeout-branch', { 'class': 'event', 'timestamp': time.time(), 'id': id_ }))
+	tliLog('match', toXml('timeout-branch', { 'class': 'event', 'timestamp': time.time(), 'id': id_ }))
 
 def logDoneBranchSelected(id_):
 	# in a alt, we selected a tc.DONE where the tc's id is id_
-	tliLog('alt', toXml('done-branch', { 'class': 'event', 'timestamp': time.time(), 'id': id_ }))
+	tliLog('match', toXml('done-branch', { 'class': 'event', 'timestamp': time.time(), 'id': id_ }))
 
 def logKilledBranchSelected(id_):
 	# in a alt, we selected a tc.KILLED where the tc's id is id_
-	tliLog('alt', toXml('killed-branch', { 'class': 'event', 'timestamp': time.time(), 'id': id_ }))
+	tliLog('match', toXml('killed-branch', { 'class': 'event', 'timestamp': time.time(), 'id': id_ }))
 
 def logSystemSent(tsiPort, label, payload, sutAddress = None):
 	if sutAddress is None: sutAddress = ''

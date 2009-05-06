@@ -3039,14 +3039,22 @@ class any_component:
 
 
 ################################################################################
-# convenience functions: log level management
+# Convenience functions: log level management
 ################################################################################
 
 def enable_debug_logs():
 	TestermanTCI.enableDebugLogs()
 
-def disable_debug_Logs():
+def disable_debug_logs():
 	TestermanTCI.enableLogs()
+
+def enable_log_levels(*levels):
+	for level in levels:
+		TestermanTCI.enableLogLevel(level)
+
+def disable_log_levels(*levels):
+	for level in levels:
+		TestermanTCI.disableLogLevel(level)
 
 def disable_logs():
 	TestermanTCI.disableLogs()
@@ -3054,8 +3062,18 @@ def disable_logs():
 def enable_logs():
 	TestermanTCI.enableLogs()
 
+
+################################################################################
+# Control part functions
+################################################################################
+
 def define_codec_alias(name, codec, **kwargs):
 	TestermanCD.alias(name, codec, **kwargs)
+
+
+################################################################################
+# Additional init/finalization fonctions
+################################################################################
 
 def _finalize():
 	if _CurrentTestAdapterConfiguration:
