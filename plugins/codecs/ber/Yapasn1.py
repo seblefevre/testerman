@@ -100,9 +100,6 @@
 import math
 import binascii
 
-# General syntax tree configuration - maybe it should be left to the compiler...
-explicit_tag_environment = False
-
 # Traces
 trace_extraction = False
 trace_debug = False
@@ -926,7 +923,10 @@ class SequenceSyntaxNode(SyntaxNode):
 		buf = []
 		for name, sn, optional, default in self._fields:
 			if content.has_key(name):
-				buf.append(sn.encode_ber(content[name], context))
+				try:
+					buf.append(sn.encode_ber(content[name], context))
+				except Exception, e:
+					raise BerEncodingError("%s: unable to encode field '%s' in sequence: %s" % (str(self), name, str(e)))
 				if trace_encoding:
 					print "%s: field '%s' encoded in sequence:\n%s" % (str(self), name, binascii.hexlify(buf[-1]))
 			elif not optional:
