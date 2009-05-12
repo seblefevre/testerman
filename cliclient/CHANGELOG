@@ -1,5 +1,19 @@
 Testerman CLI Client Changelog
 
+0.2.0:
+- Added support for session parameters:
+  you may use --session-filename FILENAME to pass
+  a conf-like file containing KEY=value lines (# to comment a line) 
+  to pass initial session parameters to a job.
+  Additionally, you may override or provide values using
+  --session-parameters KEY=value[,KEY=value]*
+  All key names and values should be provided in utf-8.
+	
+KNOWN BUG:
+- when passing a session parameter value containing spaces with
+  --session-parameters, only the first word is taken into account.
+  Values with spaces work correctly from a session file, however.
+
 0.1.1:
 - Added support for campaign log expansion.
   When getting a log file with --get-log, you may use an

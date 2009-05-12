@@ -1,0 +1,28 @@
+# __METADATA__BEGIN__
+# <?xml version="1.0" encoding="utf-8" ?>
+# <metadata version="1.0">
+# <description>description</description>
+# <prerequisites>prerequisites</prerequisites>
+# <parameters>
+# <parameter name="PX_PARAM1" default="defaultValue01" type="string"><![CDATA[]]></parameter>
+# </parameters>
+# </metadata>
+# __METADATA__END__
+# Campaign description file for Testerman
+
+
+#Run this with:
+#./testerman.sh --session-parameters PX_VALUE01=value01,PX_VALUE02=value02,value03,PX_UNICODE_VALUE=ça\ marche\ bien \
+#--run-campaign samples/session_variables.campaign
+#
+#or create a file session.conf in utf-8:
+#PX_VALUE01=overriden
+#PX_VALUE02=value02,value03
+#PX_UNICODE_VALUE=ça marche bien
+#
+#and run:
+#./testerman.sh --session-filename session.conf --session-parameters PX_VALUE01=value01 --run-campaign samples/session_variables.campaign
+
+
+ats session_variables.ats
+

@@ -1,0 +1,60 @@
+# __METADATA__BEGIN__
+# <?xml version="1.0" encoding="utf-8" ?>
+# <metadata version="1.0">
+# <description>description</description>
+# <prerequisites>prerequisites</prerequisites>
+# <parameters>
+# <parameter name="PX_UNICODE_DEFAULT" default="ça marche" type="string"><![CDATA[]]></parameter>
+# <parameter name="PX_VALUE01" default="user01" type="string"><![CDATA[]]></parameter>
+# <parameter name="PX_VALUE02" default="user02" type="string"><![CDATA[]]></parameter>
+# <parameter name="PX_DEFAULT" default="default value" type="string"><![CDATA[]]></parameter>
+# <parameter name="PX_UNICODE_VALUE" default="unicode from user" type="string"><![CDATA[]]></parameter>
+# </parameters>
+# </metadata>
+# __METADATA__END__
+# Session variables/parameters checker.
+#
+"""
+Run this with:
+./testerman.sh --session-parameters PX_VALUE01=value01,PX_VALUE02=value02,value03,PX_UNICODE_VALUE=ça\ marche\ bien \
+--run-ats samples/session_variables.ats
+
+or create a file session.conf in utf-8:
+PX_VALUE01=overriden
+PX_VALUE02=value02,value03
+PX_UNICODE_VALUE=ça marche bien
+
+and run:
+./testerman.sh --session-filename session.conf --session-parameters PX_VALUE01=value01 --run-ats samples/session_variables.ats
+"""
+
+
+class TC_SESSION_VARIABLE_UNCHANGED(TestCase):
+	"""
+	Verifies that the value is equals to expected.
+	"""
+	def body(self, value, expected):
+		log("Testing value %s..." % value)
+		if value == expected:
+			setverdict('pass')
+		else:
+			log("Got '%s', expected '%s'" % (value, expected))
+			setverdict('fail')
+
+class TC_SESSION_VARIABLE_UPDATED(TestCase):
+	"""
+	Verifies that the value is different from  unexpected.
+	"""
+	def body(self, value, unexpected, expected):
+		log("Testing value '%s'..." % value)
+		if value == unexpected or value != expected:
+			log("Got '%s', expected '%s'" % (value, expected))
+			setverdict('fail')
+		else:
+			setverdict('pass')
+
+TC_SESSION_VARIABLE_UNCHANGED(id_suffix = "DEFAULT").execute(value = get_variable('PX_DEFAULT'), expected = 'default value')
+TC_SESSION_VARIABLE_UNCHANGED(id_suffix = "DEFAULT_UNICODE").execute(value = get_variable('PX_UNICODE_DEFAULT'), expected = u'ça marche')
+TC_SESSION_VARIABLE_UPDATED(id_suffix = "USER01").execute(value = get_variable('PX_VALUE01'), unexpected = 'user01', expected = 'value01')
+TC_SESSION_VARIABLE_UPDATED(id_suffix = "USER02").execute(value = get_variable('PX_VALUE02'), unexpected = 'user02', expected = 'value02,value03')
+TC_SESSION_VARIABLE_UPDATED(id_suffix = "USER_UNICODE").execute(value = get_variable('PX_UNICODE_VALUE'), unexpected = 'unicode from user', expected = u'ça marche bien')

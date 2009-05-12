@@ -35,7 +35,7 @@ import urlparse
 
 
 
-VERSION = "0.1.1"
+VERSION = "0.2.0"
 
 # Returned in case of a job submission-related execution error
 RETCODE_EXECUTION_ERROR = 70
@@ -101,6 +101,51 @@ def prettyPrintDictList(header = [], distList = []):
 	for line in lines:
 		res += formatLine(line, width) + "\n"
 	return res
+
+def loadSessionParameters(filename = None, parameters = ''):
+	"""
+	Creates the initial session parameters from a file 
+	containing key=value (utf-8, # to comment),
+	optionally overriding parameters from parameters
+	(key=value[,key=value]*)
+	
+	@rtype: dict[unicode] of unicode
+	@returns: the loaded initial session parameters
+	"""
+	values = {}
+	
+	# Load from the file
+	if filename:
+		try:
+			f = open(filename)
+			for l in f.readlines():
+				m = re.match(r'\s*(?P<key>[^#].*)=(?P<value>.*)', l.strip())
+				if m:
+					values[m.group('key').decode('utf-8')] = m.group('value').decode('utf-8')
+			f.close()
+		except Exception, e:
+			raise Exception("Unable to read parameters from file '%s' (%s)" % (filename, str(e)))
+
+	# Now parse the parameters
+	# We support a ',' as a value
+	# (for instance: a=b,c=d,e,f=g)
+	splitParameters = parameters.split(',')
+	parameters = []
+	i = 0
+	try:
+		while i < len(splitParameters):
+			if '=' in splitParameters[i]:
+				parameters.append(splitParameters[i])
+			else:
+				parameters[-1] = parameters[-1] + ',' + splitParameters[i]
+			i += 1
+	
+		for key, value in map(lambda x: x.split('=', 1), parameters):
+			values[key.decode('utf-8')] = value.decode('utf-8')
+	except Exception, e:
+		raise Exception('Invalid parameters format (%s)' % str(e)) 
+	
+	return values
 
 
 ###############################################################################
@@ -170,7 +215,7 @@ class TestermanCliClient:
 	# High level functions
 	##
 	
-	def scheduleAtsByFilename(self, sourceFilename, username = None, sessionFilename = None, at = None):
+	def scheduleAtsByFilename(self, sourceFilename, username = None, session = {}, at = None):
 		"""
 		Reads an ATS file locally and schedule it.
 		
@@ -189,9 +234,9 @@ class TestermanCliClient:
 		label = sourceFilename.split('/')[-1].replace(' ', '.')
 		if not username:
 			username = "cliclient-user"
-		return self._scheduleAts(source, label, username, sessionFilename, at, path = None)		
+		return self._scheduleAts(source, label, username, session, at, path = None)		
 	
-	def scheduleAtsByPath(self, sourcePath, username = None, sessionFilename = None, at = None):
+	def scheduleAtsByPath(self, sourcePath, username = None, session = {}, at = None):
 		"""
 		Gets an ATS by path locally and schedule it.
 		
@@ -211,9 +256,9 @@ class TestermanCliClient:
 
 		# Reconstruct the server path
 		path = '/'.join(('/repository/%s' % sourcePath).split('/')[:-1])
-		return self._scheduleAts(source, label, username, sessionFilename, at, path = path)		
+		return self._scheduleAts(source, label, username, session, at, path = path)		
 
-	def _scheduleAts(self, source, label, username, sessionFilename = None, at = None, path = None):
+	def _scheduleAts(self, source, label, username, session = {}, at = None, path = None):
 		"""
 		Schedule an ATS whose source is provided by source and returns its JobID once scheduled,
 		or None in case of an error.
@@ -222,7 +267,6 @@ class TestermanCliClient:
 		
 		# Prepare Ws.scheduleAts() parameters
 		self.log("Scheduling ATS...")
-		session = {} # for now
 
 		# Schedule the job		
 		try:
@@ -235,7 +279,7 @@ class TestermanCliClient:
 			self.log(str(e))
 			return None
 
-	def scheduleCampaignByFilename(self, sourceFilename, username = None, sessionFilename = None, at = None):
+	def scheduleCampaignByFilename(self, sourceFilename, username = None, session = {}, at = None):
 		"""
 		Reads a Campaign file locally and schedules it.
 		
@@ -254,9 +298,9 @@ class TestermanCliClient:
 		label = sourceFilename.split('/')[-1].replace(' ', '.')
 		if not username:
 			username = "cliclient-user"
-		return self._scheduleCampaign(source, label, username, sessionFilename, at, path = None)		
+		return self._scheduleCampaign(source, label, username, session, at, path = None)		
 	
-	def scheduleCampaignByPath(self, sourcePath, username = None, sessionFilename = None, at = None):
+	def scheduleCampaignByPath(self, sourcePath, username = None, session = {}, at = None):
 		"""
 		Gets a Campaign by path locally and schedules it.
 		
@@ -276,9 +320,9 @@ class TestermanCliClient:
 
 		# Reconstruct the server path
 		path = '/'.join(('/repository/%s' % sourcePath).split('/')[:-1])
-		return self._scheduleCampaign(source, label, username, sessionFilename, at, path = path)		
+		return self._scheduleCampaign(source, label, username, session, at, path = path)		
 
-	def _scheduleCampaign(self, source, label, username, sessionFilename = None, at = None, path = None):
+	def _scheduleCampaign(self, source, label, username, session = {}, at = None, path = None):
 		"""
 		Schedules a Campaign whose source is provided by source and returns its JobID once scheduled,
 		or None in case of an error.
@@ -287,7 +331,6 @@ class TestermanCliClient:
 		
 		# Prepare Ws.scheduleCampaign() parameters
 		self.log("Scheduling Campaign...")
-		session = {} # for now
 
 		# Schedule the ATS		
 		try:
@@ -454,6 +497,8 @@ def main():
 	parser.add_option("--run-campaign", dest = "campaignPath", metavar = "PATH", help = "run a campaign whose path in the repository is PATH, monitor it and wait for its completion", default = None)
 	parser.add_option("--nowait", dest = "waitForJobCompletion", action = "store_false", help = "when executing an ATS, immediately returns without waiting for its completion (default: false)", default = True)
 	parser.add_option("--output-filename", dest = "outputFilename", metavar = "FILENAME", help = "if used with --run-* without the --nowait option, dump the execution logs into FILENAME once the execution is complete", default = None)
+	parser.add_option("--session-filename", dest = "sessionParametersFilename", metavar = "FILENAME", help = "initial session parameters file", default = None)
+	parser.add_option("--session-parameters", dest = "sessionParameters", metavar = "PARAMETERS", help = "initial session parameters, overriding those from form session-filename, if any", default = "")
 
 	parser.add_option("--monitor", dest = "monitorUri", metavar = "URI", help = "monitor events on URI", default = None)
 
@@ -490,16 +535,23 @@ def main():
 	
 	try:
 		if options.atsFilename or options.atsPath or options.campaignFilename or options.campaignPath:
+			# Load initial session parameters
+			try:
+				session = loadSessionParameters(options.sessionParametersFilename, options.sessionParameters)
+			except Exception, e:
+				print str(e)
+				return RETCODE_EXECUTION_ERROR
+		
 			client.startXc()
 			# First, schedule the ATS (either a local or a repository one)
 			if options.atsFilename:
-				jobId = client.scheduleAtsByFilename(options.atsFilename, options.username)
+				jobId = client.scheduleAtsByFilename(options.atsFilename, options.username, session = session)
 			elif options.atsPath:
-				jobId = client.scheduleAtsByPath(options.atsPath, options.username)
+				jobId = client.scheduleAtsByPath(options.atsPath, options.username, session = session)
 			elif options.campaignFilename:
-				jobId = client.scheduleCampaignByFilename(options.campaignFilename, options.username)
+				jobId = client.scheduleCampaignByFilename(options.campaignFilename, options.username, session = session)
 			else:
-				jobId = client.scheduleCampaignByPath(options.campaignPath, options.username)
+				jobId = client.scheduleCampaignByPath(options.campaignPath, options.username, session = session)
 			if jobId is None:
 				client.stopXc()
 				return RETCODE_EXECUTION_ERROR
