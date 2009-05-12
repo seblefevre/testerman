@@ -1,5 +1,9 @@
 Testerman CLI Client Changelog
 
+0.2.1:
+- Fixed a regression preventing running scripts
+  when no session-parameters were provided.
+
 0.2.0:
 - Added support for session parameters:
   you may use --session-filename FILENAME to pass

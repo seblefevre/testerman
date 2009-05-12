@@ -35,7 +35,7 @@ import urlparse
 
 
 
-VERSION = "0.2.0"
+VERSION = "0.2.1"
 
 # Returned in case of a job submission-related execution error
 RETCODE_EXECUTION_ERROR = 70
@@ -129,21 +129,22 @@ def loadSessionParameters(filename = None, parameters = ''):
 	# Now parse the parameters
 	# We support a ',' as a value
 	# (for instance: a=b,c=d,e,f=g)
-	splitParameters = parameters.split(',')
-	parameters = []
-	i = 0
-	try:
-		while i < len(splitParameters):
-			if '=' in splitParameters[i]:
-				parameters.append(splitParameters[i])
-			else:
-				parameters[-1] = parameters[-1] + ',' + splitParameters[i]
-			i += 1
-	
-		for key, value in map(lambda x: x.split('=', 1), parameters):
-			values[key.decode('utf-8')] = value.decode('utf-8')
-	except Exception, e:
-		raise Exception('Invalid parameters format (%s)' % str(e)) 
+	if parameters:
+		splitParameters = parameters.split(',')
+		parameters = []
+		i = 0
+		try:
+			while i < len(splitParameters):
+				if '=' in splitParameters[i]:
+					parameters.append(splitParameters[i])
+				else:
+					parameters[-1] = parameters[-1] + ',' + splitParameters[i]
+				i += 1
+
+			for key, value in map(lambda x: x.split('=', 1), parameters):
+				values[key.decode('utf-8')] = value.decode('utf-8')
+		except Exception, e:
+			raise Exception('Invalid parameters format (%s)' % str(e)) 
 	
 	return values
 
