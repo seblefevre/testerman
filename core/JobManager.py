@@ -165,16 +165,15 @@ def mergeSessionParameters(initial, default, mapping, mode = "loose"):
 	particular run.
 	"""
 	
-	def substituteVariable(name, values):
-		m = re.match(r'\$\{(.*)\}', name)
-		if m:
-			var = m.group(1)
-			if var in values:
-				return (True, values[var])
-			else:
-				return (False, None)
-		else:
-			return (True, name)
+	def substituteVariables(s, values):
+		"""
+		Replaces ${name} with values[name] in s.
+		If name is not found, leave the token unchanged.
+		"""
+		def _subst(match, local_vars = None):
+			name = match.group(1)
+			return values.get(name, '${%s}' % name)
+		return re.sub(r'\$\{([a-zA-Z_0-9-]+)\}', _subst, s)
 
 	merged = {}
 
@@ -189,14 +188,7 @@ def mergeSessionParameters(initial, default, mapping, mode = "loose"):
 		# Now apply the mapping on existing parameters
 		for name, value in merged.items():
 			if name in mapping:
-				ok, val = substituteVariable(mapping[name], merged)
-				if ok:
-					merged[name] = val
-				else:
-					# missing variable (parameter)
-					# Leave the variable syntax, so that the user 
-					# could figure out the problem by him/herself.
-					merged[name] = mapping[name]
+				merged[name] = substituteVariables(mapping[name], merged)
 
 	elif mode == "loose":
 		# We take the full initial parameters
@@ -209,14 +201,7 @@ def mergeSessionParameters(initial, default, mapping, mode = "loose"):
 
 		# Now apply the mapping, creating new parameters if needed
 		for name, value in mapping.items():
-			ok, val = substituteVariable(value, merged)
-			if ok:
-				merged[name] = val
-			else:
-				# missing variable (parameter)
-				# Leave the variable syntax, so that the user 
-				# could figure out the problem by him/herself.
-				merged[name] = value
+			merged[name] = substituteVariables(value, merged)
 
 	else:
 		raise Exception("Invalid session parameter merge mode (%s)" % mode)
@@ -867,7 +852,7 @@ class AtsJob(Job):
 		try:
 			defaultSession = TEFactory.getDefaultSession(self._source)
 			if defaultSession is None:
-				getLogger().warning('%s: unable to extract default session from ats. Missing metadata ?' % (str(self)))
+				getLogger().warning('%s: unable to extract default session from ATS. Missing metadata ?' % (str(self)))
 				defaultSession = {}
 		except Exception, e:
 			getLogger().error('%s: unable to extract ATS parameters from metadata: %s' % (str(self), str(e)))
@@ -1178,9 +1163,17 @@ class CampaignJob(Job):
 			# We stop our loop/recursion (killed, cancelled, etc).
 			return
 		
-		
-		# TODO: extract default campaign parameters from metadata
-		defaultSession = {}
+		try:
+			defaultSession = TEFactory.getDefaultSession(self._source)
+			if defaultSession is None:
+				getLogger().warning('%s: unable to extract default session from Campaign. Missing metadata ?' % (str(self)))
+				defaultSession = {}
+		except Exception, e:
+			getLogger().error('%s: unable to extract Campaign parameters from metadata: %s' % (str(self), str(e)))
+			self.setResult(23)
+			self.setState(self.STATE_ERROR)
+			return self.getResult()
+
 		mergedInputSession = mergeSessionParameters(inputSession, defaultSession, self._sessionParametersMapping)
 		getLogger().info('%s: using merged input session parameters:\n%s' % (str(self), '\n'.join([ '%s = %s (%s)' % (x, y, repr(y)) for x, y in mergedInputSession.items()])))
 
