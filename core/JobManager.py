@@ -66,7 +66,7 @@ class PrepareException(Exception):
 	pass
 
 ################################################################################
-# The usual tools
+# Tools/Convenience functions
 ################################################################################
 
 _GeneratorBaseId = 0
@@ -87,9 +87,142 @@ def getNewId():
 	return ret
 
 def createJobEventNotification(uri, jobDict):
+	"""
+	Creates a Testerman Xc JOB-EVENT notification for a job.
+	
+	@type  uri: string
+	@param uri: the uri of the JOB-EVENT
+	@type  jobDict: dict
+	@param jobDict: a dict providing job-related info, as returned by job.toDict()
+	
+	@rtype: TestermanMessages.Notification
+	@returns: the notification ready to be dispatched by the Event Manager.
+	"""
 	notification = Messages.Notification("JOB-EVENT", uri, "Xc", Versions.getXcVersion())
 	notification.setApplicationBody(jobDict)
 	return notification
+
+def parseParameters(parameters):
+	"""
+	Parses an inline string containing session parameters:
+	key=value[,key=value] with support for ',' in a value.
+	
+	Such a string is suitable for session parameters mapping
+	in a campaign.
+	
+	@type  parameters: utf-8 string
+	@param parameters: the line to parse
+	
+	@rtype: dict[unicode] of unicode
+	@returns: a dict of read parameters
+	"""
+	values = {}
+	
+	# We support a ',' as a value
+	# (for instance: a=b,c=d,e,f=g)
+	if parameters:
+		splitParameters = parameters.split(',')
+		parameters = []
+		i = 0
+		try:
+			while i < len(splitParameters):
+				if '=' in splitParameters[i]:
+					parameters.append(splitParameters[i])
+				else:
+					parameters[-1] = parameters[-1] + ',' + splitParameters[i]
+				i += 1
+
+			for key, value in map(lambda x: x.split('=', 1), parameters):
+				values[key.decode('utf-8')] = value.decode('utf-8')
+		except Exception, e:
+			raise Exception('Invalid parameters format (%s)' % str(e))
+	
+	return values 
+
+def mergeSessionParameters(initial, default, mapping, mode = "loose"):
+	"""
+	Computes the session parameter values to pass to a job from multiple sources:
+	- initial: the user's or parent job's suggested, initial parameters.
+	- default: the job's default parameters (extracted from its metadata)
+	- mapping: the contextual parameters mapping to apply, assigning some
+	  parameter values (or a constant) to a parameter. Parameters values
+	  are expressed as a ${my_variable} token. 
+	
+	Loose mode:
+	parameters that are not defined in the job's signature (i.e.
+	defined in the default dict) are also merged and returned.
+	
+	Strict mode:
+	only parameters that are defined in the job's signature are
+	returned.
+	
+	@type  initial: dict[unicode] of objects
+	@type  default: dict[unicode] of unicode
+	@type  mapping: dict[unicode] of unicode (may contain ${references})
+	
+	@rtype: dict[unicode] of objects
+	@returns: the merged parameters with their values to pass for a
+	particular run.
+	"""
+	
+	def substituteVariable(name, values):
+		m = re.match(r'\$\{(.*)\}', name)
+		if m:
+			var = m.group(1)
+			if var in values:
+				return (True, values[var])
+			else:
+				return (False, None)
+		else:
+			return (True, name)
+
+	merged = {}
+
+	if mode == "strict":
+		# The initial parameters override the default ones
+		for name, value in default.items():
+			if initial.has_key(name):
+				merged[name] = initial[name]
+			else:
+				merged[name] = value
+		
+		# Now apply the mapping on existing parameters
+		for name, value in merged.items():
+			if name in mapping:
+				ok, val = substituteVariable(mapping[name], merged)
+				if ok:
+					merged[name] = val
+				else:
+					# missing variable (parameter)
+					# Leave the variable syntax, so that the user 
+					# could figure out the problem by him/herself.
+					merged[name] = mapping[name]
+
+	elif mode == "loose":
+		# We take the full initial parameters
+		for name, value in initial.items():
+			merged[name] = value
+		# And we complete with default parameters
+		for name, value in default.items():
+			if not name in merged:
+				merged[name] = value
+
+		# Now apply the mapping, creating new parameters if needed
+		for name, value in mapping.items():
+			ok, val = substituteVariable(value, merged)
+			if ok:
+				merged[name] = val
+			else:
+				# missing variable (parameter)
+				# Leave the variable syntax, so that the user 
+				# could figure out the problem by him/herself.
+				merged[name] = value
+
+	else:
+		raise Exception("Invalid session parameter merge mode (%s)" % mode)
+	
+	return merged
+
 
 ################################################################################
 # Base Job
@@ -174,6 +307,10 @@ class Job(object):
 		# client-based source and non-source based jobs set it to None
 		# You may see it as a 'working (docroot) directory' for the job.
 		self._path = None
+		
+		# This mapping may override the injected initial session parameters on run.
+		# The final initial session parameters are computed on run with it.
+		self._sessionParametersMapping = {}
 
 		self._mutex = threading.RLock()
 	
@@ -200,6 +337,9 @@ class Job(object):
 	
 	def setUsername(self, username):
 		self._username = username
+	
+	def setSessionParametersMapping(self, mapping):
+		self._sessionParametersMapping = mapping
 	
 	def getId(self):
 		return self._id
@@ -408,8 +548,8 @@ class Job(object):
 		Just be sure to be able to stop it when receiving a SIGNAL_KILLED at least.
 		
 		@type  inputSession: dict of unicode of any object
-		@param inputSession: the initial session variables to pass to the job. May be empty (but not None),
-		                     overriding the default variable definitions as contained in job's metadata (if any).
+		@param inputSession: the initial session parameters to pass to the job. May be empty (but not None),
+		                     overriding the default parameter definitions as contained in job's metadata (if any).
 
 		@rtype: integer
 		@returns: the job _result
@@ -696,7 +836,7 @@ class AtsJob(Job):
 		- then the Testerman system include paths
 		
 		@type  inputSession: dict[unicode] of unicode
-		@param inputSession: the override session parameters.
+		@param inputSession: the session parameters for this run.
 		
 		@rtype: int
 		@returns: the TE return code
@@ -736,14 +876,9 @@ class AtsJob(Job):
 			return self.getResult()
 		
 		# The merged input session
-		mergedInputSession = {}
-		for n, v in defaultSession.items():
-			if inputSession.has_key(n):
-				mergedInputSession[n] = inputSession[n]
-			else:
-				mergedInputSession[n] = v
+		mergedInputSession = mergeSessionParameters(inputSession, defaultSession, self._sessionParametersMapping)
 		
-		getLogger().info('%s: using merged input session:\n%s' % (str(self), '\n'.join([ '%s = %s (%s)' % (x, y, repr(y)) for x, y in mergedInputSession.items()])))
+		getLogger().info('%s: using merged input session parameters:\n%s' % (str(self), '\n'.join([ '%s = %s (%s)' % (x, y, repr(y)) for x, y in mergedInputSession.items()])))
 		
 		# Dumps input session to the corresponding file
 		try:
@@ -1042,6 +1177,12 @@ class CampaignJob(Job):
 		if self.getState() != self.STATE_RUNNING:
 			# We stop our loop/recursion (killed, cancelled, etc).
 			return
+		
+		
+		# TODO: extract default campaign parameters from metadata
+		defaultSession = {}
+		mergedInputSession = mergeSessionParameters(inputSession, defaultSession, self._sessionParametersMapping)
+		getLogger().info('%s: using merged input session parameters:\n%s' % (str(self), '\n'.join([ '%s = %s (%s)' % (x, y, repr(y)) for x, y in mergedInputSession.items()])))
 
 		# Now, the child jobs according to the branch
 		for job in callingJob._childBranches[branch]:
@@ -1059,7 +1200,7 @@ class CampaignJob(Job):
 				getLogger().info("%s: starting child job %s, invoked by %s, on branch %s" % (str(self), str(job), str(callingJob), branch))
 				# Prepare a new thread, execute the job
 				job.aboutToRun()
-				jobThread = threading.Thread(target = lambda: job.run(inputSession))
+				jobThread = threading.Thread(target = lambda: job.run(mergedInputSession))
 				jobThread.start()
 				# Now wait for the job to complete.
 				jobThread.join()
@@ -1099,13 +1240,15 @@ class CampaignJob(Job):
 		Validindent characters are \t and ' '.
 		
 		a job line is formatted as:
-		[* ]<type> <path>
+		[<branch> ]<type> <path> [with <mapping>]
 		where:
+		<branch>, if present, is a keyword in *, on_error, on_success
 		<type> is a keyword in 'ats', 'campaign' (for now)
 		<path> is a relative (not starting with a /) or 
 		       absolute path (/-starting) within the repository.
-		the optional * indicates that the job should be executed if its parent
-		returns a non-0 result. ('on error' branch).
+		<mapping>, if present, is formatted as KEY=value[,KEY=value]*
+		Branch values '*', 'on_error' indicate that the job should be
+		executed if its parent returns a non-0 result ('on error' branch).
 		
 		Comments are indicated with a #.
 		"""
@@ -1124,13 +1267,14 @@ class CampaignJob(Job):
 			line = line.split('#', 1)[0].rstrip()
 			if not line:
 				continue # empty line
-			m = re.match(r'(?P<indent>\s*)((?P<branch>\*)\s*)?(?P<type>\w+)\s+(?P<filename>.*)', line)
+			m = re.match(r'(?P<indent>\s*)((?P<branch>\w+|\*)\s+)?(?P<type>\w+)\s+(?P<filename>[^\s]+)(\s+with\s+(?P<mapping>.*)\s*)?', line)
 			if not m:
 				raise Exception('Parse error at line %s: invalid line format' % lc)
 			
 			type_ = m.group('type')
 			filename = m.group('filename')
-			branch = m.group('branch') # may be none
+			branch = m.group('branch') # may be None
+			mapping = m.group('mapping') # may be None
 			indentDiff = len(m.group('indent')) - indent
 			indent = indent + indentDiff
 			
@@ -1140,7 +1284,7 @@ class CampaignJob(Job):
 				filename = '/%s%s' % (ConfigManager.get('constants.repository'), filename)
 			else:
 				# just add the local campaign path
-				filename = '%s/%s' % (path, filename)
+				filename = '%s/%s' % (path, filename)               
 
 			# Type validation
 			if not type_ in [ 'ats', 'campaign' ]:
@@ -1174,12 +1318,11 @@ class CampaignJob(Job):
 				branch =  self.BRANCH_SUCCESS
 			else:
 				raise Exception('Error at line %s: invalid branch (%s)' % (lc, branch))
-
 			
 			# Now we can create our job.
 			getLogger().debug('%s: creating child job based on file docroot:%s' % (str(self), filename))
 			source = FileSystemManager.instance().read(filename)
-			name = filename[len('/repository/'):] # TODO: clean this mess up. Not clean at all.
+			name = filename[len('/repository/'):] # TODO: find a way to compute a "job name" from a docroot path
 			jobpath = '/'.join(filename.split('/')[:-1])
 			if source is None:
 				raise Exception('File %s is not in the repository.' % name)
@@ -1188,6 +1331,7 @@ class CampaignJob(Job):
 			else: # campaign
 				job = CampaignJob(name = name, source = source, path = jobpath)
 			job.setUsername(self.getUsername())
+			job.setSessionParametersMapping(parseParameters(mapping))
 			currentParent.addChild(job, branch)
 			getLogger().info('%s: child job %s has been created, branch %s' % (str(self), str(job), branch))
 			lastCreatedJob = job
