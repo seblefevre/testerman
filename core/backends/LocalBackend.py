@@ -49,17 +49,29 @@ def fileExists(path):
 class LocalBackend(FileSystemBackend.FileSystemBackend):
 	"""
 	Properties:
-	- basepath: the file basepath which files are looked from.
-	- excluded: a space separated of patterns to exclude from dir listing
+	- basepath: the file basepath files are looked from. No default.
+	- excluded: a space separated of patterns to exclude from dir listing. Default: .svn CVS
+	- strict_basepath: 0/1. If 1, only serve files that are in basepath. If not, 
+	  accept to follow fs links to other locations. Default: 0
 	"""
+	def __init__(self):
+		FileSystemBackend.FileSystemBackend.__init__(self)
+		# Some default properties
+		self.setProperty('excluded', '.svn CVS')
+		self.setProperty('strict_basepath', '0')
+
+		# Mandatory properties (defined here to serve as documentation)
+		self.setProperty('basepath', None)
+	
 	def initialize(self):
+		self._strictBasepath = (self['strict_basepath'].lower() in [ '1', 'true' ])
+		
 		# Exclusion list.
 		# Something based on a glob pattern should be better,
 		# so that the user can configure in the backends.ini file something like
 		# excluded = *.pyc .svn CVS
 		# that generated an _excluded_files to [ '*.pyc', '.svn', 'CVS' ], ...
-		
-		self._excludedPatterns = filter(lambda x: x, self.getProperty('excluded', '.svn CVS').split(' '))
+		self._excludedPatterns = filter(lambda x: x, self['excluded'].split(' '))
 
 		# Check that the base path actually exists		
 		if not os.path.isdir(self['basepath']):
@@ -76,7 +88,7 @@ class LocalBackend(FileSystemBackend.FileSystemBackend):
 		the basepath.
 		"""
 		path = os.path.realpath("%s/%s" % (self['basepath'], path))
-		if not path.startswith(self['basepath']):
+		if self._strictBasepath and not path.startswith(self['basepath']):
 			getLogger().warning("Attempted to handle a path that is not under basepath (%s). Ignoring." % path)
 			return None
 		else:
@@ -97,16 +109,37 @@ class LocalBackend(FileSystemBackend.FileSystemBackend):
 			return None
 	
 	def write(self, filename, content, baseRevision = None, reason = None):
+		"""
+		Makes sure that we can overwrite the file, if already exists:
+		1 - rename the current one to a filename.backup
+		2 - create the new file
+		3 - remove the filename.backup
+		In case of an error in 2, rollback by renaming filename.backup to filename.
+		This avoids creating an empty file in case of no space left on device,
+		resetting an existing file.
+		"""
 		filename = self._realpath(filename)
 		if not filename: 
 			raise Exception('Invalid file: not in base path')
 
+		backupFile = None
 		try:
+			if fileExists(filename):
+				b = '%s.backup' % filename
+				os.rename(filename, b)
+				backupFile = b
 			f = open(filename, 'w')
 			f.write(content)
 			f.close()
+			if backupFile:
+				try:
+					os.remove(backupFile)
+				except:
+					pass
 			return None # No new revision created.
 		except Exception, e:
+			if backupFile:
+				os.rename(backupFile, filename)
 			getLogger().warning("Unable to write content to %s: %s" % (filename, str(e)))
 			raise(e)
 
@@ -198,7 +231,15 @@ class LocalBackend(FileSystemBackend.FileSystemBackend):
 		
 		# Not implemented yet
 		return None
+	
+	def isdir(self, path):
+		path = self._realpath(path)
+		if not path: 
+			return False
 		
+		return os.path.isdir(path)
+
+			
 		
 
 FileSystemBackendManager.registerFileSystemBackendClass("local", LocalBackend)
