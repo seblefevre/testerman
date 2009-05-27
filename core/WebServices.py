@@ -558,6 +558,113 @@ def removeDirectory(path, recursive = False):
 	getLogger().info("<< removeDirectory(): %s" % str(res))
 	return res
 
+def move(source, destination):
+	"""
+	Moves a file or a directory to destination.
+	Recursive operation: if the source is a directory, the whole
+	tree will be moved. 
+
+	Logs associated to a scripts, if any, are
+	NOT moved. They are kept available in the archives,
+	but not associated to the script any more.
+	
+	FIXME: Revisions should be moved, however. 
+	
+	source is a docroot to an existing path or directory.
+	destination is a docroot path to a destination:
+	- if source is a dir, destination can be an existing dir
+	  (will create a new dir in it) or a new directory name
+	  (will rename the directory).
+	- if source is a file, destination can be an existing dir
+	  (will create the file in it, without renaming it), or
+		a new file name (will rename the file).
+	
+	@type  source: string
+	@param source: docroot-path to the object to move
+	@type  destination: string
+	@param destination: docroot-path to the destination
+	(if existing: must be a directory; if not existing, will rename
+	the object on the fly)
+
+	@rtype: bool
+	@returns: True if the move was OK, False otherwise.
+	"""
+	getLogger().info(">> move(%s, %s)" % (source, destination))
+	res = False
+	try:
+		res = FileSystemManager.instance().move(source, destination)
+	except Exception, e:
+		e =  Exception("Unable to perform operation: %s\n%s" % (str(e), Tools.getBacktrace()))
+		getLogger().info("<< move(...): Fault:\n" + str(e))
+		raise(e)
+
+	getLogger().info("<< move(): %s" % str(res))
+	return res
+
+def copy(source, destination):
+	"""
+	Copies a file or a directory to destination.
+	Recursive operation: if the source is a directory, the whole
+	tree will be copied. 
+	
+	Meta children (Revisions and logs, if any) are NOT copied.
+	
+	source is a docroot to an existing path or directory.
+	destination is a docroot path to a destination:
+	- if source is a dir, destination can be an existing dir
+	  (will create a new dir in it) or a new directory name
+	  (will rename the directory).
+	- if source is a file, destination can be an existing dir
+	  (will create the file in it, without renaming it), or
+		a new file name (will rename the file).
+	
+	@type  source: string
+	@param source: docroot-path to the object to move
+	@type  destination: string
+	@param destination: docroot-path to the destination
+	(if existing: must be a directory; if not existing, will rename
+	the object on the fly)
+
+	@rtype: bool
+	@returns: True if the move was OK, False otherwise.
+	"""
+	getLogger().info(">> copy(%s, %s)" % (source, destination))
+	res = False
+	try:
+		res = FileSystemManager.instance().copy(source, destination)
+	except Exception, e:
+		e =  Exception("Unable to perform operation: %s\n%s" % (str(e), Tools.getBacktrace()))
+		getLogger().info("<< copy(...): Fault:\n" + str(e))
+		raise(e)
+
+	getLogger().info("<< copy(): %s" % str(res))
+	return res
+
+def rename(path, newName):
+	"""
+	Renames a file or a directory to newName, in the same folder.
+	
+	@type  path: string
+	@param path: the docroot-path to the object to rename
+	@type  newName: string
+	@param newName: the new name (basename) of the object, including extension,
+	                if applicable.
+	
+	@rtype: bool
+	@returns: False if newName already exists. True otherwise.
+	"""
+	getLogger().info(">> rename(%s, %s)" % (path, newName))
+	res = False
+	try:
+		res = FileSystemManager.instance().rename(path, newName)
+	except Exception, e:
+		e =  Exception("Unable to perform operation: %s\n%s" % (str(e), Tools.getBacktrace()))
+		getLogger().info("<< rename(...): Fault:\n" + str(e))
+		raise(e)
+
+	getLogger().info("<< rename(): %s" % str(res))
+	return res
+
 def getReferencingFiles(module):
 	"""
 	Kept for compatibility.

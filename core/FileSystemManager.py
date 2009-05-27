@@ -48,6 +48,11 @@ class FileSystemManager:
 	
 	Transforms a virtual file url that may include some decorations (revisions ?)
 	to something valid for the backend.
+	
+	TODO:
+	- name/path validation:
+	  '/' is the character to use for path elements.
+	  Each element should match the following regexp: [a-zA-Z0-9_.\(\)\[\]#-]
 	"""
 	
 	def read(self, filename):
@@ -138,8 +143,10 @@ class FileSystemManager:
 					try:
 						currentBackend.unlink(name)
 					except Exception, e:
-						getLogger().warning("Unable to recursively delete adjusted file '%s' for backend '%s': %s" % (name, backend, str(e)))
+						getLogger().warning("Unable to recursively delete adjusted file '%s' for backend '%s': %s" % (name, currentBackend, str(e)))
 				elif type_ == 'directory':
+					# FIXME: here we should compute the docroot name of the file
+					# so that we can recompute its backend again
 					self._rmdir(name, currentBackend)
 		return currentBackend.rmdir(adjustedPath)
 
@@ -155,8 +162,115 @@ class FileSystemManager:
 			raise Exception('No backend available to manipulate %s' % filename)
 		return backend.revisions(adjusted, baseRevision = None, scope = FileSystemBackend.FileSystemBackend.SCOPE_LOCAL)
 		
-	
+	def isdir(self, path):
+		(adjusted, backend) = FileSystemBackendManager.getBackend(path)
+		if not backend:
+			raise Exception('No backend available to manipulate %s' % path)
+		return backend.isdir(adjusted)
 
+	def isfile(self, path):
+		(adjusted, backend) = FileSystemBackendManager.getBackend(path)
+		if not backend:
+			raise Exception('No backend available to manipulate %s' % path)
+		return backend.isfile(adjusted)
+	
+	def exists(self, path):
+		return self.isdir(path) or self.isfile(path)
+	
+	def _copy(self, source, destination, removeAfterCopy = False):
+		"""
+		Recursive copy from source (file or dir, docroot path) to destination (existing dir or file to overwrite)
+		
+		The usual rules apply:
+		- if src is a directory, destination must be an existing directory
+		  or must not exist (cannot overwrite a file with a dir)
+		- if src is a file, destination must be an existing directory
+		  or a new file
+		"""
+		if self.isdir(source):
+			# We copy a directory
+			if self.isdir(destination):
+				# Copy dir to an existing dir - create a new dir into this dir
+				_, basename = os.path.split(source)
+				dst = '%s/%s' % (destination, basename)
+			elif not self.isfile(destination):
+				# Create the target directory directly
+				dst = destination
+			else:
+				# This is a file
+				raise Exception('Cannot copy directory %s to %s, which is a file' % (source, destination))
+
+			# Create the target directory
+			self.mkdir(dst)
+			
+			# Now we recursively copy each file
+			entries = self.getdir(source)
+			if entries:
+				for entry in entries:
+					name = entry['name']
+					# Reconstruct the docroot path for source
+					src = '%s/%s' % (source, name)
+					# Call recursively.
+					self._copy(src, dst, removeAfterCopy)
+			
+			if removeAfterCopy:
+				self.rmdir(source, True)
+			
+			return True
+
+		elif self.isfile(source):
+			# We copy a file
+			if self.isdir(destination):
+				# Copy the file into the directory
+				_, basename = os.path.split(source)
+				dst = '%s/%s' % (destination, basename)
+			elif self.isfile(destination):
+				# Copy the file to another file (overwrite)
+				dst = destination
+			else:
+				# Create a new file
+				dst = destination
+			
+			content = self.read(source)
+			self.write(dst, content)
+			if removeAfterCopy:
+				self.unlink(source)
+			
+			return True
+	
+	def copy(self, source, destination):
+		"""
+		Copy source to destination.
+		"""
+		return self._copy(source, destination, False)
+
+	def move(self, source, destination):		
+		"""
+		Move source to destination.
+		"""
+		return self._copy(source, destination, True)
+
+	def rename(self, source, newName):
+		"""
+		Constraints on name:
+		only [a-zA-Z0-9_.\(\)\[\]#-]
+		
+		@type  source: string
+		@param source: docroot-path of the object to rename
+		@type  newName: string
+		@param newName: the new (base)name of the object in its current
+		                directory.
+		"""
+		(adjusted, backend) = FileSystemBackendManager.getBackend(path)
+		if not backend:
+			raise Exception('No backend available to manipulate %s' % path)
+		return backend.isfile(adjusted)
+
+		destination = '%s/%s' % (os.path.split(source)[0], newName)
+		if self.exists(destination):
+			return False
+		else:
+			return self.move(source, destination)
 
 ################################################################################
 # Main

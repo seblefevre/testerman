@@ -46,6 +46,8 @@ class FileSystemBackend:
 	
 	All paths and filenames passed as argument to the FSB methods are
 	relative to the FSB instance mountpoint, and does NOT start with a '/'.
+	Additionally, they are normalized and do not contain any .. elements.
+	As a consequence, they are guaranteed to belong to the mountpoint.
 	"""
 	
 	SCOPE_LOCAL = 0
@@ -113,7 +115,9 @@ class FileSystemBackend:
 		"""
 		Writes content to a file, creating it if needed.
 		The path to the filename should already exist.
-		The implementation is responsible for flushing the content if needed.
+		The implementation is responsible for flushing the content if needed,
+		and ensuring that the file can be overwritten before overwriting it, when
+		applicable.
 		
 		If baseRevision is provided, you should create a file revision based on baseRevision,
 		optionally indicating a reason for the committed revision provided by reason.
@@ -240,4 +244,59 @@ class FileSystemBackend:
 		"""	
 		return None
 
+	def isdir(self, path):
+		"""
+		Returns True if path identifies a directory.
+		
+		Dev note:
+		Technically, this function is useless as it can be implemented
+		with a getdir(path/..) and looking for the filename in the results.
+		However, this is not efficient, and the backend typically has better
+		means to provide this info.
+		
+		@type  path: string
+		@param path: the path that could reference a dir
+		
+		@rtype: bool
+		@returns: True if path is a directory (or a link to a directory).
+		          False in all other cases (including when path does not exist)
+		"""
+		return False
+
+	def isfile(self, path):
+		"""
+		Returns True if path identifies a file.
+		
+		Dev note:
+		Technically, this function is useless as it can be implemented
+		with a getdir(path/..) and looking for the filename in the results.
+		However, this is not efficient, and the backend typically has better
+		means to provide this info.
+		
+		@type  path: string
+		@param path: the path that could reference a file
+		
+		@rtype: bool
+		@returns: True if path is a file (or a link to a file).
+		          False in all other cases (including when path does not exist)
+		"""
+		return False
+
+	def chown(self, path, user, group):
+		"""
+		Change the owner/group of a file to user/group.
+		
+		For future use (user management is not implemented yet).
+		
+		@type  path: string
+		@param path: the path of the file/dir to chown, relative to the mountpoint
+		@type  user: string
+		@param user: a Testerman user
+		@type  group: string
+		@param group: a Testerman group
+		
+		@rtype: bool
+		@returns: True if OK, False otherwise (typically raise exceptions in case of errors)
+		"""
+		return False
 
