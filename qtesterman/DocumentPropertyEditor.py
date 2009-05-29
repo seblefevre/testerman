@@ -28,16 +28,15 @@ from CommonWidgets import *
 class WParameterTreeWidgetItem(QTreeWidgetItem):
 	def __init__(self, parent, parameter):
 		"""
-		parameter is a dict[unicode] of unicode containing "name", "description", "previous-value", "type", "default"
+		parameter is a dict[unicode] of unicode containing "name", "description", "type", "default"
 		
 		The initial name is used as a key for the model, so we save it in a safe place as soon as the item is created.
 		"""
 		QTreeWidgetItem.__init__(self, parent)
 		self.parameter = parameter
 		self.key = parameter['name']
-		self.columns = [ 'name', 'default', 'description', 'type', 'previous-value' ]
+		self.columns = [ 'name', 'default', 'description', 'type' ]
 		self.setFlags(Qt.ItemIsEnabled | Qt.ItemIsEditable | Qt.ItemIsSelectable)
-		#self.setSortingEnabled(1)
 		
 	def data(self, column, role):
 		name = self.columns[column]
@@ -88,8 +87,7 @@ class WParameterEditor(QTreeWidget):
 	def __createWidgets(self):
 		self.setRootIsDecorated(0)
 		# Type is not yet managed.
-#		self.labels = [ 'name', 'default value', 'type', 'description' ]
-		self.labels = [ 'name', 'default value', 'description' ]
+		self.labels = [ 'Name', 'Default value', 'Description' ]
 		self.setSortingEnabled(1)
 		# Default sort - should be read from the QSettings.
 		self.sortItems(0, Qt.AscendingOrder)
@@ -101,8 +99,9 @@ class WParameterEditor(QTreeWidget):
 		self.setContextMenuPolicy(Qt.CustomContextMenu)
 		self.connect(self, SIGNAL("customContextMenuRequested(const QPoint&)"), self.onPopupMenu)
 
-		#self.dragStartPosition = None
 		self.setAcceptDrops(True)
+		
+		self.setAlternatingRowColors(True)
 
 		# Check if we can paste a parameter
 		self.connect(QApplication.clipboard(), SIGNAL('dataChanged()'), self.onClipboardUpdated)

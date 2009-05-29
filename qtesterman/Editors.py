@@ -1815,14 +1815,15 @@ class WSessionParameterEditor(QTreeWidget):
 
 	def __createWidgets(self):
 		labels = QStringList()
-		labels.append('name')
-		labels.append('value')
+		labels.append('Name')
+		labels.append('Value')
 		self.setHeaderLabels(labels)
 		self.setRootIsDecorated(False)
-		self.setSortingEnabled(1)
-		self.header().setClickable(1)
+		self.setSortingEnabled(True)
+		self.header().setClickable(True)
 		# Default sort
 		self.sortItems(0, Qt.AscendingOrder)
+		self.setAlternatingRowColors(True)
 
 	def rebuildTree(self):
 		"""
