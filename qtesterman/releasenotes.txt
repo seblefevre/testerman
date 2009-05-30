@@ -29,12 +29,17 @@ This is QTesterman, a PyQt4-based GUI for Testerman.
   windows (no console) mode.
 - Added: support for SUT address for system sent/received events in
   both visual (as a tooltip) and textual viewers.
+- Added: file rename option in Remote browser (use F2 to edit the name).
+  The extension is automatically kept if not provided.
+- Added: support for file and folder copy in Remote browser. Only
+  interfaced via Drag and Drop.
 - Modified: native epydoc-based documentation generator is now a plugin
 - Modified: main window layout capabilities; left-side docks can now use
   full height. Should be more convenient for the remote browsers when
   used in low screen resolution (1024x768).
 - Modified: "Resource generator" plugin renamed to "Resource importer", as
   it is used to import files as embedded resources, not to generate them
+- Modified: several cosmetic changes
 - Fixed: several log analysis speed improvements, up to 33% faster
 - Fixed: reloading of a file that contained non-ascii characters did not work
 - Fixed: loading and reloading of local files under Windows, including
