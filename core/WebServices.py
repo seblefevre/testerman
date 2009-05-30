@@ -397,7 +397,7 @@ def getFile(path, useCompression = False):
 
 def putFile(content, path):
 	"""
-	Write a file to docroot/path
+	Writes a file to docroot/path
 	
 	@type  content: utf-8 encoded (or buffer) string, encoded in mime64
 	@param content: the content of the file
@@ -514,7 +514,7 @@ def getFileInfo(path):
 
 def removeFile(path):
 	"""
-	Remove a file.
+	Removes a file.
 	
 	@type  path: string
 	@param path: the docroot-path to the file to delete
@@ -536,7 +536,7 @@ def removeFile(path):
 
 def removeDirectory(path, recursive = False):
 	"""
-	Remove an empty directory, unless recursive is set to True.
+	Removes an empty directory, unless recursive is set to True.
 	
 	@type  path: string
 	@param path: the docroot-path to the directory to delete

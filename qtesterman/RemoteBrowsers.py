@@ -71,12 +71,29 @@ class BaseWidgetItem(QTreeWidgetItem):
 		'/'
 		"""
 		QTreeWidgetItem.__init__(self, parent)
-		self._path = path
-		_, name = os.path.split(path)
-		if not name:
-			name = "/"
-		self.setText(0, name)
+		self._flags = 0
+		self._path = path  # complete path
+		_, basename = os.path.split(path)
+		display = basename
+		if not display:
+			display = "/"
+		
+		self.setText(0, display)
 		self.setText(1, 'unknown')
+		
+		self.setFlags(Qt.ItemIsEnabled)
+	
+	def isRenameable(self):
+		return self.flags() & Qt.ItemIsEditable
+	
+	def isCopyable(self):
+		return self.flags() & Qt.ItemIsDragEnabled
+
+	def isMoveable(self):
+		return self.flags() & Qt.ItemIsDragEnabled
+	
+	def shouldRetainExtensionOnRename(self):
+		return True
 
 	def getUrl(self):
 		"""
@@ -90,8 +107,16 @@ class BaseWidgetItem(QTreeWidgetItem):
 		url = "testerman://%s:%d%s" % (serverIp, serverPort, self._path)
 		return QUrl(url)
 	
-	def getName(self):
-		return self.text(0)
+	def getBasename(self):
+		_, basename = os.path.split(self._path)
+		return basename
+
+	def setBasename(self, basename):
+		basepath, _ = os.path.split(self._path)
+		self._path = "%s/%s" % (basepath, basename)
+		self.setText(0, basename)
+		print "DEBUG: new file path: %s" % self._path
+			
 
 class AsyncFetchingThread(QThread):
 	"""
@@ -176,6 +201,7 @@ class AsyncExpander(QObject):
 		for item in self._fetchedChildItems:
 			self._item.addChild(item)
 
+
 class ExpandableWidgetItem(BaseWidgetItem):
 	"""
 	Base class for nodes that can be expanded.
@@ -195,6 +221,7 @@ class ExpandableWidgetItem(BaseWidgetItem):
 		"""
 		return []
 
+
 class DirWidgetItem(ExpandableWidgetItem):
 	"""
 	Directory/Folder
@@ -203,6 +230,8 @@ class DirWidgetItem(ExpandableWidgetItem):
 		ExpandableWidgetItem.__init__(self, path, parent)
 		self.setIcon(0, icon(':/icons/folder'))
 		self.setText(1, 'folder')
+		self.setFlags(Qt.ItemIsEnabled | Qt.ItemIsSelectable | 
+			Qt.ItemIsDragEnabled | Qt.ItemIsDropEnabled)
 
 	def fetchChildItems(self):
 		# The implementation is in the treewidget because it also
@@ -211,60 +240,61 @@ class DirWidgetItem(ExpandableWidgetItem):
 		# when the treewidget fetches its children, it cannot have
 		# any DirWidgetItem (all its children are removed in the meanwhile).
 		return self.treeWidget().fetchChildItems(self._path)
+
+	def shouldRetainExtensionOnRename(self):
+		return False
 	
+
 class AtsWidgetItem(ExpandableWidgetItem):
 	"""
-	ATS
+	ATS Document.
 	"""
 	def __init__(self, path, parent = None):
 		ExpandableWidgetItem.__init__(self, path, parent)
 		self.setIcon(0, icon(':/icons/ats'))
 		self.setText(1, 'ats')
+		self.setFlags(Qt.ItemIsEnabled | Qt.ItemIsSelectable | Qt.ItemIsDragEnabled | Qt.ItemIsEditable)
 	
 	def fetchChildItems(self):
 		revisionsItem = RevisionsWidgetItem(self._path)
 		executionLogsItem = ExecutionLogsWidgetItem(self._path)
 		return [ revisionsItem, executionLogsItem ]
 
+
 class ModuleWidgetItem(ExpandableWidgetItem):
 	"""
-	Module
+	Module Document.
 	"""
 	def __init__(self, path, parent = None):
 		ExpandableWidgetItem.__init__(self, path, parent)
 		self.setIcon(0, icon(':/icons/module'))
 		self.setText(1, 'module')
+		self.setFlags(Qt.ItemIsEnabled | Qt.ItemIsSelectable | Qt.ItemIsDragEnabled | Qt.ItemIsEditable)
 
 	def fetchChildItems(self):
 		revisionsItem = RevisionsWidgetItem(self._path)
 		return [ revisionsItem ]
 
+
 class CampaignWidgetItem(ExpandableWidgetItem):
 	"""
-	Campaign
+	Campaign Document.
 	"""
 	def __init__(self, path, parent = None):
 		ExpandableWidgetItem.__init__(self, path, parent)
 		self.setIcon(0, icon(':/icons/campaign'))
 		self.setText(1, 'campaign')
+		self.setFlags(Qt.ItemIsEnabled | Qt.ItemIsSelectable | Qt.ItemIsDragEnabled | Qt.ItemIsEditable)
 
 	def fetchChildItems(self):
 		revisionsItem = RevisionsWidgetItem(self._path)
 		executionLogsItem = ExecutionLogsWidgetItem(self._path)
 		return [ revisionsItem, executionLogsItem ]
 
-class LogWidgetItem(BaseWidgetItem):
-	"""
-	Execution lof file
-	"""
-	def __init__(self, path, parent = None):
-		BaseWidgetItem.__init__(self, path, parent)
-		self.setIcon(0, icon(':/icons/execution-log'))
-		self.setText(1, 'log')
 
 class RevisionsWidgetItem(ExpandableWidgetItem):
 	"""
-	Revision file
+	Revision file virtual folder.
 	"""
 	def __init__(self, path, parent = None):
 		ExpandableWidgetItem.__init__(self, path, parent)
@@ -278,18 +308,21 @@ class RevisionsWidgetItem(ExpandableWidgetItem):
 	def getUrl(self):
 		return None
 
+
 class RevisionWidgetItem(BaseWidgetItem):
 	"""
-	Revision file
+	Revision file (document)
 	"""
 	def __init__(self, path, parent = None):
 		BaseWidgetItem.__init__(self, path, parent)
 		self.setIcon(0, icon(':/icons/revision'))
 		self.setText(1, 'revision')
 
+
 class ExecutionLogsWidgetItem(ExpandableWidgetItem):
 	"""
-	Virtual node
+	Virtual folder containing execution logs for
+	a script.
 	"""
 	def __init__(self, path, parent = None):
 		ExpandableWidgetItem.__init__(self, path, parent)
@@ -313,9 +346,11 @@ class ExecutionLogsWidgetItem(ExpandableWidgetItem):
 	def getUrl(self):
 		return None
 
+
 class ExecutionLogWidgetItem(BaseWidgetItem):
 	"""
-	Revision file
+	Execution log associated to a script, within
+	a virtual folder.
 	"""
 	def __init__(self, path, parent = None):
 		BaseWidgetItem.__init__(self, path, parent)
@@ -332,7 +367,20 @@ class ExecutionLogWidgetItem(BaseWidgetItem):
 			username = m.group(2)
 			display = "%s, by %s" % (date, username)
 		self.setText(0, display)
-		
+
+		self.setFlags(Qt.ItemIsEnabled | Qt.ItemIsSelectable)
+				
+class LogWidgetItem(BaseWidgetItem):
+	"""
+	Execution log, as a document (from the Archive view)
+	"""
+	def __init__(self, path, parent = None):
+		BaseWidgetItem.__init__(self, path, parent)
+		self.setIcon(0, icon(':/icons/execution-log'))
+		self.setText(1, 'log')
+		self.setFlags(Qt.ItemIsEnabled | Qt.ItemIsSelectable)
+
+
 class PackageWidgetItem(BaseWidgetItem):
 	"""
 	Package
@@ -357,9 +405,17 @@ class WServerFileSystemTreeWidget(QTreeWidget):
 	the widget with external actions.
 	
 	Local actions:
-	- file system related: delete (ats/campaign/module/log),
-	  module referrer lookup
+	- file system related: delete (ats/campaign/module/log/empty dir),
+	  rename (ats/campaign only, to avoid major breaks when renaming a whole dir tree),
+		copy (dir/ats/campaign/module),
+		(move disabled for now)
 	- view related: refresh (all, subtree)
+	
+	Notes:
+	- folder renaming is disabled on purpose. Could create havoks breaking
+	  (a lot of) modules too easily.
+	- folder moving is disabled for the same reasons.
+	
 	External actions:
 	- open (for edition) : emit SIGNAL('openUrl(const QUrl&)')
 	"""
@@ -370,13 +426,33 @@ class WServerFileSystemTreeWidget(QTreeWidget):
 		
 		self.setWindowIcon(icon(':/icons/browser'))
 		self.setWindowTitle('Remote browser')
-		self.setHeaderLabels([ 'Name', 'Type' ])
+
+		self.setHeaderLabels([ 'Name' ]) #, 'Type' ])
 		self.header().setResizeMode(0, QHeaderView.ResizeToContents)
 		self.header().setResizeMode(1, QHeaderView.Stretch)
 		self.header().resizeSection(1, 70)
+
+		# Experiment: hidde the header, only one section ('name')		
+		self.setHeaderHidden(True)
+
 		self.setContextMenuPolicy(Qt.DefaultContextMenu)
 		self.connect(self, SIGNAL("itemExpanded(QTreeWidgetItem*)"), self.onItemExpanded)
 		self.connect(self, SIGNAL("itemActivated(QTreeWidgetItem*, int)"), self.onItemActivated)
+		self.connect(self, SIGNAL("itemChanged(QTreeWidgetItem*, int)"), self.onItemChanged)
+		
+		# Multiple selection mode would make file moves a bit weird,
+		# as we may select a folder and files in this folder (or any child) to move
+		# to the same final place, etc.
+		# Sticking to single selection mode makes everything easier,
+		# except multiple files (typically logs) deletion.
+		#self.setSelectionMode(self.ExtendedSelection)
+		
+		self.setAcceptDrops(True)
+		self.setDragEnabled(True)
+		self.setDropIndicatorShown(True)
+		self.setAutoScroll(True)
+		
+		self.setEditTriggers(QAbstractItemView.EditKeyPressed)
 		
 		self._path = path
 		
@@ -485,7 +561,7 @@ class WServerFileSystemTreeWidget(QTreeWidget):
 	def _deleteAts(self, item):
 		url = item.getUrl()
 		if url:
-			dialog = CommonWidgets.WUserQuestion("Delete ATS", "Are you sure you want to delete the ATS %s ?" % item.getName(), 
+			dialog = CommonWidgets.WUserQuestion("Delete ATS", "Are you sure you want to delete the ATS %s ?" % item.getBasename(), 
 				[('Also delete associated execution logs', True)], parent = self)
 			if dialog.exec_() == QDialog.Accepted:
 				ret = self.getClient().deleteAts(unicode(url.path()), dialog.isChecked(0))
@@ -498,7 +574,7 @@ class WServerFileSystemTreeWidget(QTreeWidget):
 	def _deleteCampaign(self, item):
 		url = item.getUrl()
 		if url:
-			dialog = CommonWidgets.WUserQuestion("Delete Campaign", "Are you sure you want to delete the campaign %s ?" % item.getName(), 
+			dialog = CommonWidgets.WUserQuestion("Delete Campaign", "Are you sure you want to delete the campaign %s ?" % item.getBasename(), 
 				[('Also delete associated execution logs', True)], parent = self)
 			if dialog.exec_() == QDialog.Accepted:
 				ret = self.getClient().deleteCampaign(unicode(url.path()), dialog.isChecked(0))
@@ -511,7 +587,7 @@ class WServerFileSystemTreeWidget(QTreeWidget):
 	def _deleteModule(self, item):
 		url = item.getUrl()
 		if url:
-			b = QMessageBox.warning(self, "Delete Module", "Deleting a module may break a lot of existing ATSes or other modules. Are you sure you want to delete the module %s ?" % item.getName(), 
+			b = QMessageBox.warning(self, "Delete Module", "Deleting a module may break a lot of existing ATSes or other modules. Are you sure you want to delete the module %s ?" % item.getBasename(), 
 				QMessageBox.Yes | QMessageBox.No, QMessageBox.No)
 			if b == QMessageBox.Yes:
 				ret = self.getClient().removeFile(unicode(url.path()))
@@ -524,13 +600,13 @@ class WServerFileSystemTreeWidget(QTreeWidget):
 	def _deleteDirectory(self, item):
 		url = item.getUrl()
 		if url:
-			dialog = CommonWidgets.WUserQuestion("Delete Directory", "Are you sure you want to delete the directory %s ?" % item.getName(), parent = self)
+			dialog = CommonWidgets.WUserQuestion("Delete Folder", "Are you sure you want to delete the folder %s ?" % item.getBasename(), parent = self)
 			if dialog.exec_() == QDialog.Accepted:
 				ret = self.getClient().removeDirectory(unicode(url.path()), False)
 				if ret:
 					item.parent().removeChild(item)
 				else:
-					CommonWidgets.userInformation(self, "Unable to delete directory: not empty")
+					CommonWidgets.userInformation(self, "Unable to delete folder %s: not empty" % os.path.split(unicode(url.path()))[1])
 
 	def _deleteExecutionLog(self, item):
 		url = item.getUrl()
@@ -543,6 +619,153 @@ class WServerFileSystemTreeWidget(QTreeWidget):
 				else:
 					# Display an error message ?
 					pass
+	
+	def _copyItems(self, sources, destination):
+		"""
+		Copies the first file in sources.
+		May display user notifications in case of misoperations.
+		
+		@type  sources: list of QUrls
+		@type  destination: QString (path)
+		
+		@rtype: bool
+		@returns: True if the copy was OK. False otherwise.
+		"""
+		# We assume a source list containing only one URL (single selection only)
+		# Will require some clean up one day.
+		for url in sources:
+			print "DEBUG: copying %s to %s..." % (url.path(), destination)
+			src = unicode(url.path())
+			srcBasename = os.path.split(src)[1]
+			dst = unicode(destination)
+			dstBasename = os.path.split(dst)[1]
+			# Minimal checks to avoid self/recursive copy, etc
+			if os.path.split(src)[0] == dst:
+				# copy a file/folder to its own folder
+				CommonWidgets.userInformation(self, "Cannot copy %s to itself" % srcBasename)
+				return False
+			elif dst.startswith('%s/' % src) or src == dst:
+				# copy a folder to one of its sub-folders (or itself)
+				# NB: this is not possible due to the current copy implementation on the server:
+				# it will not create a list of files to copy before starting the copy, leading
+				# to some infinite recursion operations. To fix on server side.
+				CommonWidgets.userInformation(self, "Cannot copy %s to itself or to one of its sub-folders" % srcBasename)
+				return False
+			else:
+				if QMessageBox.question(self, "Copy", "Are you sure you want to copy %s to %s (existing files will be overwritten) ?" % (srcBasename, dstBasename), 
+					QMessageBox.Yes|QMessageBox.No, QMessageBox.Yes) == QMessageBox.Yes:
+					return self.getClient().copy(src, dst)
+				else:
+					return False
+			
+	def _moveItems(self, sources, destination):
+		"""
+		Display a dialog with a list of files to move,
+		filtering "same file" instances or "ambigious" moves, if any
+		(such as a folder and some of its subfolders/files to the same destination)
+		
+		@type  sources: list of QUrls
+		@type  destination: QString (path)
+		"""
+		for url in sources:
+			print "DEBUG: moving %s to %s..." % (url.path(), destination)
+			self.getClient().move(unicode(url.path()), unicode(destination))
+
+	def _renameItem(self, item, currentName, newName):
+		"""
+		Attempt to rename the item from currentName to newName.
+		
+		@type  currentName: unicode
+		@type  newName: unicode
+		
+		@raises: Exception in case of an error.
+		"""
+		path = unicode(item.getUrl().path())
+		print "DEBUG: renaming %s from %s to %s..." % (path, currentName, newName)
+
+		# Forbidden list for simple files
+		forbidden = "/\\' \"@|?*"
+		for c in forbidden:		
+			if c in unicode(newName):
+				raise Exception("The following characters are forbidden in a file name:\n%s" % ', '.join([x for x in forbidden]))
+		
+		# rename
+		if not self.getClient().rename(path, unicode(newName)):
+			raise Exception("An object with the same name already exists in this folder")
+
+	def onCopyUrls(self, parent, sources, destination):
+		ret = self._copyItems(sources, destination)
+		if ret:
+			self._refresh(parent)
+
+	def onItemChanged(self, item, col):
+		if col == 0 and hasattr(item, "getBasename") and item.getBasename() != unicode(item.text(0)):
+			currentName = item.getBasename()
+			newName = unicode(item.text(0))
+			# Make sure the extension is kept
+			if item.shouldRetainExtensionOnRename():
+				base, extension = os.path.splitext(currentName)
+				if extension and not newName.endswith(extension):
+					newName += extension
+			try:
+				self._renameItem(item, currentName, newName)
+				item.setBasename(newName)
+			except Exception, e:
+				# Revert to its previous name
+				item.setBasename(currentName)
+				CommonWidgets.userError(self, 'Cannot rename "%s" to "%s":\n%s' % (currentName, newName, str(e)))
+	
+	##
+	# Drag & Drop support
+	##
+	def mimeData(self, items):
+		md = QMimeData()
+		urls = [item.getUrl() for item in items if (item.isCopyable() or item.isMoveable())]
+		md.setUrls(urls)
+		return md
+	
+	def dragEnterEvent(self, dragEnterEvent):
+		dragEnterEvent.accept()
+		
+	def dragMoveEvent(self, dragMoveEvent):
+		item = self.itemAt(dragMoveEvent.pos())
+		if item:
+			if item.flags() & Qt.ItemIsDropEnabled:
+				dragMoveEvent.accept()
+			else:
+				dragMoveEvent.ignore()
+			return
+		else:
+			# "Root" item
+			dragMoveEvent.accept()
+	
+	def dropMimeData(self, parent, index, data, action):
+		if data.hasUrls() and action == Qt.CopyAction:
+			if parent is None:
+				# root
+				destination = self._path
+			elif parent.getUrl():
+				destination = parent.getUrl().path()
+			else:
+				print "DEBUG: cannot copy/move to this node: no associated URL"
+				return False
+
+			# Tried to emit a signal so that the drop op is complete when
+			# displaying message boxes, hence restoring the standard cursor
+			# instead of the drag one.
+			# Unfortunately, this is the same problem as when called synchronously...
+			# self.emit(SIGNAL('copyUrls'), parent, data.urls(), destination)
+			QApplication.instance().setOverrideCursor(QCursor(Qt.ArrowCursor))
+			self.onCopyUrls(parent, data.urls(), destination)
+			QApplication.instance().restoreOverrideCursor()
+			return True
+		else:
+			return False
+	
+	def supportedDropActions(self):
+		return (Qt.CopyAction)
+		# Disable moving for now
+#		return (Qt.CopyAction | Qt.MoveAction)
 	
 	##
 	# External actions
@@ -633,6 +856,7 @@ if __name__ == "__main__":
 		w.show()
 	except Exception, e:
 		import TestermanNodes
+		print TestermanNodes.getBacktrace()
 		raise Exception(TestermanNodes.getBacktrace())
 		
 		

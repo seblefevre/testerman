@@ -187,7 +187,9 @@ class FileSystemManager:
 		- if src is a file, destination must be an existing directory
 		  or a new file
 		"""
+		getLogger().debug("Copying %s to %s, remove after copy: %s" % (source, destination, removeAfterCopy))
 		if self.isdir(source):
+			getLogger().debug("Copying a directory")
 			# We copy a directory
 			if self.isdir(destination):
 				# Copy dir to an existing dir - create a new dir into this dir
@@ -200,8 +202,10 @@ class FileSystemManager:
 				# This is a file
 				raise Exception('Cannot copy directory %s to %s, which is a file' % (source, destination))
 
+			getLogger().debug("Copying a directory to adjusted destination %s" % dst)
 			# Create the target directory
 			self.mkdir(dst)
+			getLogger().debug("New target directory created")
 			
 			# Now we recursively copy each file
 			entries = self.getdir(source)
@@ -219,8 +223,10 @@ class FileSystemManager:
 			return True
 
 		elif self.isfile(source):
+			getLogger().debug("Copying a file")
 			# We copy a file
 			if self.isdir(destination):
+				getLogger().debug("Copying a file to a directory")
 				# Copy the file into the directory
 				_, basename = os.path.split(source)
 				dst = '%s/%s' % (destination, basename)
@@ -230,6 +236,8 @@ class FileSystemManager:
 			else:
 				# Create a new file
 				dst = destination
+
+			getLogger().debug("Copying file to %s" % dst)
 			
 			content = self.read(source)
 			self.write(dst, content)
@@ -237,6 +245,10 @@ class FileSystemManager:
 				self.unlink(source)
 			
 			return True
+		
+		else:
+			getLogger().warning("Unable to qualify source file. Not copying.")
+			return False
 	
 	def copy(self, source, destination):
 		"""
@@ -261,10 +273,9 @@ class FileSystemManager:
 		@param newName: the new (base)name of the object in its current
 		                directory.
 		"""
-		(adjusted, backend) = FileSystemBackendManager.getBackend(path)
+		(adjusted, backend) = FileSystemBackendManager.getBackend(source)
 		if not backend:
-			raise Exception('No backend available to manipulate %s' % path)
-		return backend.isfile(adjusted)
+			raise Exception('No backend available to manipulate %s' % source)
 
 		destination = '%s/%s' % (os.path.split(source)[0], newName)
 		if self.exists(destination):

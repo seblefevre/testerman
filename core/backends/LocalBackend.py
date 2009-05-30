@@ -229,16 +229,20 @@ class LocalBackend(FileSystemBackend.FileSystemBackend):
 		if not filename: 
 			return None
 		
-		# Not implemented yet
+		# Not yet implemented
 		return None
 	
 	def isdir(self, path):
 		path = self._realpath(path)
 		if not path: 
 			return False
-		
 		return os.path.isdir(path)
 
+	def isfile(self, path):
+		path = self._realpath(path)
+		if not path:
+			return False
+		return os.path.isfile(path)
 			
 		
 

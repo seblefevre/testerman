@@ -511,7 +511,7 @@ class Client(Nodes.ConnectingNode):
 
 	def putFile(self, content, filename):
 		"""
-		Put content as a file named filename in the server's document root.
+		Puts content as a file named filename in the server's document root.
 		
 		ATS, campaigns, etc are stored as utf-8. So you should make sure
 		your content is utf-8 encoded when using this method.
@@ -590,7 +590,7 @@ class Client(Nodes.ConnectingNode):
 		@rtype: bool
 		@returns: True if file deletion was ok, False if it was not possible to delete it.
 		"""
-		self.getLogger().debug("Removing fie %s ..." % filename)
+		self.getLogger().debug("Removing file %s ..." % filename)
 		res = self.__proxy.removeFile(filename)
 		self.getLogger().debug("Removed file %s: %s" % (filename, str(res)))
 		return res
@@ -614,6 +614,92 @@ class Client(Nodes.ConnectingNode):
 		res = self.__proxy.removeDirectory(path, recursive)
 		self.getLogger().debug("Removed directory %s: %s" % (path, str(res)))
 		return res
+
+	def rename(self, path, newName):
+		"""
+		Renames a file or a directory to newName, in the same folder.
+
+		@type  path: string
+		@param path: the docroot-path to the object to rename
+		@type  newName: string
+		@param newName: the new name (basename) of the object, including extension,
+	                	if applicable.
+
+		@rtype: bool
+		@returns: False if newName already exists. True otherwise.
+		"""
+		self.getLogger().debug("Renaming %s to %s..." % (path, newName))
+		ret = self.__proxy.rename(path, newName)
+		self.getLogger().debug("%s renamed to %s: %s" % (path, newName, ret))
+		return ret
+	
+	def move(self, source, destination):
+		"""
+		Moves a file or a directory to destination.
+		Recursive operation: if the source is a directory, the whole
+		tree will be moved. 
+
+		Logs associated to a scripts, if any, are
+		NOT moved. They are kept available in the archives,
+		but not associated to the script any more.
+
+		FIXME: Revisions should be moved, however. 
+
+		source is a docroot to an existing path or directory.
+		destination is a docroot path to a destination:
+		- if source is a dir, destination can be an existing dir
+	  	(will create a new dir in it) or a new directory name
+	  	(will rename the directory).
+		- if source is a file, destination can be an existing dir
+	  	(will create the file in it, without renaming it), or
+			a new file name (will rename the file).
+
+		@type  source: string
+		@param source: docroot-path to the object to move
+		@type  destination: string
+		@param destination: docroot-path to the destination
+		(if existing: must be a directory; if not existing, will rename
+		the object on the fly)
+
+		@rtype: bool
+		@returns: True if the operation was OK.
+		"""
+		self.getLogger().debug("Moving %s to %s..." % (source, destination))
+		ret = self.__proxy.move(source, destination)
+		self.getLogger().debug("%s moved to %s: %s" % (source, destination, ret))
+		return ret
+
+	def copy(self, source, destination):
+		"""
+		Copies a file or a directory to destination.
+		Recursive operation: if the source is a directory, the whole
+		tree will be copied. 
+
+		Meta children (Revisions and logs, if any) are NOT copied.
+
+		source is a docroot to an existing path or directory.
+		destination is a docroot path to a destination:
+		- if source is a dir, destination can be an existing dir
+	  	(will create a new dir in it) or a new directory name
+	  	(will rename the directory).
+		- if source is a file, destination can be an existing dir
+	  	(will create the file in it, without renaming it), or
+			a new file name (will rename the file).
+
+		@type  source: string
+		@param source: docroot-path to the object to move
+		@type  destination: string
+		@param destination: docroot-path to the destination
+		(if existing: must be a directory; if not existing, will rename
+		the object on the fly)
+
+		@rtype: bool
+		@returns: True if the operation was OK.
+		"""
+		self.getLogger().debug("Copying %s to %s..." % (source, destination))
+		ret = self.__proxy.copy(source, destination)
+		self.getLogger().debug("%s copied to %s: %s" % (source, destination, ret))
+		return ret
 
 	##
 	# High-level file management: convenience functions to manage dependencies between files
