@@ -28,6 +28,7 @@ from Base import *
 TYPE_ATS = "ats"
 TYPE_MODULE = "module"
 TYPE_CAMPAIGN = "campaign"
+TYPE_PACKAGE_DESCRIPTION = "package_description"
 
 ###############################################################################
 # Model Base
@@ -359,18 +360,16 @@ class DocumentModel(QObject):
 
 	def __init__(self, document = None, defaultMetadata = u""):
 		"""
-		document (unicode string) is the complete document data (metadata + body, automatically split)
-		defaultMetadata is the metadata returned when the initial document does not contain any metadata.
-		filename is either a local filename or a filename relative to the doc root on the testerman server (however starts with a /: /repository/newats.ats, etc)
-		timestamp is the document timestamp to use to check for changes on the server during the local edition.
-		
+		@type  document: unicode string
+		@param document: the complete document data (metadata + body, automatically split)
+		@type  defaultMetadata: unicode string
+		@param defaultMetadata: the metadata returned when the initial document does not contain any metadata.
 		"""
 		QObject.__init__(self)
-		# Metadata is a unicode string
-		self.defaultMetadata = defaultMetadata
-		# Body is a unicode string, metadata is a metadataModel
-		(metadata, self.body) = self._explode(document)
-
+		# Let's split our document into a body and metadata raw data
+		# (unicode strings)
+		(metadata, self.body) = self._explode(document, defaultMetadata)
+		# Turns the metadata part into a sub model
 		self.metadataModel = MetadataModel(metadata)
 
 		#: must be overridden in DocumentModel subclasses.
@@ -577,7 +576,7 @@ class DocumentModel(QObject):
 		"""
 		return self.body
 
-	def _explode(self, document):
+	def _explode(self, document, defaultMetadata):
 		"""
 		Returns a tuple (metadata, body), extracting the metadata from the body of the module.
 		
@@ -587,7 +586,9 @@ class DocumentModel(QObject):
 		After that, this is the document body.
 
 		@type  document: unicode string
-		@param document: the complete document.
+		@param document: the complete document
+		@type  defaultMetadata: unicode string
+		@param defaultMetadata: some default metadata if not present in the document
 		
 		@rtype: tuple (unicode, unicode)
 		@returns: a tuple corresponding to the (metadata, body) document model aspects.
@@ -595,9 +596,9 @@ class DocumentModel(QObject):
 		body = u""
 		lines = document.split('\n')
 		if not len(lines):
-			return (self.defaultMetadata, document)
+			return (defaultMetadata, document)
 		if not lines[0].startswith('# __METADATA__BEGIN__'):
-			return (self.defaultMetadata, document)
+			return (defaultMetadata, document)
 
 		completed = 0
 		metadataLines = [ lines[1] ]
@@ -619,7 +620,7 @@ class DocumentModel(QObject):
 			index += 1
 
 		if not completed:
-			return (self.defaultMetadata, document)
+			return (defaultMetadata, document)
 
 		# OK, we have valid metadata.
 		metadata = u""
@@ -635,20 +636,24 @@ class DocumentModel(QObject):
 	def _join(self, metadata, body):
 		"""
 		Internal fonction.
-		Create a document made of a body with associated metadata
-		Returns a unicode string
+		Recreates a full document made of a body with associated metadata.
+		
+		@type  metadata: unicode string
+		@type  body: unicode string
+		
+		@rtype: unicode string
 		"""
-		module = u"# __METADATA__BEGIN__\n"
+		document = u"# __METADATA__BEGIN__\n"
 		for l in metadata.split(u'\n'):
 			if l:
-				module += u"# " + l + u"\n"
-		module += u"# __METADATA__END__\n"
-		module += body
-		return module
+				document += u"# " + l + u"\n"
+		document += u"# __METADATA__END__\n"
+		document += body
+		return document
 
 
 ###############################################################################
-# Module Model management
+# Module Model
 ###############################################################################
 
 class ModuleModel(DocumentModel):
@@ -669,7 +674,7 @@ class ModuleModel(DocumentModel):
 		log(info)
 
 ###############################################################################
-# Ats Model management
+# Ats Model
 ###############################################################################
 
 class AtsModel(DocumentModel):
@@ -689,7 +694,7 @@ class AtsModel(DocumentModel):
 		log(info)
 
 ###############################################################################
-# Campaign Model management
+# Campaign Model
 ###############################################################################
 
 class CampaignModel(DocumentModel):
@@ -704,6 +709,31 @@ class CampaignModel(DocumentModel):
 		self.documentType = TYPE_CAMPAIGN
 		self.setSavedAttributes(url = url, timestamp = timestamp)
 		info = "New CampaignModel created:\n"
+		info += " document len: " + str(len(document)) + "\n"
+		info += " timestamp: " + str(self.savedTimestamp)
+		log(info)
+
+###############################################################################
+# Package Description/Manifest Model
+###############################################################################
+
+class PackageDescriptionModel(DocumentModel):
+	"""
+	Package description model.
+	
+	Federates all package attributes, properties, and links
+	to its dependencies/actual files.
+	
+	A package description is stored as an XML file.
+	
+	"""
+	def __init__(self, document = None, url = None, timestamp = 0):
+		defaultMetadata = u'<?xml version="1.0" encoding="utf-8"?>\n<meta />'
+		DocumentModel.__init__(self, document, defaultMetadata)
+		self.extension = "xml"
+		self.documentType = TYPE_PACKAGE_DESCRIPTION
+		self.setSavedAttributes(url = url, timestamp = timestamp)
+		info = "New PackageDescriptionModel created:\n"
 		info += " document len: " + str(len(document)) + "\n"
 		info += " timestamp: " + str(self.savedTimestamp)
 		log(info)
