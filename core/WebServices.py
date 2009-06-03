@@ -19,6 +19,15 @@
 # WARNING: all methods in this file are exposed through the Ws
 # (WebServices is a dispatch module for an XML-RPC server)
 #
+#
+# The Ws interface is split into several logical services:
+# - main
+# - file
+# - job
+# - agent
+# - xc
+# - server
+#
 ##
 
 import ConfigManager
@@ -43,8 +52,9 @@ import zlib
 def getLogger():
 	return logging.getLogger('TS.Ws')
 
+
 ################################################################################
-# WS - Testerman Platform Control part
+# Service: main
 ################################################################################
 
 def getVersion():
@@ -89,7 +99,7 @@ def getXcVersion():
 
 
 ################################################################################
-# Job management
+# service: job (Job management)
 ################################################################################
 
 def scheduleAts(source, atsId, username, session, at, path = None):
@@ -354,7 +364,7 @@ def sendSignal(jobId, signal):
 	
 
 ################################################################################
-# File management
+# service: file (File management)
 ################################################################################
 
 def getFile(path, useCompression = False):
@@ -671,9 +681,35 @@ def getReferencingFiles(module):
 	TODO (or to remove ?)
 	"""	
 	return []
+
+def getDependencies(path, recursive = False):
+	"""
+	Computes the file dependencies of the file referenced by path.
 	
+	If recursive is set to True, also searches for additional dependencies
+	recursively; otherwise only direct dependencies are computed.
+	
+	A dependency for an ATS is a module it imports.
+	A depencendy for a module is a module it imports.
+	A dependency for a campaign is a a script (ats or campaign) it calls.
+	
+	This method may be used by a client to create a package.
+	
+	@type  path: string
+	@param path: a docroot path to a module, ats or campaign
+	@type  recursive: boolean
+	@param recursive: False for direct depencencies only. True for all
+	dependencies. 
+	
+	@rtype: list of strings
+	@returns: a list of dependencies as docroot-path to filenames.
+	A dependency is only listed once (no duplicate).
+	"""
+	return []
+
+
 ################################################################################
-# Xc management
+# service: xc (Xc interface management)
 ################################################################################
 
 def getXcInterfaceAddress():
@@ -690,7 +726,7 @@ def getXcInterfaceAddress():
 
 
 ################################################################################
-# Agents & Probes management
+# service: agent (Agents & Probes management)
 ################################################################################
 
 def deployProbe(agentName, probeName, probeType):
@@ -825,21 +861,9 @@ def updateAgent(agentName, branch = None, version = None):
 	getLogger().info("<< updateAgent OK")
 	return True
 
-################################################################################
-# Component management
-# TODO: must be managed as a file, with a specific metadata file if needed.
-################################################################################
-
-def getLatestComponentVersion(component, currentVersion, acceptTestVersions):
-	"""
-	Kept for compatibility.
-	To remove.
-	"""
-	return ''
-
 
 ################################################################################
-# Server Management: stats, low level info, etc.
+# service: server (Server Management: stats, low level info, etc)
 ################################################################################
 
 def getConfigInformation():

@@ -26,6 +26,7 @@
 ##
 
 import ConfigManager
+import DependencyResolver
 import EventManager
 import FileSystemManager
 import TestermanMessages as Messages
@@ -675,7 +676,7 @@ class AtsJob(Job):
 		
 		This avoids the user change any source code after submitting the job.
 		
-		@raises Exception: in case of any preparatin error.
+		@raises Exception: in case of any preparation error.
 		
 		@rtype: None
 		"""
@@ -690,7 +691,7 @@ class AtsJob(Job):
 
 		getLogger().info("%s: resolving dependencies..." % str(self))
 		try:
-			deps = TEFactory.getDependencyFilenames(self._source, self._path)
+			deps = DependencyResolver.python_getDependencyFilenames(self._source, self._path, recursive = True)
 		except Exception, e:
 			desc = "unable to resolve dependencies: %s" % str(e)
 			return handleError(25, desc)
