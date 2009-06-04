@@ -173,15 +173,20 @@ class ResponseThread(threading.Thread):
 						continue
 					
 					decodedMessage = None
-					try:
-						self._probe.getLogger().debug('data received (bytes %d), decoding attempt...' % len(buf))
-						(decodedMessage, summary) = CodecManager.decode('http.response', buf)
-					except Exception, e:
-						# Incomplete message. Wait for more data.
-						self._probe.getLogger().debug('unable to decode: %s' % ProbeImplementationManager.getBacktrace())
-						pass
-						
-					if decodedMessage:
+
+					self._probe.getLogger().debug('data received (bytes %d), decoding attempt...' % len(buf))
+					(status, _, decodedMessage, summary) = CodecManager.incrementalDecode('http.response', buf)
+					if status == CodecManager.IncrementalCodec.DECODING_NEED_MORE_DATA:
+						if not read:
+							# We are disconnected.
+							raise Exception('Unable to decode response: additional data required, but connection lost')
+						else:
+							# Just wait
+							self._probe.getLogger().info('Waiting for additional data...')
+					elif status == CodecManager.IncrementalCodec.DECODING_ERROR:
+						raise Exception('Unable to decode response: decoding error')
+					else:
+						# DECODING_OK
 						fromAddr = "%s:%s" % self._socket.getpeername()
 						self._probe.getLogger().debug('message decoded, enqueuing...')
 						self._probe.logReceivedPayload(summary, buf, fromAddr)

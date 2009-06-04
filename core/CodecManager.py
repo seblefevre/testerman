@@ -206,6 +206,17 @@ class IncrementalCodec(Codec):
 	DECODING_NEED_MORE_DATA = -1
 	DECODING_OK = 0
 	
+	# Convenience functions
+	def decodingError(self):
+		return (self.DECODING_ERROR, 0, None, None)
+	
+	def needMoreData(self, consumedBytes = 0):
+		return (self.DECODING_NEED_MORE_DATA, consumedBytes, None, None)
+	
+	def decoded(self, decodedMessage, summary, consumedBytes = 0):
+		return (self.DECODING_OK, consumedBytes, decodedMessage, summary)
+	
+	# Functions to implement
 	def incrementalDecode(self, data):
 		"""
 		To implement in your IncrementalCodec subclass.
@@ -335,6 +346,17 @@ class CodecManager(object):
 			# Unable to find the codec
 			raise CodecNotFoundException("Codec '%s' not found" % name)
 
+	def incrementalDecode(self, name, data,  **properties):
+		# NB: we instantiate a codec each type to be thread safe and parallel
+		codec = self._getCodecInstance(name)
+		if codec:
+			for k, v in properties.items():
+				codec._setProperty(k, v)
+			return codec.incrementalDecode(data)
+		else:
+			# Unable to find the codec
+			raise CodecNotFoundException("Codec '%s' not found" % name)
+
 
 TheInstance = None
 
@@ -382,4 +404,18 @@ def decode(name, data, **properties):
 	@returns: the decoded message according to the codec, or None if the codec was not found.
 	"""
 	return instance().decode(name, data, **properties)
+
+def incrementalDecode(name, data, **properties):
+	"""
+	@type  name: string
+	@param name: the codec name
+	@type  data: buffer string
+	@param data: the buffer to decode
+	@type  properties: keyword args of objects
+	@param properties: overriding properties for this decode call
+
+	@rtype: <any>, or None
+	@returns: the decoded message according to the codec, or None if the codec was not found.
+	"""
+	return instance().incrementalDecode(name, data, **properties)
 

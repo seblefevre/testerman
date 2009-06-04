@@ -109,7 +109,7 @@ class HttpRequestCodec(CodecManager.Codec):
 		
 CodecManager.registerCodecClass('http.request', HttpRequestCodec)
 
-class HttpResponseCodec(CodecManager.Codec):
+class HttpResponseCodec(CodecManager.IncrementalCodec):
 	"""
 	Encode/decode from to:
 	
@@ -154,9 +154,16 @@ class HttpResponseCodec(CodecManager.Codec):
 		
 		return ('\r\n'.join(ret), self.getSummary(template))
 
-	def decode(self, data):
+	def incrementalDecode(self, data):
+		"""
+		Incremental decoder version:
+		- detect missing bytes if a content-length is provided
+		- able to decode Transfer-Encoding: chunked
+		"""
 		ret = {}
 		lines = data.split('\r\n')
+		
+		# Status line
 		m = STATUSLINE_REGEXP.match(lines[0])
 		if not m:
 			raise Exception("Invalid status line")
@@ -165,11 +172,14 @@ class HttpResponseCodec(CodecManager.Codec):
 		ret['reason'] = m.group('reason')
 		ret['headers'] = {}
 		
+		# Header lines
+		bodyStarted = False
 		i = 1
 		for header in lines[1:]:
 			i += 1
 			l = header.strip()
 			if not header:
+				bodyStarted = True
 				break # reached body and its empty line
 			m = HEADERLINE_REGEXP.match(l)
 			if m:
@@ -177,22 +187,56 @@ class HttpResponseCodec(CodecManager.Codec):
 			else:
 				raise Exception("Invalid header in message (%s)" % str(l))
 		
-		self.log('remaining lines: ' + unicode(lines[i:]))
+		if not bodyStarted:
+			return self.needMoreData()
 		
-		ret['body'] ="\r\n".join(lines[i:])
+		# Body
+		ret['body'] = ''
 		
-		contentLength = ret['headers'].get('content-length', None)
-		self.log('content length: ' + str(contentLength))
-		if contentLength is not None:
-			cl = int(contentLength)
-			bl = len(ret['body'])
-			if bl < cl:
-				raise Exception('Missing bytes in body (content-length: %d, body length : %d)', (cl, bl))
-			elif bl > cl:
-				# Truncate the body
-				ret['body'] = ret['body'][:cl]
+		encoding = ret['headers'].get('transfer-encoding', None)
+		if encoding == 'chunked':
+			# Chunked based
+			# The chunksize is on a single line, in hexa
+			try:
+				print "DEBUG: %s" % lines[i]
+				chunkSize = int(lines[i].strip(), 16)
+				while chunkSize != 0:
+					i += 1
+					print "DEBUG: %s" % lines[i]
+					chunkStartLine = i
+					currentLen = 0
+					while currentLen < chunkSize:
+						currentLen += len(lines[i]) + 2 # +2 for \r\n
+						print "DEBUG: current len is %s, expected %s" % (currentLen, chunkSize)
+						i += 1
+					if currentLen == chunkSize:
+						# OK, perfect. We now have an empty line terminating the chunk.
+						ret['body'] += '\r\n'.join(lines[chunkStartLine:i])
+						# Skip the empty line
+						i += 1
+						print "DEBUG: %s" % lines[i]
+						chunkSize = int(lines[i].strip(), 16)
+					else:
+						# currentLen > chunkSize
+						raise Exception("Invalid chunk size: expected %s, got %s" % (chunkSize, currentLen))
+			except IndexError:
+				return self.needMoreData()
 		
-		return (ret, self.getSummary(ret))
+		else:
+			# No chunk
+			ret['body'] ="\r\n".join(lines[i:])
+			# If Content-length present, additional check
+			contentLength = ret['headers'].get('content-length', None)
+			if contentLength is not None:
+				cl = int(contentLength)
+				bl = len(ret['body'])
+				if bl < cl:
+					return self.needMoreData()
+				elif bl > cl:
+					# Truncate the body
+					ret['body'] = ret['body'][:cl]
+		
+		return self.decoded(ret, self.getSummary(ret))
 
 	def getSummary(self, template):
 		"""
@@ -203,4 +247,48 @@ class HttpResponseCodec(CodecManager.Codec):
 		
 CodecManager.registerCodecClass('http.response', HttpResponseCodec)
 		
+
+
+if __name__ == '__main__':
+	import binascii
+	def o(x):
+		return binascii.unhexlify(x.replace(' ', ''))
+	
+	httpResponse10 = """HTTP/1.0 200 OK
+Content-Type: text/plain
+Content-Length: 18
+
+This is some data.
+"""
+
+	httpResponse11 = """HTTP/1.1 200 OK
+Content-Type: text/plain
+Transfer-Encoding: chunked
+
+25
+This is the data in the first chunk
+
+1C
+and this is the second one
+
+0
+"""
+
+	print 80*'-'
+	print "HTTP Codec unit tests"
+	print 80*'-'
+	samples = [	
+		('http.response', '\r\n'.join(httpResponse10.splitlines())),
+		('http.response', '\r\n'.join(httpResponse11.splitlines())),
+	]
+
+	for codec, s in samples:
+		print
+		print 80*'-'
+		print "Testing:\n%s" % s
+		(_, _, decoded, summary) = CodecManager.incrementalDecode(codec, s)
+		print "Decoded:\n%s\nSummary: %s" % (decoded, summary)
+		(reencoded, summary) = CodecManager.encode(codec, decoded)
+		print "Reencoded:\n%s\nSummary: %s" % (reencoded, summary)
+		print "Original :\n%s" % s
 
