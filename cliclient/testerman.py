@@ -35,7 +35,7 @@ import urlparse
 
 
 
-VERSION = "0.2.1"
+VERSION = "0.2.2"
 
 # Returned in case of a job submission-related execution error
 RETCODE_EXECUTION_ERROR = 70
@@ -476,6 +476,15 @@ class TestermanCliClient:
 		else:
 			return ret
 
+	def listDependencies(self, path, recursive = True):
+		"""
+		Prints the dependencies for a given file (module/ats/campaign)
+		identified by path in the *repository*.
+		"""
+		print "Getting dependencies for %s..." % path
+		ret = self.__client.getDependencies("/repository/%s" % path, recursive)
+		print "File dependencies:"
+		print "\n".join(ret)
 
 ###############################################################################
 # Main
@@ -515,6 +524,8 @@ def main():
 	parser.add_option("--update-agent", dest = "updateAgentName", metavar = "NAME", help = "update agent named NAME to the latest version in its branch", default = None)
 
 	parser.add_option("--list-probes", dest = "listProbes", action = "store_true", help = "list registered probes", default = False)
+
+	parser.add_option("--list-dependencies", dest = "listDependencies", metavar = "PATH", help = "list the dependencies of the file whose repository path is PATH", default = None)
 
 	parser.add_option("--send-signal", dest = "sendSignal", metavar = "SIGNAL", help = "send SIGNAL to job ID", default = None)
 	parser.add_option("-j", "--job-id", dest = "jobId", metavar = "ID", help = "job ID to send signals to, when using --send-signal", default = None)
@@ -612,6 +623,9 @@ def main():
 
 		elif options.updateAgentName:
 			client.updateAgent(options.updateAgentName)
+		
+		elif options.listDependencies:
+			client.listDependencies(options.listDependencies)
 		
 		else:
 			parser.print_help()

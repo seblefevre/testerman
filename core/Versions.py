@@ -29,7 +29,7 @@ TESTERMAN_AGENT_CONTROLLER_VERSION = '1.1.0'
 #: minor += 1 if feature-enriched, backward compatible
 XC_VERSION = '1.1'
 IA_VERSION = '1.1'
-WS_VERSION = '1.2'
+WS_VERSION = '1.3'
 IL_VERSION = '1.0'
 XA_VERSION = '1.1'
 

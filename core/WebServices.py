@@ -32,6 +32,7 @@
 
 import ConfigManager
 import CounterManager
+import DependencyResolver
 import FileSystemManager
 import FileSystemBackendManager
 import JobManager
@@ -42,6 +43,7 @@ import Versions
 import base64
 import logging
 import operator
+import os.path
 import time
 import zlib
 
@@ -589,6 +591,8 @@ def move(source, destination):
 	  (will create the file in it, without renaming it), or
 		a new file name (will rename the file).
 	
+	New in Ws 1.3.
+
 	@type  source: string
 	@param source: docroot-path to the object to move
 	@type  destination: string
@@ -628,6 +632,8 @@ def copy(source, destination):
 	  (will create the file in it, without renaming it), or
 		a new file name (will rename the file).
 	
+	New in Ws 1.3.
+
 	@type  source: string
 	@param source: docroot-path to the object to move
 	@type  destination: string
@@ -654,6 +660,8 @@ def rename(path, newName):
 	"""
 	Renames a file or a directory to newName, in the same folder.
 	
+	New in Ws 1.3.
+
 	@type  path: string
 	@param path: the docroot-path to the object to rename
 	@type  newName: string
@@ -695,6 +703,8 @@ def getDependencies(path, recursive = False):
 	
 	This method may be used by a client to create a package.
 	
+	New in Ws 1.3.
+	
 	@type  path: string
 	@param path: a docroot path to a module, ats or campaign
 	@type  recursive: boolean
@@ -705,8 +715,31 @@ def getDependencies(path, recursive = False):
 	@returns: a list of dependencies as docroot-path to filenames.
 	A dependency is only listed once (no duplicate).
 	"""
-	return []
+	getLogger().info(">> getDependencies(%s, %s)" % (path, recursive))
+	res = []
+	try:
+		source = FileSystemManager.instance().read(path)
+		if source is None:
+			raise Exception('Cannot find %s' % path)
+		
+		sourcePath = os.path.split(path)[0]
+		if path.endswith('.py'):
+			res = DependencyResolver.python_getDependencyFilenames(source, sourcePath, recursive, path)
+		elif path.endswith('.ats'):
+			res = DependencyResolver.python_getDependencyFilenames(source, sourcePath, recursive, path)
+		elif path.endswith('.campaign'):	
+			res = DependencyResolver.campaign_getDependencyFilenames(source, sourcePath, recursive, path)
+		else:
+			raise Exception('Unsupported file format, cannot resolve dependencies')
+		
+	except Exception, e:
+		e =  Exception("Unable to perform operation: %s\n%s" % (str(e), Tools.getBacktrace()))
+		getLogger().info("<< getDependencies(...): Fault:\n" + str(e))
+		raise(e)
 
+	getLogger().info("<< getDependencies(): %s" % str(res))
+	return res
+	
 
 ################################################################################
 # service: xc (Xc interface management)

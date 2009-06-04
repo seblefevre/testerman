@@ -25,10 +25,11 @@
 import ConfigManager
 import FileSystemManager
 
-import logging
-import os.path
-import modulefinder
 import imp
+import logging
+import modulefinder
+import os.path
+import re
 import StringIO
 
 
@@ -39,7 +40,7 @@ def getLogger():
 # Python source management
 ################################################################################
 
-def python_getDependencyFilenames(source, sourcePath = None, recursive = True):
+def python_getDependencyFilenames(source, sourcePath = None, recursive = True, sourceFilename = "<local>"):
 	"""
 	Returns a list of userland module filenames
 	(including their own dependencies) the ATS/module depends on.
@@ -58,6 +59,9 @@ def python_getDependencyFilenames(source, sourcePath = None, recursive = True):
 	from.
 	@type  recursive: bool
 	@param recursive: if True, search recursively for dependencies in imported modules.
+	@type  sourceFilename: string
+	@param sourceFilename: a string to help identify the file that yielded the source. 
+	For non-repository files, use <local>, by convention.
 	
 	@rtype: list of strings
 	@returns: a list of docroot-path to dependencies (no duplicate).
@@ -76,7 +80,7 @@ def python_getDependencyFilenames(source, sourcePath = None, recursive = True):
 		# Some non-userland files - not resolved to build the TE userland package
 		# How can we detect standard Python includes ?
 		# fromFilePath starts with the "python home" ? something else ?
-		getLogger().debug("Analyzing dependency %s" % dep)
+		getLogger().debug("%s: analyzing module dependency %s" % (sourceFilename, dep))
 
 		# Skip some 
 		#if dep in [ ]:
@@ -89,7 +93,7 @@ def python_getDependencyFilenames(source, sourcePath = None, recursive = True):
 		if (dep, fromFilePath) in analyzedDeps:
 			continue
 
-		getLogger().debug("Analyzing dependency %s (from %s)..." % (dep, fromFilePath))
+		getLogger().debug("%s: analyzing dependency %s (from %s)..." % (sourceFilename, dep, fromFilePath))
 
 		# Ordered list of filenames within the docroot that could provide the dependency:
 		# (module path)
@@ -102,7 +106,7 @@ def python_getDependencyFilenames(source, sourcePath = None, recursive = True):
 		for modulePath in [ '/repository' ]:
 			modulePaths.append(modulePath)
 
-		getLogger().debug("Analyzing dependency %s, search path: %s..." % (dep, modulePaths))
+		getLogger().debug("%s: analyzing dependency %s, search path: %s..." % (sourceFilename, dep, modulePaths))
 
 		found = None
 		depSource = None
@@ -116,17 +120,18 @@ def python_getDependencyFilenames(source, sourcePath = None, recursive = True):
 				found = depFilename
 				break
 		if not found:
-			raise Exception('Missing module: %s is not available in the repository (search path: %s)' % (dep, modulePaths))
+			raise Exception('%s: missing module: %s is not available in the repository (search path: %s)' % (sourceFilename, dep, modulePaths))
 
 		# OK, we found a file.
 		if not depFilename in ret:
+			getLogger().info('%s: python dependency added: %s' % (sourceFilename, depFilename))
 			ret.append(depFilename)
 
 		# Now, analyze it and add new dependencies to analyze
 		if recursive:
 			fromFilePath = '/'.join(depFilename.split('/')[:-1])
 			directDependencies = python_getDirectDependencies(depSource)
-			getLogger().info('Direct dependencies for file %s (%s):\n%s' % (depFilename, 
+			getLogger().debug('%s: direct dependencies for file %s (%s):\n%s' % (sourceFilename, depFilename, 
 				fromFilePath, str(directDependencies)))
 			for d in directDependencies:
 				if not d in deps and not (d, fromFilePath) in analyzedDeps and d != dep:
@@ -172,7 +177,7 @@ def python_getDirectDependencies(source):
 # Campaign source management
 ################################################################################
 
-def campaign_getDependencyFilenames(source, sourcePath = None, recursive = False):
+def campaign_getDependencyFilenames(source, sourcePath = None, recursive = False, sourceFilename = "<local>"):
 	"""
 	Returns a list of userland module filenames
 	(including their own dependencies) the campaign depends on.
@@ -190,9 +195,95 @@ def campaign_getDependencyFilenames(source, sourcePath = None, recursive = False
 	from.
 	@type  recursive: bool
 	@param recursive: if True, search recursively for dependencies in imported modules.
+	@type  sourceFilename: string
+	@param sourceFilename: a string to help identify the file that yielded the source. 
+	For non-repository files, use <local>, by convention.
 	
 	@rtype: list of strings
 	@returns: a list of docroot-path to dependencies (no duplicate).
 	"""
-	return []
+	
+	currentDependencies = []
+	
+	getLogger().info("%s: parsing campaign file to look for its dependencies" % sourceFilename)
+
+	# The path of the campaign within the docroot.
+	path = sourcePath
+
+	# Based on a file parsing.
+	indent = 0
+	parentPresent = True
+	lc = 0
+	for line in source.splitlines():
+		lc += 1
+		# Remove comments
+		line = line.split('#', 1)[0].rstrip()
+		if not line:
+			continue # empty line
+		m = re.match(r'(?P<indent>\s*)((?P<branch>\w+|\*)\s+)?(?P<type>\w+)\s+(?P<filename>[^\s]+)(\s+with\s+(?P<mapping>.*)\s*)?', line)
+		if not m:
+			raise Exception('%s: parse error at line %s: invalid line format' % (sourceFilename, lc))
+
+		type_ = m.group('type')
+		filename = m.group('filename')
+		indentDiff = len(m.group('indent')) - indent
+		indent = indent + indentDiff
+
+		# Filename creation within the docroot
+		if filename.startswith('/'):
+			# absolute path within the *repository*
+			filename = '/%s%s' % (ConfigManager.get('constants.repository'), filename)
+		else:
+			# just add the local campaign path
+			filename = '%s/%s' % (path, filename)               
+
+		# Type validation
+		if not type_ in [ 'ats', 'campaign' ]:
+			raise Exception('%s: error at line %s: invalid job type (%s)' % (sourceFilename, lc, type_))
+
+		# Indentation validation
+		if indentDiff > 1:
+			raise Exception('%s: parse error at line %s: invalid indentation (too deep)' % (sourceFilename, lc))
+
+		
+		elif indentDiff == 1:
+			if not parentPresent:
+				raise Exception('%s: parse error at line %s: invalid indentation (invalid initial indentation)' % (sourceFilename, lc))
+
+		elif indentDiff == 0:
+			# the current parent remains the parent
+			pass
+
+		else:
+			# negative indentation. 
+			pass
+
+		# OK, now we have at least one parent.
+		parentPresent = True
+
+		# Branch validation: ignored for dependency resolver
+
+		# Now handle the dependency.
+		if not filename in currentDependencies:
+			getLogger().info('%s: campaign direct dependency added: %s' % (sourceFilename, filename))
+			currentDependencies.append(filename)
+			
+			if recursive and type_ in ['ats', 'campaign']:
+				nextDependencies = []
+				nextPath, nextFilename = os.path.split(filename)
+				nextSource = FileSystemManager.instance().read(filename)
+				if nextSource is None:
+					raise Exception('%s: missing dependency: file %s is not in the repository' % (sourceFilename, filename))
+				if type_ == 'campaign':
+					nextDependencies = campaign_getDependencyFilenames(nextSource, nextPath, True, filename)
+				elif type_ == 'ats':
+					nextDependencies = python_getDependencyFilenames(nextSource, nextPath, True, filename)
+				
+				for dep in nextDependencies:
+					if not dep in currentDependencies:
+						getLogger().info('%s: campaign indirect dependency added: %s' % (sourceFilename, dep))
+						currentDependencies.append(dep)
+		
+	return currentDependencies
+		
 

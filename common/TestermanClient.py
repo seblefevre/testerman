@@ -701,6 +701,34 @@ class Client(Nodes.ConnectingNode):
 		self.getLogger().debug("%s copied to %s: %s" % (source, destination, ret))
 		return ret
 
+	def getDependencies(self, path, recursive = True):
+		"""
+		Computes the file dependencies of the file referenced by path.
+
+		If recursive is set to True, also searches for additional dependencies
+		recursively; otherwise only direct dependencies are computed.
+
+		A dependency for an ATS is a module it imports.
+		A depencendy for a module is a module it imports.
+		A dependency for a campaign is a a script (ats or campaign) it calls.
+
+		This method may be used by a client to create a package.
+
+		@type  path: string
+		@param path: a docroot path to a module, ats or campaign
+		@type  recursive: boolean
+		@param recursive: False for direct depencencies only. True for all
+		dependencies. 
+
+		@rtype: list of strings
+		@returns: a list of dependencies as docroot-path to filenames.
+		A dependency is only listed once (no duplicate).
+		"""
+		self.getLogger().debug("Getting dependencies for %s..." % (path))
+		ret = self.__proxy.getDependencies(path, recursive)
+		self.getLogger().debug("Dependencies for %s:\n%s" % (path, ret))
+		return ret
+
 	##
 	# High-level file management: convenience functions to manage dependencies between files
 	##
