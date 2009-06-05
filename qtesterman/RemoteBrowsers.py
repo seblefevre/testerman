@@ -14,11 +14,15 @@
 ##
 
 ##
-# Remote browsers, triggering appropriate actions when needed.
+# Remote browsers/explorers, triggering appropriate actions when needed.
 #
 # Based on a server file system view, enabling basic file management
 # through Ws API, that emits some signals to integrate non-local-only logic
 # (such as opening files)
+#
+#
+# An additional file selector, used for "save as..." option, is provided,
+# implemented as a listwidget.
 #
 ##
 
@@ -54,6 +58,351 @@ TheIconCache = IconCache()
 def icon(resource):
 	return TheIconCache.icon(resource)
 
+
+################################################################################
+# Name validation functions
+################################################################################
+
+RESTRICTED_NAME_CHARACTERS = "/\\' \"@|?*"
+
+def validateFileName(name):
+	"""
+	Verifies that a file system name is suitable for the Testerman server.
+	
+	The Testerman FS allows file names that do not contain any
+	of the following characters:
+	
+	/\' "@|?*
+
+	@type  name: QString, unicode, ...
+	@param name: the name to validate
+	
+	@rtype: bool
+	@returns: True if OK, False otherwise.
+	"""
+	name = unicode(name)
+	for c in RESTRICTED_NAME_CHARACTERS:
+		if c in name:
+			return False
+	return True
+
+def validateDirectoryName(name):
+	"""
+	Convenience function (at least, for now).
+	"""
+	return validateFileName(name)
+
+################################################################################
+# Remote file selector (read-only browsing)
+################################################################################
+
+################################################################################
+# List Widget Items
+################################################################################
+
+class BaseListItem(QListWidgetItem):
+	def __init__(self, path, parent = None):
+		"""
+		@type  path: string
+		@param path: the abs path of the object within the docroot
+
+		for instance:
+		'/repository/samples/test.ats'
+		'/repository'
+		'/'
+		"""
+		QListWidgetItem.__init__(self, parent)
+		self._path = path
+		_, basename = os.path.split(path)
+		display = basename
+		if not display:
+			display = "/"
+		
+		self.setText(display)
+
+	def getUrl(self):
+		"""
+		Overridable.
+		By default, returns an url based on the filepath.
+		
+		@rtype: QUrl
+		@returns: the url of the object
+		"""
+		serverIp, serverPort = self.listWidget().getClient().getServerAddress()
+		url = "testerman://%s:%d%s" % (serverIp, serverPort, self._path)
+		return QUrl(url)
+
+	def getBasename(self):
+		_, basename = os.path.split(self._path)
+		return basename
+
+
+class DirListItem(BaseListItem):
+	"""
+	Directory/Folder
+	"""
+	def __init__(self, path, parent = None):
+		BaseListItem.__init__(self, path, parent)
+		self.setIcon(icon(':/icons/folder'))
+
+class FileListItem(BaseListItem):
+	"""
+	Generic file.
+	Since we use this item to display selectable
+	object when saving a file to the repository,
+	we don't need to support file types that
+	will eventually be filtered out,
+	i.e. we only support ats/module/campaign
+	files, are they will be the only selectable
+	objects.
+	"""
+	def __init__(self, path, parent = None):
+		BaseListItem.__init__(self, path, parent)
+		if path.endswith('.ats'):
+			self.setIcon(icon(':/icons/ats'))
+		elif path.endswith('.py'):
+			self.setIcon(icon(':/icons/module'))
+		elif path.endswith('.campaign'):
+			self.setIcon(icon(':/icons/campaign'))
+		else:
+			self.setIcon(icon(':/icons/unknown.png'))
+
+################################################################################
+# Remote File Selector
+################################################################################
+
+class WRemoteFileListWidget(QListWidget):
+	def __init__(self, basePath = '/', path = '/', filter_ = None, parent = None):
+		"""
+		@type  basePath: string
+		@param basePath: the "minimal" path; the user won't be able
+		to browse outside it.
+		@type  path: string
+		@param path: the current path, relative to basePath
+		@type  filter_: list of strings
+		@param filter_: if None, all files are displayed. If set, only these
+		file types are displayed. In any case, directories are shown.
+		"""
+		QListWidget.__init__(self, parent)
+
+		self._client = None
+		
+		self.setWindowIcon(icon(':/icons/browser'))
+		self.setWindowTitle('Remote file selector')
+
+		self.setContextMenuPolicy(Qt.DefaultContextMenu)
+		self.connect(self, SIGNAL("itemActivated(QListWidgetItem*)"), self.onItemActivated)
+
+		self._basePath = basePath
+		self._path = basePath
+		self.setPath(path)
+		self._filter = []
+		self.setFilter(filter_)
+
+	def contextMenuEvent(self, event):
+		item = self.itemAt(event.pos())
+		
+		menu = QMenu(self)
+		# In any case, general action
+		menu.addAction("New folder...", self.createFolder)
+		menu.addSeparator()
+		menu.addAction("Refresh", self.refresh)
+
+		menu.popup(event.globalPos())
+
+	def refresh(self):
+		print "DEBUG: path: %s" % self._path
+		self.clear()
+		try:
+			l = self.getClient().getDirectoryListing(self._path)
+		except Exception:
+			l = []
+
+		# If we can go up, create a pseudo item to display a ..
+		if self._path > self._basePath:
+			self.addItem(DirListItem('%s/%s' % (self._path, '..')))
+
+		fileItems = []
+		for entry in l:
+			t = entry['type']
+			if t == 'directory':
+				child = DirListItem('%s/%s' % (self._path, entry['name']))
+				# Directories added first - file item addition deferred
+				self.addItem(child)
+			elif self._filter is None or t in self._filter:
+				child = FileListItem('%s/%s' % (self._path, entry['name']))
+				# Deferred addition
+				fileItems.append(child)
+
+		for child in fileItems:
+			self.addItem(child)
+
+	def setFilter(self, filter_):
+		"""
+		Sets what file should be displayed.
+		
+		Set the filter_ to None to cancel any filtering.
+		Directories cannot be filtered out, so no need to include
+		their type ('directory') in the list.
+
+		@type  filter_: list of strings
+		@param filter_: a list of file types to be display (not extension,
+		but type). Subset of: [ 'module', 'ats', 'campaign' ], etc.
+		"""
+		self._filter = filter_
+
+	def setClient(self, client):
+		self._client = client
+		self.refresh()
+
+	def getClient(self):
+		return self._client
+
+	def getPath(self):
+		return self._path
+
+	def setPath(self, path):
+		"""
+		Sets a path relative to the base path
+		"""
+		p = os.path.normpath("%s/%s" % (self._basePath, unicode(path)))
+		p = p.replace('\\', '/') # keep / as sep as we use the server convention
+		# Restrict to base path
+		if not p.startswith(self._basePath):
+			p = self._basePath
+		self._path = p
+		self.refresh()
+	
+	def setAbsolutePath(self, path):
+		"""
+		Sets an absolute path
+		"""
+		p = os.path.normpath(unicode(path))
+		p = p.replace('\\', '/') # keep / as sep as we use the server convention
+		print "DEBUG: setting absolute path to %s..." % p
+		# Restrict to base path
+		if not p.startswith(self._basePath):
+			p = self._basePath
+		self._path = p
+		self.refresh()
+
+	def createFolder(self):
+		print "DEBUG: creating a new folder in %s..." % self.getPath()
+		name = QInputDialog.getText(self, "New folder", "Folder name:")
+		while not validateDirectoryName(name):
+			# Display some error message
+			CommonWidgets.userError("The following characters are forbidden in a folder name:\n%s" % ', '.join([x for x in RESTRICTED_NAME_CHARACTERS]))
+			name = QInputDialog.getText(self, "New folder", "Folder name:")
+
+		if not name.isEmpty():
+			self._client.makeDirectory("%s/%s" % (self.getPath(), name))
+			self.refresh()
+
+	def onItemActivated(self, item):
+		if isinstance(item, DirListItem):
+			self.setAbsolutePath(item.getUrl().path())
+		else:
+			print "DEBUG: %s selected" % item.getUrl()
+
+class WRemoteFileDialog(QDialog):
+	"""
+	File selector.
+	"""
+	def __init__(self, client, basePath = '/repository', path = '/', filter_ = None, saveMode = False, parent = None):
+		QDialog.__init__(self, parent)
+		self._client = client
+		self._saveMode = saveMode
+		self.__createWidgets(basePath, path, filter_)
+		
+		if self._saveMode:
+			self._okButton.setText("Save")
+			self.setWarningOnOverwrite(True)
+
+	def __createWidgets(self, basePath, path, filter_):
+		self.setWindowIcon(icon(':/icons/browser'))
+		self.setWindowTitle('Remote file selector')
+
+		layout = QVBoxLayout()
+		self._listWidget = WRemoteFileListWidget(basePath, path, filter_)
+		self._listWidget.setClient(self._client)
+		layout.addWidget(self._listWidget)
+		layout.addWidget(QLabel('File name:'))
+		self._filenameLineEdit = QLineEdit()
+		layout.addWidget(self._filenameLineEdit)
+		self.setLayout(layout)
+
+		# Buttons
+		self._okButton = QPushButton("Open")
+		self.connect(self._okButton, SIGNAL("clicked()"), self.accept)
+		self._cancelButton = QPushButton("Cancel")
+		self.connect(self._cancelButton, SIGNAL("clicked()"), self.reject)
+		buttonLayout = QHBoxLayout()
+		buttonLayout.addStretch()
+		buttonLayout.addWidget(self._okButton)
+		buttonLayout.addWidget(self._cancelButton)
+		layout.addLayout(buttonLayout)
+
+		self.connect(self._listWidget, SIGNAL('currentItemChanged(QListWidgetItem*, QListWidgetItem*)'), self.onCurrentItemChanged)
+
+	def onCurrentItemChanged(self, current, previous):
+		if isinstance(current, FileListItem):
+			self._filenameLineEdit.setText(current.getBasename())
+
+	def setWarningOnOverwrite(self, w):
+		self._setWarningOnOverwrite = w
+
+	def accept(self):
+		filename = self.getSelectedFilename()
+		if filename.isEmpty():
+			# Do not accept/close the window.
+			return
+		else:
+			if self._saveMode:
+				if not validateFileName(filename):
+					CommonWidgets.userError("The following characters are forbidden in a file name:\n%s" % ', '.join([x for x in RESTRICTED_NAME_CHARACTERS]))
+					return
+
+				if self._setWarningOnOverwrite:
+					# Check if the file exist - in real time, not based on the current view
+					# (which may not be up-to-date)
+					if self._client.fileExists(unicode(filename)):
+						if QMessageBox.warning(self, "Overwrite ?",
+							"%s already exists.\nDo you want to overwrite it ?" % os.path.split(unicode(filename))[1],
+							QMessageBox.Yes | QMessageBox.No, QMessageBox.Yes) != QMessageBox.Yes:
+							# Do not accept/close the window
+							return
+			QDialog.accept(self)
+
+	def getSelectedFilename(self):
+		"""
+		Compliant with QFileDialog:getOpen/SaveFileName() return.
+		"""
+		if self._filenameLineEdit.text().isEmpty():
+			return QString("%s/%s") % (self._listWidget.getPath(), self._filenameLineEdit.text())
+		else:
+			return QString()
+
+
+def getSaveFilename(basePath = '/repository', path = '/', title = "Save file as...", filter_ = None, parent = None):
+	"""
+	Convenience function.
+
+	Returns a QString with a path to use to save a file, 
+	or an empty string if no name has been selected (or dialog box cancelled)
+	"""
+	dialog = WRemoteFileDialog(basePath, path, filter_, saveMode = True, parent = parent)
+	dialog.setWindowTitle(title)
+	if dialog.exec_ == QDialog.Accepted:
+		return dialog.getSelectedFilename()
+	else:
+		return QString()
+
+
+
+
+################################################################################
+# File Explorer (as a tree view), with R/W actions
+################################################################################
 
 ################################################################################
 # Tree Widget Items
@@ -396,6 +745,8 @@ class PackageWidgetItem(BaseWidgetItem):
 
 class WServerFileSystemTreeWidget(QTreeWidget):
 	"""
+	Remote file system explorer.
+
 	This treeview is responsible for interfacing most filesystem-related actions,
 	including application specificities.
 	Some actions are said "local" are implemented by the widget -
@@ -425,7 +776,7 @@ class WServerFileSystemTreeWidget(QTreeWidget):
 		self._client = None
 		
 		self.setWindowIcon(icon(':/icons/browser'))
-		self.setWindowTitle('Remote browser')
+		self.setWindowTitle('Remote explorer')
 
 		self.setHeaderLabels([ 'Name' ]) #, 'Type' ])
 		self.header().setResizeMode(0, QHeaderView.ResizeToContents)
@@ -683,12 +1034,9 @@ class WServerFileSystemTreeWidget(QTreeWidget):
 		path = unicode(item.getUrl().path())
 		print "DEBUG: renaming %s from %s to %s..." % (path, currentName, newName)
 
-		# Forbidden list for simple files
-		forbidden = "/\\' \"@|?*"
-		for c in forbidden:		
-			if c in unicode(newName):
-				raise Exception("The following characters are forbidden in a file name:\n%s" % ', '.join([x for x in forbidden]))
-		
+		if not validateFileName(newName):
+			raise Exception("The following characters are forbidden in a file name:\n%s" % ', '.join([x for x in RESTRICTED_NAME_CHARACTERS]))
+
 		# rename
 		if not self.getClient().rename(path, unicode(newName)):
 			raise Exception("An object with the same name already exists in this folder")
@@ -851,9 +1199,17 @@ if __name__ == "__main__":
 	client = TestermanClient.Client("test", "FileSystemViewer/1.0.0", serverUrl = serverUrl)
 
 	try:	
+	
+
 		w = WServerFileSystemTreeWidget('/repository')
 		w.setClient(client)
 		w.show()
+
+		browser = WRemoteFileDialog(client, '/repository', '/sandbox')
+		browser.show()
+
+		print "Save file: %s" % getSaveFilename(client)
+
 	except Exception, e:
 		import TestermanNodes
 		print TestermanNodes.getBacktrace()
