@@ -34,7 +34,6 @@ import AutoUpdate
 import ProbeManager
 import Logger
 import JobManager
-import EventMonitor
 import RemoteBrowsers
 import DocumentPropertyEditor
 import PluginManager
@@ -42,7 +41,7 @@ import OutlineView
 import ChatView
 import Preferences
 
-# Editors contains a reference to QScintilla.
+# The Editors module contains a reference to QScintilla.
 # We'll let the main application code display an error
 # dialog if the import fails.
 try:

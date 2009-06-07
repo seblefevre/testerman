@@ -172,6 +172,19 @@ class FileListItem(BaseListItem):
 ################################################################################
 
 class WRemoteFileListWidget(QListWidget):
+	"""
+	Remote browser, as a list, presenting a .. folder to go up
+	and a context menu action to create a new folder.
+	
+	Can be restricted to browse a subtree of the docroot, using a "base path".
+		
+	Emits some signals:
+	- dirChanged(QString path): the current dir has been changed. Path is a
+	  relative path from the base path. You may call getAbsolutePath() to
+		get the docroot path.
+	- fileSelected(QUrl fileUrl): a file has been selected by activating it
+	  (double-click, etc). fileUrl is the complete url to the file.
+	"""
 	def __init__(self, basePath = '/', path = '/', filter_ = None, parent = None):
 		"""
 		@type  basePath: string
@@ -258,9 +271,6 @@ class WRemoteFileListWidget(QListWidget):
 	def getClient(self):
 		return self._client
 
-	def getPath(self):
-		return self._path
-
 	def setPath(self, path):
 		"""
 		Sets a path relative to the base path
@@ -273,6 +283,12 @@ class WRemoteFileListWidget(QListWidget):
 		self._path = p
 		self.refresh()
 	
+	def getPath(self):
+		return unicode(self._path)[len(self._basePath):]
+	
+	def getAbsolutePath(self):
+		return self._path
+
 	def setAbsolutePath(self, path):
 		"""
 		Sets an absolute path
@@ -287,44 +303,56 @@ class WRemoteFileListWidget(QListWidget):
 		self.refresh()
 
 	def createFolder(self):
-		print "DEBUG: creating a new folder in %s..." % self.getPath()
-		name = QInputDialog.getText(self, "New folder", "Folder name:")
-		while not validateDirectoryName(name):
+		print "DEBUG: creating a new folder in %s..." % self.getAbsolutePath()
+		(name, status) = QInputDialog.getText(self, "New folder", "Folder name:")
+		while status and not validateDirectoryName(name):
 			# Display some error message
-			CommonWidgets.userError("The following characters are forbidden in a folder name:\n%s" % ', '.join([x for x in RESTRICTED_NAME_CHARACTERS]))
-			name = QInputDialog.getText(self, "New folder", "Folder name:")
+			CommonWidgets.userError(self, "The following characters are forbidden in a folder name:\n%s" % ', '.join([x for x in RESTRICTED_NAME_CHARACTERS]))
+			(name, status) = QInputDialog.getText(self, "New folder", "Folder name:")
 
 		if not name.isEmpty():
-			self._client.makeDirectory("%s/%s" % (self.getPath(), name))
+			self._client.makeDirectory("%s/%s" % (self.getAbsolutePath(), name))
 			self.refresh()
 
 	def onItemActivated(self, item):
 		if isinstance(item, DirListItem):
 			self.setAbsolutePath(item.getUrl().path())
+			self.emit(SIGNAL('dirChanged(QString)'), self.getPath())
 		else:
-			print "DEBUG: %s selected" % item.getUrl()
+			self.emit(SIGNAL('fileSelected(QUrl)'), item.getUrl())
 
 class WRemoteFileDialog(QDialog):
 	"""
 	File selector.
 	"""
-	def __init__(self, client, basePath = '/repository', path = '/', filter_ = None, saveMode = False, parent = None):
+	def __init__(self, client, basePath = '/repository', path = '/', filter_ = None, defaultExtension = None, saveMode = False, parent = None):
 		QDialog.__init__(self, parent)
 		self._client = client
+		self._defaultExtension = defaultExtension
 		self._saveMode = saveMode
 		self.__createWidgets(basePath, path, filter_)
 		
 		if self._saveMode:
 			self._okButton.setText("Save")
 			self.setWarningOnOverwrite(True)
-
+		
+		self._selectedFilename = None
+		
 	def __createWidgets(self, basePath, path, filter_):
 		self.setWindowIcon(icon(':/icons/browser'))
 		self.setWindowTitle('Remote file selector')
 
 		layout = QVBoxLayout()
+		self._currentPathLabel = QLabel()
+#		self._currentPathLabel.setIcon(icon(':/icons/folder'))
+#		self._currentPathLabel.setIconSize(QSize(16, 16))
+		layout.addWidget(self._currentPathLabel)
+		
 		self._listWidget = WRemoteFileListWidget(basePath, path, filter_)
 		self._listWidget.setClient(self._client)
+		# On double-click, equivalent to an accept. Ignore the selected file url.
+		self.connect(self._listWidget, SIGNAL('fileSelected(QUrl)'), lambda url: self.accept())
+		self.connect(self._listWidget, SIGNAL('dirChanged(QString)'), self.updateCurrentPathLabel)
 		layout.addWidget(self._listWidget)
 		layout.addWidget(QLabel('File name:'))
 		self._filenameLineEdit = QLineEdit()
@@ -344,55 +372,77 @@ class WRemoteFileDialog(QDialog):
 
 		self.connect(self._listWidget, SIGNAL('currentItemChanged(QListWidgetItem*, QListWidgetItem*)'), self.onCurrentItemChanged)
 
+		self.updateCurrentPathLabel(self._listWidget.getPath())
+
+	def updateCurrentPathLabel(self, path):
+		if not path:
+			path = '/'
+		self._currentPathLabel.setText(path)
+
 	def onCurrentItemChanged(self, current, previous):
 		if isinstance(current, FileListItem):
 			self._filenameLineEdit.setText(current.getBasename())
 
 	def setWarningOnOverwrite(self, w):
-		self._setWarningOnOverwrite = w
+		self._warningOnOverwrite = w
 
 	def accept(self):
-		filename = self.getSelectedFilename()
-		if filename.isEmpty():
+		filename = unicode(self._filenameLineEdit.text())
+		if not filename:
 			# Do not accept/close the window.
 			return
 		else:
 			if self._saveMode:
+				if self._defaultExtension and not filename.endswith(".%s" % self._defaultExtension):
+					filename = "%s.%s" % (filename, self._defaultExtension)
 				if not validateFileName(filename):
-					CommonWidgets.userError("The following characters are forbidden in a file name:\n%s" % ', '.join([x for x in RESTRICTED_NAME_CHARACTERS]))
+					CommonWidgets.userError(self, "The following characters are forbidden in a file name:\n%s" % ', '.join([x for x in RESTRICTED_NAME_CHARACTERS]))
 					return
 
-				if self._setWarningOnOverwrite:
+				# Set the complete selected file name
+				self._selectedFilename = "%s/%s" % (self._listWidget.getAbsolutePath(), filename)
+				if self._warningOnOverwrite:
 					# Check if the file exist - in real time, not based on the current view
 					# (which may not be up-to-date)
-					if self._client.fileExists(unicode(filename)):
+					if self._client.fileExists(self._selectedFilename):
 						if QMessageBox.warning(self, "Overwrite ?",
-							"%s already exists.\nDo you want to overwrite it ?" % os.path.split(unicode(filename))[1],
+							"%s already exists.\nDo you want to overwrite it ?" % filename,
 							QMessageBox.Yes | QMessageBox.No, QMessageBox.Yes) != QMessageBox.Yes:
 							# Do not accept/close the window
 							return
+			
+			else:
+				# Set the complete selected file name
+				self._selectedFilename = "%s/%s" % (self._listWidget.getAbsolutePath(), filename)
+
 			QDialog.accept(self)
 
 	def getSelectedFilename(self):
 		"""
 		Compliant with QFileDialog:getOpen/SaveFileName() return.
+		
+		The returned result is only valid if the dialog has just been accepted.
+		May contain garbage in other cases.
 		"""
-		if self._filenameLineEdit.text().isEmpty():
-			return QString("%s/%s") % (self._listWidget.getPath(), self._filenameLineEdit.text())
+		if self._selectedFilename:
+			return QString(self._selectedFilename)
 		else:
 			return QString()
 
 
-def getSaveFilename(basePath = '/repository', path = '/', title = "Save file as...", filter_ = None, parent = None):
+##
+# Convenience function to get a filename to use to save a file to the repository
+##
+def getSaveFilename(client, basePath = '/repository', path = '/', title = "Save file as...", filter_ = None, defaultExtension = None, parent = None):
 	"""
 	Convenience function.
 
 	Returns a QString with a path to use to save a file, 
 	or an empty string if no name has been selected (or dialog box cancelled)
 	"""
-	dialog = WRemoteFileDialog(basePath, path, filter_, saveMode = True, parent = parent)
+	dialog = WRemoteFileDialog(client, basePath, path, filter_, defaultExtension, saveMode = True, parent = parent)
 	dialog.setWindowTitle(title)
-	if dialog.exec_ == QDialog.Accepted:
+	if dialog.exec_() == QDialog.Accepted:
 		return dialog.getSelectedFilename()
 	else:
 		return QString()
@@ -1199,8 +1249,6 @@ if __name__ == "__main__":
 	client = TestermanClient.Client("test", "FileSystemViewer/1.0.0", serverUrl = serverUrl)
 
 	try:	
-	
-
 		w = WServerFileSystemTreeWidget('/repository')
 		w.setClient(client)
 		w.show()
@@ -1208,8 +1256,7 @@ if __name__ == "__main__":
 		browser = WRemoteFileDialog(client, '/repository', '/sandbox')
 		browser.show()
 
-		print "Save file: %s" % getSaveFilename(client)
-
+		print "Save file: %s" % getSaveFilename(client, defaultExtension = "ats", filter_ = [ "ats" ])
 	except Exception, e:
 		import TestermanNodes
 		print TestermanNodes.getBacktrace()

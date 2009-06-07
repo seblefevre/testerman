@@ -1426,12 +1426,12 @@ class WTextualLogView(QTreeWidget):
 	def __createWidgets(self):
 		self.root = self.invisibleRootItem()
 		self.setRootIsDecorated(False)
-		self.labels = [ 'time', 'class', 'message' ]
+		self.labels = [ 'Time', 'Class', 'Message' ]
 		labels = QStringList()
 		for l in self.labels:
 			labels.append(l)
 		self.setHeaderLabels(labels)
-		self.setColumnWidth(0, 130) # "time" sizing - well.. it may depends on the font
+		self.setColumnWidth(0, 140) # "time" sizing - well.. it may depends on the font
 		self.setContextMenuPolicy(Qt.CustomContextMenu)
 		self.connect(self, SIGNAL("customContextMenuRequested(const QPoint&)"), self.onPopupMenu)
 		self.connect(self, SIGNAL("itemActivated(QTreeWidgetItem*, int)"), self.onItemActivated)
@@ -1441,7 +1441,7 @@ class WTextualLogView(QTreeWidget):
 		# logClass togglers
 		self.toggleDisplayClassActions = []
 		for logClass in [ "internal", "event", "user", "system" ]:
-			action = QAction("Display " + logClass + " related logs", self)
+			action = QAction("Display %s logs" % logClass, self)
 			action.setCheckable(True)
 			action.setToolTip("Display/hide %s logs" % logClass)
 			if not (logClass in self.currentHiddenLogClasses):

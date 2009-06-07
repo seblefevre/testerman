@@ -31,12 +31,12 @@ import time
 
 from Base import *
 from DocumentModels import *
-from CommonWidgets import *
 import CommonWidgets
 
 import LogViewer
 import PluginManager
 import Plugin
+import RemoteBrowsers
 import TemplateManager
 
 ##
@@ -91,7 +91,7 @@ class WRepositoryCollision(QDialog):
 
 	def accept(self):
 		if self.lineEdit.text().length() == 0:
-			userError(self, 'Sorry, you must enter a non-empty name')
+			CommonWidgets.userError(self, 'Sorry, you must enter a non-empty name')
 			# we reinit it to the previous path
 			self.lineEdit.setText(self.path)
 		else:
@@ -189,7 +189,7 @@ class WDocument(QWidget):
 			QApplication.instance().get('gui.statusbar').setFileLocation(self.model.getUrl())
 			return True
 		except Exception, e:
-			systemError(self, "Unable to save file as %s: %s" % (filename, str(e)))
+			CommonWidgets.systemError(self, "Unable to save file as %s: %s" % (filename, str(e)))
 			QApplication.instance().get('gui.statusbar').showMessage("Unable to save file as %s: %s" % (filename, str(e)))
 			return False
 
@@ -223,7 +223,7 @@ class WDocument(QWidget):
 			QApplication.instance().get('gui.statusbar').setFileLocation(self.model.getUrl())
 			return True
 		else:
-			systemError(self, "Unable to save file to repository: %s" % error)
+			CommonWidgets.systemError(self, "Unable to save file to repository: %s" % error)
 			QApplication.instance().get('gui.statusbar').showMessage("Unable to put save file to repository: %s" % error)
 			return False
 
@@ -287,32 +287,11 @@ class WDocument(QWidget):
 		"""
 		self.updateModel()
 
-		# Get a new filename
-		(filename, status) = QInputDialog.getText(self, "Save to repository as", "Enter a path (+ name) to save within the repository")
-		# WARNING: the filename entered by the user does not starts with "repository".
-		# Internally, we must add this prefix.
-		if not status or filename.isEmpty():
-			return False
-		elif not filename.split('.')[-1] == self.model.getExtension():
-			filename = "%s.%s" % (filename, self.model.getExtension())
-		
-		# Needs a real remote browser to select a file.
-		fe = getProxy().fileExists("/repository/%s" % unicode(filename))
-		# We negotiate a new filename in case of a collision.
-		while fe:
-			# We should display a little dialog box with possible actions
-			# Typically cancel, overwrite, change name
-			rc = WRepositoryCollision("/repository/%s" % filename, self)
-			res = rc.exec_()
-			if res == QDialog.Rejected:
-				return False
-			if res == 2: # overwrite
-				break
-			filename = rc.getFilename()
-			fe = getProxy().fileExists("/repository/%s" % unicode(filename))
-
-		# Now we can save the file
-		return self._saveRemotely(QString("/repository/%s" % filename))
+		# Get a new filename (docroot-path, extension added if needed, overwrite confirmation prompted)
+		filename = RemoteBrowsers.getSaveFilename(getProxy(), title = "Save to repository as", filter_ = [ self.model.getDocumentType() ], defaultExtension = self.model.getExtension(), parent = self)
+		if not filename.isEmpty():
+			# Now we can save the file
+			return self._saveRemotely(filename)
 
 	def saveToRepository(self):
 		"""
@@ -435,7 +414,7 @@ class WModuleDocument(WDocument):
 		layout.addWidget(self.editor)
 
 		# A find widget
-		self.find = WSciFind(self.editor, self)
+		self.find = CommonWidgets.WSciFind(self.editor, self)
 
 		# The action bar below
 		actionLayout = QHBoxLayout()
@@ -448,7 +427,7 @@ class WModuleDocument(WDocument):
 		# By default, icon sizes are 24x24. We resize them to 16x16 to avoid too large buttons.
 
 		# Syntax check action
-		self.syntaxCheckAction = TestermanAction(self, "Check syntax", self.verify, "Check Module syntax")
+		self.syntaxCheckAction = CommonWidgets.TestermanAction(self, "Check syntax", self.verify, "Check Module syntax")
 		self.syntaxCheckAction.setIcon(icon(':/icons/check.png'))
 		self.syntaxCheckButton = QToolButton()
 		self.syntaxCheckButton.setIconSize(QSize(16, 16))
@@ -485,7 +464,7 @@ class WModuleDocument(WDocument):
 		"""
 		replace function
 		"""
-		replaceBox = WSciReplace(self.editor, self)
+		replaceBox = CommonWidgets.WSciReplace(self.editor, self)
 		replaceBox.show()
 
 	def verify(self, displayNoError = True):
@@ -501,7 +480,7 @@ class WModuleDocument(WDocument):
 		except SyntaxError, e:
 			self.editor.highlight(e.lineno - 1)
 			self.editor.goTo(e.lineno - 1, e.offset)
-			userError(self, "Syntax error on line %s: <br />%s" % (str(e.lineno), e.msg))
+			CommonWidgets.userError(self, "Syntax error on line %s: <br />%s" % (str(e.lineno), e.msg))
 			self.editor.setFocus(Qt.OtherFocusReason)
 		return False
 
@@ -553,7 +532,7 @@ class WAtsDocument(WDocument):
 		actionLayout = QHBoxLayout()
 
 		# A find widget
-		self.find = WSciFind(self.editor, self)
+		self.find = CommonWidgets.WSciFind(self.editor, self)
 
 		# Actions associated with ATS edition:
 		# syntax check,
@@ -562,7 +541,7 @@ class WAtsDocument(WDocument):
 		# By default, icon sizes are 24x24. We resize them to 16x16 to avoid too large buttons.
 
 		# Syntax check action
-		self.syntaxCheckAction = TestermanAction(self, "Check syntax", self.verify, "Check ATS syntax")
+		self.syntaxCheckAction = CommonWidgets.TestermanAction(self, "Check syntax", self.verify, "Check ATS syntax")
 		self.syntaxCheckAction.setIcon(icon(':/icons/check.png'))
 		self.syntaxCheckButton = QToolButton()
 		self.syntaxCheckButton.setIconSize(QSize(16, 16))
@@ -578,10 +557,10 @@ class WAtsDocument(WDocument):
 		self.documentationButton.setPopupMode(QToolButton.InstantPopup)
 
 		# Run actions
-		self.runAction = TestermanAction(self, "&Run", self.run, "Run now")
+		self.runAction = CommonWidgets.TestermanAction(self, "&Run", self.run, "Run now")
 		self.runAction.setIcon(icon(':/icons/run.png'))
-		self.runWithParametersAction = TestermanAction(self, "Run with &parameters...", self.runWithParameters, "Set parameters, then run")
-		self.scheduleRunAction = TestermanAction(self, "&Scheduled run...", self.scheduleRun, "Schedule a run")
+		self.runWithParametersAction = CommonWidgets.TestermanAction(self, "Run with &parameters...", self.runWithParameters, "Set parameters, then run")
+		self.scheduleRunAction = CommonWidgets.TestermanAction(self, "&Scheduled run...", self.scheduleRun, "Schedule a run")
 		self.runMenu = QMenu('Run', self)
 		self.runMenu.addAction(self.runWithParametersAction)
 		self.runMenu.addAction(self.scheduleRunAction)
@@ -616,7 +595,7 @@ class WAtsDocument(WDocument):
 		"""
 		replace function
 		"""
-		replaceBox = WSciReplace(self.editor, self)
+		replaceBox = CommonWidgets.WSciReplace(self.editor, self)
 		replaceBox.show()
 
 	def verify(self, displayNoError = 1):
@@ -632,7 +611,7 @@ class WAtsDocument(WDocument):
 		except SyntaxError, e:
 			self.editor.highlight(e.lineno - 1)
 			self.editor.goTo(e.lineno - 1, e.offset)
-			userError(self, "Syntax error on line %s: <br />%s" % (str(e.lineno), e.msg))
+			CommonWidgets.userError(self, "Syntax error on line %s: <br />%s" % (str(e.lineno), e.msg))
 			self.editor.setFocus(Qt.OtherFocusReason)
 		return 0
 
@@ -646,7 +625,7 @@ class WAtsDocument(WDocument):
 		try:
 			res = getProxy().scheduleAts(self.model.getDocument(), unicode(self.model.getName()), unicode(QApplication.instance().username()), session, at)
 		except Exception, e:
-			systemError(self, str(e))
+			CommonWidgets.systemError(self, str(e))
 			return None
 		QApplication.instance().get('gui.statusbar').showMessage(res['message'])
 		return res['job-id']
@@ -760,10 +739,10 @@ class WCampaignDocument(WDocument):
 		actionLayout = QHBoxLayout()
 
 		# Run actions
-		self.runAction = TestermanAction(self, "&Run", self.run, "Run now")
+		self.runAction = CommonWidgets.TestermanAction(self, "&Run", self.run, "Run now")
 		self.runAction.setIcon(icon(':/icons/run.png'))
-		self.runWithParametersAction = TestermanAction(self, "Run with &parameters...", self.runWithParameters, "Set parameters, then run")
-		self.scheduleRunAction = TestermanAction(self, "&Scheduled run...", self.scheduleRun, "Schedule a run")
+		self.runWithParametersAction = CommonWidgets.TestermanAction(self, "Run with &parameters...", self.runWithParameters, "Set parameters, then run")
+		self.scheduleRunAction = CommonWidgets.TestermanAction(self, "&Scheduled run...", self.scheduleRun, "Schedule a run")
 		self.runMenu = QMenu('Run', self)
 		self.runMenu.addAction(self.runWithParametersAction)
 		self.runMenu.addAction(self.scheduleRunAction)
@@ -790,7 +769,7 @@ class WCampaignDocument(WDocument):
 		"""
 		replace function
 		"""
-		replaceBox = WSciReplace(self.editor, self)
+		replaceBox = CommonWidgets.WSciReplace(self.editor, self)
 		replaceBox.show()
 
 	def _schedule(self, session, at = None):
@@ -803,7 +782,7 @@ class WCampaignDocument(WDocument):
 		try:
 			res = getProxy().scheduleCampaign(self.model.getDocument(), unicode(self.model.getName()), unicode(QApplication.instance().username()), session, at)
 		except Exception, e:
-			systemError(self, str(e))
+			CommonWidgets.systemError(self, str(e))
 			return None
 		QApplication.instance().get('gui.statusbar').showMessage(res['message'])
 		QMessageBox.information(self, getClientName(), res['message'], QMessageBox.Ok)
@@ -871,7 +850,7 @@ class WDocumentManager(QWidget):
 	def __createWidgets(self):
 		layout = QVBoxLayout()
 		layout.setMargin(0)
-		self.tab = WEnhancedTabWidget()
+		self.tab = CommonWidgets.WEnhancedTabWidget()
 		layout.addWidget(self.tab)
 		self.setLayout(layout)
 		self.connect(self.tab, SIGNAL('currentChanged(int)'), self.onCurrentDocumentChanged)
@@ -919,7 +898,7 @@ class WDocumentManager(QWidget):
 				f.close()
 				fileTimestamp = os.stat(unicode(path)).st_mtime
 			except Exception, e:
-				systemError(self, 'Unable to open %s: %s' % (unicode(path), str(e)))
+				CommonWidgets.systemError(self, 'Unable to open %s: %s' % (unicode(path), str(e)))
 				return False
 
 		elif url.scheme() == 'testerman':
@@ -1028,7 +1007,7 @@ class WDocumentManager(QWidget):
 			if contents and info:
 				fileTimestamp = info['timestamp']
 			else:
-				systemError(self, "Unable to reload file from the repository: the file does not seem to exist anymore")
+				CommonWidgets.systemError(self, "Unable to reload file from the repository: the file does not seem to exist anymore")
 		else:
 			log("Reloading local file...")
 			try:
@@ -1038,7 +1017,7 @@ class WDocumentManager(QWidget):
 				f.close()
 				fileTimestamp = os.stat(unicode(path)).st_mtime
 			except Exception, e:
-				systemError(self, 'Unable to open %s: %s' % (model.getUrl().toString(), unicode(e)))
+				CommonWidgets.systemError(self, 'Unable to open %s: %s' % (model.getUrl().toString(), unicode(e)))
 
 		if contents is not None and fileTimestamp is not None:
 			try:
@@ -1049,7 +1028,7 @@ class WDocumentManager(QWidget):
 				model.resetModificationFlag()
 				QApplication.instance().get('gui.statusbar').showMessage('Document reloaded.', 5000)
 			except Exception, e:
-				systemError(self, 'Unable to reload %s: %s' % (model.getUrl().toString(), unicode(e)))
+				CommonWidgets.systemError(self, 'Unable to reload %s: %s' % (model.getUrl().toString(), unicode(e)))
 
 	def newAts(self):
 		"""
@@ -1159,9 +1138,9 @@ class WDocumentManager(QWidget):
 # Code Writers plugins
 ################################################################################
 
-class CodeWriterPluginAction(TestermanAction):
+class CodeWriterPluginAction(CommonWidgets.TestermanAction):
 	def __init__(self, editor, label, pluginInstance, parent):
-		TestermanAction.__init__(self, parent, label, self.activatePlugin)
+		CommonWidgets.TestermanAction.__init__(self, parent, label, self.activatePlugin)
 		self._editor = editor
 		self._pluginInstance = pluginInstance
 
@@ -1186,12 +1165,12 @@ def getCodeWriterPluginActions(editor, documentType, parent):
 				ret.append(CodeWriterPluginAction(editor, p['label'], plugin, parent))
 	return ret
 
-class DocumentationPluginAction(TestermanAction):
+class DocumentationPluginAction(CommonWidgets.TestermanAction):
 	def __init__(self, model, label, pluginInstance, parent):
 		"""
 		The parent must be a WDocument
 		"""
-		TestermanAction.__init__(self, parent, label, self.activatePlugin)
+		CommonWidgets.TestermanAction.__init__(self, parent, label, self.activatePlugin)
 		self._model = model
 		self._pluginInstance = pluginInstance
 		self._documentView = parent
@@ -1200,7 +1179,7 @@ class DocumentationPluginAction(TestermanAction):
 		if hasattr(self._documentView, 'aboutToDocument'):
 			if not self._documentView.aboutToDocument():
 				return
-		ret = self._pluginInstance.activate(self._model)
+		self._pluginInstance.activate(self._model)
 
 def getDocumentationPluginActions(model, documentType, parent):
 	"""
@@ -1343,7 +1322,7 @@ class WPythonCodeEditor(sci.QsciScintilla):
 		# to do : if CTRL is pressed, open a windows asking the default value of parameter : get(param_name, default_value)
 		mimeParameterType = "application/x-qtesterman-parameters"
 		if e.mimeData().hasFormat(mimeParameterType):
-			parameters = mimeDataToObjects(mimeParameterType, e.mimeData())
+			parameters = CommonWidgets.mimeDataToObjects(mimeParameterType, e.mimeData())
 			self.insert(", ".join("get_variable('%s')" % x['name'] for x in parameters))
 			e.acceptProposedAction()
 
@@ -1369,28 +1348,28 @@ class WPythonCodeEditor(sci.QsciScintilla):
 
 	def createActions(self):
 		""" Common actions """
-		self.commentAction = TestermanAction(self, "Comment", self.comment)
+		self.commentAction = CommonWidgets.TestermanAction(self, "Comment", self.comment)
 		self.commentAction.setShortcut(Qt.ALT + Qt.Key_C)
 		self.commentAction.setShortcutContext(Qt.WidgetShortcut)
 		self.addAction(self.commentAction)
-		self.uncommentAction = TestermanAction(self, "Uncomment", self.uncomment)
+		self.uncommentAction = CommonWidgets.TestermanAction(self, "Uncomment", self.uncomment)
 		self.uncommentAction.setShortcut(Qt.ALT + Qt.Key_X)
 		self.uncommentAction.setShortcutContext(Qt.WidgetShortcut)
 		self.addAction(self.uncommentAction)
-		self.indentAction = TestermanAction(self, "Indent", self.indent)
+		self.indentAction = CommonWidgets.TestermanAction(self, "Indent", self.indent)
 		self.indentAction.setShortcut(Qt.Key_Tab)
 		self.indentAction.setShortcutContext(Qt.WidgetShortcut)
 		self.addAction(self.indentAction)
-		self.unindentAction = TestermanAction(self, "Unindent", self.unindent)
+		self.unindentAction = CommonWidgets.TestermanAction(self, "Unindent", self.unindent)
 		self.unindentAction.setShortcut(Qt.SHIFT + Qt.Key_Tab)
 		self.unindentAction.setShortcutContext(Qt.WidgetShortcut)
 		self.addAction(self.unindentAction)
 		# nedit-inspired keystrokes learner (aka "anonymous macro")
-		self.learnKeystrokesAction = TestermanAction(self, "Learn keystrokes", self.toggleLearnKeystrokes) 
+		self.learnKeystrokesAction = CommonWidgets.TestermanAction(self, "Learn keystrokes", self.toggleLearnKeystrokes) 
 		self.learnKeystrokesAction.setShortcut(Qt.ALT + Qt.Key_K)
 		self.learnKeystrokesAction.setShortcutContext(Qt.WidgetShortcut)
 		self.addAction(self.learnKeystrokesAction)
-		self.replayKeystrokesAction = TestermanAction(self, "Replay keystrokes", self.replayKeystrokes) 
+		self.replayKeystrokesAction = CommonWidgets.TestermanAction(self, "Replay keystrokes", self.replayKeystrokes) 
 		self.replayKeystrokesAction.setShortcut(Qt.CTRL + Qt.Key_K)
 		self.replayKeystrokesAction.setShortcutContext(Qt.WidgetShortcut)
 		self.replayKeystrokesAction.setEnabled(False)
@@ -1426,22 +1405,22 @@ class WPythonCodeEditor(sci.QsciScintilla):
 				showName = template.name
 				if template.shortcut != "":
 					showName = "%s (%s)" % (showName, template.shortcut)
-				templateAction = TestermanAction(self, showName, lambda name=template.name: self.templateCodeWriter(name), template.description)
+				templateAction = CommonWidgets.TestermanAction(self, showName, lambda name=template.name: self.templateCodeWriter(name), template.description)
 				self.templatesMenu.addAction(templateAction)
 
 		self.setContextMenuPolicy(Qt.CustomContextMenu)
 		self.connect(self, SIGNAL("customContextMenuRequested (const QPoint&)"), self.onPopupMenu)
 		
 		# shortcut only actions
-		self.autoCompletionAction = TestermanAction(self, "Auto completion", self.autoCompletion) 
+		self.autoCompletionAction = CommonWidgets.TestermanAction(self, "Auto completion", self.autoCompletion) 
 		self.autoCompletionAction.setShortcut(Qt.CTRL + Qt.Key_Space)
 		self.autoCompletionAction.setShortcutContext(Qt.WidgetShortcut)
 		self.addAction(self.autoCompletionAction)
-#		self.callTipAction = TestermanAction(self, "Tool tip", self.showTip) 
+#		self.callTipAction = CommonWidgets.TestermanAction(self, "Tool tip", self.showTip) 
 #		self.callTipAction.setShortcut(Qt.CTRL + Qt.Key_Shift + Qt.Key_Space) #does not work... (ctrl + shift + space)
 #		self.callTipAction.setShortcutContext(Qt.WidgetShortcut)
 #		self.addAction(self.callTipAction)
-		self.autoCompleteTemplate = TestermanAction(self, "Auto complete template", self.autoCompleteTemplate) 
+		self.autoCompleteTemplate = CommonWidgets.TestermanAction(self, "Auto complete template", self.autoCompleteTemplate) 
 		self.autoCompleteTemplate.setShortcut(Qt.CTRL + Qt.Key_J)
 		self.autoCompleteTemplate.setShortcutContext(Qt.WidgetShortcut)
 		self.addAction(self.autoCompleteTemplate)
@@ -1869,7 +1848,7 @@ class WSessionParameterEditor(QTreeWidget):
 				f.close()
 				QMessageBox.information(self, getClientName(), "Script parameters have been saved successfully.", QMessageBox.Ok)
 			except Exception, e:
-				systemError(self, "Unable to save parameter file: " + str(e))
+				CommonWidgets.systemError(self, "Unable to save parameter file: " + str(e))
 				log("Unable to save parameter file: " + str(e))
 
 	def loadFromFile(self):
@@ -1900,7 +1879,7 @@ class WSessionParameterEditor(QTreeWidget):
 
 				self.rebuildTree()
 			except Exception, e:
-				systemError(self, "Unable to load parameter file: " + str(e))
+				CommonWidgets.systemError(self, "Unable to load parameter file: " + str(e))
 				log("Unable to load parameter file: " + str(e))
 
 class WSessionParameterEditorDialog(QDialog):

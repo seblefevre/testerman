@@ -25,6 +25,8 @@ from PyQt4.QtXml import *
 from Base import *
 
 # Document types
+# NB: these type values are those returned by a Ws.getDirectoryListing()
+# by the server.
 TYPE_ATS = "ats"
 TYPE_MODULE = "module"
 TYPE_CAMPAIGN = "campaign"
@@ -215,15 +217,13 @@ class MetadataModel(QObject):
 			ret['previous-value'] = ret['default']
 		return None
 
-	def setParameter(self, name, default = None, description = None, previousValue = None, newName = None):
+	def setParameter(self, name, default = None, description = None, newName = None):
 		"""
 		Sets a parameter or selected parameter attributes.
 		Adds it if name does not exists.
 		If newName is provided, rename the parameter (or create it with newName directly if it does not exist)
 
 		Keeps attributes that are set to None. For new parameters with None attributes, uses an empty default value.
-		
-		FIXME: previousValue kept for compatibility. To remove.
 		"""
 		if not self.parameters.has_key(name):
 			self.parameters[name] = { 'type': 'string', 'default': '', 'description': '' }
@@ -368,7 +368,8 @@ class DocumentModel(QObject):
 		QObject.__init__(self)
 		# Let's split our document into a body and metadata raw data
 		# (unicode strings)
-		(metadata, self.body) = self._explode(document, defaultMetadata)
+		self._defaultMetadata = defaultMetadata
+		(metadata, self.body) = self._explode(document)
 		# Turns the metadata part into a sub model
 		self.metadataModel = MetadataModel(metadata)
 
@@ -576,7 +577,7 @@ class DocumentModel(QObject):
 		"""
 		return self.body
 
-	def _explode(self, document, defaultMetadata):
+	def _explode(self, document):
 		"""
 		Returns a tuple (metadata, body), extracting the metadata from the body of the module.
 		
@@ -587,8 +588,6 @@ class DocumentModel(QObject):
 
 		@type  document: unicode string
 		@param document: the complete document
-		@type  defaultMetadata: unicode string
-		@param defaultMetadata: some default metadata if not present in the document
 		
 		@rtype: tuple (unicode, unicode)
 		@returns: a tuple corresponding to the (metadata, body) document model aspects.
@@ -596,9 +595,9 @@ class DocumentModel(QObject):
 		body = u""
 		lines = document.split('\n')
 		if not len(lines):
-			return (defaultMetadata, document)
+			return (self._defaultMetadata, document)
 		if not lines[0].startswith('# __METADATA__BEGIN__'):
-			return (defaultMetadata, document)
+			return (self._defaultMetadata, document)
 
 		completed = 0
 		metadataLines = [ lines[1] ]
@@ -620,7 +619,7 @@ class DocumentModel(QObject):
 			index += 1
 
 		if not completed:
-			return (defaultMetadata, document)
+			return (self._defaultMetadata, document)
 
 		# OK, we have valid metadata.
 		metadata = u""
