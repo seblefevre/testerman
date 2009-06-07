@@ -47,6 +47,13 @@ import os.path
 import time
 import zlib
 
+
+#: API versions: major.minor
+#: major += 1 if not backward compatible,
+#: minor += 1 if feature-enriched, backward compatible
+WS_VERSION = '1.3'
+
+
 ################################################################################
 # Logging
 ################################################################################
@@ -107,6 +114,8 @@ def getXcVersion():
 def scheduleAts(source, atsId, username, session, at, path = None):
 	"""
 	Schedule an ATS to start at <at>
+	
+	@since: 1.0
 	
 	@type  ats: string
 	@param ats: the ats contents, as a utf-8 string
@@ -171,6 +180,8 @@ def scheduleCampaign(source, campaignId, username, session, at, path = None):
 	"""
 	Schedule an ATS to start at <at>
 	
+	@since: 1.2
+
 	@type  ats: string
 	@param ats: the ats contents, as a utf-8 string
 	@type  atsId: string
@@ -234,6 +245,8 @@ def getJobInfo(jobId = None):
 	"""
 	Gets a job or all jobs information.
 
+	@since: 1.0
+
 	@type  jobId: integer, or None
 	@param jobId: the job ID identifying the job whose status should be retrieved, or None for all jobs.
 	
@@ -265,6 +278,8 @@ def getJobLog(jobId, useCompression = True):
 	"""
 	Gets the current log for an existing job.
 	
+	@since: 1.0
+
 	@type  jobId: integer
 	@param jobId: the job ID identifying the job whose log should be retrieved
 	@type  useCompression: bool
@@ -295,6 +310,8 @@ def getJobLogFilename(jobId):
 	"""
 	Gets an existing job's log filename.
 	
+	@since: 1.0
+
 	@type  jobId: integer
 	@param jobId: the job ID identifying the job whose log filename should be retrieved
 	
@@ -316,6 +333,8 @@ def getJobLogFilename(jobId):
 def rescheduleJob(jobId, at):
 	"""
 	Reschedules a job to start at <at>.
+
+	@since: 1.2
 
 	@type  jobId: integer
 	@param jobId: the jobId identifying the job that needs rescheduling
@@ -343,6 +362,8 @@ def sendSignal(jobId, signal):
 	"""
 	Sends a signal to the job id'd by jobId.
 	
+	@since: 1.0
+
 	@type  jobId: integer
 	@param jobId: the job Id
 	@type  signal: string
@@ -376,6 +397,8 @@ def getFile(path, useCompression = False):
 	
 	If useCompression is set, compress the output before encoding it to mime64.
 	
+	@since: 1.0
+
 	@type  path: string
 	@param path: a path to a file
 	@type  useCompression: bool
@@ -411,6 +434,8 @@ def putFile(content, path):
 	"""
 	Writes a file to docroot/path
 	
+	@since: 1.0
+
 	@type  content: utf-8 encoded (or buffer) string, encoded in mime64
 	@param content: the content of the file
 	@type  path: string
@@ -443,6 +468,8 @@ def getDirectoryListing(path):
 	Returns the contents of a directory.
 	Also filters some 'internal' files (in particular __init__.py files)
 	
+	@since: 1.0
+
 	@type  path: string
 	@param path: the path of the directory within the docroot
 	
@@ -499,6 +526,8 @@ def getFileInfo(path):
 	where the size is optional (in bytes, if provided), and timestamp is
 	the file modification time.
 
+	@since: 1.0
+
 	@type  path: string
 	@param path: the path to the file whose info we want to get
 	
@@ -528,6 +557,8 @@ def removeFile(path):
 	"""
 	Removes a file.
 	
+	@since: 1.0
+
 	@type  path: string
 	@param path: the docroot-path to the file to delete
 	
@@ -550,6 +581,8 @@ def removeDirectory(path, recursive = False):
 	"""
 	Removes an empty directory, unless recursive is set to True.
 	
+	@since: 1.1
+
 	@type  path: string
 	@param path: the docroot-path to the directory to delete
 	@type  recursive: bool
@@ -591,7 +624,7 @@ def move(source, destination):
 	  (will create the file in it, without renaming it), or
 		a new file name (will rename the file).
 	
-	New in Ws 1.3.
+	@since: 1.3
 
 	@type  source: string
 	@param source: docroot-path to the object to move
@@ -632,7 +665,7 @@ def copy(source, destination):
 	  (will create the file in it, without renaming it), or
 		a new file name (will rename the file).
 	
-	New in Ws 1.3.
+	@since: 1.3
 
 	@type  source: string
 	@param source: docroot-path to the object to move
@@ -660,7 +693,7 @@ def rename(path, newName):
 	"""
 	Renames a file or a directory to newName, in the same folder.
 	
-	New in Ws 1.3.
+	@since: 1.3
 
 	@type  path: string
 	@param path: the docroot-path to the object to rename
@@ -683,12 +716,29 @@ def rename(path, newName):
 	getLogger().info("<< rename(): %s" % str(res))
 	return res
 
-def getReferencingFiles(module):
+def makeDirectory(path):
 	"""
-	Kept for compatibility.
-	TODO (or to remove ?)
-	"""	
-	return []
+	Creates a directory and all the needed directories to it, if any.
+	
+	@since: 1.3
+	
+	@type  path: string
+	@param path: the docroot-path to the directory to create
+	
+	@rtype: bool
+	@returns: True if the directory was created, False otherwise.
+	"""
+	getLogger().info(">> makeDirectory(%s)" % (path))
+	res = False
+	try:
+		res = FileSystemManager.instance().mkdir(path)
+	except Exception, e:
+		e =  Exception("Unable to perform operation: %s\n%s" % (str(e), Tools.getBacktrace()))
+		getLogger().info("<< makeDirectory(...): Fault:\n" + str(e))
+		raise(e)
+
+	getLogger().info("<< makeDirectory(): %s" % str(res))
+	return res
 
 def getDependencies(path, recursive = False):
 	"""
@@ -703,8 +753,8 @@ def getDependencies(path, recursive = False):
 	
 	This method may be used by a client to create a package.
 	
-	New in Ws 1.3.
-	
+	@since: 1.3
+
 	@type  path: string
 	@param path: a docroot path to a module, ats or campaign
 	@type  recursive: boolean
@@ -749,6 +799,8 @@ def getXcInterfaceAddress():
 	"""
 	Gets the Xc interface address.
 	
+	@since: 1.0
+
 	@rtype: dict { 'ip': string, 'port': integer }
 	@returns: the Xc interface IP + port
 	"""
@@ -766,6 +818,8 @@ def deployProbe(agentName, probeName, probeType):
 	"""
 	Deploys a new probe on a already existent agent.
 	
+	@since: 1.0
+
 	@type  agentName: string
 	@param agentName: the agent name
 	@type  probeType: string
@@ -792,6 +846,8 @@ def undeployProbe(agentName, probeName):
 	"""
 	Undeploys an existing probe on a already existent agent.
 	
+	@since: 1.0
+
 	@type  agentName: string
 	@param agentName: the agent name
 	@type  probeName: string
@@ -814,6 +870,8 @@ def getRegisteredProbes():
 	"""
 	Gets currently registered probes.
 	
+	@since: 1.0
+
 	@rtype: list of dict{name: string, type: string, contact: string, locked: bool, uri: string}
 	@returns: a list of registered probes with their names, types, contact (extracted from their agent),
 	uri, and locking state
@@ -833,6 +891,8 @@ def getRegisteredAgents():
 	"""
 	Gets currently registered agents.
 	
+	@since: 1.0
+
 	@rtype: list of dict{name: string, type: string, contact: string, uri: string, supported-probes: list of strings, user-agent: string}
 	@returns: a list of registered agents with their names, types, contact,
 	uri, list of supported probe types, and user agent.
@@ -851,6 +911,8 @@ def getRegisteredAgents():
 def restartAgent(agentName):
 	"""
 	Restarts an agent whose uri is agent:agentName
+
+	@since: 1.1
 
 	@type  agentName: string
 	@param agentName: the name of the agent to restart (i.e. not its URI)
@@ -873,6 +935,8 @@ def updateAgent(agentName, branch = None, version = None):
 	Requires an agent to update to version/branch (if provided), or to update to the
 	latest version of branch (if provided), or to update to the latest version
 	of its default branch (if no version/branch provided).
+
+	@since: 1.1
 
 	@type  agentName: string
 	@param agentName: the name of the agent to update (i.e. not its URI)
@@ -903,6 +967,8 @@ def getConfigInformation():
 	"""
 	Returns the current internal configuration values.
 	
+	@since: 1.0
+
 	@rtype: a dict[string] of strings
 	@returns: a dict containing the configuration values, indexed by their keys
 	"""	
@@ -914,6 +980,12 @@ def getConfigInformation():
 def getBackendInformation():
 	"""
 	Returns the FS mount points and their associated backend descriptions.
+
+	@since: 1.0
+
+	@rtype: a dict[string] of strings
+	@returns: a dict containing a description of the backend,
+	indexed by the mountpoint
 	"""	
 	ret = {}
 	for mountpoint, backend in FileSystemBackendManager.Mountpoints.items():
@@ -925,6 +997,8 @@ def getSystemInformation():
 	Returns some system information,
 	regarding the hardware, os, and the application (the server)
 	
+	@since: 1.0
+
 	@rtype: a dict[string] of string
 	@returns: a dict with some supposedly interesting info
 	"""

@@ -700,6 +700,22 @@ class Client(Nodes.ConnectingNode):
 		ret = self.__proxy.copy(source, destination)
 		self.getLogger().debug("%s copied to %s: %s" % (source, destination, ret))
 		return ret
+	
+	def makeDirectory(self, path):
+		"""
+		Creates a directory indicated by path, creating all required directories
+		if needed (mkdir -p).
+		
+		@type  path: string
+		@param path: docroot-path to the directory to create
+		
+		@rtype: bool
+		@returns: True if the directory was created, False otherwise.
+		"""
+		self.getLogger().debug("Making directory %s..." % (path))
+		ret = self.__proxy.makeDirectory(path)
+		self.getLogger().debug("Making directory %s: %s" % (path, ret))
+		return ret
 
 	def getDependencies(self, path, recursive = True):
 		"""

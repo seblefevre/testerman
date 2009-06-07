@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 ##
 # This file is part of Testerman, a test automation system.
 # Copyright (c) 2008-2009 Sebastien Lefevre and other contributors
@@ -13,13 +14,12 @@
 ##
 
 ##
-# -*- coding: utf-8 -*-
 # Testerman server related version strings.
 #
 ##
 
 #: Main TS implementation version
-TESTERMAN_SERVER_VERSION = '1.2.0'
+TESTERMAN_SERVER_VERSION = '1.3.0'
 
 #: Main TACS implementation version
 TESTERMAN_AGENT_CONTROLLER_VERSION = '1.1.0'
@@ -29,10 +29,8 @@ TESTERMAN_AGENT_CONTROLLER_VERSION = '1.1.0'
 #: minor += 1 if feature-enriched, backward compatible
 XC_VERSION = '1.1'
 IA_VERSION = '1.1'
-WS_VERSION = '1.3'
 IL_VERSION = '1.0'
 XA_VERSION = '1.1'
-
 
 def getServerVersion():
 	return TESTERMAN_SERVER_VERSION
@@ -44,7 +42,8 @@ def getAiVersion():
 	return AI_VERSION
 
 def getWsVersion():
-	return WS_VERSION
+	import WebServices
+	return WebServices.WS_VERSION
 
 def getAgentControllerVersion():
 	return TESTERMAN_AGENT_CONTROLLER_VERSION
