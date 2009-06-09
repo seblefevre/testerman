@@ -35,7 +35,7 @@ import urlparse
 
 
 
-VERSION = "0.2.2"
+VERSION = "0.2.3"
 
 # Returned in case of a job submission-related execution error
 RETCODE_EXECUTION_ERROR = 70
@@ -348,8 +348,8 @@ class TestermanCliClient:
 		"""
 		Displays the currently registered probes
 		"""
-		ret = self.__client.getRegisteredProbes()
-		header = [ ('name', 'name'), ('type', 'type'), ('contact', 'location') ]
+		ret = self.__client.getRegisteredProbes() + self.__client.getRegisteredAgents()
+		header = [ ('uri', 'uri'), ('type', 'type'), ('contact', 'location'), ('user-agent', 'version') ]
 		print prettyPrintDictList(header, ret)
 
 	def monitor(self, uri):
@@ -523,7 +523,7 @@ def main():
 	parser.add_option("--restart-agent", dest = "restartAgentName", metavar = "NAME", help = "restart agent named NAME", default = None)
 	parser.add_option("--update-agent", dest = "updateAgentName", metavar = "NAME", help = "update agent named NAME to the latest version in its branch", default = None)
 
-	parser.add_option("--list-probes", dest = "listProbes", action = "store_true", help = "list registered probes", default = False)
+	parser.add_option("--list-probes", dest = "listProbes", action = "store_true", help = "list registered agents and probes", default = False)
 
 	parser.add_option("--list-dependencies", dest = "listDependencies", metavar = "PATH", help = "list the dependencies of the file whose repository path is PATH", default = None)
 
