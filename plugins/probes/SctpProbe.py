@@ -52,14 +52,9 @@ class SctpProbe(ProbeImplementationManager.ProbeImplementation):
 	|| `listening_ip` || string || `0.0.0.0` || Listening IP address, if listening mode is activated (see below) ||
 	|| `listening_port` || integer || `0` || Set it to a non-zero port to start listening on mapping ||
 	|| `style` || string in `'tcp'`, `'udp'` || `'tcp'` || SCTP style: UDP (...) or TCP (stream)
-	|| `enable_notifications` || boolean || `False` || If set, you may get connection/disconnection notification and connectionConfirm/Error notification messages || ||
-	|| `default_sut_address` || string (ip:port) || `None` || If set, used as a default SUT address if none provided by the user || ||
+	|| `enable_notifications` || boolean || `False` || If set, you may get connection/disconnection notification and connectionConfirm/Error notification messages ||
+	|| `default_sut_address` || string (ip:port) || `None` || If set, used as a default SUT address if none provided by the user ||
 
-	For future use (only datagram mode is supported for now - no context kept per peer address):
-	|| '''Name''' || '''Type''' || '''Default value''' || '''Description''' ||
-	|| `size` || integer || `0` || Fixed-size packet strategy: if set to non-zero, only raises messages when `size` bytes have been received. All raised messages will hage this constant size. ||
-	|| `separator` || string || `None` || Separator-based packet strategy: if set no a character or a string, only raises messages when `separator` has been encountered; this separator is assumed to be a packet separator, and is not included in the raised message. May be useful for, for instance, \x00-based packet protocols. ||
-	
 	= Overview =
 
 	...
@@ -117,11 +112,15 @@ class SctpProbe(ProbeImplementationManager.ProbeImplementation):
 		self.setDefaultProperty('listening_port', 0) # 0 means: not listening
 		self.setDefaultProperty('listening_ip', '')
 		self.setDefaultProperty('style', 'tcp')
-		self.setDefaultProperty('timeout', 0)
-		self.setDefaultProperty('size', 0)
-		self.setDefaultProperty('separator', None)
 		self.setDefaultProperty('enable_notifications', False)
 		self.setDefaultProperty('default_sut_address', None)
+
+		# For future use (only datagram mode is supported for now - no context kept per peer address):
+		# || `size` || integer || `0` || Fixed-size packet strategy: if set to non-zero, only raises messages when `size` bytes have been received. All raised messages will hage this constant size. ||
+		# || `separator` || string || `None` || Separator-based packet strategy: if set no a character or a string, only raises messages when `separator` has been encountered; this separator is assumed to be a packet separator, and is not included in the raised message. May be useful for, for instance, \\x00-based packet protocols. ||
+		self.setDefaultProperty('size', 0)
+		self.setDefaultProperty('separator', None)
+		self.setDefaultProperty('timeout', 0)
 
 	# ProbeImplementation reimplementation
 	def onTriMap(self):
