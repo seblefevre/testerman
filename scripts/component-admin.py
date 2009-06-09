@@ -174,7 +174,7 @@ class UpdateMetadataWrapper:
 		Creates a new updates.xml file if needed.
 		"""
 		if not fileExists(self._filename):
-			content = '<?xml version="1.0">\n<updates/>\n'
+			content = '<?xml version="1.0" ?>\n<updates/>\n'
 
 		else:
 			f = open(self._filename, 'r')
