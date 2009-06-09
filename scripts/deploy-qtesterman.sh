@@ -1,27 +1,26 @@
 #!/bin/sh
 ################################################################
-# Component deployment helper: pyagent
+# Component deployment helper: qtesterman
 ################################################################
 #
 # Sample usages:
 #
-# Build and deploy pyagent from the source 
+# Build and deploy qtesterman from the source 
 # as a testing version to the docroot ~/testerman:
 #
-#   deploy-pyagent.sh ~/testerman 
+#   deploy-qtesterman.sh ~/testerman 
 #
 # Same thing, but as a stable version: 
 #
-#   deploy-pyagent.sh ~/testerman stable
+#   deploy-qtesterman.sh ~/testerman stable
 #
 # Build and deploy the same component, but advertise it
 # as being version 2.0.0 (this can be used to force updates):
 #
-# deploy-pyagent.sh ~/testerman stable 2.0.0
+# deploy-qtesterman.sh ~/testerman stable 2.0.0
 #
 
-
-component="pyagent"
+component="qtesterman"
 
 if [ $# -lt 1 ] ; then
 	echo "Usage: $0 <docroot> [branch [version]]"
@@ -58,7 +57,7 @@ if [ "x${branch}" == "x" ]; then
 fi
 
 if [ "x${version}" == "x" ]; then
-	version=`cat ${sourcerootdir}/pyagent/PyTestermanAgent.py | grep ^VERSION | cut -d\\" -f 2`
+	version=`cat ${sourcerootdir}/qtesterman/Base.py | grep ^CLIENT_VERSION | cut -d\\" -f 2`
 fi
 
 echo "Deploying $component as version $version, branch $branch..."
@@ -69,10 +68,7 @@ echo "Deploying $component as version $version, branch $branch..."
 echo "Packaging $component..."
 $MKDIR -p $TMP_DIR/$component || exit 1
 
-$CP ${sourcerootdir}/core/CodecManager.py $TMP_DIR/$component/
-$CP ${sourcerootdir}/core/ProbeImplementationManager.py $TMP_DIR/$component/
-$CP -rfL ${sourcerootdir}/plugins $TMP_DIR/$component/plugins
-$CP -fL ${sourcerootdir}/pyagent/* $TMP_DIR/$component/
+$CP -frL ${sourcerootdir}/qtesterman/* $TMP_DIR/$component/
 $CP -fL ${sourcerootdir}/common/*.py $TMP_DIR/$component/
 # Make sure everything is writable (for autoupdates)
 $CHMOD u+w -R $TMP_DIR/*
