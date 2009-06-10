@@ -58,7 +58,12 @@ if [ "x${branch}" == "x" ]; then
 fi
 
 if [ "x${version}" == "x" ]; then
-	version=`cat ${sourcerootdir}/pyagent/PyTestermanAgent.py | grep ^VERSION | cut -d\\" -f 2`
+	version=`cat ${sourcerootdir}/pyagent/PyTestermanAgent.py | grep ^VERSION | cut -d\" -f 2`
+fi
+
+if [ "x${version}" == "x" ]; then
+	echo "Error: cannot autodetect component version."
+	exit 1
 fi
 
 echo "Deploying $component as version $version, branch $branch..."
