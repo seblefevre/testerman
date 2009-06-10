@@ -248,7 +248,7 @@ class WDocument(QWidget):
 				return self.saveToRepository()
 			else:
 				# Locally resave
-				return self._saveLocally(self.model.getUrl().path())
+				return self._saveLocally(self.model.getUrl().toLocalFile())
 		else:
 			# Never saved for now.
 			return self.saveAs()

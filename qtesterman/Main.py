@@ -889,7 +889,7 @@ class WMainWindow(QMainWindow):
 		if not filename.isEmpty():
 			directory = os.path.dirname(unicode(filename))
 			settings.setValue('lastVisitedDirectory', QVariant(directory))
-			self.documentManager.openUrl(QUrl('file://%s' % filename))
+			self.documentManager.openUrl(QUrl.fromLocalFile(filename))
 
 	def quit(self):
 		"""
