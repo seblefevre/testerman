@@ -60,7 +60,6 @@ class WPreferencesDialog(QDialog):
 		layout.addLayout(buttonLayout)
 
 		self.setLayout(layout)
-		
 		self.resize(500, 300)
 
 	def accept(self):
@@ -70,7 +69,6 @@ class WPreferencesDialog(QDialog):
 		if self._preferences.validate():
 			self._preferences.updateModel()
 			QDialog.accept(self)
-
 
 class WPreferencesPage(QWidget):
 	"""
@@ -88,6 +86,9 @@ class WPreferencesPage(QWidget):
 
 	def addWidget(self, widget):
 		self._layout.addWidget(widget)
+	
+	def addStretch(self):
+		self._layout.addStretch(2)
 
 class WPreferences(QTabWidget):
 	"""
@@ -100,12 +101,13 @@ class WPreferences(QTabWidget):
 		self.__createWidgets()
 
 	def __createWidgets(self):
-		
+
 		page = WPreferencesPage()		
 		self._connectionSettings = WConnectionSettings()
 		self._autoUpdateSettings = WAutoUpdateSettings()
 		page.addBoxedWidget(self._connectionSettings, "Connection")
 		page.addBoxedWidget(self._autoUpdateSettings, "Updates")
+		page.addStretch()
 		self.addTab(page, "Server")
 
 		page = WPreferencesPage(self)
@@ -115,17 +117,28 @@ class WPreferences(QTabWidget):
 		page.addBoxedWidget(self._uiSettings, "General")
 		page.addBoxedWidget(self._logsSettings, "Log viewer")
 		page.addBoxedWidget(self._editorSettings, "Code editor")
+		page.addStretch()
 		self.addTab(page, "User interface")
+
+		page = WPreferencesPage(self)
+		self._editorColorsSettings = WEditorColorsSettings()
+		page.addBoxedWidget(self._editorColorsSettings, "Editor colors")
+		page.addStretch()
+		self.addTab(page, "Colors")
 
 		page = WPreferencesPage(self)
 		self._pluginsSettings = WPluginsSettings()
 		page.addWidget(self._pluginsSettings)
 		self.addTab(page, "Plugins")
 
-		self._settings = [ self._connectionSettings, self._uiSettings,
+		self._settings = [ 
+			self._connectionSettings,
+			self._uiSettings,
 			self._logsSettings,
-			self._autoUpdateSettings, self._pluginsSettings,
-			self._editorSettings ]
+			self._autoUpdateSettings,
+			self._pluginsSettings,
+			self._editorSettings, 
+			self._editorColorsSettings ]
 
 	def updateModel(self):
 		"""
@@ -146,7 +159,6 @@ class WPreferences(QTabWidget):
 			if not setting.validate():
 				return False
 		return True
-
 
 class WSettings(QWidget):
 	"""
@@ -176,6 +188,7 @@ class WSettings(QWidget):
 		The default implementation assumes that no validation is required.
 		"""
 		return True
+
 
 ###############################################################################
 # Connection/Servers related settings
@@ -249,6 +262,7 @@ class WConnectionSettings(WSettings):
 			return False
 		return True
 
+
 ###############################################################################
 # General interface related settings
 ###############################################################################
@@ -297,6 +311,85 @@ class WInterfaceSettings(WSettings):
 
 
 ###############################################################################
+# Colors settings
+###############################################################################
+
+class ColorButton(QPushButton):
+	def __init__(self, settingPath, defaultColor = QColor(), label = None, parent = None):
+		QPushButton.__init__(self, parent)
+		self._settingPath = settingPath
+		self._color = defaultColor
+		self.setIconSize(QSize(12, 12))
+		self.setMinimumSize(QSize(50, 0))
+		if label:
+			self.setText(label)
+		self.connect(self, SIGNAL('clicked()'), self.onClicked)
+		self.load()
+
+	def onClicked(self):
+		self._setColor(QColorDialog.getColor(self._color, self))
+
+	def load(self):
+		settings = QSettings()
+		self._setColor(QColor(settings.value(self._settingPath, QVariant(self._color)).toString()))
+
+	def _setColor(self, color):
+		if color.isValid():
+			self._color = color
+			pixmap = QPixmap(self.iconSize())
+			pixmap.fill(color)
+			self.setIcon(QIcon(pixmap))
+
+	def save(self):
+		settings = QSettings()
+		settings.setValue(self._settingPath, QVariant(self._color.name()))
+
+class WEditorColorsSettings(WSettings):
+	"""
+	Editor colors.
+	"""
+	def __init__(self, parent = None):
+		WSettings.__init__(self, parent)
+		self.__createWidgets()
+
+	def __createWidgets(self):
+		clayout = QGridLayout()
+		colors = [
+			('Default', 'default', QColor(Qt.black), QColor(Qt.white)),
+			('Comments', 'comments', QColor(Qt.red), QColor(Qt.white)),
+			('Strings', 'strings', QColor(Qt.darkGreen), QColor(Qt.white)),
+			('Numbers', 'numbers', QColor(Qt.darkMagenta), QColor(Qt.white)),
+			('Identifiers', 'identifiers', QColor(Qt.black), QColor(Qt.white)),
+			('Keywords', 'keywords', QColor(Qt.blue), QColor(Qt.white)),
+			('Decorators', 'decorators', QColor(Qt.black), QColor(Qt.white)),
+			('Operators', 'operators', QColor(Qt.black), QColor(Qt.white)),
+		]
+		self._colorButtons = []
+#		clayout.addWidget(QLabel('Foreground'), 0, 1, Qt.AlignCenter)
+#		clayout.addWidget(QLabel('Background'), 0, 2, Qt.AlignCenter)
+		i = 0
+		for label, name, defaultFg, defaultBg in colors:
+			clayout.addWidget(QLabel('%s:' % label), i, 0, Qt.AlignRight)
+			colorButton = ColorButton('editor/colors/%s.fg' % name, defaultFg)
+			colorButton.setToolTip('Foreground color')
+			self._colorButtons.append(colorButton)
+			clayout.addWidget(colorButton, i, 1)
+			colorButton = ColorButton('editor/colors/%s.bg' % name, defaultBg)
+			colorButton.setToolTip('Background color')
+			self._colorButtons.append(colorButton)
+			clayout.addWidget(colorButton, i, 2)
+			clayout.setColumnStretch(3, 1)
+			i += 1
+		self.setLayout(clayout)
+
+	def updateModel(self):
+		# We save them as settings
+		settings = QSettings()
+		for button in self._colorButtons:
+			button.save()
+
+
+###############################################################################
 # Editor settings
 ###############################################################################
 
@@ -317,18 +410,20 @@ class WEditorSettings(WSettings):
 		settings = QSettings()
 		autocompletion = settings.value('editor/autocompletion', QVariant(False)).toBool()
 
-		vlayout = QVBoxLayout()
+		layout = QVBoxLayout()
 		self._autocompletionCheckBox = QCheckBox("Enable code autocompletion (experimental)")
 		self._autocompletionCheckBox.setChecked(autocompletion)
-		vlayout.addWidget(self._autocompletionCheckBox)
-		vlayout.addStretch()
-		self.setLayout(vlayout)
+		layout.addWidget(self._autocompletionCheckBox)
+
+		layout.addStretch()
+		self.setLayout(layout)
 
 	def updateModel(self):
 		# We save them as settings
 		settings = QSettings()
 		autocompletion = self._autocompletionCheckBox.isChecked()
 		settings.setValue('editor/autocompletion', QVariant(autocompletion))
+
 
 ###############################################################################
 # Auto-update related settings
@@ -486,6 +581,7 @@ class WPluginsSettings(WSettings):
 	
 	def __createWidgets(self):
 		layout = QHBoxLayout()
+		layout.setMargin(1)
 		self.pluginsTreeView = WPluginsTreeView()
 		layout.addWidget(self.pluginsTreeView)
 		self.setLayout(layout)
@@ -590,3 +686,4 @@ class WPluginsTreeView(QTreeWidget):
 			item = root.child(i)
 			settings.setValue('plugins/activated/' + item.pluginId, QVariant(item.activated()))
 	
+

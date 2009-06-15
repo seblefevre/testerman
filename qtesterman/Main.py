@@ -954,7 +954,8 @@ class WMainWindow(QMainWindow):
 
 	def preferences(self):
 		preferences = Preferences.WPreferencesDialog(self)
-		preferences.exec_()
+		if preferences.exec_() == QDialog.Accepted:
+			self.emit(SIGNAL('editorColorsUpdated()'))
 
 	def saveToRepositoryAs(self):
 		self.documentManager.saveCurrentToRepositoryAs()

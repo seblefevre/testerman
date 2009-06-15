@@ -1,5 +1,5 @@
 This is QTesterman, a PyQt4-based GUI for Testerman.
-==============================================================================
+====================================================
 
 1.1.99:
 - Added: preferences support to enable/disable code autocompletion
@@ -33,6 +33,7 @@ This is QTesterman, a PyQt4-based GUI for Testerman.
   The extension is automatically kept if not provided.
 - Added: support for file and folder copy in Remote browser. Only
   interfaced via Drag and Drop.
+- Added: editor colors can now be modified from the Preferences dialog
 - Modified: "save to repository as" now displays a browser-based
   file selector.
 - Modified: native epydoc-based documentation generator is now a plugin

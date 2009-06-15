@@ -24,6 +24,7 @@ from PyQt4.Qt import *
 
 import compiler
 import copy
+import keyword
 import os.path
 import parser
 import re
@@ -1202,6 +1203,36 @@ def getDocumentationPluginActions(model, documentType, parent):
 # Python Editor: used for ATS and Module edition
 ################################################################################
 
+TESTERMAN_KEYWORDS = [
+	'setverdict',
+	'getverdict',
+	'get_variable',
+	'set_variable',
+	'connect',
+	'disconnect',
+	'port_map',
+	'port_unmap',
+	'TestCase',
+	'Behaviour',
+	'Timer',
+	'mtc',
+	'system',
+	'log',
+	'alt',
+	'match',
+	'mismatch',
+	'enable_debug_logs',
+	'disable_debug_logs',
+]
+
+class PythonLexer(sci.QsciLexerPython):
+	pass
+#	def keywords(self, setIndex):
+#		if setIndex == 2:
+#			return ' '.join(TESTERMAN_KEYWORDS + keyword.kwlist)
+#		else:
+#			return sci.QSciLexerPython.keywords(setIndex)
+
 class WPythonCodeEditor(sci.QsciScintilla):
 	def __init__(self, text = None, parent = None, scintillaDocument = None):
 		sci.QsciScintilla.__init__(self, parent)
@@ -1216,7 +1247,7 @@ class WPythonCodeEditor(sci.QsciScintilla):
 		self.learningKeystrokes = False
 
 		# Lexer/Highlighter settings
-		lexer = sci.QsciLexerPython(self)
+		lexer = PythonLexer(self)
 		defaultFont = QFont("courier", 8)
 		defaultFont.setFixedPitch(True)
 		lexer.setDefaultFont(defaultFont)
@@ -1244,21 +1275,7 @@ class WPythonCodeEditor(sci.QsciScintilla):
 		lexer.setFont(f, sci.QsciLexerPython.Keyword)
 		lexer.setFont(f, sci.QsciLexerPython.Number)
 
-		# Colors
-		lexer.setColor(Qt.darkGreen, sci.QsciLexerPython.DoubleQuotedString)
-		lexer.setColor(Qt.darkGreen, sci.QsciLexerPython.SingleQuotedString)
-		lexer.setColor(Qt.darkGreen, sci.QsciLexerPython.TripleSingleQuotedString)
-		lexer.setColor(Qt.darkGreen, sci.QsciLexerPython.TripleDoubleQuotedString)
-		lexer.setColor(Qt.red, sci.QsciLexerPython.Comment)
-		lexer.setColor(Qt.red, sci.QsciLexerPython.CommentBlock)
-		lexer.setColor(Qt.darkMagenta, sci.QsciLexerPython.Number)
-		lexer.setColor(Qt.blue, sci.QsciLexerPython.FunctionMethodName)
-		lexer.setColor(Qt.blue, sci.QsciLexerPython.ClassName)
 		self.setBraceMatching(sci.QsciScintilla.SloppyBraceMatch)
-		self.setMatchedBraceForegroundColor(Qt.red)
-		self.setMatchedBraceBackgroundColor(Qt.white)
-		self.setUnmatchedBraceBackgroundColor(Qt.red)
-		self.setUnmatchedBraceForegroundColor(Qt.black)
 
 		lexer.setIndentationWarning(sci.QsciLexerPython.Inconsistent)
 
@@ -1305,6 +1322,84 @@ class WPythonCodeEditor(sci.QsciScintilla):
 
 		self.menu = self.createStandardContextMenu()
 		self.createActions()
+		
+		# Colors
+		self.setColors()
+
+		self.connect(QApplication.instance().get('gui.mainwindow'), SIGNAL("editorColorsUpdated()"), self.setColors)
+
+	def setColors(self):
+		"""
+		Loads and applies colors from the saved settings.
+		"""
+		def invert(color):
+			return QColor(255 - color.red(), 255 - color.green(), 255 - color.blue(), color.alpha())
+
+		settings = QSettings()
+		lexer = self.lexer()
+
+		defaultFgColor = QColor(settings.value('editor/colors/default.fg', QVariant(QColor(Qt.black))).toString())
+		defaultBgColor = QColor(settings.value('editor/colors/default.bg', QVariant(QColor(Qt.white))).toString())
+
+		lexer.setDefaultColor(defaultFgColor)
+		lexer.setDefaultPaper(defaultBgColor)
+		lexer.setColor(defaultFgColor, sci.QsciLexerPython.Default)
+		lexer.setPaper(defaultBgColor, sci.QsciLexerPython.Default)
+
+		# Dedicated color groups
+		color = QColor(settings.value('editor/colors/strings.fg', QVariant(QColor(Qt.darkGreen))).toString())
+		lexer.setColor(color, sci.QsciLexerPython.DoubleQuotedString)
+		lexer.setColor(color, sci.QsciLexerPython.SingleQuotedString)
+		lexer.setColor(color, sci.QsciLexerPython.TripleSingleQuotedString)
+		lexer.setColor(color, sci.QsciLexerPython.TripleDoubleQuotedString)
+		lexer.setColor(color, sci.QsciLexerPython.UnclosedString)
+		color = QColor(settings.value('editor/colors/strings.bg', QVariant(defaultBgColor)).toString())
+		lexer.setPaper(color, sci.QsciLexerPython.DoubleQuotedString)
+		lexer.setPaper(color, sci.QsciLexerPython.SingleQuotedString)
+		lexer.setPaper(color, sci.QsciLexerPython.TripleSingleQuotedString)
+		lexer.setPaper(color, sci.QsciLexerPython.TripleDoubleQuotedString)
+		lexer.setPaper(color, sci.QsciLexerPython.UnclosedString)
+
+		color = QColor(settings.value('editor/colors/comments.fg', QVariant(QColor(Qt.red))).toString())
+		lexer.setColor(color, sci.QsciLexerPython.Comment)
+		lexer.setColor(color, sci.QsciLexerPython.CommentBlock)
+		color = QColor(settings.value('editor/colors/comments.bg', QVariant(defaultBgColor.name())).toString())
+		lexer.setPaper(color, sci.QsciLexerPython.Comment)
+		lexer.setPaper(color, sci.QsciLexerPython.CommentBlock)
+		color = QColor(settings.value('editor/colors/numbers.fg', QVariant(QColor(Qt.darkMagenta))).toString())
+		lexer.setColor(color, sci.QsciLexerPython.Number)
+		color = QColor(settings.value('editor/colors/numbers.bg', QVariant(defaultBgColor.name())).toString())
+		lexer.setPaper(color, sci.QsciLexerPython.Number)
+		color = QColor(settings.value('editor/colors/identifiers.fg', QVariant(QColor(Qt.black))).toString())
+		lexer.setColor(color, sci.QsciLexerPython.Identifier)
+		lexer.setColor(color, sci.QsciLexerPython.FunctionMethodName)
+		lexer.setColor(color, sci.QsciLexerPython.ClassName)
+		color = QColor(settings.value('editor/colors/identifiers.bg', QVariant(defaultBgColor.name())).toString())
+		lexer.setPaper(color, sci.QsciLexerPython.Identifier)
+		lexer.setPaper(color, sci.QsciLexerPython.FunctionMethodName)
+		lexer.setPaper(color, sci.QsciLexerPython.ClassName)
+
+		color = QColor(settings.value('editor/colors/keywords.fg', QVariant(QColor(Qt.blue))).toString())
+		lexer.setColor(color, sci.QsciLexerPython.Keyword)
+		lexer.setColor(color, sci.QsciLexerPython.HighlightedIdentifier)
+		color = QColor(settings.value('editor/colors/keywords.bg', QVariant(defaultBgColor.name())).toString())
+		lexer.setPaper(color, sci.QsciLexerPython.Keyword)
+		lexer.setPaper(color, sci.QsciLexerPython.HighlightedIdentifier)
+
+		color = QColor(settings.value('editor/colors/decorators.fg', QVariant(defaultFgColor.name())).toString())
+		lexer.setColor(color, sci.QsciLexerPython.Decorator)
+		color = QColor(settings.value('editor/colors/decorators.bg', QVariant(defaultBgColor.name())).toString())
+		lexer.setPaper(color, sci.QsciLexerPython.Decorator)
+
+		color = QColor(settings.value('editor/colors/operators.fg', QVariant(defaultFgColor.name())).toString())
+		lexer.setColor(color, sci.QsciLexerPython.Operator)
+		color = QColor(settings.value('editor/colors/operators.bg', QVariant(defaultBgColor.name())).toString())
+		lexer.setPaper(color, sci.QsciLexerPython.Operator)
+
+		self.setMatchedBraceForegroundColor(Qt.red)
+		self.setMatchedBraceBackgroundColor(defaultBgColor)
+		self.setUnmatchedBraceForegroundColor(Qt.red)
+		self.setUnmatchedBraceBackgroundColor(invert(defaultBgColor))
 
 	def dragMoveEvent(self, e):
 		"""
