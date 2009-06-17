@@ -66,7 +66,7 @@ table.testcase {
 <tr><td>ID: ${testcase.id}</td><td>Title: ${testcase.title}</td></tr>
 <tr><td>Verdict: $testcase.verdict</td><td></td></tr>
 <tr><td colspan="2">Description:</td></tr>
-<tr><td colspan="2">#if ($testcase.description) $testcase.description #else &nbsp; #end</td></tr>
+<tr><td colspan="2">#if ($testcase.description) $toHtml($testcase.description) #else &nbsp; #end</td></tr>
 <tr><td colspan="2">User logs:</td></tr>
 <tr><td colspan="2">
 #foreach ($log in $testcase.userlogs)

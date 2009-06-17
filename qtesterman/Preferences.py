@@ -365,8 +365,6 @@ class WEditorColorsSettings(WSettings):
 			('Operators', 'operators', QColor(Qt.black), QColor(Qt.white)),
 		]
 		self._colorButtons = []
-#		clayout.addWidget(QLabel('Foreground'), 0, 1, Qt.AlignCenter)
-#		clayout.addWidget(QLabel('Background'), 0, 2, Qt.AlignCenter)
 		i = 0
 		for label, name, defaultFg, defaultBg in colors:
 			clayout.addWidget(QLabel('%s:' % label), i, 0, Qt.AlignRight)

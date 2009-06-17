@@ -1,0 +1,6 @@
+## This macro escapes a string to make it suitable for a CSV field value
+## In this sample, we use a semi-column-based CSV file (should be fine with Excel)
+#macro(csv $s)#if($s)"$s.replace('"', '""')"#end#end
+ID;Author;Description
+#foreach ($testcase in $testcases)#csv($testcase.id);#csv($testcase.tag.author);#csv($testcase.description)
+#end
