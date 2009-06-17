@@ -28,6 +28,112 @@ import re
 import threading
 
 class DirWatcherProbe(ProbeImplementationManager.ProbeImplementation):
+	"""
+	= Identification and Properties =
+
+	Probe Type ID: `watcher.dir`
+
+	Properties:
+	|| '''Name''' || '''Type''' || '''Default value''' || '''Description''' ||
+	
+	(no properties)
+
+
+	= Overview =
+
+	This probe watches one or more directories locally and sends notifications whenever a new entry
+	whose name matches a pattern is created or removed in one of them.
+	
+	You should first send a startWatchingDirs command, specifying the directories to monitor (absolute paths, wildcards accepted)
+	and an optional list of regular expression patterns the interesting entry names should match.
+	These patterns may contain named group, such as in `r'errorlog_(?P<number>[0-9+])\.log'`.
+	In this example, if a file (or directory or link) matching this pattern is created or removed 
+	in one of the watched dirs, you will receive a notification containing the watched dir, the
+	complete entry name that matched the pattern, and an additional `matched_number` string entry containing the matched group.
+	
+	For instance, if you're watching `['/tmp', '/var/lock']` with the patterns `[r'(?P<application>[a-z]+)_(?P<number>[0-9+])\.log', r'(?P<application>[a-z]+).lock']`,
+	as soon as the file `'/tmp/testerman_1.log'` is created, you should expect a Notification message such as:
+	{{{
+	#!python
+	('added', {'dir': '/tmp', 'name': 'testerman_1.log', 'mached_application': 'testerman', 'matched_number': '1'})
+	}}}
+	When the file `'/var/lock/testerman.lock'` is removed, expect:
+	{{{
+	#!python
+	('removed', {'dir': '/var/lock', 'name': 'testerman.lock', 'mached_application': 'testerman'})
+	}}}
+	
+	On start watching, the probe checks for changes in the monitored dirss each second (by default). The interval
+	between two checks can be configured via the `interval` startWatchingFiles field. The probe is aware of reset/recreated
+	or new born dirs (when monitoring a dir that has not been created yet). Be aware that you may miss notifications
+	if some files are created/deleted faster than the interval allows to detect.
+	
+	When you do not need to watch these dirs any more, send a stopWatchingDirs command. 
+	
+	The probe automatically stops watching dirs on unmap and when the current test case is over. 
+	
+	If you send a startWatchingDirs command while the probe is already in watching mode, the monitoring is restarted
+	with the new watching parameters.
+	
+	The `patterns` startWatchingDirs field may contain several regular expression. Only the first one that matches new lines in watched files
+	is used to generate `matched_*` notification fields.
+	
+	Possible use cases for this probe:
+	 * Checking file rotation (the oldest should be removed, a new one should be added)
+	 * Checking lock files (created on application start, deleted when stopped, etc)
+	 
+
+	== Availability ==
+
+	All platforms.
+
+	== Dependencies ==
+
+	None.
+
+	== See Also ==
+
+	 * ProbeFileWatcher, a probe that watch a directory for new/removed files
+
+
+	= TTCN-3 Types Equivalence =
+
+	The test system interface port bound to such a probe complies with the `DirWatcherPortType` port type as specified below:
+	{{{
+	type union WatchingCommand
+	{
+		StartWatchingDir startWatchingDirs,
+		anytype           stopWatchingDirs
+	}
+
+	type record StartWatchingDirs
+	{
+		record of charstring dirs,
+		record of charstring patterns optional, // defaulted to [ '.*' ]
+		float interval optional, // defaulted to 1.0, in second
+	}
+
+	type union Notification
+	{
+		DirNotification added, // entry added
+		DirNotification removed, // entry removed
+	}
+	
+	type record DirNotification
+	{
+		charstring dir,
+		charstring name, // the matched added or removed entry in dir
+		charstring matched_* optional, // matched groups, if defined in patterns
+	}
+
+	type port DirWatcherPortType message
+	{
+		in  WatchingCommand;
+		out Notification;
+	}
+	}}}
+
+	"""
 	def __init__(self):
 		ProbeImplementationManager.ProbeImplementation.__init__(self)
 		self._mutex = threading.RLock()
