@@ -177,10 +177,10 @@ class FileSystemBackend:
 		"""
 		Creates a directory.
 		
-		Returns True if the directory was created or already existed.
+		Returns True if the directory was created by calling this function.
 
 		@rtype: bool
-		@returns: True if OK, False otherwise (typically raise exceptions in case of errors)
+		@returns: True if OK, False otherwise (typically raise exceptions in case of errors).
 		"""
 		return False
 	
@@ -189,7 +189,7 @@ class FileSystemBackend:
 		Removes an *empty* directory.
 		
 		If the directory is not empty, returns False.
-		Returns True if the directory was actually removed or does not exist.
+		Returns True if the directory was actually removed by calling this function.
 
 		@rtype: bool
 		@returns: True if OK, False otherwise (typically raise exceptions in case of errors)

@@ -12,19 +12,23 @@ pyrcc4 resources.qrc -o Resources.py
 	<file alias="server-error">resources/window-close.png</file>
 	<file alias="server-undefined">resources/user-offline.png</file>
 	
-	<!-- browsers -->
+	<!-- browsers/explorers -->
 	<file alias="browser">resources/view-sidetree.png</file>
-	<file alias="ats">resources/application-x-m4.png</file>
-	<file alias="campaign">resources/folder-yellow.png</file>
-	<file alias="folder">resources/folder.png</file>
-	<file alias="execution-log">resources/go-next-page.png</file>
-	<file alias="module">resources/text-x-python.png</file>
-	<file alias="archive">resources/application-x-archive.png</file>
-	<file alias="revision">resources/document-open-recent.png</file>
-	<file alias="unknown.png">resources/x-office-document.png</file>
-	<file alias="folder-archive">resources/folder-tar.png</file>
-	<file alias="folder-virtual">resources/view-process-all.png</file>
-	<file alias="log">resources/text-x-log.png</file>
+	<file alias="itemtype/ats">resources/application-x-m4.png</file>
+	<file alias="itemtype/campaign">resources/folder-yellow.png</file>
+	<file alias="itemtype/folder">resources/folder.png</file>
+	<file alias="itemtype/execution-log">resources/go-next-page.png</file>
+	<file alias="itemtype/module">resources/text-x-python.png</file>
+	<file alias="itemtype/archive">resources/application-x-archive.png</file>
+	<file alias="itemtype/revision">resources/document-open-recent.png</file>
+	<file alias="itemtype/unknown">resources/x-office-document.png</file>
+	<file alias="itemtype/folder-package">resources/folder-tar.png</file>
+	<file alias="itemtype/folder-package-locked">resources/folder-locked.png</file>
+	<file alias="itemtype/folder-package-src">resources/folder-orange.png</file>
+	<file alias="itemtype/folder-package-profiles">resources/folder-grey.png</file>
+	<file alias="itemtype/folder-virtual">resources/view-process-all.png</file>
+	<file alias="itemtype/package-metadata">resources/document-properties.png</file>
+	<file alias="itemtype/log">resources/text-x-log.png</file>
 	
 	<!-- addons -->
 	<file alias="multiple-files.png">resources/document-multiple.png</file>
@@ -65,16 +69,16 @@ pyrcc4 resources.qrc -o Resources.py
 	<!-- job management -->
 	<file alias="job-manager.png">resources/view-process-all-tree.png</file>
 	<file alias="job-queue.png">resources/view-process-all-tree.png</file>
-	<file alias="pause.png">resources/user-away.png</file>
-	<file alias="pause-running.png">resources/user-away-extended.png</file>
-	<file alias="job-error.png">resources/dialog-close.png</file>
-	<file alias="job-waiting.png">resources/preferences-system-time.png</file>
-	<file alias="job-success.png">resources/dialog-ok.png</file>
-	<file alias="job-warning.png">resources/dialog-warning.png</file>
-	<file alias="job-running.png">resources/media-playback-start.png</file>
-	<file alias="job-paused.png">resources/media-playback-pause.png</file>
-	<file alias="job-campaign.png">resources/folder-yellow.png</file>
-	
+	<file alias="job-types/pause">resources/user-away.png</file>
+	<file alias="job-states/pause-running">resources/user-away-extended.png</file>
+	<file alias="job-states/error.png">resources/dialog-close.png</file>
+	<file alias="job-states/waiting">resources/preferences-system-time.png</file>
+	<file alias="job-states/success">resources/dialog-ok.png</file>
+	<file alias="job-states/warning">resources/dialog-warning.png</file>
+	<file alias="job-states/running">resources/media-playback-start.png</file>
+	<file alias="job-states/paused">resources/media-playback-pause.png</file>
+	<file alias="job-types/campaign">resources/folder-yellow.png</file>
+
 	<!-- probe management -->
 	<file alias="probe-unlocked.png">resources/user-online.png</file>
 	<file alias="probe-locked.png">resources/user-busy.png</file>

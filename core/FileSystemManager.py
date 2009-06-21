@@ -23,8 +23,11 @@
 # virtual file system traversal
 ###
 
+import EventManager
 import FileSystemBackendManager
 import FileSystemBackend
+import TestermanMessages as Messages
+import Versions
 
 import logging
 import os
@@ -53,7 +56,106 @@ class FileSystemManager:
 	- name/path validation:
 	  '/' is the character to use for path elements.
 	  Each element should match the following regexp: [a-zA-Z0-9_.\(\)\[\]#-]
+		
+	
+	The following operations are non-read only and may emit some 
+	Xc notifications:
+	- mkdir
+	- write
+	- rmdir
+	- unlink
 	"""
+	def _notify(self, path, backendType, event):
+		"""
+		We notify the filesystem:/directory URI subscribers
+		whenever a new entry is created/deleted or a file in this dir is modified.
+		
+		WARNING/FIXME: the application type may not be correctly
+		identified in all case, especially when creating a package forlder,
+		as the package.xml is created after the directory...
+		"""
+		if path.endswith('/'):
+			path = path[:-1]
+		objectpath, objectname = os.path.split(path)
+		if not objectpath:
+			objectpath = '/'
+		applicationType = self.getApplicationType(objectname, objectpath, backendType)
+		if applicationType:
+			uri = 'filesystem:%s' % objectpath
+			notification = Messages.Notification("FILE-EVENT", uri, "Xc", Versions.getXcVersion())
+			notification.setHeader('File-Type', applicationType)
+			notification.setHeader('File-Path', objectpath)
+			notification.setHeader('File-Name', objectname)
+			notification.setHeader('Reason', event)
+			EventManager.instance().dispatchNotification(notification)
+	
+	def _notifyDirCreated(self, path):
+		return self._notify(path, 'directory', 'created')
+	
+	def _notifyDirDeleted(self, path):
+		return self._notify(path, 'directory', 'deleted')
+	
+	def _notifyFileCreated(self, filename):
+		return self._notify(filename, 'file', 'created')
+	
+	def _notifyFileDeleted(self, filename):
+		return self._notify(filename, 'file', 'deleted')
+	
+	def _notifyFileChanged(self, filename):
+		pass
+
+	def _notifyFileRenamed(self, filename, newName):
+		"""
+		Filename is the path+name to the previous name, before renaming.
+		"""
+		if filename.endswith('/'):
+			filename = filename[:-1]
+		objectpath, objectname = os.path.split(filename)
+		if not objectpath:
+			objectpath = '/'
+		applicationType = self.getApplicationType(newName, objectpath, 'file')
+		if applicationType:
+			uri = 'filesystem:%s' % objectpath
+			notification = Messages.Notification("FILE-EVENT", uri, "Xc", Versions.getXcVersion())
+			notification.setHeader('File-Type', applicationType)
+			notification.setHeader('File-Path', objectpath)
+			notification.setHeader('File-Name', objectname)
+			notification.setHeader('Reason', 'renamed')
+			notification.setHeader('File-New-Name', newName)
+			EventManager.instance().dispatchNotification(notification)
+
+	def getApplicationType(self, name, path, backendType):
+		"""
+		Identify the application type of a file path/name,
+		whose backend type is backendType ('directory' or 'file')
+		"""
+		applicationType = None
+		if backendType == 'file':
+			if name.endswith('.ats'):
+				applicationType = 'ats'
+			elif name.endswith('.campaign'):
+				applicationType = 'campaign'
+			elif name.endswith('.py') and name != '__init__.py':
+				applicationType = 'module'
+			elif name.endswith('.log'):
+				applicationType = 'log'
+			elif name.endswith('.profile'):
+				applicationType = 'profile'
+			elif name == 'package.xml':
+				applicationType = 'package-metadata'
+		elif backendType == 'directory':
+			# Could be a plain directory, 
+			# or a package directory,
+			package = False
+			try:
+				package = self.isfile('%s/%s/package.xml' % (path, name))
+			except:
+				package = False
+			if package:
+				applicationType = 'package'
+			else:
+				applicationType = 'directory'
+		return applicationType
 	
 	def read(self, filename):
 		(adjusted, backend) = FileSystemBackendManager.getBackend(filename)
@@ -61,35 +163,64 @@ class FileSystemManager:
 			raise Exception('No backend available to manipulate %s' % filename)
 		return backend.read(adjusted, revision = None)
 	
-	def write(self, filename, content, reason = None):
+	def write(self, filename, content, reason = None, notify = True):
 		"""
 		Automatically creates the missing directories up to the file, if needed.
 		"""
 		path = os.path.split(filename)[0]
-		res = self.mkdir(path)
+		res = self.mkdir(path, notify = notify)
 		if not res:
 			raise Exception('Unable to create directory %s to write %s' % (path, filename))
 
 		(adjusted, backend) = FileSystemBackendManager.getBackend(filename)
 		if not backend:
 			raise Exception('No backend available to manipulate %s' % filename)
-		return backend.write(adjusted, content, baseRevision = None, reason = reason)
+
+		newfile = False
+		if not self.isfile(filename):
+			newfile = True
+
+		ret = backend.write(adjusted, content, baseRevision = None, reason = reason)
+		if notify:
+			if newfile:
+				self._notifyFileCreated(filename)
+			else:
+				self._notifyFileChanged(filename) # Well, could be a new revision, too.
+		return ret
 	
-	def unlink(self, filename, reason = None):
+	def unlink(self, filename, reason = None, notify = True):
 		(adjusted, backend) = FileSystemBackendManager.getBackend(filename)
 		if not backend:
 			raise Exception('No backend available to manipulate %s' % filename)
-		return backend.unlink(adjusted, reason)
+		ret = backend.unlink(adjusted, reason)
+		if ret and notify:
+			self._notifyFileDeleted(filename)
+		return ret
 
 	def getdir(self, path):
 		(adjusted, backend) = FileSystemBackendManager.getBackend(path)
 		if not backend:
 			raise Exception('No backend available to manipulate %s' % path)
-		return backend.getdir(adjusted)
+		dircontents = backend.getdir(adjusted)
+		if dircontents is None:
+			return None
+		
+		# Now converts the backend-level object type to application-level type
+		res = []
+		for entry in dircontents:
+			name = entry['name']
+			applicationType = self.getApplicationType(name, path, entry['type'])
+			if applicationType:			
+				res.append({'name': name, 'type': applicationType})
+		return res
 
-	def mkdir(self, path):
+	def mkdir(self, path, notify = True):
 		"""
-		Automatically creates all the directories to create this one
+		Automatically creates all the directories to create this one.
+		
+		@rtype: bool
+		@returns: True if the directory was created or was already created
+		(i.e. available). False otherwise.
 		"""
 		paths = os.path.normpath(path).split('/')
 		previousPath = ''
@@ -97,17 +228,26 @@ class FileSystemManager:
 			if p:
 				p = '%s/%s' % (previousPath, p)
 				previousPath = p
-
+				
 				(adjusted, backend) = FileSystemBackendManager.getBackend(p)
 				if not backend:
 					raise Exception('No backend available to manipulate %s (creating %s)' % (path, p))
-				res = backend.mkdir(adjusted)
-				if not res:
-					return False
+
+				if backend.isfile(adjusted):
+					return False # Cannot create
+				elif backend.isdir(adjusted):
+					# nothing to do at this level
+					continue
+				else:
+					res = backend.mkdir(adjusted)
+					if not res:
+						return False
+					if notify:
+						self._notifyDirCreated(p)
 
 		return True
 
-	def rmdir(self, path, recursive = False):
+	def rmdir(self, path, recursive = False, notify = True):
 		"""
 		Removes a directory.
 		If recursive is set to True, which is DANGEROUS,
@@ -117,17 +257,29 @@ class FileSystemManager:
 		TODO: define a strategy to follow mount points or not...
 		For now, we do not follow them and only deletes entities in the same backend
 		as the deleted dir.
+
+		@rtype: bool
+		@returns: True if the directory was removed or was already removed
+		(i.e. deleted). False otherwise.
 		"""
 		(adjusted, backend) = FileSystemBackendManager.getBackend(path)
 		if not backend:
 			raise Exception('No backend available to manipulate %s' % path)
+		if backend.isfile(adjusted):
+			raise Exception("Attempting to delete directory '%s', which is a file" % path)
+		if not backend.isdir(adjusted):
+			return True # already removed
+
 		if not recursive:
-			return backend.rmdir(adjusted)
+			ret = backend.rmdir(adjusted)
 		else:
 			getLogger().info("Deleting directory '%s' recursively, adjusted to '%s' for backend '%s'" % (path, adjusted, backend))
-			self._rmdir(adjusted, backend)
+			ret = self._rmdir(adjusted, backend, notify = True)
+		if ret and notify:
+			self._notifyDirDeleted(path)
+		return ret
 	
-	def _rmdir(self, adjustedPath, currentBackend):
+	def _rmdir(self, adjustedPath, currentBackend, notify = True):
 		"""
 		Recursively called:
 		- scan the adjustedPath dir from currentBackend,
@@ -141,14 +293,15 @@ class FileSystemManager:
 				type_ = entry['type']
 				if type_ == 'file':
 					try:
-						currentBackend.unlink(name)
+						currentBackend.unlink(name, notify = notify)
 					except Exception, e:
 						getLogger().warning("Unable to recursively delete adjusted file '%s' for backend '%s': %s" % (name, currentBackend, str(e)))
 				elif type_ == 'directory':
 					# FIXME: here we should compute the docroot name of the file
 					# so that we can recompute its backend again
-					self._rmdir(name, currentBackend)
-		return currentBackend.rmdir(adjustedPath)
+					self._rmdir(name, currentBackend, notify = notify)
+		ret = currentBackend.rmdir(adjustedPath)
+		return ret
 
 	def attributes(self, filename):
 		(adjusted, backend) = FileSystemBackendManager.getBackend(filename)
@@ -177,14 +330,14 @@ class FileSystemManager:
 	def exists(self, path):
 		return self.isdir(path) or self.isfile(path)
 	
-	def _copy(self, source, destination, removeAfterCopy = False):
+	def _copy(self, source, destination, removeAfterCopy = False, notify = True):
 		"""
 		Recursive copy from source (file or dir, docroot path) to destination (existing dir or file to overwrite)
 		
 		The usual rules apply:
-		- if src is a directory, destination must be an existing directory
+		- if source is a directory, destination must be an existing directory
 		  or must not exist (cannot overwrite a file with a dir)
-		- if src is a file, destination must be an existing directory
+		- if source is a file, destination must be an existing directory
 		  or a new file
 		"""
 		getLogger().debug("Copying %s to %s, remove after copy: %s" % (source, destination, removeAfterCopy))
@@ -204,7 +357,7 @@ class FileSystemManager:
 
 			getLogger().debug("Copying a directory to adjusted destination %s" % dst)
 			# Create the target directory
-			self.mkdir(dst)
+			self.mkdir(dst, notify = notify)
 			getLogger().debug("New target directory created")
 			
 			# Now we recursively copy each file
@@ -215,10 +368,10 @@ class FileSystemManager:
 					# Reconstruct the docroot path for source
 					src = '%s/%s' % (source, name)
 					# Call recursively.
-					self._copy(src, dst, removeAfterCopy)
+					self._copy(src, dst, removeAfterCopy, notify = notify)
 			
 			if removeAfterCopy:
-				self.rmdir(source, True)
+				self.rmdir(source, True, notify = notify)
 			
 			return True
 
@@ -240,9 +393,9 @@ class FileSystemManager:
 			getLogger().debug("Copying file to %s" % dst)
 			
 			content = self.read(source)
-			self.write(dst, content)
+			self.write(dst, content, notify = notify)
 			if removeAfterCopy:
-				self.unlink(source)
+				self.unlink(source, notify = notify)
 			
 			return True
 		
@@ -250,17 +403,17 @@ class FileSystemManager:
 			getLogger().warning("Unable to qualify source file. Not copying.")
 			return False
 	
-	def copy(self, source, destination):
+	def copy(self, source, destination, notify = True):
 		"""
 		Copy source to destination.
 		"""
-		return self._copy(source, destination, False)
+		return self._copy(source, destination, False, notify)
 
-	def move(self, source, destination):		
+	def move(self, source, destination, notify = True):		
 		"""
 		Move source to destination.
 		"""
-		return self._copy(source, destination, True)
+		return self._copy(source, destination, True, notify)
 
 	def rename(self, source, newName):
 		"""
@@ -272,6 +425,10 @@ class FileSystemManager:
 		@type  newName: string
 		@param newName: the new (base)name of the object in its current
 		                directory.
+		
+		@rtype: bool
+		@returns: True if renamed, False otherwise (typically because
+		          the destination already exists)
 		"""
 		(adjusted, backend) = FileSystemBackendManager.getBackend(source)
 		if not backend:
@@ -281,7 +438,10 @@ class FileSystemManager:
 		if self.exists(destination):
 			return False
 		else:
-			return self.move(source, destination)
+			ret = self.move(source, destination, False)
+			if ret:
+				self._notifyFileRenamed(source, newName)
+			return ret
 
 ################################################################################
 # Main

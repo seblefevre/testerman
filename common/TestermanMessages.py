@@ -31,7 +31,7 @@ import JSON
 # On reference perf tests, 8% faster when using \n instead of \r\n.
 SEPARATOR = '\n'
 
-URI_REGEXP = re.compile(r'(?P<scheme>[a-z]+):((?P<user>[a-zA-Z0-9_\.-]+)@)?(?P<domain>[a-zA-Z0-9_\.-]+)')
+URI_REGEXP = re.compile(r'(?P<scheme>[a-z]+):((?P<user>[a-zA-Z0-9_\.-]+)@)?(?P<domain>[a-zA-Z0-9_\./%-]+)')
 HEADERLINE_REGEXP = re.compile(r'(?P<header>[a-zA-Z0-9_-]+)\s*:\s*(?P<value>.*)')
 REQUESTLINE_REGEXP = re.compile(r'(?P<method>[a-zA-Z0-9_-]+)\s*(?P<uri>[^\s]*)\s*(?P<protocol>[a-zA-Z0-9_-]+)/(?P<version>[0-9\.]+)')
 STATUSLINE_REGEXP = re.compile(r'(?P<status>[0-9]+)\s*(?P<reason>.*)')

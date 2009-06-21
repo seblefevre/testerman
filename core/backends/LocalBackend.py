@@ -179,10 +179,7 @@ class LocalBackend(FileSystemBackend.FileSystemBackend):
 			return False
 		
 		if fileExists(path):
-			if os.path.isdir(path):
-				return True
-			else:
-				return False # And won't be able to create it...
+			return False
 
 		try:
 			os.makedirs(path, 0755)
@@ -197,10 +194,7 @@ class LocalBackend(FileSystemBackend.FileSystemBackend):
 			return False
 
 		try:
-			if not fileExists(path):
-				# Already non-existent
-				return True
-			elif not os.path.isdir(path):
+			if not os.path.isdir(path):
 				return False
 			else:
 				os.rmdir(path)

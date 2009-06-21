@@ -473,36 +473,17 @@ def getDirectoryListing(path):
 	@type  path: string
 	@param path: the path of the directory within the docroot
 	
-	@rtype: list of dict{'name': string, 'type': string in [ ats, campaign, module, log, directory ] }
-	@returns: the dir contents, with a name (with extension) relative to the dir, and an associated "meta"type.
+	@rtype: list of dict{'name': string, 'type': string in [ ats, campaign, module, log, directory, package ] }
+	@returns: the dir contents, with a name (with extension) relative to the dir,
+	          and an associated application type.
 	          Returns None if the directory was not accessible or in case of an error.
 	"""
 	getLogger().info(">> getDirectoryListing(%s)" % path)
 	res = []
 	try:
-		contents = FileSystemManager.instance().getdir(path)
-		if contents is None:
+		res = FileSystemManager.instance().getdir(path)
+		if res is None:
 			raise Exception("Unable to get directory contents through backend")
-
-		for entry in contents:
-			name = entry['name']
-			type_ = None
-			if entry['type'] == 'file':
-				if name.endswith('.ats'):
-					type_ = 'ats'
-				elif name.endswith('.campaign'):
-					type_ = 'campaign'
-				elif name.endswith('.py') and name != '__init__.py':
-					type_ = 'module'
-				elif name.endswith('.log'):
-					type_ = 'log'
-				elif name.endswith('.package'):
-					type_ = 'package'
-			elif entry['type'] == 'directory':
-				type_ = 'directory'
-
-			if type_:			
-				res.append({'name': name, 'type': type_})
 
 		# Sort the entries, so that it is useless to implement it in all clients ?
 		res.sort(key = operator.itemgetter('name'))
@@ -515,7 +496,7 @@ def getDirectoryListing(path):
 	if res is not None:
 		getLogger().info("<< getDirectoryListing(%s): %d entries returned" % (path, len(res)))
 	else:
-		getLogger().info("<< getDirectoryListing(%s): path not found" % (path))
+		getLogger().info("<< getDirectoryListing(%s): path not found or error" % (path))
 	return res
 		
 def getFileInfo(path):

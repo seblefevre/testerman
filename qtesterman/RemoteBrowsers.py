@@ -128,13 +128,16 @@ class BaseListItem(QListWidgetItem):
 		@rtype: QUrl
 		@returns: the url of the object
 		"""
-		serverIp, serverPort = self.listWidget().getClient().getServerAddress()
+		serverIp, serverPort = self.getClient().getServerAddress()
 		url = "testerman://%s:%d%s" % (serverIp, serverPort, self._path)
 		return QUrl(url)
 
 	def getBasename(self):
 		_, basename = os.path.split(self._path)
 		return basename
+	
+	def getClient(self):
+		return self.listWidget().getClient()
 
 
 class DirListItem(BaseListItem):
@@ -143,7 +146,7 @@ class DirListItem(BaseListItem):
 	"""
 	def __init__(self, path, parent = None):
 		BaseListItem.__init__(self, path, parent)
-		self.setIcon(icon(':/icons/folder'))
+		self.setIcon(icon(':/icons/itemtype/folder'))
 
 class FileListItem(BaseListItem):
 	"""
@@ -159,13 +162,13 @@ class FileListItem(BaseListItem):
 	def __init__(self, path, parent = None):
 		BaseListItem.__init__(self, path, parent)
 		if path.endswith('.ats'):
-			self.setIcon(icon(':/icons/ats'))
+			self.setIcon(icon(':/icons/itemtype/ats'))
 		elif path.endswith('.py'):
-			self.setIcon(icon(':/icons/module'))
+			self.setIcon(icon(':/icons/itemtype/module'))
 		elif path.endswith('.campaign'):
-			self.setIcon(icon(':/icons/campaign'))
+			self.setIcon(icon(':/icons/itemtype/campaign'))
 		else:
-			self.setIcon(icon(':/icons/unknown.png'))
+			self.setIcon(icon(':/icons/itemtype/unknown'))
 
 ################################################################################
 # Remote File Selector
@@ -344,8 +347,6 @@ class WRemoteFileDialog(QDialog):
 
 		layout = QVBoxLayout()
 		self._currentPathLabel = QLabel()
-#		self._currentPathLabel.setIcon(icon(':/icons/folder'))
-#		self._currentPathLabel.setIconSize(QSize(16, 16))
 		layout.addWidget(self._currentPathLabel)
 		
 		self._listWidget = WRemoteFileListWidget(basePath, path, filter_)
@@ -476,11 +477,11 @@ class BaseWidgetItem(QTreeWidgetItem):
 		display = basename
 		if not display:
 			display = "/"
-		
 		self.setText(0, display)
-		self.setText(1, 'unknown')
-		
 		self.setFlags(Qt.ItemIsEnabled)
+
+	def getClient(self):
+		return self.treeWidget().getClient()
 	
 	def isRenameable(self):
 		return self.flags() & Qt.ItemIsEditable
@@ -502,7 +503,7 @@ class BaseWidgetItem(QTreeWidgetItem):
 		@rtype: QUrl
 		@returns: the url of the object
 		"""
-		serverIp, serverPort = self.treeWidget().getClient().getServerAddress()
+		serverIp, serverPort = self.getClient().getServerAddress()
 		url = "testerman://%s:%d%s" % (serverIp, serverPort, self._path)
 		return QUrl(url)
 	
@@ -527,30 +528,34 @@ class AsyncFetchingThread(QThread):
 		self._asyncExpander = asyncExpander
 	
 	def run(self):
-		self._asyncExpander._fetchedChildItems = self._asyncExpander._fetcher()
+		self._asyncExpander._fetchedChildItemData = self._asyncExpander._fetcher()
 
 class AsyncExpander(QObject):
 	"""
-	Decorator class over a TreeWidgetItem, enabling
+	Decorator class over a WidgetItem, enabling
 	to turn it into a lazy expanding node, fetching
 	children asynchronously calling the fetcher command,
 	which returns a list of unparented nodes.
 	
 	Usage:
-	AsyncExpander(item, fetcher).expand()
+	AsyncExpander(item, fetchFunction, addChildrenFunction).expand()
 	
-	where fetcher() returns a list of TreeWidgetItems.
+	where fetchFunction() returns a list of data that will be passed to
+	addChildrenFunction(data) when retrieved, once the fetching thread
+	is over.
+	
 	
 	NB: we use a wrapper/decorator design pattern instead of
 	a subclassing (embedding async expanding capability into
 	ExpandableWidgetItem) to be able to apply it to the
 	invisibleRootItem() of the main QTreeWidget.
 	"""
-	def __init__(self, item, fetcher):
+	def __init__(self, item, fetchFunction, addChildrenFunction):
 		QObject.__init__(self)
 		self._item = item
-		self._fetcher = fetcher
-		self._fetchedChildItems = []
+		self._fetcher = fetchFunction
+		self._adder = addChildrenFunction
+		self._fetchedChildItemData = []
 		self.loadingItem = None
 		self.loadingAnimation = None
 
@@ -586,8 +591,13 @@ class AsyncExpander(QObject):
 		"""
 		self.loadingAnimation.stop()
 		self._item.removeChild(self.loadingItem)
+		self._adder(self._fetchedChildItemData)
 		del self.loadingItem
 		del self.loadingAnimation
+		try:
+			self._item.onExpanded()
+		except:
+			pass
 	
 	def _childItemsFetched(self):
 		"""
@@ -596,17 +606,25 @@ class AsyncExpander(QObject):
 		"""
 		self._loaded()
 		self.fetchingThread = None
-		# Replace the loading item with the fetched items
-		for item in self._fetchedChildItems:
-			self._item.addChild(item)
-
 
 class ExpandableWidgetItem(BaseWidgetItem):
 	"""
 	Base class for nodes that can be expanded.
 	Will be wrapped into a AsyncExpander when expanding.
 	
-	Provides a way to get children.
+	Provides a way to get children asynchronously.
+	
+	First, the fetchChildItems method is called from
+	an async, worker thread. 
+	It should returns a list of (cls, parameters) where cls is
+	the class of the QWidgetItem to add, and parameters is a list of
+	its constructor parameters to apply (no parent should be provided).
+	
+	These construction info are used later, from the main GUI thread,
+	to instanciate and add the child items actually .
+
+	They should be created in the main GUI thread to avoid some
+	internal Qt race conditions, especially regarding icons/pixmaps.
 	"""
 	def __init__(self, path, parent = None):
 		BaseWidgetItem.__init__(self, path, parent)
@@ -614,11 +632,27 @@ class ExpandableWidgetItem(BaseWidgetItem):
 
 	def fetchChildItems(self):
 		"""
-		To re-implement.
-		Returns a list of unparented QTreeWidgetItems corresponding
-		to the child nodes.
+		To override.
+		Returns a list of any data that will be passed transparently to 
+		a call to addFetchedChildItems(data) from the main GUI thread later.
+		
+		This method is called in a worker (non GUI) thread.
 		"""
 		return []
+	
+	def addFetchedChildItems(self, data):
+		"""
+		Creates and appends the items from the fetched data.
+		Called from the main GUI thread.
+		"""
+		pass
+	
+	def onExpanded(self):
+		"""
+		To override. Called when the node has been
+		expanded and its children loaded and displayed.
+		"""
+		pass
 
 
 class DirWidgetItem(ExpandableWidgetItem):
@@ -627,8 +661,7 @@ class DirWidgetItem(ExpandableWidgetItem):
 	"""
 	def __init__(self, path, parent = None):
 		ExpandableWidgetItem.__init__(self, path, parent)
-		self.setIcon(0, icon(':/icons/folder'))
-		self.setText(1, 'folder')
+		self.setIcon(0, icon(':/icons/itemtype/folder'))
 		self.setFlags(Qt.ItemIsEnabled | Qt.ItemIsSelectable | 
 			Qt.ItemIsDragEnabled | Qt.ItemIsDropEnabled)
 
@@ -640,6 +673,60 @@ class DirWidgetItem(ExpandableWidgetItem):
 		# any DirWidgetItem (all its children are removed in the meanwhile).
 		return self.treeWidget().fetchChildItems(self._path)
 
+	def addFetchedChildItems(self, data):
+		return self.treeWidget().addFetchedChildItems(data, self._path, self)
+
+	def onExpanded(self):
+		"""
+		Re-implemented from ExpandableWidgetItem.
+		Xc-Subscribes for updates regarding this directory.
+		"""
+		self.getClient().subscribe('filesystem:%s' % self.getUrl().path(), self._onFileSystemNotification)
+	
+	def onCollapsed(self):
+		"""
+		Re-implemented from ExpandableWidgetItem.
+		Xc-Unsubscribes for updates regarding this directory.
+		"""
+		self.getClient().unsubscribe('filesystem:%s' % self.getUrl().path(), self._onFileSystemNotification)
+
+	def __del__(self):
+		self.onCollapsed()
+		ExpandableWidgetItem.__del__(self)
+	
+	def _onFileSystemNotification(self, notification):
+		"""
+		Callback called whenever a file system notification occurs related
+		to this directory.
+		"""
+		if notification.getMethod() != 'FILE-EVENT':
+			return
+		# Delta deletion or addition
+		reason = notification.getHeader('Reason')
+		name = notification.getHeader('File-Name')
+		print "DEBUG: file event notification on uri %s: '%s' %s" % (notification.getUri(), name, reason)
+		if reason == 'deleted':
+			# name, which is an item in this folder, has been deleted.
+			# Find it and delete it.
+			for i in range(0, self.childCount()):
+				item = self.child(i)
+				if item.getBasename() == name:
+					self.removeChild(item)
+					break
+		elif reason == 'created':
+			# a new item name has been created
+			applicationType = notification.getHeader('File-Type')
+			# Reimplemented in DirWidgetItem subclasses
+			self.addFetchedChildItems([{'name': name, 'type': applicationType}])
+		elif reason == 'renamed':
+			newname = notification.getHeader('File-New-Name')
+			print "DEBUG: file event notification on uri %s: '%s' %s to '%s'" % (notification.getUri(), name, reason, newname)
+			if newname:
+				for i in range(0, self.childCount()):
+					item = self.child(i)
+					if item.getBasename() == name:
+						item.setBasename(newname)
+
 	def shouldRetainExtensionOnRename(self):
 		return False
 	
@@ -650,14 +737,12 @@ class AtsWidgetItem(ExpandableWidgetItem):
 	"""
 	def __init__(self, path, parent = None):
 		ExpandableWidgetItem.__init__(self, path, parent)
-		self.setIcon(0, icon(':/icons/ats'))
-		self.setText(1, 'ats')
+		self.setIcon(0, icon(':/icons/itemtype/ats'))
 		self.setFlags(Qt.ItemIsEnabled | Qt.ItemIsSelectable | Qt.ItemIsDragEnabled | Qt.ItemIsEditable)
-	
-	def fetchChildItems(self):
-		revisionsItem = RevisionsWidgetItem(self._path)
-		executionLogsItem = ExecutionLogsWidgetItem(self._path)
-		return [ revisionsItem, executionLogsItem ]
+
+	def addFetchedChildItems(self, data):
+		self.addChild(RevisionsWidgetItem(self._path))
+		self.addChild(ExecutionLogsWidgetItem(self._path))
 
 
 class ModuleWidgetItem(ExpandableWidgetItem):
@@ -666,13 +751,11 @@ class ModuleWidgetItem(ExpandableWidgetItem):
 	"""
 	def __init__(self, path, parent = None):
 		ExpandableWidgetItem.__init__(self, path, parent)
-		self.setIcon(0, icon(':/icons/module'))
-		self.setText(1, 'module')
+		self.setIcon(0, icon(':/icons/itemtype/module'))
 		self.setFlags(Qt.ItemIsEnabled | Qt.ItemIsSelectable | Qt.ItemIsDragEnabled | Qt.ItemIsEditable)
 
-	def fetchChildItems(self):
-		revisionsItem = RevisionsWidgetItem(self._path)
-		return [ revisionsItem ]
+	def addFetchedChildItems(self, data):
+		self.addChild(RevisionsWidgetItem(self._path))
 
 
 class CampaignWidgetItem(ExpandableWidgetItem):
@@ -681,14 +764,12 @@ class CampaignWidgetItem(ExpandableWidgetItem):
 	"""
 	def __init__(self, path, parent = None):
 		ExpandableWidgetItem.__init__(self, path, parent)
-		self.setIcon(0, icon(':/icons/campaign'))
-		self.setText(1, 'campaign')
+		self.setIcon(0, icon(':/icons/itemtype/campaign'))
 		self.setFlags(Qt.ItemIsEnabled | Qt.ItemIsSelectable | Qt.ItemIsDragEnabled | Qt.ItemIsEditable)
 
-	def fetchChildItems(self):
-		revisionsItem = RevisionsWidgetItem(self._path)
-		executionLogsItem = ExecutionLogsWidgetItem(self._path)
-		return [ revisionsItem, executionLogsItem ]
+	def addFetchedChildItems(self, data):
+		self.addChild(RevisionsWidgetItem(self._path))
+		self.addChild(ExecutionLogsWidgetItem(self._path))
 
 
 class RevisionsWidgetItem(ExpandableWidgetItem):
@@ -697,12 +778,8 @@ class RevisionsWidgetItem(ExpandableWidgetItem):
 	"""
 	def __init__(self, path, parent = None):
 		ExpandableWidgetItem.__init__(self, path, parent)
-		self.setIcon(0, icon(':/icons/folder-virtual'))
+		self.setIcon(0, icon(':/icons/itemtype/folder-virtual'))
 		self.setText(0, 'Revisions')
-		self.setText(1, '')
-	
-	def fetchChildItems(self):
-		return [] # Not yet implemented.
 
 	def getUrl(self):
 		return None
@@ -714,8 +791,7 @@ class RevisionWidgetItem(BaseWidgetItem):
 	"""
 	def __init__(self, path, parent = None):
 		BaseWidgetItem.__init__(self, path, parent)
-		self.setIcon(0, icon(':/icons/revision'))
-		self.setText(1, 'revision')
+		self.setIcon(0, icon(':/icons/itemtype/revision'))
 
 
 class ExecutionLogsWidgetItem(ExpandableWidgetItem):
@@ -725,22 +801,26 @@ class ExecutionLogsWidgetItem(ExpandableWidgetItem):
 	"""
 	def __init__(self, path, parent = None):
 		ExpandableWidgetItem.__init__(self, path, parent)
-		self.setIcon(0, icon(':/icons/folder-virtual'))
+		self.setIcon(0, icon(':/icons/itemtype/folder-virtual'))
 		self.setText(0, 'Executions')
-		self.setText(1, '')
 	
 	def fetchChildItems(self):
 		ret = []
 		try:
 			# Compute the corresponding archive path for this ATS
 			archivePath = '/archives/%s' % ('/'.join(self._path.split('/')[2:]))
-			l = self.treeWidget().getClient().getDirectoryListing(archivePath)
+			l = self.getClient().getDirectoryListing(archivePath)
 			for entry in l:
 				if entry['type'] == 'log':
-					ret.append(ExecutionLogWidgetItem('%s/%s' % (archivePath, entry['name'])))
+					ret.append('%s/%s' % (archivePath, entry['name']))
 		except Exception, e:
 			print "DEBUG: " + str(e)
 		return ret
+
+	def addFetchedChildItems(self, data):
+		for name in data:
+			item = ExecutionLogWidgetItem(name)
+			self.addChild(item)
 
 	def getUrl(self):
 		return None
@@ -753,12 +833,10 @@ class ExecutionLogWidgetItem(BaseWidgetItem):
 	"""
 	def __init__(self, path, parent = None):
 		BaseWidgetItem.__init__(self, path, parent)
-		self.setIcon(0, icon(':/icons/revision'))
-		self.setText(1, 'log')
-		
+		self.setIcon(0, icon(':/icons/itemtype/execution-log'))
+
 		_, name = os.path.split(path)
 		display = "(invalid log filename)"
-		
 		# According to the name, retrieve some additional info.
 		m = re.match(r'([0-9-]+)_(.*)\.log', name)
 		if m:
@@ -775,18 +853,100 @@ class LogWidgetItem(BaseWidgetItem):
 	"""
 	def __init__(self, path, parent = None):
 		BaseWidgetItem.__init__(self, path, parent)
-		self.setIcon(0, icon(':/icons/execution-log'))
-		self.setText(1, 'log')
+		self.setIcon(0, icon(':/icons/itemtype/execution-log'))
 		self.setFlags(Qt.ItemIsEnabled | Qt.ItemIsSelectable)
 
-
-class PackageWidgetItem(BaseWidgetItem):
+class ProfileWidgetItem(BaseWidgetItem):
 	"""
-	Package
+	Execution profile
 	"""
 	def __init__(self, path, parent = None):
 		BaseWidgetItem.__init__(self, path, parent)
-		self.setIcon(0, icon(':/icons/archive'))
+		self.setIcon(0, icon(':/icons/itemtype/profile'))
+		self.setFlags(Qt.ItemIsEnabled | Qt.ItemIsSelectable | Qt.ItemIsDragEnabled | Qt.ItemIsEditable)
+
+##
+# Package-specific items
+##
+class PackageDirWidgetItem(DirWidgetItem):
+	"""
+	Package (the folder).
+	Such a folder may be renamed, as it is a root for its contained
+	files. Renaming it won't break any dependencies.
+	"""
+	def __init__(self, path, parent = None):
+		DirWidgetItem.__init__(self, path, parent)
+		self.setIcon(0, icon(':/icons/itemtype/folder-package'))
+		self.setFlags(Qt.ItemIsEnabled | Qt.ItemIsSelectable | Qt.ItemIsEditable)
+
+	def fetchChildItems(self):
+		try:
+			l = self.getClient().getDirectoryListing(self._path)
+		except Exception:
+			l = []
+		return l
+	
+	def addFetchedChildItems(self, data):
+		"""
+		Data is what is returned by fetchChildItems().
+		"""
+		for entry in data:
+			child = None
+			fullpath = '%s/%s' % (self._path, entry['name'])
+			if entry['type'] == 'directory':
+				if entry['name'] == 'src':
+					child = PackageSrcDirWidgetItem(fullpath)
+				elif entry['name'] == 'profiles':
+					child = PackageProfilesDirWidgetItem(fullpath)
+			elif entry['type'] == 'package-metadata':
+				child = PackageDescriptionWidgetItem(fullpath)
+
+			if child:
+				self.addChild(child)
+	
+
+class PackageSrcDirWidgetItem(DirWidgetItem):
+	"""
+	This item represents the package/src folder.
+	"""
+	def __init__(self, path, parent = None):
+		DirWidgetItem.__init__(self, path, parent)
+		self.setIcon(0, icon(':/icons/itemtype/folder-package-src'))
+		self.setFlags(Qt.ItemIsEnabled | Qt.ItemIsSelectable | Qt.ItemIsDropEnabled)
+
+class PackageProfilesDirWidgetItem(DirWidgetItem):
+	"""
+	This item represents the package/profiles folder.
+	"""
+	def __init__(self, path, parent = None):
+		DirWidgetItem.__init__(self, path, parent)
+		self.setIcon(0, icon(':/icons/itemtype/folder-package-profiles'))
+		self.setFlags(Qt.ItemIsEnabled | Qt.ItemIsSelectable | Qt.ItemIsDropEnabled)
+
+	def fetchChildItems(self):
+		try:
+			l = self.getClient().getDirectoryListing(self._path)
+		except Exception:
+			l = []
+		return l
+
+	def addFetchedChildItems(self, data):
+		for entry in data:
+			child = None
+			fullpath = '%s/%s' % (self._path, entry['name'])
+			if entry['type'] == 'profile':
+				child = ProfileWidgetItem(fullpath)
+			if child:
+				self.addChild(child)
+
+class PackageDescriptionWidgetItem(BaseWidgetItem):
+	"""
+	The package.xml file.
+	"""
+	def __init__(self, path, parent = None):
+		BaseWidgetItem.__init__(self, path, parent)
+		self.setIcon(0, icon(':/icons/itemtype/package-metadata'))
+		self.setFlags(Qt.ItemIsEnabled | Qt.ItemIsSelectable)
 
 
 ################################################################################
@@ -807,7 +967,7 @@ class WServerFileSystemTreeWidget(QTreeWidget):
 	
 	Local actions:
 	- file system related: delete (ats/campaign/module/log/empty dir),
-	  rename (ats/campaign only, to avoid major breaks when renaming a whole dir tree),
+	  rename (ats/campaign/package only, to avoid major breaks when renaming a whole dir tree),
 		copy (dir/ats/campaign/module),
 		(move disabled for now)
 	- view related: refresh (all, subtree)
@@ -816,6 +976,11 @@ class WServerFileSystemTreeWidget(QTreeWidget):
 	- folder renaming is disabled on purpose. Could create havoks breaking
 	  (a lot of) modules too easily.
 	- folder moving is disabled for the same reasons.
+	- this is a passive view over the remote file system: whenever
+	  we attempt a file action (delete/renamed/copy/etc), the action is triggered
+	  on the server through the view, then the view is notified back by the server
+	  asynchronously. As a consequence, the view should not remove/add items on its
+	  own: the (remote) model will do it.
 	
 	External actions:
 	- open (for edition) : emit SIGNAL('openUrl(const QUrl&)')
@@ -838,6 +1003,7 @@ class WServerFileSystemTreeWidget(QTreeWidget):
 
 		self.setContextMenuPolicy(Qt.DefaultContextMenu)
 		self.connect(self, SIGNAL("itemExpanded(QTreeWidgetItem*)"), self.onItemExpanded)
+		self.connect(self, SIGNAL("itemCollapsed(QTreeWidgetItem*)"), self.onItemCollapsed)
 		self.connect(self, SIGNAL("itemActivated(QTreeWidgetItem*, int)"), self.onItemActivated)
 		self.connect(self, SIGNAL("itemChanged(QTreeWidgetItem*, int)"), self.onItemChanged)
 		
@@ -866,7 +1032,14 @@ class WServerFileSystemTreeWidget(QTreeWidget):
 		We can only expand items subclassing ExpandableWidgetItem.
 		We decorate them with the asynchronous expander.
 		"""
-		AsyncExpander(item, item.fetchChildItems).expand()
+		AsyncExpander(item, item.fetchChildItems, item.addFetchedChildItems).expand()
+
+	def onItemCollapsed(self, item):
+		try:
+			item.onCollapsed()
+		except:
+			# Ignore inexistent attributes
+			pass
 
 	def contextMenuEvent(self, event):
 		item = self.itemAt(event.pos())
@@ -906,7 +1079,7 @@ class WServerFileSystemTreeWidget(QTreeWidget):
 		menu.popup(event.globalPos())
 
 	def refresh(self):
-		AsyncExpander(self.invisibleRootItem(), self.fetchChildItems).expand()
+		AsyncExpander(self.invisibleRootItem(), self.fetchChildItems, self.addFetchedChildItems).expand()
 	
 	def setClient(self, client):
 		self._client = client
@@ -916,30 +1089,43 @@ class WServerFileSystemTreeWidget(QTreeWidget):
 		return self._client
 
 	def fetchChildItems(self, path = None):
+		"""
+		Fetches children on behalf of a DirItem.
+		(Implemented here to support the 'invisible root item' transparently).
+		
+		This function is called within a worker thread.
+		"""
 		if path is None:
 			path = self._path
 		try:
 			l = self.getClient().getDirectoryListing(path)
 		except Exception:
 			l = []
+		return l
 
-		ret = []
-		for entry in l:
+	def addFetchedChildItems(self, data, path = None, parent = None):
+		if path is None:
+			path = self._path
+		if parent is None:
+			parent = self.invisibleRootItem()
+		for entry in data:
+			fullpath = '%s/%s' % (path, entry['name'])
 			if entry['type'] == 'directory':
-				child = DirWidgetItem('%s/%s' % (path, entry['name']))
+				child = DirWidgetItem(fullpath)
 			elif entry['type'] == 'ats':
-				child = AtsWidgetItem('%s/%s' % (path, entry['name']))
+				child = AtsWidgetItem(fullpath)
 			elif entry['type'] == 'log':
-				child = ExecutionLogWidgetItem('%s/%s' % (path, entry['name']))
+				child = ExecutionLogWidgetItem(fullpath)
 			elif entry['type'] == 'campaign':
-				child = CampaignWidgetItem('%s/%s' % (path, entry['name']))
+				child = CampaignWidgetItem(fullpath)
 			elif entry['type'] == 'module':
-				child = ModuleWidgetItem('%s/%s' % (path, entry['name']))
-			# Not supported yet
+				child = ModuleWidgetItem(fullpath)
 			elif entry['type'] == 'package':
-				child = PackageWidgetItem('%s/%s' % (path, entry['name']))
-			ret.append(child)
-		return ret
+				child = PackageDirWidgetItem(fullpath)
+			else:
+				child = None
+			if child:
+				parent.addChild(child)
 
 	##
 	# Local actions
@@ -966,9 +1152,7 @@ class WServerFileSystemTreeWidget(QTreeWidget):
 				[('Also delete associated execution logs', True)], parent = self)
 			if dialog.exec_() == QDialog.Accepted:
 				ret = self.getClient().deleteAts(unicode(url.path()), dialog.isChecked(0))
-				if ret:
-					item.parent().removeChild(item)
-				else:
+				if not ret:
 					# Display an error message ?
 					pass
 
@@ -979,9 +1163,7 @@ class WServerFileSystemTreeWidget(QTreeWidget):
 				[('Also delete associated execution logs', True)], parent = self)
 			if dialog.exec_() == QDialog.Accepted:
 				ret = self.getClient().deleteCampaign(unicode(url.path()), dialog.isChecked(0))
-				if ret:
-					item.parent().removeChild(item)
-				else:
+				if not ret:
 					# Display an error message ?
 					pass
 
@@ -992,9 +1174,7 @@ class WServerFileSystemTreeWidget(QTreeWidget):
 				QMessageBox.Yes | QMessageBox.No, QMessageBox.No)
 			if b == QMessageBox.Yes:
 				ret = self.getClient().removeFile(unicode(url.path()))
-				if ret:
-					item.parent().removeChild(item)
-				else:
+				if not ret:
 					# Display an error message ?
 					pass
 
@@ -1004,9 +1184,7 @@ class WServerFileSystemTreeWidget(QTreeWidget):
 			dialog = CommonWidgets.WUserQuestion("Delete Folder", "Are you sure you want to delete the folder %s ?" % item.getBasename(), parent = self)
 			if dialog.exec_() == QDialog.Accepted:
 				ret = self.getClient().removeDirectory(unicode(url.path()), False)
-				if ret:
-					item.parent().removeChild(item)
-				else:
+				if not ret:
 					CommonWidgets.userInformation(self, "Unable to delete folder %s: not empty" % os.path.split(unicode(url.path()))[1])
 
 	def _deleteExecutionLog(self, item):
@@ -1016,6 +1194,7 @@ class WServerFileSystemTreeWidget(QTreeWidget):
 			if dialog.exec_() == QDialog.Accepted:
 				ret = self.getClient().deleteExecutionLog(unicode(url.path()), True)
 				if ret:
+					# Local view removal: the server does not notify us for now
 					item.parent().removeChild(item)
 				else:
 					# Display an error message ?
@@ -1093,8 +1272,6 @@ class WServerFileSystemTreeWidget(QTreeWidget):
 
 	def onCopyUrls(self, parent, sources, destination):
 		ret = self._copyItems(sources, destination)
-		if ret:
-			self._refresh(parent)
 
 	def onItemChanged(self, item, col):
 		if col == 0 and hasattr(item, "getBasename") and item.getBasename() != unicode(item.text(0)):
@@ -1107,7 +1284,7 @@ class WServerFileSystemTreeWidget(QTreeWidget):
 					newName += extension
 			try:
 				self._renameItem(item, currentName, newName)
-				item.setBasename(newName)
+				# Let the server dispatch new name notifications.
 			except Exception, e:
 				# Revert to its previous name
 				item.setBasename(currentName)
@@ -1156,9 +1333,10 @@ class WServerFileSystemTreeWidget(QTreeWidget):
 			QApplication.instance().setOverrideCursor(QCursor(Qt.ArrowCursor))
 			self.onCopyUrls(parent, data.urls(), destination)
 			QApplication.instance().restoreOverrideCursor()
-			return True
-		else:
-			return False
+
+		# We always return False so that the widget does not add an item by
+		# itself, but wait for the server to notify the change.
+		return False
 	
 	def supportedDropActions(self):
 		return (Qt.CopyAction)
@@ -1185,7 +1363,7 @@ class ViewController(QObject):
 	"""
 	def __init__(self, parent = None):
 		QObject.__init__(self, parent)
-	
+
 	def addView(self, view):
 		self.connect(view, SIGNAL('openUrl(const QUrl&)'), self.openUrl)
 		self.connect(QApplication.instance(), SIGNAL('testermanServerUpdated(QUrl)'), view.refresh)
@@ -1247,20 +1425,24 @@ if __name__ == "__main__":
 		serverUrl = sys.argv[1]
 
 	client = TestermanClient.Client("test", "FileSystemViewer/1.0.0", serverUrl = serverUrl)
+	client.startXc()
 
 	try:	
 		w = WServerFileSystemTreeWidget('/repository')
 		w.setClient(client)
 		w.show()
 
-		browser = WRemoteFileDialog(client, '/repository', '/sandbox')
-		browser.show()
+#		browser = WRemoteFileDialog(client, '/repository', '/sandbox')
+#		browser.show()
 
-		print "Save file: %s" % getSaveFilename(client, defaultExtension = "ats", filter_ = [ "ats" ])
+#		print "Save file: %s" % getSaveFilename(client, defaultExtension = "ats", filter_ = [ "ats" ])
 	except Exception, e:
 		import TestermanNodes
 		print TestermanNodes.getBacktrace()
+		client.stopXc()
 		raise Exception(TestermanNodes.getBacktrace())
 		
-		
+
 	app.exec_()
+	client.stopXc()
+
