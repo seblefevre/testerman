@@ -41,7 +41,7 @@ import os.path
 def loadLog(url):
 	"""
 	Load a log file from an url.
-	
+
 	@type  url: QUrl
 	@param url: the url locating the log file (testerman://, file://)
 	
@@ -745,7 +745,7 @@ class WLogViewer(QWidget):
 		self.eventMonitor.subscribe("job:%d" % self.jobId)
 		self.updateFromSource()
 		self.updateWindowTitle()
-		
+
 	def updateWindowTitle(self):
 		if self.jobId is not None:
 			self.setWindowTitle('%s (watching running job %d)' % (self.title, self.jobId))
@@ -753,7 +753,7 @@ class WLogViewer(QWidget):
 			self.setWindowTitle('%s (viewing %s)' % (self.title, unicode(self._url.path())))
 
 	def __createWidgets(self):
-		self.setWindowIcon(icon(':/icons/log'))
+		self.setWindowIcon(icon(':/icons/item-types/log'))
 	
 		# Inner objects (non widget)
 		self.eventMonitor = None
@@ -1567,13 +1567,13 @@ class TestCaseItem(QTreeWidgetItem):
 		verdict = self._model.getVerdict()
 		if verdict == "pass":
 			self.setForeground(0, QBrush(QColor(Qt.blue)))
-			self.setIcon(0, icon(':/icons/job-success.png'))
+			self.setIcon(0, icon(':/icons/job-states/success'))
 		elif verdict == "fail":
 			self.setForeground(0, QBrush(QColor(Qt.red)))
-			self.setIcon(0, icon(':/icons/job-error.png'))
+			self.setIcon(0, icon(':/icons/job-states/error'))
 		else:
 			self.setForeground(0, QBrush(QColor(Qt.darkRed)))
-			self.setIcon(0, icon(':/icons/job-warning.png'))
+			self.setIcon(0, icon(':/icons/job-states/warning'))
 
 class AtsItem(QTreeWidgetItem):
 	"""
@@ -1582,7 +1582,7 @@ class AtsItem(QTreeWidgetItem):
 	"""
 	def __init__(self, model, parent):
 		QTreeWidgetItem.__init__(self, parent)
-		self.setIcon(0, icon(':/icons/ats'))
+		self.setIcon(0, icon(':/icons/job-types/ats'))
 		self.setText(0, model.getId())
 		self.setExpanded(True)
 		self._model = model
@@ -1590,13 +1590,13 @@ class AtsItem(QTreeWidgetItem):
 	def setComplete(self):
 		result = self._model.getResult()
 		if result == 0:
-			self.setIcon(0, icon(':/icons/job-success.png'))
+			self.setIcon(0, icon(':/icons/job-states/success'))
 			self.setForeground(0, QBrush(QColor(Qt.blue)))
 		elif result == 1: # Cancelled
-			self.setIcon(0, icon(':/icons/job-warning.png'))
+			self.setIcon(0, icon(':/icons/job-states/warning'))
 			self.setForeground(0, QBrush(QColor(Qt.darkRed)))
 		else:
-			self.setIcon(0, icon(':/icons/job-error.png'))
+			self.setIcon(0, icon(':/icons/job-states/error'))
 			self.setForeground(0, QBrush(QColor(Qt.darkRed)))
 
 	def getElements(self):

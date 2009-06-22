@@ -1060,7 +1060,7 @@ class WDocumentManager(QWidget):
 		documentModel = AtsModel(document, url, timestamp = fileTimestamp)
 		wdocument = WAtsDocument(documentModel, self.tab)
 		name = documentModel.getShortName()
-		tabIndex = self.tab.addTab(wdocument, icon(':/icons/itemtype/ats'), name)
+		tabIndex = self.tab.addTab(wdocument, icon(':/icons/item-types/ats'), name)
 		self.tab.setTabToolTip(tabIndex, documentModel.getUrl().toString())
 		wdocument.setTabWidget(self.tab)
 		#We should not do this but it doesn't work without for the first tab.
@@ -1074,7 +1074,7 @@ class WDocumentManager(QWidget):
 		documentModel = CampaignModel(document, url, timestamp = fileTimestamp)
 		wdocument = WCampaignDocument(documentModel, self.tab)
 		name = documentModel.getShortName()
-		tabIndex = self.tab.addTab(wdocument, icon(':/icons/itemtype/campaign'), name)
+		tabIndex = self.tab.addTab(wdocument, icon(':/icons/item-types/campaign'), name)
 		self.tab.setTabToolTip(tabIndex, documentModel.getUrl().toString())
 		wdocument.setTabWidget(self.tab)
 		# Set the focus on this tab
@@ -1086,7 +1086,7 @@ class WDocumentManager(QWidget):
 		documentModel = ModuleModel(document, url, timestamp = fileTimestamp)
 		wdocument = WModuleDocument(documentModel, self.tab)
 		name = documentModel.getShortName()
-		tabIndex = self.tab.addTab(wdocument, icon(':/icons/itemtype/module'), name)
+		tabIndex = self.tab.addTab(wdocument, icon(':/icons/item-types/module'), name)
 		self.tab.setTabToolTip(tabIndex, documentModel.getUrl().toString())
 		wdocument.setTabWidget(self.tab)
 		# Set the focus on this tab

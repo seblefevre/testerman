@@ -34,6 +34,8 @@ This is QTesterman, a PyQt4-based GUI for Testerman.
 - Added: support for file and folder copy in Remote browser. Only
   interfaced via Drag and Drop.
 - Added: editor colors can now be modified from the Preferences dialog
+- Added: the remote browsers now monitors remote file system changes.
+  They are updated when items are created/deleted/renamed.
 - Modified: "save to repository as" now displays a browser-based
   file selector.
 - Modified: native epydoc-based documentation generator is now a plugin
@@ -52,6 +54,17 @@ This is QTesterman, a PyQt4-based GUI for Testerman.
   revisions sub-nodes
 - Fixed: regression from 1.0.0: under Windows, was unable to open
   local files.
+
+KNOWN BUGS:
+- When running an ATS, an error popup may be displayed, indicating that
+  a log file cannot be found. Then, when closed, the normal log
+  analyzer dialog appears and everything is fine. 
+- In the dialog analyzer, the "track events" option does not work correctly
+  when switching ATSes.
+- Root files in the repository are not monitored correctly, i.e. if
+  an item is created (for instance) in the root repository folder, you won't
+  see it before refreshing the whole browser view. However, files should not
+  be created/deleted/renamed at root level frequently.
 
 
 1.1.0:

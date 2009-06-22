@@ -303,8 +303,6 @@ class WTemplateApplicationWidget(QWidget):
 		except Exception, e:
 			ret = str(e)
 
-		print "DEBUG: " + repr(self._source)
-
 		if self._source is None or not displayAsHtml:
 			self._webView.hide()
 			self._textView.setPlainText(ret)

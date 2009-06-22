@@ -135,23 +135,23 @@ class JobItem(QTreeWidgetItem):
 		s = jobInfo['state']
 		r = jobInfo['result']
 
-		i = icon(':/icons/unknown.png')
+		i = icon(':/icons/job-states/unknown')
 		if s in [ 'waiting' ]:
-			i = icon(':/icons/job-waiting.png')
+			i = icon(':/icons/job-states/waiting')
 		elif s in [ 'running' ]:
-			i = icon(':/icons/job-running.png')
+			i = icon(':/icons/job-states/running')
 		elif s in [ 'killing', 'cancelling' ]:
-			i = icon(':/icons/job-running.png')
+			i = icon(':/icons/job-states/running')
 		elif s in [ 'paused' ]:
-			i = icon(':/icons/job-paused.png')
+			i = icon(':/icons/job-states/paused')
 		elif s in [ 'complete' ] and r == 0:
-			i = icon(':/icons/job-success.png')
+			i = icon(':/icons/job-states/success')
 		elif s in [ 'complete' ] and r > 0: # This case should not be possible
-			i = icon(':/icons/job-warning.png')
+			i = icon(':/icons/job-states/warning')
 		elif s in [ 'cancelled' ]:
-			i = icon(':/icons/job-warning.png')
+			i = icon(':/icons/job-states/warning')
 		elif s in [ 'error', 'killed' ]:
-			i = icon(':/icons/job-error.png')
+			i = icon(':/icons/job-states/error')
 		self.setIcon(0, i)
 
 	def getState(self):

@@ -146,7 +146,7 @@ class DirListItem(BaseListItem):
 	"""
 	def __init__(self, path, parent = None):
 		BaseListItem.__init__(self, path, parent)
-		self.setIcon(icon(':/icons/itemtype/folder'))
+		self.setIcon(icon(':/icons/item-types/folder'))
 
 class FileListItem(BaseListItem):
 	"""
@@ -162,13 +162,13 @@ class FileListItem(BaseListItem):
 	def __init__(self, path, parent = None):
 		BaseListItem.__init__(self, path, parent)
 		if path.endswith('.ats'):
-			self.setIcon(icon(':/icons/itemtype/ats'))
+			self.setIcon(icon(':/icons/item-types/ats'))
 		elif path.endswith('.py'):
-			self.setIcon(icon(':/icons/itemtype/module'))
+			self.setIcon(icon(':/icons/item-types/module'))
 		elif path.endswith('.campaign'):
-			self.setIcon(icon(':/icons/itemtype/campaign'))
+			self.setIcon(icon(':/icons/item-types/campaign'))
 		else:
-			self.setIcon(icon(':/icons/itemtype/unknown'))
+			self.setIcon(icon(':/icons/item-types/unknown'))
 
 ################################################################################
 # Remote File Selector
@@ -661,7 +661,7 @@ class DirWidgetItem(ExpandableWidgetItem):
 	"""
 	def __init__(self, path, parent = None):
 		ExpandableWidgetItem.__init__(self, path, parent)
-		self.setIcon(0, icon(':/icons/itemtype/folder'))
+		self.setIcon(0, icon(':/icons/item-types/folder'))
 		self.setFlags(Qt.ItemIsEnabled | Qt.ItemIsSelectable | 
 			Qt.ItemIsDragEnabled | Qt.ItemIsDropEnabled)
 
@@ -737,7 +737,7 @@ class AtsWidgetItem(ExpandableWidgetItem):
 	"""
 	def __init__(self, path, parent = None):
 		ExpandableWidgetItem.__init__(self, path, parent)
-		self.setIcon(0, icon(':/icons/itemtype/ats'))
+		self.setIcon(0, icon(':/icons/item-types/ats'))
 		self.setFlags(Qt.ItemIsEnabled | Qt.ItemIsSelectable | Qt.ItemIsDragEnabled | Qt.ItemIsEditable)
 
 	def addFetchedChildItems(self, data):
@@ -751,7 +751,7 @@ class ModuleWidgetItem(ExpandableWidgetItem):
 	"""
 	def __init__(self, path, parent = None):
 		ExpandableWidgetItem.__init__(self, path, parent)
-		self.setIcon(0, icon(':/icons/itemtype/module'))
+		self.setIcon(0, icon(':/icons/item-types/module'))
 		self.setFlags(Qt.ItemIsEnabled | Qt.ItemIsSelectable | Qt.ItemIsDragEnabled | Qt.ItemIsEditable)
 
 	def addFetchedChildItems(self, data):
@@ -764,7 +764,7 @@ class CampaignWidgetItem(ExpandableWidgetItem):
 	"""
 	def __init__(self, path, parent = None):
 		ExpandableWidgetItem.__init__(self, path, parent)
-		self.setIcon(0, icon(':/icons/itemtype/campaign'))
+		self.setIcon(0, icon(':/icons/item-types/campaign'))
 		self.setFlags(Qt.ItemIsEnabled | Qt.ItemIsSelectable | Qt.ItemIsDragEnabled | Qt.ItemIsEditable)
 
 	def addFetchedChildItems(self, data):
@@ -778,7 +778,7 @@ class RevisionsWidgetItem(ExpandableWidgetItem):
 	"""
 	def __init__(self, path, parent = None):
 		ExpandableWidgetItem.__init__(self, path, parent)
-		self.setIcon(0, icon(':/icons/itemtype/folder-virtual'))
+		self.setIcon(0, icon(':/icons/item-types/folder-virtual'))
 		self.setText(0, 'Revisions')
 
 	def getUrl(self):
@@ -791,7 +791,7 @@ class RevisionWidgetItem(BaseWidgetItem):
 	"""
 	def __init__(self, path, parent = None):
 		BaseWidgetItem.__init__(self, path, parent)
-		self.setIcon(0, icon(':/icons/itemtype/revision'))
+		self.setIcon(0, icon(':/icons/item-types/revision'))
 
 
 class ExecutionLogsWidgetItem(ExpandableWidgetItem):
@@ -801,7 +801,7 @@ class ExecutionLogsWidgetItem(ExpandableWidgetItem):
 	"""
 	def __init__(self, path, parent = None):
 		ExpandableWidgetItem.__init__(self, path, parent)
-		self.setIcon(0, icon(':/icons/itemtype/folder-virtual'))
+		self.setIcon(0, icon(':/icons/item-types/folder-virtual'))
 		self.setText(0, 'Executions')
 	
 	def fetchChildItems(self):
@@ -833,7 +833,7 @@ class ExecutionLogWidgetItem(BaseWidgetItem):
 	"""
 	def __init__(self, path, parent = None):
 		BaseWidgetItem.__init__(self, path, parent)
-		self.setIcon(0, icon(':/icons/itemtype/execution-log'))
+		self.setIcon(0, icon(':/icons/item-types/execution-log'))
 
 		_, name = os.path.split(path)
 		display = "(invalid log filename)"
@@ -853,7 +853,7 @@ class LogWidgetItem(BaseWidgetItem):
 	"""
 	def __init__(self, path, parent = None):
 		BaseWidgetItem.__init__(self, path, parent)
-		self.setIcon(0, icon(':/icons/itemtype/execution-log'))
+		self.setIcon(0, icon(':/icons/item-types/execution-log'))
 		self.setFlags(Qt.ItemIsEnabled | Qt.ItemIsSelectable)
 
 class ProfileWidgetItem(BaseWidgetItem):
@@ -862,7 +862,7 @@ class ProfileWidgetItem(BaseWidgetItem):
 	"""
 	def __init__(self, path, parent = None):
 		BaseWidgetItem.__init__(self, path, parent)
-		self.setIcon(0, icon(':/icons/itemtype/profile'))
+		self.setIcon(0, icon(':/icons/item-types/profile'))
 		self.setFlags(Qt.ItemIsEnabled | Qt.ItemIsSelectable | Qt.ItemIsDragEnabled | Qt.ItemIsEditable)
 
 ##
@@ -876,7 +876,7 @@ class PackageDirWidgetItem(DirWidgetItem):
 	"""
 	def __init__(self, path, parent = None):
 		DirWidgetItem.__init__(self, path, parent)
-		self.setIcon(0, icon(':/icons/itemtype/folder-package'))
+		self.setIcon(0, icon(':/icons/item-types/folder-package'))
 		self.setFlags(Qt.ItemIsEnabled | Qt.ItemIsSelectable | Qt.ItemIsEditable)
 
 	def fetchChildItems(self):
@@ -911,7 +911,7 @@ class PackageSrcDirWidgetItem(DirWidgetItem):
 	"""
 	def __init__(self, path, parent = None):
 		DirWidgetItem.__init__(self, path, parent)
-		self.setIcon(0, icon(':/icons/itemtype/folder-package-src'))
+		self.setIcon(0, icon(':/icons/item-types/folder-package-src'))
 		self.setFlags(Qt.ItemIsEnabled | Qt.ItemIsSelectable | Qt.ItemIsDropEnabled)
 
 class PackageProfilesDirWidgetItem(DirWidgetItem):
@@ -920,7 +920,7 @@ class PackageProfilesDirWidgetItem(DirWidgetItem):
 	"""
 	def __init__(self, path, parent = None):
 		DirWidgetItem.__init__(self, path, parent)
-		self.setIcon(0, icon(':/icons/itemtype/folder-package-profiles'))
+		self.setIcon(0, icon(':/icons/item-types/folder-package-profiles'))
 		self.setFlags(Qt.ItemIsEnabled | Qt.ItemIsSelectable | Qt.ItemIsDropEnabled)
 
 	def fetchChildItems(self):
@@ -945,7 +945,7 @@ class PackageDescriptionWidgetItem(BaseWidgetItem):
 	"""
 	def __init__(self, path, parent = None):
 		BaseWidgetItem.__init__(self, path, parent)
-		self.setIcon(0, icon(':/icons/itemtype/package-metadata'))
+		self.setIcon(0, icon(':/icons/item-types/package-metadata'))
 		self.setFlags(Qt.ItemIsEnabled | Qt.ItemIsSelectable)
 
 
