@@ -516,7 +516,81 @@ class BaseWidgetItem(QTreeWidgetItem):
 		self._path = "%s/%s" % (basepath, basename)
 		self.setText(0, basename)
 		print "DEBUG: new file path: %s" % self._path
-			
+
+	def isAts(self):
+		return isinstance(self, AtsWidgetItem)
+
+	def isExecutionLog(self):
+		return isinstance(self, ExecutionLogWidgetItem)
+
+	def isModule(self):
+		return isinstance(self, ModuleWidgetItem)
+
+	def isCampaign(self):
+		return isinstance(self, CampaignWidgetItem)
+
+	def isDir(self):
+		return isinstance(self, DirWidgetItem)
+
+	def isExpandable(self):
+		return isinstance(self, ExpandableWidgetItem)
+	
+	def isPackageRootDir(self):
+		return isinstance(self, PackageDirWidgetItem)
+
+	def isPackageProfilesDir(self):
+		return isinstance(self, PackageProfilesDirWidgetItem)
+
+	def isPackageSrcDir(self):
+		return isinstance(self, PackageSrcDirWidgetItem)
+
+	def isProfile(self):
+		return isinstance(self, ProfileWidgetItem)
+	
+	def isPackageDescription(self):
+		return isinstance(self, PackageDescriptionWidgetItem)
+	
+	def isLocked(self):
+		# A locked file is a file that is within a locked package.
+		# TODO: implement me (especially for a PackageDir)
+		return False
+
+	def getParentPackageRootDir(self):
+		item = self
+		while item and item != self.treeWidget():
+			if item.isPackageRootDir():
+				return item
+			item = item.parent()
+		return None
+	
+	def isInPackageTree(self):
+		if self.getParentPackageRootDir():
+			return True
+		else:
+			return False
+
+	def isInPackageProfilesTree(self):
+		item = self
+		while item and item != self.treeWidget():
+			if item.isPackageProfilesDir():
+				return True
+			if item.isPackageRootDir():
+				# Break the search once we reached a package root
+				return False
+			item = item.parent()
+		return False
+	
+	def isInPackageSrcTree(self):
+		item = self
+		while item and item != self.treeWidget():
+			if item.isPackageSrcDir():
+				return True
+			if item.isPackageRootDir():
+				# Break the search once we reached a package root
+				return False
+			item = item.parent()
+		return False
+
 
 class AsyncFetchingThread(QThread):
 	"""
@@ -681,6 +755,9 @@ class DirWidgetItem(ExpandableWidgetItem):
 		Re-implemented from ExpandableWidgetItem.
 		Xc-Subscribes for updates regarding this directory.
 		"""
+		self._subscribe()
+
+	def _subscribe(self):
 		self.getClient().subscribe('filesystem:%s' % self.getUrl().path(), self._onFileSystemNotification)
 	
 	def onCollapsed(self):
@@ -688,7 +765,18 @@ class DirWidgetItem(ExpandableWidgetItem):
 		Re-implemented from ExpandableWidgetItem.
 		Xc-Unsubscribes for updates regarding this directory.
 		"""
+		self._unsubscribe()
+	
+	def _unsubscribe(self):
 		self.getClient().unsubscribe('filesystem:%s' % self.getUrl().path(), self._onFileSystemNotification)
+
+	def setBasename(self, basename):
+		"""
+		Reimplemented to support resubscription.
+		"""
+		self._unsubscribe()
+		ExpandableWidgetItem.setBasename(self, basename)
+		self._subscribe()
 
 	def __del__(self):
 		self.onCollapsed()
@@ -741,7 +829,8 @@ class AtsWidgetItem(ExpandableWidgetItem):
 		self.setFlags(Qt.ItemIsEnabled | Qt.ItemIsSelectable | Qt.ItemIsDragEnabled | Qt.ItemIsEditable)
 
 	def addFetchedChildItems(self, data):
-		self.addChild(RevisionsWidgetItem(self._path))
+		if not self.isInPackageTree():
+			self.addChild(RevisionsWidgetItem(self._path))
 		self.addChild(ExecutionLogsWidgetItem(self._path))
 
 
@@ -755,7 +844,8 @@ class ModuleWidgetItem(ExpandableWidgetItem):
 		self.setFlags(Qt.ItemIsEnabled | Qt.ItemIsSelectable | Qt.ItemIsDragEnabled | Qt.ItemIsEditable)
 
 	def addFetchedChildItems(self, data):
-		self.addChild(RevisionsWidgetItem(self._path))
+		if not self.isInPackageTree():
+			self.addChild(RevisionsWidgetItem(self._path))
 
 
 class CampaignWidgetItem(ExpandableWidgetItem):
@@ -768,7 +858,8 @@ class CampaignWidgetItem(ExpandableWidgetItem):
 		self.setFlags(Qt.ItemIsEnabled | Qt.ItemIsSelectable | Qt.ItemIsDragEnabled | Qt.ItemIsEditable)
 
 	def addFetchedChildItems(self, data):
-		self.addChild(RevisionsWidgetItem(self._path))
+		if not self.isInPackageTree():
+			self.addChild(RevisionsWidgetItem(self._path))
 		self.addChild(ExecutionLogsWidgetItem(self._path))
 
 
@@ -865,6 +956,10 @@ class ProfileWidgetItem(BaseWidgetItem):
 		self.setIcon(0, icon(':/icons/item-types/profile'))
 		self.setFlags(Qt.ItemIsEnabled | Qt.ItemIsSelectable | Qt.ItemIsDragEnabled | Qt.ItemIsEditable)
 
+	def addFetchedChildItems(self, data):
+		if not self.isInPackageTree():
+			self.addChild(RevisionsWidgetItem(self._path))
+
 ##
 # Package-specific items
 ##
@@ -878,6 +973,7 @@ class PackageDirWidgetItem(DirWidgetItem):
 		DirWidgetItem.__init__(self, path, parent)
 		self.setIcon(0, icon(':/icons/item-types/folder-package'))
 		self.setFlags(Qt.ItemIsEnabled | Qt.ItemIsSelectable | Qt.ItemIsEditable)
+		# Well, isEditable should be set only if unlocked.
 
 	def fetchChildItems(self):
 		try:
@@ -929,15 +1025,6 @@ class PackageProfilesDirWidgetItem(DirWidgetItem):
 		except Exception:
 			l = []
 		return l
-
-	def addFetchedChildItems(self, data):
-		for entry in data:
-			child = None
-			fullpath = '%s/%s' % (self._path, entry['name'])
-			if entry['type'] == 'profile':
-				child = ProfileWidgetItem(fullpath)
-			if child:
-				self.addChild(child)
 
 class PackageDescriptionWidgetItem(BaseWidgetItem):
 	"""
@@ -993,13 +1080,10 @@ class WServerFileSystemTreeWidget(QTreeWidget):
 		self.setWindowIcon(icon(':/icons/browser'))
 		self.setWindowTitle('Remote explorer')
 
-		self.setHeaderLabels([ 'Name' ]) #, 'Type' ])
-		self.header().setResizeMode(0, QHeaderView.ResizeToContents)
-		self.header().setResizeMode(1, QHeaderView.Stretch)
-		self.header().resizeSection(1, 70)
+		self.setHeaderLabels([ 'Name' ])
 
-		# Experiment: hidde the header, only one section ('name')		
-		self.setHeaderHidden(True)
+		# Experiment: hidde the header, only one section ('name')
+#		self.setHeaderHidden(True)
 
 		self.setContextMenuPolicy(Qt.DefaultContextMenu)
 		self.connect(self, SIGNAL("itemExpanded(QTreeWidgetItem*)"), self.onItemExpanded)
@@ -1018,7 +1102,10 @@ class WServerFileSystemTreeWidget(QTreeWidget):
 		self.setDragEnabled(True)
 		self.setDropIndicatorShown(True)
 		self.setAutoScroll(True)
-		
+		self.setSortingEnabled(True)
+		self.header().setSortIndicator(0, Qt.AscendingOrder)
+		self.setTextElideMode(Qt.ElideNone)
+
 		self.setEditTriggers(QAbstractItemView.EditKeyPressed)
 		
 		self._path = path
@@ -1048,31 +1135,49 @@ class WServerFileSystemTreeWidget(QTreeWidget):
 		
 		if item:
 			# Depending of the node, add several actions
-			if isinstance(item, AtsWidgetItem):
+			if item.isAts():
 				menu.addAction("Edit (head)", lambda: self._open(item))
+				menu.addAction("Show dependencies...", lambda: self._showDependencies(item))
 				menu.addAction("Delete", lambda: self._deleteAts(item))
-
-			elif isinstance(item, ExecutionLogWidgetItem):
+			elif item.isExecutionLog():
 				menu.addAction("Open", lambda: self._open(item))
 				menu.addAction("Delete", lambda: self._deleteExecutionLog(item))
-
-			if isinstance(item, ModuleWidgetItem):
+			elif item.isModule():
 				menu.addAction("Edit (head)", lambda: self._open(item))
+				menu.addAction("Show dependencies...", lambda: self._showDependencies(item))
 				menu.addAction("Show referrer files...", lambda: self._showModuleReferrerFiles(item))
 				menu.addAction("Delete", lambda: self._deleteModule(item))
-
-			if isinstance(item, CampaignWidgetItem):
+			elif item.isCampaign():
 				menu.addAction("Edit (head)", lambda: self._open(item))
+				menu.addAction("Show dependencies...", lambda: self._showDependencies(item))
 				menu.addAction("Delete", lambda: self._deleteCampaign(item))
-
-			if isinstance(item, DirWidgetItem):
+			elif item.isPackageRootDir():
+				menu.addAction("Export package...", lambda: self._notYetImplemented())
+				if not item.isLocked():
+					menu.addAction("Lock package...", lambda: self._notYetImplemented())
+				else:
+					menu.addAction("Unlock package...", lambda: self._notYetImplemented())
+			elif item.isPackageProfilesDir():
+				menu.addAction("New folder...", lambda: self._createDirectory(item))
+			elif item.isPackageSrcDir():
+				menu.addAction("New folder...", lambda: self._createDirectory(item))
+			elif item.isProfile():
+				menu.addAction("Edit", lambda: self._open(item))
+				if item.isInPackageProfilesTree():
+					menu.addAction("Run package with this profile", lambda: self._notYetImplemented())
+				menu.addAction("Delete", lambda: self._notYetImplemented())
+			elif item.isPackageDescription():
+				menu.addAction("Edit", lambda: self._open(item))
+			elif item.isDir():
+				menu.addAction("New folder...", lambda: self._createDirectory(item))
 				menu.addAction("Delete", lambda: self._deleteDirectory(item))
 
-			if isinstance(item, ExpandableWidgetItem):
-				menu.addAction("Refresh subtree", lambda: self._refresh(item))
+			if item.isExpandable():
+				menu.addSeparator()
+				menu.addAction("Refresh", lambda: self._refresh(item))
 
 			menu.addSeparator()
-		
+
 		# In any case, general action
 		menu.addAction("Refresh all", self.refresh)
 		
@@ -1122,6 +1227,8 @@ class WServerFileSystemTreeWidget(QTreeWidget):
 				child = ModuleWidgetItem(fullpath)
 			elif entry['type'] == 'package':
 				child = PackageDirWidgetItem(fullpath)
+			elif entry['type'] == 'profile':
+				child = ProfileWidgetItem(fullpath)
 			else:
 				child = None
 			if child:
@@ -1130,6 +1237,9 @@ class WServerFileSystemTreeWidget(QTreeWidget):
 	##
 	# Local actions
 	##
+	def _notYetImplemented(self):
+		CommonWidgets.userInformation(self, "This action is not yet implemented.")
+
 	def _refresh(self, item):
 		self.collapseItem(item)
 		self.expandItem(item)
@@ -1199,7 +1309,31 @@ class WServerFileSystemTreeWidget(QTreeWidget):
 				else:
 					# Display an error message ?
 					pass
-	
+
+	def _showDependencies(self, item):
+		path = unicode(item.getUrl().path())
+		transient = CommonWidgets.WTransientWindow()
+		transient.showTextLabel("Getting dependencies list...")
+		deps = self.getClient().getDependencies(path)
+		transient.dispose()
+		dialog = CommonWidgets.WTextEditDialog('\n'.join(deps), "File dependencies for %s" % os.path.split(path)[1],
+			readOnly = True, parent = self, fixedFont = True)
+		dialog.exec_()
+
+	def _createDirectory(self, item):
+		path = item.getUrl().path()
+		print "DEBUG: creating a new folder in %s..." % path
+		(name, status) = QInputDialog.getText(self, "New folder", "Folder name:")
+		while status and not validateDirectoryName(name):
+			# Display some error message
+			CommonWidgets.userError(self, "The following characters are forbidden in a folder name:\n%s" % ', '.join([x for x in RESTRICTED_NAME_CHARACTERS]))
+			(name, status) = QInputDialog.getText(self, "New folder", "Folder name:")
+
+		if not name.isEmpty():
+			self._client.makeDirectory("%s/%s" % (path, name))
+			# As usual, the new folder creation will be notified by the server, so
+			# no local view update to perform synchronously
+
 	def _copyItems(self, sources, destination):
 		"""
 		Copies the first file in sources.
@@ -1237,7 +1371,48 @@ class WServerFileSystemTreeWidget(QTreeWidget):
 					return self.getClient().copy(src, dst)
 				else:
 					return False
-			
+
+	def _importItems(self, sources, destination):
+		"""
+		Imports the first file in sources to a destination within
+		a package.
+		Also imports/updates dependencies (optionally).
+
+		May display user notifications in case of misoperations.
+		
+		@type  sources: list of QUrls
+		@type  destination: QString (path)
+		
+		@rtype: bool
+		@returns: True if the import copy was OK. False otherwise.
+		"""
+		# We assume a source list containing only one URL (single selection only)
+		# Will require some clean up one day.
+		for url in sources:
+			print "DEBUG: importing %s to %s..." % (url.path(), destination)
+			src = unicode(url.path())
+			srcBasename = os.path.split(src)[1]
+			dst = unicode(destination)
+			dstBasename = os.path.split(dst)[1]
+			# Minimal checks to avoid self/recursive copy, etc
+			if os.path.split(src)[0] == dst:
+				# copy a file/folder to its own folder
+				CommonWidgets.userInformation(self, "Cannot import %s to itself" % srcBasename)
+				return False
+			elif dst.startswith('%s/' % src) or src == dst:
+				# copy a folder to one of its sub-folders (or itself)
+				# NB: this is not possible due to the current copy implementation on the server:
+				# it will not create a list of files to copy before starting the copy, leading
+				# to some infinite recursion operations. To fix on server side.
+				CommonWidgets.userInformation(self, "Cannot import %s to itself or to one of its sub-folders" % srcBasename)
+				return False
+			else:
+				if QMessageBox.question(self, "Import to package", "Are you sure you want to import %s and its dependencies to package folder %s?\n(existing files will be overwritten)" % (srcBasename, dstBasename),
+					QMessageBox.Yes|QMessageBox.No, QMessageBox.Yes) == QMessageBox.Yes:
+					return self.getClient().copy(src, dst)
+				else:
+					return False
+
 	def _moveItems(self, sources, destination):
 		"""
 		Display a dialog with a list of files to move,
@@ -1271,7 +1446,10 @@ class WServerFileSystemTreeWidget(QTreeWidget):
 			raise Exception("An object with the same name already exists in this folder")
 
 	def onCopyUrls(self, parent, sources, destination):
-		ret = self._copyItems(sources, destination)
+		if parent and parent.isInPackageTree():
+			ret = self._importItems(sources, destination)
+		else:
+			ret = self._copyItems(sources, destination)
 
 	def onItemChanged(self, item, col):
 		if col == 0 and hasattr(item, "getBasename") and item.getBasename() != unicode(item.text(0)):
@@ -1303,6 +1481,7 @@ class WServerFileSystemTreeWidget(QTreeWidget):
 		dragEnterEvent.accept()
 		
 	def dragMoveEvent(self, dragMoveEvent):
+		QTreeWidget.dragMoveEvent(self, dragMoveEvent)
 		item = self.itemAt(dragMoveEvent.pos())
 		if item:
 			if item.flags() & Qt.ItemIsDropEnabled:

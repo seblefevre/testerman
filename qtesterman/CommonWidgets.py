@@ -1069,6 +1069,10 @@ class WTransientWindow(QDialog):
 		self.label.setText(txt)
 		self.show()
 		QApplication.instance().processEvents()
+	
+	def dispose(self):
+		self.hide()
+		self.setParent(None)
 
 
 ###############################################################################
