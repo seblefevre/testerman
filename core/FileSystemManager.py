@@ -32,6 +32,17 @@ import Versions
 import logging
 import os
 
+
+# Application-type for returned objects in dir lists (sort of mime-types)
+APPTYPE_ATS = 'ats'
+APPTYPE_CAMPAIGN = 'campaign'
+APPTYPE_MODULE = 'module'
+APPTYPE_LOG = 'log'
+APPTYPE_PROFILE = 'profile'
+APPTYPE_PACKAGE_METADATA = 'package-metadata'
+APPTYPE_PACKAGE = 'package'
+APPTYPE_DIR = 'directory'
+
 ################################################################################
 # Logging
 ################################################################################
@@ -132,17 +143,17 @@ class FileSystemManager:
 		applicationType = None
 		if backendType == 'file':
 			if name.endswith('.ats'):
-				applicationType = 'ats'
+				applicationType = APPTYPE_ATS
 			elif name.endswith('.campaign'):
-				applicationType = 'campaign'
+				applicationType = APPTYPE_CAMPAIGN
 			elif name.endswith('.py') and name != '__init__.py':
-				applicationType = 'module'
+				applicationType = APPTYPE_MODULE
 			elif name.endswith('.log'):
-				applicationType = 'log'
+				applicationType = APPTYPE_LOG
 			elif name.endswith('.profile'):
-				applicationType = 'profile'
+				applicationType = APPTYPE_PROFILE
 			elif name == 'package.xml':
-				applicationType = 'package-metadata'
+				applicationType = APPTYPE_PACKAGE_METADATA
 		elif backendType == 'directory':
 			# Could be a plain directory, 
 			# or a package directory,
@@ -152,9 +163,9 @@ class FileSystemManager:
 			except:
 				package = False
 			if package:
-				applicationType = 'package'
+				applicationType = APPTYPE_PACKAGE
 			else:
-				applicationType = 'directory'
+				applicationType = APPTYPE_DIR
 		return applicationType
 	
 	def read(self, filename):
