@@ -15,7 +15,8 @@
 
 ##
 # Basic Document model (used in multiple views).
-# Also include specialized classes ({Module,Ats,Campaign}Model, etc)
+#
+# Also include specialized classes ({Module,Ats,Campaign,PackageDescription}Model, etc)
 #
 ##
 
@@ -24,13 +25,43 @@ from PyQt4.QtXml import *
 
 from Base import *
 
-# Document types
-# NB: these type values are those returned by a Ws.getDirectoryListing()
+import re
+
+# 'Application' Document types
+# These type values are those returned by a Ws.getDirectoryListing()
 # by the server.
-TYPE_ATS = "ats"
-TYPE_MODULE = "module"
-TYPE_CAMPAIGN = "campaign"
-TYPE_PACKAGE_DESCRIPTION = "package_description"
+TYPE_ATS = 'ats'
+TYPE_MODULE = 'module'
+TYPE_CAMPAIGN = 'campaign'
+TYPE_PACKAGE_METADATA = 'package-metadata'
+TYPE_PROFILE = 'profile'
+
+###############################################################################
+# DocumentModel registrations
+###############################################################################
+
+DocumentModelClasses = []
+
+def registerDocumentModelClass(fileFilter, documentModelClass):
+	"""
+	Registers a model class as the one to be used to open a file
+	whose filename matches the fileFilter regexp.
+	
+	TODO: we should base our registration on application type, not
+	filename...
+	"""
+	global DocumentModelClasses
+	DocumentModelClasses.append({'filter': fileFilter, 'class': documentModelClass})
+
+def getDocumentModelClass(filename):
+	"""
+	For a given filename, returns the first document model whose file type support matches.
+	"""
+	for d in DocumentModelClasses:
+		if re.match(d['filter'], filename):
+			return d['class']
+	return None		
+
 
 ###############################################################################
 # Model Base
@@ -41,7 +72,7 @@ class MetadataModel(QObject):
 	A Metadata model is a sub-model of a DocumentModel.
 
 	It manages all the metadata-related stuff for a body.
-	Body + Metadata composes a Document.
+	Body (unicode) + MetadataModel composes a DocumentModel.
 
 	This Metadata model is initialized with a unicode string containing a valid Testerman XML metadata description.
 	It provides several functions to manage the data without dealing with the actual XML,
@@ -129,7 +160,7 @@ class MetadataModel(QObject):
 		(res, errorMessage, errorLine, errorColumn) = metadataDoc.setContent(metadata, 0)
 
 		if not res:
-			raise Exception("Invalid metadata: %s (line %d, column %d)" % (str(errorMessage), errorLine, errorColumn))
+			raise Exception("Invalid metadata: %s (line %d, column %d)" % (unicode(errorMessage), errorLine, errorColumn))
 
 		# Now we fill our internal model representation
 		version = metadataDoc.documentElement().attribute('version')
@@ -169,7 +200,7 @@ class MetadataModel(QObject):
 #		ret += u"parameters: %s\n" % str(self.parameters)
 		return ret
 
-	def getMetadata(self):
+	def toString(self):
 		"""
 		Serializes the model to XML.
 
@@ -337,8 +368,9 @@ class MetadataModel(QObject):
 
 class DocumentModel(QObject):
 	"""
-	A Document model using metadata and body aspects (acts as a proxy for a MetadataModel)
-	Used as a base class for ModuleModel and ScriptModel.
+	Document Model base class.
+	
+	Contains a body aspect and an optional metadata aspect.
 
 	You may set/get metadata & body.
 	You may get the complete document.
@@ -356,99 +388,92 @@ class DocumentModel(QObject):
 	When modifying a single aspect of the model, documentReplaced() won't be fired.
 	When replacing the complete document at once (with setDocument), this fires all aspect updates (medataUpdated, bodyUpdated)
 	and an additional documentReplaced().
+	
+	In subclasses,
+	typically implements _split(), _join()
+	and call setFileExtension() and setDocumentType() from the constructor.
 	"""
-
-	def __init__(self, document = None, defaultMetadata = u""):
-		"""
-		@type  document: unicode string
-		@param document: the complete document data (metadata + body, automatically split)
-		@type  defaultMetadata: unicode string
-		@param defaultMetadata: the metadata returned when the initial document does not contain any metadata.
-		"""
+	def __init__(self):
 		QObject.__init__(self)
-		# Let's split our document into a body and metadata raw data
-		# (unicode strings)
-		self._defaultMetadata = defaultMetadata
-		(metadata, self.body) = self._explode(document)
-		# Turns the metadata part into a sub model
-		self.metadataModel = MetadataModel(metadata)
-
-		#: must be overridden in DocumentModel subclasses.
-		self.extension = ""
-		#: must be overridden in DocumentModel subclasses with a TYPE_*
-		self.documentType = None
-
+		# The testerman application type of the document.
+		self._documentType = None
+		# The default file extension for this type of document.
+		self._fileExtension = ""
+		# The optional metadata (sub) model
+		self._metadataModel = None
+		# The body aspect of the document (generally unicode, but actually any object)
+		self._body = None
+		
 		# These Document attributes are updated whenever the file is actually saved to a location.
 		#: QUrl
-		self.url = None
+		self._url = None
 		# This timestamp is the reference timestamp of the doc when retrieved from the server.
 		# If we put this doc into the repository, if the file was updated in the meanwhile,
 		# we'll get a warning ("optimistic locking" concurrency management model)
-		self.savedTimestamp = 0
+		self._savedTimestamp = 0
 
 		# Modification status
 		# We manage the body part directly
-		self.bodyModified = False
+		self._bodyModified = False
 		# But the metadata part is managed by the sub model.
 		# modified is the current modification status according to both body and metadata status.
-		self.modified = False
+		self._modified = False
 		
-		# We act as a proxy for the metadata sub-model,
-		# i.e. we reemit a local signal whenever we have a modification here.
-		self.connect(self.metadataModel, SIGNAL('metadataUpdated()'), self.onMetadataUpdated)
-		self.connect(self.metadataModel, SIGNAL('modificationChanged(bool)'), self.onMetadataModificationChanged)
-	
 	def onMetadataUpdated(self):
 		log("DEBUG: forwarding metadataUpdated signal")
 		self.emit(SIGNAL('metadataUpdated()'))
 
 	def onMetadataModificationChanged(self, modified):
-		log("DEBUG: onMetadataModificationChanged, %s" % str(modified))
 		# If the body has been modified, the document status stays to "modified".
-		if self.bodyModified:
-			log("DEBUG: onMetadataModificationChanged, %s, not taken into account, body modified (local status: %s)" % (str(modified), str(self.modified)))
+		if self._bodyModified:
+			log("DEBUG: onMetadataModificationChanged, %s, not taken into account, body modified (local status: %s)" % (str(modified), str(self._modified)))
 			return
 		# If the body has not been modified, then we can have a look to the metadata.
 		# Only taken into account if it changes our local status.
-		if modified != self.modified:
-			self.modified = modified
-			self.emit(SIGNAL('modificationChanged(bool)'), self.modified)
+		if modified != self._modified:
+			log("DEBUG: onMetadataModificationChanged, %s" % str(modified))
+			self._modified = modified
+			self.emit(SIGNAL('modificationChanged(bool)'), self._modified)
 
 	def onBodyModificationChanged(self, modified):
 		# If the metadata has been modified, the document status stays to "modified".
-		log("DEBUG: onBodyModificationChanged, %s" % str(modified))
-		if self.metadataModel.isModified():
-			log("DEBUG: onBodyModificationChanged, %s, not taken into account, metadata modified (local status: %s)" % (str(modified), str(self.modified)))
+		if self._metadataModel and self._metadataModel.isModified():
+			log("DEBUG: onBodyModificationChanged, %s, not taken into account, metadata modified (local status: %s)" % (str(modified), str(self._modified)))
 			return
 		# If the body has not been modified, then we can have a look to the metadata.
 		# Only taken into account if it changes our local status.
-		if modified != self.modified:
-			self.modified = modified
-			self.bodyModified = modified
-			self.emit(SIGNAL('modificationChanged(bool)'), self.modified)
+		if modified != self._modified:
+			log("DEBUG: onBodyModificationChanged, %s" % str(modified))
+			self._modified = modified
+			self._bodyModified = modified
+			self.emit(SIGNAL('modificationChanged(bool)'), self._modified)
 
 	def resetModificationFlag(self):
 		"""
 		To call once modifications have been saved.
 		"""
-		self.modified = False
-		self.bodyModified = False
-		self.metadataModel.resetModificationFlag()
-		self.emit(SIGNAL('modificationChanged(bool)'), self.modified)
+		self._modified = False
+		self._bodyModified = False
+		if self._metadataModel:
+			self._metadataModel.resetModificationFlag()
+		self.emit(SIGNAL('modificationChanged(bool)'), self._modified)
 
 	def isModified(self):
-		return self.bodyModified or self.metadataModel.isModified() # Should be equals to self.modified at any time, normally.
+		return self._bodyModified or (self._metadataModel and self._metadataModel.isModified()) # Should be equals to self.modified at any time, normally.
 
 	def getDocumentType(self):
-		return self.documentType
+		return self._documentType
+	
+	def setDocumentType(self, documentType):
+		self._documentType = documentType
 
 	def getTimestamp(self):
-		return self.savedTimestamp
+		return self._savedTimestamp
 
 	def isRemote(self):
-		if not self.url:
+		if not self._url:
 			return False
-		return (self.url.scheme() == "testerman")
+		return (self._url.scheme() == "testerman")
 
 	def getUrl(self):
 		"""
@@ -459,7 +484,7 @@ class DocumentModel(QObject):
 		@rtype: QUrl, or None
 		@returns: the last saved URL, if any, or None otherwise.
 		"""
-		return self.url
+		return self._url
 	
 	def getName(self):
 		"""
@@ -472,11 +497,11 @@ class DocumentModel(QObject):
 		@rtype: QString
 		@returns: the name of the document.
 		"""
-		if self.url:
-			if self.url.scheme() == 'testerman':
-				return self.url.path()[len('/repository/'):]
+		if self._url:
+			if self._url.scheme() == 'testerman':
+				return self._url.path()[len('/repository/'):]
 			else:
-				return "%s (local)" % self.url.path().split('/')[-1]
+				return "%s (local)" % self._url.path().split('/')[-1]
 		else:
 			return None
 	
@@ -490,26 +515,33 @@ class DocumentModel(QObject):
 		@type  timestamp: float
 		@param timestamp: the datetime of the last save
 		"""
-		self.url = url
-		self.savedTimestamp = timestamp
+		self._url = url
+		self._savedTimestamp = timestamp
 		self.emit(SIGNAL('urlUpdated()'))
 
-	def getExtension(self):
+	def getFileExtension(self):
 		"""
 		Returns the associated file extension (py, ats, campaign).
 		@rtype: string
 		@returns: the file extension, corresponding to the document model type.
 		"""
-		return self.extension
-
+		return self._fileExtension
+	
+	def setFileExtension(self, extension):
+		self._fileExtension = extension
+	
 	def getDocument(self):
 		"""
-		Returns the complete document, incuding metadata, according to the currently known model
+		Returns the complete serialized document, incuding metadata, according to the currently known model
 
 		@rtype: unicode string
 		@returns: the complete document underlying the model
 		"""
-		return self._join(self.metadataModel.getMetadata(), self.body)
+		if self._metadataModel:
+			metadata = self._metadataModel.toString()
+		else:
+			metadata = None
+		return self._join(metadata, self._body)
 
 	def setDocument(self, document):
 		"""
@@ -520,51 +552,57 @@ class DocumentModel(QObject):
 		@rtype: None
 		@returns: None
 		"""
+		if self._metadataModel:
+			# Disconnect signals
+			self.disconnect(self._metadataModel, SIGNAL('metadataUpdated()'), self.onMetadataUpdated)
+			self.disconnect(self._metadataModel, SIGNAL('modificationChanged(bool)'), self.onMetadataModificationChanged)
+			self._metadataModel = None
+		
 		log("Replacing document in Model")
-		(metadata, self.body) = self._explode(document)
-		self.metadataModel.setMetadata(metadata)
+
+		(metadataSource, self._body) = self._split(document)
+		if metadataSource is not None:
+			self._metadataModel = MetadataModel(metadataSource)
+		self.emit(SIGNAL('metadataUpdated()'))
 		self.emit(SIGNAL('bodyUpdated()'))
 		self.emit(SIGNAL('documentReplaced()'))
 
-	def setMetadata(self, metadata):
+		# We act as a proxy for the metadata sub-model,
+		# i.e. we reemit a local signal whenever we have a modification here.
+		if self._metadataModel:
+			# Reconnect signals
+			self.connect(self._metadataModel, SIGNAL('metadataUpdated()'), self.onMetadataUpdated)
+			self.connect(self._metadataModel, SIGNAL('modificationChanged(bool)'), self.onMetadataModificationChanged)
+		
+		self.onDocumentSet()
+	
+	def onDocumentSet(self):
 		"""
-		Sets the metadata aspect of the model (acts as a proxy for the sub-metadataModel)
-		@type  metadata: unicode string
-		@param metadata: the metadata, as a valid xml text string
-
-		@rtype: None
-		@returns: None
+		Reimplement this function to do something particular 
+		once the document has been set (and split),
+		i.e. self._body and self._metadataModel are available.
 		"""
-		self.metadataModel.setMetadata(metadata)
-
-	def getMetadata(self):
-		"""
-		Returns the metadata aspect of the model.
-
-		@rtype: unicode string
-		@returns: the medata for the document, as a valid (ready to parse) xml text string
-		"""
-		return self.metadataModel.getMetadata()
+		pass
 
 	def getMetadataModel(self):
 		"""
 		Returns the metadata sub-model.
 
-		@rtype: unicode string
-		@returns: the medata for the document, as a valid (ready to parse) xml text string
+		@rtype: MetadataModel, or None
+		@returns: the medata model for the document, if any.
 		"""
-		return self.metadataModel
+		return self._metadataModel
 
 	def setBody(self, body):
 		"""
 		Sets the body aspect of the model.
-		@type  body: unicode string
+		@type  body: object (usually a unicode string)
 		@param body: the body
 
 		@rtype: None
 		@returns: None
 		"""
-		self.body = body
+		self._body = body
 		self.emit(SIGNAL('bodyUpdated()'))
 		self.emit(SIGNAL('modificationChanged(bool)'), self.isModified())
 
@@ -572,13 +610,77 @@ class DocumentModel(QObject):
 		"""
 		Gets the body aspect of the model.
 
-		@rtype: unicode string
+		@rtype: object (usually a unicode string)
 		@returns: the body of the document.
 		"""
-		return self.body
+		return self._body
 
-	def _explode(self, document):
+	def _split(self, document):
 		"""
+		To reimplement.
+		
+		Splits a document source into
+		a body part and a metadata source part.
+		
+		The default implementation only returns a body part.
+		
+		@type  document: string (utf-8 or anything, as read from the source fie)
+		@param document: the document source
+		
+		@rtype: (unicode, object)
+		@returns: a tuple (metadata source, body)
+		If the medata source is not None, a MetadaModel() is built upon it.
+		"""
+		metadataSource = None
+		body = document
+		return (metadataSource, body)
+
+	def _join(self, body, metadataSource):
+		"""
+		To reimplement.
+		
+		Creates a document source object ready to be saved to a file,
+		serializing the metadata and the body together.
+		
+		The default implementation returns the body as is.
+		
+		@type  body: object, depending on what _split() returned
+		@param body: the document model's body
+		@type  metadataSource: unicode string
+		@param metadataSource: the XML-serialized metadata for this model
+		
+		@rtype: object, usually string (utf-8 or anything)
+		@returns: a document buffer to dump to a file containing both the body and the medatata.
+		"""
+		return body
+
+
+class PythonDocumentModel(DocumentModel):
+	"""
+	A Document model composed of a body and an optional metadata sub-model.
+
+	Used as a base class for ModuleModel and AtsModel.
+	"""
+	def __init__(self, defaultMetadataSource = u""):
+		"""
+		@type  defaultMetadataSource: unicode string
+		@param defaultMetadataSource: a default metadata source (xml string) for
+		documents that do not have any metadata in it (including empty documents).
+		"""
+		DocumentModel.__init__(self)
+		# Let's split our document into a body and metadata raw data
+		# (unicode strings)
+		self._defaultMetadataSource = defaultMetadataSource
+	
+	def _split(self, document):
+		"""
+		Reimplemented from DocumentModel for Python-based documents.
+		
+		The metadata source is stored as comments at the start of the 
+		document source.
+		
+		The body is the remaining part of the file, as a unicode string.
+		
 		Returns a tuple (metadata, body), extracting the metadata from the body of the module.
 		
 		the document must starts with a line # __METADATA__BEGIN__,
@@ -595,9 +697,9 @@ class DocumentModel(QObject):
 		body = u""
 		lines = document.split('\n')
 		if not len(lines):
-			return (self._defaultMetadata, document)
+			return (self._defaultMetadataSource, document)
 		if not lines[0].startswith('# __METADATA__BEGIN__'):
-			return (self._defaultMetadata, document)
+			return (self._defaultMetadataSource, document)
 
 		completed = 0
 		metadataLines = [ lines[1] ]
@@ -619,7 +721,7 @@ class DocumentModel(QObject):
 			index += 1
 
 		if not completed:
-			return (self._defaultMetadata, document)
+			return (self._defaultMetadataSource, document)
 
 		# OK, we have valid metadata.
 		metadata = u""
@@ -634,7 +736,8 @@ class DocumentModel(QObject):
 
 	def _join(self, metadata, body):
 		"""
-		Internal fonction.
+		Reimplemented from DocumentModel for Python-based documents.
+		
 		Recreates a full document made of a body with associated metadata.
 		
 		@type  metadata: unicode string
@@ -658,59 +761,95 @@ class DocumentModel(QObject):
 class ModuleModel(DocumentModel):
 	"""
 	Module model.
-	Basic reimplementation from DocumentModel.
-	Some specificities, but not that much.
+	
+	Does not offer metadata;
+	however, for compatibility purpose with older modules whose source may
+	contain metadata,
+	the split function is implemented to filter the metadata our of the
+	body.
 	"""
-	def __init__(self, document = None, url = None, timestamp = 0):
-		defaultMetadata = u'<?xml version="1.0" encoding="utf-8"?>\n<meta>\n<description><![CDATA[description]]></description>\n<prerequisites><![CDATA[prerequisites]]></prerequisites>\n</meta>'
-		DocumentModel.__init__(self, document, defaultMetadata)
-		self.extension = "py"
-		self.documentType = TYPE_MODULE
-		self.setSavedAttributes(url = url, timestamp = timestamp)
-		info = "New ModuleModel created:\n"
-		info += " document len: " + str(len(document)) + "\n"
-		info += " timestamp: " + str(self.savedTimestamp)
-		log(info)
+	def __init__(self):
+		DocumentModel.__init__(self)
+		self.setFileExtension("py")
+		self.setDocumentType(TYPE_MODULE)
+
+	def _split(self, document):
+		"""
+		Reimplemented to discard the metadata that old
+		module files may (incorrectly) contain.
+		
+		Newly saved modules won't contain metadata.
+		"""
+		body = u""
+		lines = document.split('\n')
+		if not len(lines):
+			return (None, document)
+		if not lines[0].startswith('# __METADATA__BEGIN__'):
+			return (None, document)
+
+		completed = 0
+		index = 2
+		for l in lines[2:]:
+			if not len(l):
+				index += 1
+				break
+
+			if l.startswith('# __METADATA__END__'):
+				index += 1
+				completed = 1
+				break
+
+			if l[0] != '#':
+				break
+
+			index += 1
+
+		if not completed:
+			return (None, document)
+		# OK, we have skipped valid metadata.
+
+		body = u'\n'.join(lines[index:])
+
+		return (None, body)
+
+registerDocumentModelClass(r'.*\.py', ModuleModel)
+	
 
 ###############################################################################
 # Ats Model
 ###############################################################################
 
-class AtsModel(DocumentModel):
+class AtsModel(PythonDocumentModel):
 	"""
 	Ats model.
 	Basic reimplementation from DocumentModel.
 	"""
-	def __init__(self, document = None, url = None, timestamp = 0):
-		defaultMetadata = u'<?xml version="1.0" encoding="utf-8"?>\n<meta>\n<description><![CDATA[description]]></description>\n<prerequisites><![CDATA[prerequisites]]></prerequisites><parameters><parameter name="PX_PARAM1" default="defaultValue01" type="string"></parameter></parameters>\n</meta>'
-		DocumentModel.__init__(self, document, defaultMetadata)
-		self.extension = "ats"
-		self.documentType = TYPE_ATS
-		self.setSavedAttributes(url = url, timestamp = timestamp)
-		info = "New AtsModel created:\n"
-		info += " document len: " + str(len(document)) + "\n"
-		info += " timestamp: " + str(self.savedTimestamp)
-		log(info)
+	def __init__(self):
+		defaultMetadataSource = u'<?xml version="1.0" encoding="utf-8"?>\n<meta>\n<description><![CDATA[description]]></description>\n<prerequisites><![CDATA[prerequisites]]></prerequisites><parameters><parameter name="PX_PARAM1" default="defaultValue01" type="string"></parameter></parameters>\n</meta>'
+		PythonDocumentModel.__init__(self, defaultMetadataSource)
+		self.setFileExtension("ats")
+		self.setDocumentType(TYPE_ATS)
+
+registerDocumentModelClass(r'.*\.ats', AtsModel)
 
 ###############################################################################
 # Campaign Model
 ###############################################################################
 
-class CampaignModel(DocumentModel):
+class CampaignModel(PythonDocumentModel):
 	"""
 	Campaign model.
-	Basic reimplementation from DocumentModel.
+	
+	Based on a PythonDocumentModel as it uses the same split/join
+	implementations.
 	"""
-	def __init__(self, document = None, url = None, timestamp = 0):
-		defaultMetadata = u'<?xml version="1.0" encoding="utf-8"?>\n<meta>\n<description><![CDATA[description]]></description>\n<prerequisites><![CDATA[prerequisites]]></prerequisites><parameters><parameter name="PX_PARAM1" default="defaultValue01" type="string"></parameter></parameters>\n</meta>'
-		DocumentModel.__init__(self, document, defaultMetadata)
-		self.extension = "campaign"
-		self.documentType = TYPE_CAMPAIGN
-		self.setSavedAttributes(url = url, timestamp = timestamp)
-		info = "New CampaignModel created:\n"
-		info += " document len: " + str(len(document)) + "\n"
-		info += " timestamp: " + str(self.savedTimestamp)
-		log(info)
+	def __init__(self):
+		defaultMetadataSource = u'<?xml version="1.0" encoding="utf-8"?>\n<meta>\n<description><![CDATA[description]]></description>\n<prerequisites><![CDATA[prerequisites]]></prerequisites><parameters><parameter name="PX_PARAM1" default="defaultValue01" type="string"></parameter></parameters>\n</meta>'
+		PythonDocumentModel.__init__(self, defaultMetadataSource)
+		self.setFileExtension("campaign")
+		self.setDocumentType(TYPE_CAMPAIGN)
+
+registerDocumentModelClass(r'.*\.campaign', CampaignModel)
 
 ###############################################################################
 # Package Description/Manifest Model
@@ -723,17 +862,38 @@ class PackageDescriptionModel(DocumentModel):
 	Federates all package attributes, properties, and links
 	to its dependencies/actual files.
 	
-	A package description is stored as an XML file.
-	
+	A package description is stored as an XML file,
+	and has to document model metadata.
 	"""
-	def __init__(self, document = None, url = None, timestamp = 0):
-		defaultMetadata = u'<?xml version="1.0" encoding="utf-8"?>\n<meta />'
-		DocumentModel.__init__(self, document, defaultMetadata)
-		self.extension = "xml"
-		self.documentType = TYPE_PACKAGE_DESCRIPTION
-		self.setSavedAttributes(url = url, timestamp = timestamp)
-		info = "New PackageDescriptionModel created:\n"
-		info += " document len: " + str(len(document)) + "\n"
-		info += " timestamp: " + str(self.savedTimestamp)
-		log(info)
+	def __init__(self):
+		DocumentModel.__init__(self)
+		self.setFileExtension("xml")
+		self.setDocumentType(TYPE_PACKAGE_METADATA)
+	
+	def _split(self, document):
+		# We parseQDomDocumentthe whole doc as a XML file and puts
+		# a QDocument into the body.
+		# No metadata.
+		
+		if not document:
+			document = u'<?xml version="1.0" ?><package></package>'
+		
+		metadataSource = None
+		body = QDomDocument()
+		(res, errorMessage, errorLine, errorColumn) = body.setContent(document, 0)
+		
+		if not res:
+			raise Exception("Invalid package.xml file: %s (line %d, column %d)" % (unicode(errorMessage), errorLine, errorColumn)) 
+		
+		return (metadataSource, body)
+
+	def _join(self, metadata, body):
+		# Ignore the metadata (which should be None, anyway).
+		# body is as returned by split(), i.e. a QDomDocument.
+		return unicode(body.toString())
+
+registerDocumentModelClass(r'package\.xml', PackageDescriptionModel)
+
+
+	
 

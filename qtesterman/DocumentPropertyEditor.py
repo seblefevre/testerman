@@ -19,8 +19,6 @@
 ##
 
 from PyQt4.Qt import *
-import PyQt4.QtXml as QtXml
-import PyQt4.QtGui as qtItem
 
 from Base import *
 from CommonWidgets import *
@@ -91,7 +89,7 @@ class WParameterEditor(QTreeWidget):
 		self.setSortingEnabled(1)
 		# Default sort - should be read from the QSettings.
 		self.sortItems(0, Qt.AscendingOrder)
-		self.setSelectionMode(qtItem.QAbstractItemView.ExtendedSelection)
+		self.setSelectionMode(QAbstractItemView.ExtendedSelection)
 		labels = QStringList()
 		for l in self.labels:
 			labels.append(l)
@@ -327,22 +325,26 @@ class WDocumentPropertyEditor(QWidget):
 	def __createWidgets(self):
 		layout = QVBoxLayout()
 
-		buttonLayout = QHBoxLayout()
-		self.descriptionButton = QPushButton("Description...", self)
-		self.connect(self.descriptionButton, SIGNAL("clicked()"), self.onDescriptionButtonTriggered)
-		buttonLayout.addWidget(self.descriptionButton)
+#		buttonLayout = QHBoxLayout()
+#		self.descriptionButton = QPushButton("Description...", self)
+#		self.connect(self.descriptionButton, SIGNAL("clicked()"), self.onDescriptionButtonTriggered)
+#		buttonLayout.addWidget(self.descriptionButton)
 
-		self.preprequisitesButton = QPushButton("Prerequisites...", self)
-		self.connect(self.preprequisitesButton, SIGNAL("clicked()"), self.onPrerequisitesButtonTriggered)
-		buttonLayout.addWidget(self.preprequisitesButton)
-		buttonLayout.addStretch()
+#		self.preprequisitesButton = QPushButton("Prerequisites...", self)
+#		self.connect(self.preprequisitesButton, SIGNAL("clicked()"), self.onPrerequisitesButtonTriggered)
+#		buttonLayout.addWidget(self.preprequisitesButton)
+#		buttonLayout.addStretch()
 
-		layout.addLayout(buttonLayout)
+#		layout.addLayout(buttonLayout)
 
 		self.parameterEditor = WParameterEditor(self, self)
 		layout.addWidget(self.parameterEditor)
+		
+		self.noMetadataLabel = QLabel()
+		layout.addWidget(self.noMetadataLabel)
+		self.noMetadataLabel.hide()
 
-		layout.setMargin(2)
+		layout.setMargin(0)
 		self.setLayout(layout)
 
 	def setModel(self, documentModel):
@@ -363,9 +365,16 @@ class WDocumentPropertyEditor(QWidget):
 		# Description, prerequisites: using an additional dialog box, hence updated
 		# when displaying the dialog box.
 		# Possible TODO: other generic properties (author, etc)
-
-		# Parameters: delegation to the parameterEditor.
-		self.parameterEditor.setModel(self.metadataModel)
+		
+		if self.metadataModel:
+			# Parameters: delegation to the parameterEditor.
+			self.parameterEditor.setModel(self.metadataModel)
+			self.parameterEditor.show()
+			self.noMetadataLabel.hide()
+		else:
+			# No metadata available for the current document.
+			self.parameterEditor.hide()
+			self.noMetadataLabel.show()
 
 	def onDescriptionButtonTriggered(self):
 		desc = self.metadataModel.getDescription()

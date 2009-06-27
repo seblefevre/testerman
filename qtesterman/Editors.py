@@ -31,7 +31,7 @@ import re
 import time
 
 from Base import *
-from DocumentModels import *
+import DocumentModels
 import CommonWidgets
 
 import LogViewer
@@ -47,64 +47,37 @@ import TemplateManager
 ##
 
 ###############################################################################
-# Common stuff
+# Document Editors registrations
 ###############################################################################
 
-class WRepositoryCollision(QDialog):
+DocumentEditorClasses = []
+
+def registerDocumentEditorClass(documentType, documentEditorClass):
 	"""
-	When putting a file into the repository, in case of collision:
-	new path, or overwrite.
+	Registers an editor class as the one to be used to edit
+	a model whose type is documentType.
+	
+	Registering an editor for multiple document types is possible.
+	Registering multiple editors for the same document type is also possible.
 	"""
-	def __init__(self, path, parent):
-		QDialog.__init__(self, parent)
-		self.path = path
-		self.__createWidgets()
+	global DocumentEditorClasses
+	DocumentEditorClasses.append({'documentType': documentType, 'class': documentEditorClass})
 
-	def __createWidgets(self):
-		layout = QVBoxLayout()
-		self.setWindowTitle("Existing file")
-		layout.addWidget(QLabel("A file with this name already exists\nin repository. Please enter a new one:"))
-		self.lineEdit = QLineEdit(self.path, self)
-		layout.addWidget(self.lineEdit)
-
-		buttonLayout = QHBoxLayout()
-		buttonLayout.addStretch()
-		self.okButton = QPushButton("Ok")
-		self.connect(self.okButton, SIGNAL("clicked()"), self.accept)
-		self.overwriteButton = QPushButton("Overwrite")
-		self.connect(self.overwriteButton, SIGNAL("clicked()"), self.overwrite)
-		self.cancelButton = QPushButton("Cancel")
-		self.connect(self.cancelButton, SIGNAL("clicked()"), self.reject)
-		buttonLayout.addWidget(self.okButton)
-		buttonLayout.addWidget(self.overwriteButton)
-		buttonLayout.addWidget(self.cancelButton)
-		
-		layout.addLayout(buttonLayout)
-		self.setLayout(layout)
-
-	def overwrite(self):
-		# In case of an overwrite, the initial path id is the one to use.
-		self.lineEdit.setText(self.path)
-		self.done(2)
-
-	def getFilename(self):
-		return self.lineEdit.text()
-
-	def accept(self):
-		if self.lineEdit.text().length() == 0:
-			CommonWidgets.userError(self, 'Sorry, you must enter a non-empty name')
-			# we reinit it to the previous path
-			self.lineEdit.setText(self.path)
-		else:
-			QDialog.accept(self)
+def getDocumentEditorClass(documentModel):
+	"""
+	For a given document model instance,
+	returns a list of suitable editor classes for it.
+	"""
+	ret = [x['class'] for x in DocumentEditorClasses if x['documentType'] == documentModel.getDocumentType()]
+	return ret
 
 
 ###############################################################################
-# WDocument: main widget to handle a document model.
+# WDocumentEditor: base class for an editor able to manage a DocumentModel.
 # Inherited by W{Ats,Campaign,Module}Document
 ###############################################################################
 
-class WDocument(QWidget):
+class WDocumentEditor(QWidget):
 	"""
 	Enable to edit and manipulate the script (execute as, associate an id, etc)
 	Base class for WAtsDocument and WCampaignDocument.
@@ -160,14 +133,6 @@ class WDocument(QWidget):
 		Note: normally it is its direct widget parent.
 		"""
 		self.tabWidget = tabWidget
-
-	def updateModel(self):
-		# Implemented in sub-classes only
-		pass
-
-	def goTo(self, line, col = 0):
-		# implemented in sub-classes
-		pass
 
 	def _saveLocally(self, filename):
 		"""
@@ -268,8 +233,8 @@ class WDocument(QWidget):
 		filename = QFileDialog.getSaveFileName(self, "Save as...", directory, self.filenameTemplate)
 		if filename.isEmpty():
 			return False
-		elif not filename.split('.')[-1] == self.model.getExtension():
-			filename = "%s.%s" % (filename, self.model.getExtension())
+		elif not filename.split('.')[-1] == self.model.getFileExtension():
+			filename = "%s.%s" % (filename, self.model.getFileExtension())
 
 		directory = os.path.dirname(unicode(filename))
 		settings.setValue('lastVisitedDirectory', QVariant(directory))
@@ -289,7 +254,7 @@ class WDocument(QWidget):
 		self.updateModel()
 
 		# Get a new filename (docroot-path, extension added if needed, overwrite confirmation prompted)
-		filename = RemoteBrowsers.getSaveFilename(getProxy(), title = "Save to repository as", filter_ = [ self.model.getDocumentType() ], defaultExtension = self.model.getExtension(), parent = self)
+		filename = RemoteBrowsers.getSaveFilename(getProxy(), title = "Save to repository as", filter_ = [ self.model.getDocumentType() ], defaultExtension = self.model.getFileExtension(), parent = self)
 		if not filename.isEmpty():
 			# Now we can save the file
 			return self._saveRemotely(filename)
@@ -332,9 +297,24 @@ class WDocument(QWidget):
 		Update the tab title (status indicator),
 		tells the Editor widget that its document is marked as not modified.
 		"""
-		if not change:
+		if not change and self.editor:
 			self.editor.setModified(0)
 		self.onUrlUpdated()
+
+	##
+	# Things to reimplement in subclasses
+	##
+	def updateModel(self):
+		# Implemented in sub-classes only
+		pass
+
+	def goTo(self, line, col = 0):
+		"""
+		Called by the outline view.
+		FIXME: should be removed from the WDocumentEditor base class,
+		as it is only suitable to line/text based editors.
+		"""
+		pass
 
 	def replace(self):
 		"""
@@ -370,12 +350,17 @@ class WDocument(QWidget):
 		"""
 		return True
 
+	def getIcon(self):
+		"""
+		Returns an icon representing the edited object.
+		"""
+		return icon(':/icons/item-types/unknown')
 
 ###############################################################################
 # Module Edition
 ###############################################################################
 
-class WModuleDocument(WDocument):
+class WModuleDocumentEditor(WDocumentEditor):
 	"""
 	Enable to edit and manipulate a module.
 
@@ -385,7 +370,7 @@ class WModuleDocument(WDocument):
 	save/saveToRepository functions).
 	"""
 	def __init__(self, moduleModel, parent = None):
-		WDocument.__init__(self, moduleModel, parent)
+		WDocumentEditor.__init__(self, moduleModel, parent)
 
 		self.__createWidgets()
 		self.filenameTemplate = "Testerman Module (*.py)"
@@ -494,18 +479,26 @@ class WModuleDocument(WDocument):
 	def aboutToDocument(self):
 		return self.verify(False)
 
+	def getIcon(self):
+		"""
+		Returns an icon representing the edited object.
+		"""
+		return icon(':/icons/item-types/module')
+
+registerDocumentEditorClass(DocumentModels.TYPE_MODULE, WModuleDocumentEditor)
+
 ###############################################################################
 # ATS Edition
 ###############################################################################
 
-class WAtsDocument(WDocument):
+class WAtsDocumentEditor(WDocumentEditor):
 	"""
 	Enable to edit and manipulate the script (execute as, associate an id, etc).
 
 	Derived view from WDocument
 	"""
 	def __init__(self, atsModel, parent = None):
-		WDocument.__init__(self, atsModel, parent)
+		WDocumentEditor.__init__(self, atsModel, parent)
 		self.__createWidgets()
 		self.filenameTemplate = "Testerman ATS (*.ats)"
 		self.connect(self.model, SIGNAL('modificationChanged(bool)'), self.onModelModificationChanged)
@@ -705,16 +698,24 @@ class WAtsDocument(WDocument):
 	def aboutToDocument(self):
 		return self.verify(False)
 
+	def getIcon(self):
+		"""
+		Returns an icon representing the edited object.
+		"""
+		return icon(':/icons/item-types/ats')
+
+registerDocumentEditorClass(DocumentModels.TYPE_ATS, WAtsDocumentEditor)
+
 ###############################################################################
 # Campaign Edition
 ###############################################################################
 
-class WCampaignDocument(WDocument):
+class WCampaignDocumentEditor(WDocumentEditor):
 	"""
 	Enable to edit and manipulate a Campaign.
 	"""
 	def __init__(self, model, parent = None):
-		WDocument.__init__(self, model, parent)
+		WDocumentEditor.__init__(self, model, parent)
 		self.__createWidgets()
 		self.filenameTemplate = "Testerman Campaign (*.campaign)"
 		self.connect(self.model, SIGNAL('modificationChanged(bool)'), self.onModelModificationChanged)
@@ -829,7 +830,14 @@ class WCampaignDocument(WDocument):
 			return
 		
 		self._schedule(session, scheduledTime)
-	
+
+	def getIcon(self):
+		"""
+		Returns an icon representing the edited object.
+		"""
+		return icon(':/icons/item-types/campaign')
+
+registerDocumentEditorClass(DocumentModels.TYPE_CAMPAIGN, WCampaignDocumentEditor)
 
 ###############################################################################
 # Main Document Manager: a notebook widget opening/closing documents.
@@ -925,15 +933,45 @@ class WDocumentManager(QWidget):
 		# We store files as UTF-8. Decode then to unicode.
 		contents = contents.decode('utf-8')
 		
-		if path.endsWith('.campaign'):
-			QApplication.instance().get('gui.documentmanager').openCampaignTab(contents, url, fileTimestamp = fileTimestamp)
-		elif path.endsWith('.py'):
-			QApplication.instance().get('gui.documentmanager').openModuleTab(contents, url, fileTimestamp = fileTimestamp)
-		elif path.endsWith('.ats'):
-			QApplication.instance().get('gui.documentmanager').openAtsTab(contents, url, fileTimestamp = fileTimestamp)
-		else:
-			log("Unable to open remote file: unknown file type")
+		# Now, creates a model based on the file to open
+		filename = os.path.split(unicode(path))[1]
+		documentModelClass = DocumentModels.getDocumentModelClass(filename)
+		if not documentModelClass:
+			CommonWidgets.systemError(self, 'Unable to detect file type. Not opening %s' % unicode(path))
 			return False
+		
+		model = documentModelClass()
+		model.setDocument(contents)
+		model.setSavedAttributes(url = url, timestamp = fileTimestamp)
+		return self.openTab(model)
+
+	def openTab(self, documentModel):
+		"""
+		Opens a new tab with an editor editing the document model.
+		"""
+		# Find an editor to edit the model
+		documentEditorClasses = getDocumentEditorClass(documentModel)
+		if not documentEditorClasses:
+			CommonWidgets.systemError(self, 'Unable to find a suitable editor to edit %s' % documentModel.getName())
+			return False
+		elif len(documentEditorClasses) > 1:
+			log("Multiple editors found to edit %s. Selecting the first one." % documentModel.getName())
+		documentEditorClass = documentEditorClasses[0]
+		
+		documentEditor = documentEditorClass(documentModel, self.tab)
+		
+		name = documentModel.getShortName()
+		tabIndex = self.tab.addTab(documentEditor, documentEditor.getIcon(), name)
+		self.tab.setTabToolTip(tabIndex, documentModel.getUrl().toString())
+		documentEditor.setTabWidget(self.tab)
+
+		#We should not do this but it doesn't work without for the first tab.
+		self.tab.emit(SIGNAL('currentChanged(int)'), tabIndex)
+		# Set the focus on this tab
+		self.tab.setCurrentIndex(tabIndex)
+		self.connect(documentModel, SIGNAL('urlUpdated()'), self.documentUrlsUpdated)
+		self.documentUrlsUpdated()
+
 		return True
 
 	def getNewName(self, name):
@@ -948,6 +986,9 @@ class WDocumentManager(QWidget):
 		"""
 		Check if the file has not been updated on the server/on disk, but only if no local modifications were done.
 		"""
+		if not self.tab.currentWidget():
+			return
+		
 		model = self.tab.currentWidget().model
 		newTimestamp = 0
 		if (not model.isModified()):
@@ -1035,19 +1076,28 @@ class WDocumentManager(QWidget):
 		"""
 		Open a new tab with an empty (or templated ?) script.
 		"""
-		self.openAtsTab('# ATS Script for Testerman\n', QUrl('unsaved:///%s' % self.getNewName('new ats')))
+		model = DocumentModels.AtsModel()
+		model.setSavedAttributes(url = QUrl('unsaved:///%s' % self.getNewName('new ats')), timestamp = time.time())
+		model.setDocument('# ATS Script for Testerman\n')
+		self.openTab(model)
 
 	def newCampaign(self):
 		"""
 		Open a new tab with an empty (or templated ?) campaign script.
 		"""
-		self.openCampaignTab('# Campaign description file for Testerman\n', QUrl('unsaved:///%s' % self.getNewName('new campaign')))
+		model = DocumentModels.CampaignModel()
+		model.setSavedAttributes(url = QUrl('unsaved:///%s' % self.getNewName('new campaign')), timestamp = time.time())
+		model.setDocument('# Campaign description file for Testerman\n')
+		self.openTab(model)
 
 	def newModule(self):
 		"""
 		Open a new tab with an empty (or templated ?) module.
 		"""
-		self.openModuleTab('# Module file for Testerman\n', QUrl('unsaved:///%s' % self.getNewName('new module')))
+		model = DocumentModels.ModuleModel()
+		model.setSavedAttributes(url = QUrl('unsaved:///%s' % self.getNewName('new module')), timestamp = time.time())
+		model.setDocument('# Module file for Testerman\n')
+		self.openTab(model)
 
 	def documentUrlsUpdated(self):
 		"""
@@ -1055,44 +1105,6 @@ class WDocumentManager(QWidget):
 		We forward the signal once.
 		"""
 		self.emit(SIGNAL('documentUrlsUpdated()'))
-
-	def openAtsTab(self, document, url, fileTimestamp = 0):
-		documentModel = AtsModel(document, url, timestamp = fileTimestamp)
-		wdocument = WAtsDocument(documentModel, self.tab)
-		name = documentModel.getShortName()
-		tabIndex = self.tab.addTab(wdocument, icon(':/icons/item-types/ats'), name)
-		self.tab.setTabToolTip(tabIndex, documentModel.getUrl().toString())
-		wdocument.setTabWidget(self.tab)
-		#We should not do this but it doesn't work without for the first tab.
-		self.tab.emit(SIGNAL('currentChanged(int)'), tabIndex)
-		# Set the focus on this tab
-		self.tab.setCurrentIndex(tabIndex)
-		self.connect(documentModel, SIGNAL('urlUpdated()'), self.documentUrlsUpdated)
-		self.documentUrlsUpdated()
-
-	def openCampaignTab(self, document, url, fileTimestamp = 0):
-		documentModel = CampaignModel(document, url, timestamp = fileTimestamp)
-		wdocument = WCampaignDocument(documentModel, self.tab)
-		name = documentModel.getShortName()
-		tabIndex = self.tab.addTab(wdocument, icon(':/icons/item-types/campaign'), name)
-		self.tab.setTabToolTip(tabIndex, documentModel.getUrl().toString())
-		wdocument.setTabWidget(self.tab)
-		# Set the focus on this tab
-		self.tab.setCurrentIndex(tabIndex)
-		self.connect(documentModel, SIGNAL('urlUpdated()'), self.documentUrlsUpdated)
-		self.documentUrlsUpdated()
-
-	def openModuleTab(self, document, url, fileTimestamp = 0):
-		documentModel = ModuleModel(document, url, timestamp = fileTimestamp)
-		wdocument = WModuleDocument(documentModel, self.tab)
-		name = documentModel.getShortName()
-		tabIndex = self.tab.addTab(wdocument, icon(':/icons/item-types/module'), name)
-		self.tab.setTabToolTip(tabIndex, documentModel.getUrl().toString())
-		wdocument.setTabWidget(self.tab)
-		# Set the focus on this tab
-		self.tab.setCurrentIndex(tabIndex)
-		self.connect(documentModel, SIGNAL('urlUpdated()'), self.documentUrlsUpdated)
-		self.documentUrlsUpdated()
 
 	def saveCurrent(self):
 		"""
@@ -1486,22 +1498,22 @@ class WPythonCodeEditor(sci.QsciScintilla):
 			self.connect(self.pluginsMenu, SIGNAL("aboutToShow()"), self.preparePluginsMenu)
 
 		self.menu.addSeparator()
-		self.templatesMenu = QMenu("Templates")
-		self.menu.addMenu(self.templatesMenu)
-		self.templateManager = TemplateManager.TemplateManager([QApplication.instance().get('qtestermanpath') + "/default-templates.xml", QApplication.instance().get('qtestermanpath') + "/user-templates.xml"], self.parent())
-		if len(self.templateManager.templates) != 0:
-			previousXmlFile = ""
-			for template in self.templateManager.templates:
-				#separator between default and user templates (and others...)
-				if previousXmlFile != "" and previousXmlFile != template.xmlFile:
-					self.templatesMenu.addSeparator()
-				previousXmlFile = template.xmlFile
-				#log("DEBUG: adding action in templates contextual menu..." + unicode(template.name))
-				showName = template.name
-				if template.shortcut != "":
-					showName = "%s (%s)" % (showName, template.shortcut)
-				templateAction = CommonWidgets.TestermanAction(self, showName, lambda name=template.name: self.templateCodeWriter(name), template.description)
-				self.templatesMenu.addAction(templateAction)
+#		self.templatesMenu = QMenu("Templates")
+#		self.menu.addMenu(self.templatesMenu)
+#		self.templateManager = TemplateManager.TemplateManager([QApplication.instance().get('qtestermanpath') + "/default-templates.xml", QApplication.instance().get('qtestermanpath') + "/user-templates.xml"], self.parent())
+#		if len(self.templateManager.templates) != 0:
+#			previousXmlFile = ""
+#			for template in self.templateManager.templates:
+#				#separator between default and user templates (and others...)
+#				if previousXmlFile != "" and previousXmlFile != template.xmlFile:
+#					self.templatesMenu.addSeparator()
+#				previousXmlFile = template.xmlFile
+#				#log("DEBUG: adding action in templates contextual menu..." + unicode(template.name))
+#				showName = template.name
+#				if template.shortcut != "":
+#					showName = "%s (%s)" % (showName, template.shortcut)
+#				templateAction = CommonWidgets.TestermanAction(self, showName, lambda name=template.name: self.templateCodeWriter(name), template.description)
+#				self.templatesMenu.addAction(templateAction)
 
 		self.setContextMenuPolicy(Qt.CustomContextMenu)
 		self.connect(self, SIGNAL("customContextMenuRequested (const QPoint&)"), self.onPopupMenu)
@@ -1693,36 +1705,36 @@ class WPythonCodeEditor(sci.QsciScintilla):
 		"""
 		Write template from templateManager
 		"""
-		template = self.templateManager.byName(templateName)
-		if template is not None:
-			code = template.activate()
-			if code is not None:
-				self.beginUndoAction()
-				self.removeSelectedText()
-				indent = self.getLineIndentation()
-				self.insert(code.replace("\n", "\n" + indent))
-				self.endUndoAction()
-				self.outlineMaybeUpdated()
-				return True
+		#template = self.templateManager.byName(templateName)
+		#if template is not None:
+		#	code = template.activate()
+		#	if code is not None:
+		#		self.beginUndoAction()
+		#		self.removeSelectedText()
+		#		indent = self.getLineIndentation()
+		#		self.insert(code.replace("\n", "\n" + indent))
+		#		self.endUndoAction()
+		#		self.outlineMaybeUpdated()
+		#		return True
 		return False
 
 	def autoCompleteTemplate(self):
 		"""
 		Add template code using shortcut (shortcut then ctrl+j)
 		"""
-		self.getLineIndentation()
-		(lineFrom, _, lineTo, _) = self.getSelection()
-		if lineFrom == -1 and lineTo == -1: # no actual selection
-			currentLine, currentIndex = self.getCursorPosition()
-			previousWord = self.getPreviousWord()
-			#log("previous word:%s" % previousWord)
-			if previousWord != "":
-				template = self.templateManager.byShortcut(previousWord)
-				if template is not None:
-					currentLine, currentIndex = self.getCursorPosition()
-					self.setSelection(currentLine, currentIndex-len(previousWord), currentLine, currentIndex)
-					if not self.templateCodeWriter(template.name):
-						self.setCursorPosition(currentLine, currentIndex)
+		#self.getLineIndentation()
+		#(lineFrom, _, lineTo, _) = self.getSelection()
+		#if lineFrom == -1 and lineTo == -1: # no actual selection
+		#	currentLine, currentIndex = self.getCursorPosition()
+		#	previousWord = self.getPreviousWord()
+		#	#log("previous word:%s" % previousWord)
+		#	if previousWord != "":
+		#		template = self.templateManager.byShortcut(previousWord)
+		#		if template is not None:
+		#			currentLine, currentIndex = self.getCursorPosition()
+		#			self.setSelection(currentLine, currentIndex-len(previousWord), currentLine, currentIndex)
+		#			if not self.templateCodeWriter(template.name):
+		#				self.setCursorPosition(currentLine, currentIndex)
 		
 	def getPreviousWord(self):
 		"""
@@ -2063,3 +2075,149 @@ class WScheduleDialog(QDialog):
 		Returns the time as a integer (Python time)
 		"""
 		return self._dateTimePicker.selectedDateTime().toTime_t()
+
+
+###############################################################################
+# Package Description/Metadata Edition
+###############################################################################
+
+class WPackageDescriptionDocumentEditor(WDocumentEditor):
+	"""
+	Enable to edit and manipulate a package description.
+	
+	This is a view over a PackageDescriptionModel (aspect: body, which is a QDomDocument).
+	
+	Directly interfaces interesting fields in this description:
+	author, 
+	description,
+	entry point
+	
+	Also an entry point to execute the package from a selected profiles ?
+	"""
+	def __init__(self, documentModel, parent = None):
+		WDocumentEditor.__init__(self, documentModel, parent)
+		self.__createWidgets()
+		self.filenameTemplate = "Testerman Package Description (*.xml)"
+		self.connect(self.model, SIGNAL('modificationChanged(bool)'), self.onModelModificationChanged)
+		self.connect(self.model, SIGNAL('documentReplaced()'), self.onModelUpdated)
+		self.onModelUpdated() # Refresh the displayed values
+
+	def __createWidgets(self):
+		"""
+		A main WScriptEditor, plus an associated action bar at the bottom with:
+		- an action button to test/run the script.
+		- a button to check syntax
+		"""
+		layout = QVBoxLayout()
+		
+		self._authorLineEdit = QLineEdit()
+		self._entryPointLineEdit = QLineEdit()
+		self._descriptionTextEdit = QTextEdit()
+		# Let's reference the different isModified() functions
+		self._editorModifiedFunctions = [ 
+			lambda: self._authorLineEdit.isModified(), 
+			lambda: self._entryPointLineEdit.isModified(), 
+			lambda: self._descriptionTextEdit.document().isModified()
+		]
+		self.connect(self._authorLineEdit, SIGNAL('textChanged(const QString&)'), self.maybeModified)
+		self.connect(self._entryPointLineEdit, SIGNAL('textChanged(const QString&)'), self.maybeModified)
+		self.connect(self._descriptionTextEdit, SIGNAL('textChanged()'), self.maybeModified)
+
+		grid = QGridLayout()
+		grid.addWidget(QLabel("Author:"), 0, 0, Qt.AlignRight)
+		grid.addWidget(self._authorLineEdit, 0, 1)
+		grid.addWidget(QLabel("Entry point:"), 1, 0, Qt.AlignRight)
+		grid.addWidget(self._entryPointLineEdit, 1, 1)
+		grid.addWidget(QLabel("Description:"), 2, 0, Qt.AlignRight | Qt.AlignTop)
+		grid.addWidget(self._descriptionTextEdit, 2, 1)
+		grid.setColumnStretch(1, 1)
+		layout.addLayout(grid)
+
+		# The action bar below
+		actionLayout = QHBoxLayout()
+
+		# Actions associated with package edition:
+		# documentation via documentation plugins,
+		# run with several options (session parameters, scheduling)
+		# By default, icon sizes are 24x24. We resize them to 16x16 to avoid too large buttons.
+		# Documentation actions - needs switching to a plugin architecture
+		self.documentationButton = QToolButton()
+		self.documentationButton.setIcon(icon(':/icons/documentation'))
+		self.documentationButton.setIconSize(QSize(16, 16))
+		self.documentationPluginsMenu = QMenu('Documentation', self)
+		self.connect(self.documentationPluginsMenu, SIGNAL("aboutToShow()"), self.prepareDocumentationPluginsMenu)
+		self.documentationButton.setMenu(self.documentationPluginsMenu)
+		self.documentationButton.setPopupMode(QToolButton.InstantPopup)
+
+		actionLayout.addStretch()
+		actionLayout.addWidget(self.documentationButton)
+
+		actionLayout.setMargin(2)
+		layout.addLayout(actionLayout)
+		layout.setMargin(0)
+		self.setLayout(layout)
+
+	def maybeModified(self):
+		"""
+		Scan for a change in the multiple local editors so that 
+		we can fire a modification status change, if needed.
+		"""
+		for isModified in self._editorModifiedFunctions:
+			if isModified():
+				# Something has been modified.
+				self.model.onBodyModificationChanged(True)
+				return
+		# Back to unmodified flag
+		self.model.onBodyModificationChanged(False)
+
+	def onModelUpdated(self):
+		root = self.model.getBody().documentElement()
+		self._authorLineEdit.setText(root.firstChildElement('author').text())
+		self._entryPointLineEdit.setText(root.firstChildElement('entry-point').text())
+		self._descriptionTextEdit.setText(root.firstChildElement('description').text())
+		self.model.onBodyModificationChanged(False)
+
+	def aboutToSave(self):
+		return True
+
+	def _updateModelElement(self, name, value):
+		# Can't update a text value directly with QtXml....
+		# We have to create a new child and replace the previous one
+		doc = self.model.getBody()
+		root = doc.documentElement()
+		oldChild = root.firstChildElement(name)
+		newChild = doc.createElement(name)
+		newChild.appendChild(doc.createTextNode(value))
+		if oldChild.isNull():
+			root.appendChild(newChild)
+		else:
+			root.replaceChild(newChild, oldChild)
+
+	def updateModel(self):
+		"""
+		Commit the changes to the model.
+		"""
+		author = self._authorLineEdit.text()
+		entryPoint = self._entryPointLineEdit.text()
+		description = self._descriptionTextEdit.toPlainText()
+		self._updateModelElement('author', author)
+		self._updateModelElement('description', description)
+		self._updateModelElement('entry-point', entryPoint)
+
+	def prepareDocumentationPluginsMenu(self):
+		self.documentationPluginsMenu.clear()
+		for action in getDocumentationPluginActions(self.model, self.model.getDocumentType(), self):
+			print "DEBUG: adding action in plugin contextual menu..." + unicode(action.text())
+			self.documentationPluginsMenu.addAction(action)
+
+	def aboutToDocument(self):
+		# Nothing to do
+		return True
+
+	def getIcon(self):
+		"""
+		Returns an icon representing the edited object.
+		"""
+		return icon(':/icons/item-types/package-metadata')
+
+registerDocumentEditorClass(DocumentModels.TYPE_PACKAGE_METADATA, WPackageDescriptionDocumentEditor)
