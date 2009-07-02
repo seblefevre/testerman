@@ -485,6 +485,26 @@ class TestermanCliClient:
 		ret = self.__client.getDependencies("/repository/%s" % path, recursive)
 		print "File dependencies:"
 		print "\n".join(ret)
+	
+	def extractPackage(self, path, filename):
+		"""
+		Extract/export a package from the repository.
+		"""
+		if not filename:
+			print "Sorry, missing output filename"
+			return
+		
+		print "Extracting %s to %s..." % (path, filename)
+		try:
+			contents = self.__client.createPackageFile("/repository/%s" % path)
+			if contents is None:
+				raise Exception("Package %s not found" % path)
+			f = open(filename, 'wb')
+			f.write(contents)
+			f.close()
+			print "%s created." % filename
+		except Exception, e:
+			self.log("Sorry, unable to extract package: %s" % str(e))
 
 ###############################################################################
 # Main
@@ -506,7 +526,7 @@ def main():
 	parser.add_option("--run-local-campaign", dest = "campaignFilename", metavar = "FILENAME", help = "run FILENAME as a campaign, monitor it and wait for its completion", default = None)
 	parser.add_option("--run-campaign", dest = "campaignPath", metavar = "PATH", help = "run a campaign whose path in the repository is PATH, monitor it and wait for its completion", default = None)
 	parser.add_option("--nowait", dest = "waitForJobCompletion", action = "store_false", help = "when executing an ATS, immediately returns without waiting for its completion (default: false)", default = True)
-	parser.add_option("--output-filename", dest = "outputFilename", metavar = "FILENAME", help = "if used with --run-* without the --nowait option, dump the execution logs into FILENAME once the execution is complete", default = None)
+	parser.add_option("--output-filename", dest = "outputFilename", metavar = "FILENAME", help = "if used with --run-* without the --nowait option, dump the execution logs into FILENAME once the execution is complete. Also used as the target tpk file for a package extraction.", default = None)
 	parser.add_option("--session-filename", dest = "sessionParametersFilename", metavar = "FILENAME", help = "initial session parameters file", default = None)
 	parser.add_option("--session-parameters", dest = "sessionParameters", metavar = "PARAMETERS", help = "initial session parameters, overriding those from form session-filename, if any", default = "")
 
@@ -526,6 +546,8 @@ def main():
 	parser.add_option("--list-probes", dest = "listProbes", action = "store_true", help = "list registered agents and probes", default = False)
 
 	parser.add_option("--list-dependencies", dest = "listDependencies", metavar = "PATH", help = "list the dependencies of the file whose repository path is PATH", default = None)
+
+	parser.add_option("--extract-package", dest = "extractPackage", metavar = "PATH", help = "extract package whose repository path is PATH to a tpk file indicated with --output-filename", default = None)
 
 	parser.add_option("--send-signal", dest = "sendSignal", metavar = "SIGNAL", help = "send SIGNAL to job ID", default = None)
 	parser.add_option("-j", "--job-id", dest = "jobId", metavar = "ID", help = "job ID to send signals to, when using --send-signal", default = None)
@@ -626,6 +648,9 @@ def main():
 		
 		elif options.listDependencies:
 			client.listDependencies(options.listDependencies)
+		
+		elif options.extractPackage:
+			client.extractPackage(options.extractPackage, options.outputFilename)
 		
 		else:
 			parser.print_help()

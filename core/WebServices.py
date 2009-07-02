@@ -36,6 +36,7 @@ import DependencyResolver
 import FileSystemManager
 import FileSystemBackendManager
 import JobManager
+import Package
 import ProbeManager
 import Tools
 import Versions
@@ -408,7 +409,7 @@ def getFile(path, useCompression = False):
 	@returns: None if the file was not found,
 	          or the file contents in base64 encoding, optionally compressed
 	"""
-	getLogger().info(">> getFile(%s, %s)" % (path, str(useCompression)))
+	getLogger().info(">> getFile(%s, %s)" % (path, useCompression))
 	ret = None
 	try:
 		contents = FileSystemManager.instance().read(path)
@@ -430,7 +431,7 @@ def getFile(path, useCompression = False):
 		getLogger().info("<< getFile(%s): file not found" % (path))
 	return ret
 
-def putFile(content, path):
+def putFile(content, path, useCompression = False):
 	"""
 	Writes a file to docroot/path
 	
@@ -440,15 +441,19 @@ def putFile(content, path):
 	@param content: the content of the file
 	@type  path: string
 	@param path: a complete path, with filename and extension, relative to the document root.
+	@type  useCompression: bool
+	@param useCompression: (since 1.3) if set to True, the content is gziped before being mime64-encoded.
 	
 	@rtype: bool
 	@returns: True if OK, False otherwise
 	"""
-	getLogger().info(">> putFile(%s)" % (path))
+	getLogger().info(">> putFile(%s, %s)" % (path, useCompression))
 
 	res = False
 	try:
 		content = base64.decodestring(content)
+		if useCompression:
+			content = zlib.decompress(content)
 		revision = FileSystemManager.instance().write(path, content)
 		# No revision handling for now
 		# We should return the new filepath in case of a success
@@ -473,7 +478,7 @@ def getDirectoryListing(path):
 	@type  path: string
 	@param path: the path of the directory within the docroot
 	
-	@rtype: list of dict{'name': string, 'type': string in [ ats, campaign, module, log, directory, package ] }
+	@rtype: list of dict{'name': string, 'type': string in [ ats, campaign, module, log, directory, package, ... ] }
 	@returns: the dir contents, with a name (with extension) relative to the dir,
 	          and an associated application type.
 	          Returns None if the directory was not accessible or in case of an error.
@@ -771,6 +776,54 @@ def getDependencies(path, recursive = False):
 	getLogger().info("<< getDependencies(): %s" % str(res))
 	return res
 	
+
+################################################################################
+# service: package (package management)
+################################################################################
+
+def createPackageFile(path, useCompression = False):
+	"""
+	Creates and returns a testerman package file (.tpk) from a package whose root docroot-path
+	is path.
+	
+	A tpk file is a tar.gz file containing all package files (the package.xml file
+	is in the root folder of the package)
+	
+	@since: 1.3
+	
+	@type  path: string
+	@param path: a docpath to a package root folder
+	@type  useCompression: bool
+	@param useCompression: if True, the output is gziped before being mime64-encoded
+	
+	@rtype: string (utf-8 or buffer, encoded in base64), or None
+	@returns: None if the package was not found,
+	          or the tpk file contents in base64 encoding, optionally compressed
+	"""
+	getLogger().info(">> createPackageFile(%s, %s)" % (path, useCompression))
+	ret = None
+	try:
+		# We have to get all files in the package folder (recursively) then create an archive
+		
+		contents = Package.createPackageFile(path)
+		if contents is None:
+			ret = None
+		else:
+			if useCompression:
+				ret = base64.encodestring(zlib.compress(contents))
+			else:
+				ret = base64.encodestring(contents)
+	except Exception, e:
+		e =  Exception("Unable to perform operation: %s\n%s" % (str(e), Tools.getBacktrace()))
+		getLogger().info("<< createPackageFile(...): Fault:\n%s" % str(e))
+		raise(e)
+	
+	if ret is not None:
+		getLogger().info("<< createPackageFile(%s): %d bytes returned" % (path, len(ret)))
+	else:
+		getLogger().info("<< createPackageFile(%s): package not found" % (path))
+	return ret
+
 
 ################################################################################
 # service: xc (Xc interface management)

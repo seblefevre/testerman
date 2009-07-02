@@ -635,7 +635,7 @@ class DocumentModel(QObject):
 		body = document
 		return (metadataSource, body)
 
-	def _join(self, body, metadataSource):
+	def _join(self, metadataSource, body):
 		"""
 		To reimplement.
 		
@@ -734,7 +734,7 @@ class PythonDocumentModel(DocumentModel):
 
 		return (metadata, body)
 
-	def _join(self, metadata, body):
+	def _join(self, metadataSource, body):
 		"""
 		Reimplemented from DocumentModel for Python-based documents.
 		
@@ -746,7 +746,7 @@ class PythonDocumentModel(DocumentModel):
 		@rtype: unicode string
 		"""
 		document = u"# __METADATA__BEGIN__\n"
-		for l in metadata.split(u'\n'):
+		for l in metadataSource.split(u'\n'):
 			if l:
 				document += u"# " + l + u"\n"
 		document += u"# __METADATA__END__\n"
@@ -887,7 +887,7 @@ class PackageDescriptionModel(DocumentModel):
 		
 		return (metadataSource, body)
 
-	def _join(self, metadata, body):
+	def _join(self, metadataSource, body):
 		# Ignore the metadata (which should be None, anyway).
 		# body is as returned by split(), i.e. a QDomDocument.
 		return unicode(body.toString())

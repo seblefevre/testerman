@@ -173,7 +173,8 @@ class WDocumentEditor(QWidget):
 		error = None
 		try:
 			# Store files as utf8
-			ret = getProxy().putFile(self.model.getDocument().encode('utf-8'), unicode(filename))
+			# compress the files on the wire (requires Ws 1.3)
+			ret = getProxy().putFile(self.model.getDocument().encode('utf-8'), unicode(filename), useCompression = True)
 			if not ret:
 				error = "Please check permissions."
 		except Exception, e:

@@ -478,6 +478,9 @@ class BaseWidgetItem(QTreeWidgetItem):
 		if not display:
 			display = "/"
 		self.setText(0, display)
+		self.updateFlags()
+	
+	def updateFlags(self):
 		self.setFlags(Qt.ItemIsEnabled)
 
 	def getClient(self):
@@ -736,8 +739,14 @@ class DirWidgetItem(ExpandableWidgetItem):
 	def __init__(self, path, parent = None):
 		ExpandableWidgetItem.__init__(self, path, parent)
 		self.setIcon(0, icon(':/icons/item-types/folder'))
-		self.setFlags(Qt.ItemIsEnabled | Qt.ItemIsSelectable | 
-			Qt.ItemIsDragEnabled | Qt.ItemIsDropEnabled)
+
+	def updateFlags(self):
+		# In a package tree, we can't drop a file in it.
+		# But outside, we can
+		if self.isInPackageSrcTree():
+			self.setFlags(Qt.ItemIsEnabled | Qt.ItemIsSelectable)
+		else:
+			self.setFlags(Qt.ItemIsEnabled | Qt.ItemIsSelectable | Qt.ItemIsDragEnabled | Qt.ItemIsDropEnabled)
 
 	def fetchChildItems(self):
 		# The implementation is in the treewidget because it also
@@ -826,6 +835,8 @@ class AtsWidgetItem(ExpandableWidgetItem):
 	def __init__(self, path, parent = None):
 		ExpandableWidgetItem.__init__(self, path, parent)
 		self.setIcon(0, icon(':/icons/item-types/ats'))
+
+	def updateFlags(self):
 		self.setFlags(Qt.ItemIsEnabled | Qt.ItemIsSelectable | Qt.ItemIsDragEnabled | Qt.ItemIsEditable)
 
 	def addFetchedChildItems(self, data):
@@ -841,6 +852,8 @@ class ModuleWidgetItem(ExpandableWidgetItem):
 	def __init__(self, path, parent = None):
 		ExpandableWidgetItem.__init__(self, path, parent)
 		self.setIcon(0, icon(':/icons/item-types/module'))
+
+	def updateFlags(self):
 		self.setFlags(Qt.ItemIsEnabled | Qt.ItemIsSelectable | Qt.ItemIsDragEnabled | Qt.ItemIsEditable)
 
 	def addFetchedChildItems(self, data):
@@ -855,6 +868,8 @@ class CampaignWidgetItem(ExpandableWidgetItem):
 	def __init__(self, path, parent = None):
 		ExpandableWidgetItem.__init__(self, path, parent)
 		self.setIcon(0, icon(':/icons/item-types/campaign'))
+
+	def updateFlags(self):
 		self.setFlags(Qt.ItemIsEnabled | Qt.ItemIsSelectable | Qt.ItemIsDragEnabled | Qt.ItemIsEditable)
 
 	def addFetchedChildItems(self, data):
@@ -936,6 +951,7 @@ class ExecutionLogWidgetItem(BaseWidgetItem):
 			display = "%s, by %s" % (date, username)
 		self.setText(0, display)
 
+	def updateFlags(self):
 		self.setFlags(Qt.ItemIsEnabled | Qt.ItemIsSelectable)
 				
 class LogWidgetItem(BaseWidgetItem):
@@ -945,6 +961,8 @@ class LogWidgetItem(BaseWidgetItem):
 	def __init__(self, path, parent = None):
 		BaseWidgetItem.__init__(self, path, parent)
 		self.setIcon(0, icon(':/icons/item-types/execution-log'))
+
+	def updateFlags(self):
 		self.setFlags(Qt.ItemIsEnabled | Qt.ItemIsSelectable)
 
 class ProfileWidgetItem(BaseWidgetItem):
@@ -954,6 +972,8 @@ class ProfileWidgetItem(BaseWidgetItem):
 	def __init__(self, path, parent = None):
 		BaseWidgetItem.__init__(self, path, parent)
 		self.setIcon(0, icon(':/icons/item-types/profile'))
+
+	def updateFlags(self):
 		self.setFlags(Qt.ItemIsEnabled | Qt.ItemIsSelectable | Qt.ItemIsDragEnabled | Qt.ItemIsEditable)
 
 	def addFetchedChildItems(self, data):
@@ -972,8 +992,10 @@ class PackageDirWidgetItem(DirWidgetItem):
 	def __init__(self, path, parent = None):
 		DirWidgetItem.__init__(self, path, parent)
 		self.setIcon(0, icon(':/icons/item-types/folder-package'))
-		self.setFlags(Qt.ItemIsEnabled | Qt.ItemIsSelectable | Qt.ItemIsEditable)
+
+	def updateFlags(self):
 		# Well, isEditable should be set only if unlocked.
+		self.setFlags(Qt.ItemIsEnabled | Qt.ItemIsSelectable | Qt.ItemIsEditable)
 
 	def fetchChildItems(self):
 		try:
@@ -1008,6 +1030,8 @@ class PackageSrcDirWidgetItem(DirWidgetItem):
 	def __init__(self, path, parent = None):
 		DirWidgetItem.__init__(self, path, parent)
 		self.setIcon(0, icon(':/icons/item-types/folder-package-src'))
+
+	def updateFlags(self):
 		self.setFlags(Qt.ItemIsEnabled | Qt.ItemIsSelectable | Qt.ItemIsDropEnabled)
 
 class PackageProfilesDirWidgetItem(DirWidgetItem):
@@ -1017,6 +1041,8 @@ class PackageProfilesDirWidgetItem(DirWidgetItem):
 	def __init__(self, path, parent = None):
 		DirWidgetItem.__init__(self, path, parent)
 		self.setIcon(0, icon(':/icons/item-types/folder-package-profiles'))
+
+	def updateFlags(self):
 		self.setFlags(Qt.ItemIsEnabled | Qt.ItemIsSelectable | Qt.ItemIsDropEnabled)
 
 	def fetchChildItems(self):
@@ -1033,6 +1059,8 @@ class PackageDescriptionWidgetItem(BaseWidgetItem):
 	def __init__(self, path, parent = None):
 		BaseWidgetItem.__init__(self, path, parent)
 		self.setIcon(0, icon(':/icons/item-types/package-metadata'))
+
+	def updateFlags(self):
 		self.setFlags(Qt.ItemIsEnabled | Qt.ItemIsSelectable)
 
 
@@ -1152,7 +1180,7 @@ class WServerFileSystemTreeWidget(QTreeWidget):
 				menu.addAction("Show dependencies...", lambda: self._showDependencies(item))
 				menu.addAction("Delete", lambda: self._deleteCampaign(item))
 			elif item.isPackageRootDir():
-				menu.addAction("Export package...", lambda: self._notYetImplemented())
+				menu.addAction("Export package...", lambda: self._exportPackage(item))
 				if not item.isLocked():
 					menu.addAction("Lock package...", lambda: self._notYetImplemented())
 				else:
@@ -1233,6 +1261,7 @@ class WServerFileSystemTreeWidget(QTreeWidget):
 				child = None
 			if child:
 				parent.addChild(child)
+				child.updateFlags()
 
 	##
 	# Local actions
@@ -1333,6 +1362,31 @@ class WServerFileSystemTreeWidget(QTreeWidget):
 			self._client.makeDirectory("%s/%s" % (path, name))
 			# As usual, the new folder creation will be notified by the server, so
 			# no local view update to perform synchronously
+
+	def _exportPackage(self, item):
+		path = item.getUrl().path()
+		print "DEBUG: creating package from %s..." % path
+
+		settings = QSettings()
+		directory = settings.value('lastVisitedDirectory', QVariant("")).toString()
+		filename = QFileDialog.getSaveFileName(self, "Extract package...", directory, "Testerman Package (*.tpk)")
+		if not filename.isEmpty():
+			directory = os.path.dirname(unicode(filename))
+			settings.setValue('lastVisitedDirectory', QVariant(directory))
+			if not filename.split('.')[-1] == 'tpk':
+				filename = u"%s.tpk" % (unicode(filename))
+			try:
+				contents = self._client.createPackageFile(unicode(path))
+				if contents:
+					f = open(unicode(filename), 'wb')
+					f.write(contents)
+					f.close()
+					QMessageBox.information(self, getClientName(), "Package successfully exported to %s" % filename, QMessageBox.Ok)
+				else:
+					CommonWidgets.userError(self, 'Sorry, this package cannot be found')
+			except Exception, e:
+				CommonWidgets.systemError(self, 'Unable to export package: %s' % str(e))
+
 
 	def _copyItems(self, sources, destination):
 		"""

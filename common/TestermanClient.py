@@ -15,6 +15,8 @@
 
 ##
 # Module to implement Testerman clients, interfacing both Ws and Xc interfaces.
+# 
+# This version implements Ws 1.3, but can connect to Ws 1.0, 1.1, 1.2 as well.
 #
 ##
 
@@ -509,7 +511,7 @@ class Client(Nodes.ConnectingNode):
 		else:
 			return False
 
-	def putFile(self, content, filename):
+	def putFile(self, content, filename, useCompression = False):
 		"""
 		Puts content as a file named filename in the server's document root.
 		
@@ -524,6 +526,8 @@ class Client(Nodes.ConnectingNode):
 		@param content: the file content
 		@type  filename: string
 		@param filename: the complete path within the docroot of the filename to create/modify
+		@type  useCompression: bool
+		@param useCompression: if set to True, compress the content before sending it (requires Ws 1.3)
 		
 		@throws Exception in case of a (technical ?) error
 		
@@ -531,8 +535,12 @@ class Client(Nodes.ConnectingNode):
 		@returns: True if the creation/update was ok, False otherwise
 		"""
 		self.getLogger().debug("Putting file %s to repository..." % filename)
-		payload = base64.encodestring(content)
-		res = self.__proxy.putFile(payload, filename)
+		if useCompression:
+			payload = base64.encodestring(zlib.compress(content))
+			res = self.__proxy.putFile(payload, filename, True)
+		else:
+			payload = base64.encodestring(content)
+			res = self.__proxy.putFile(payload, filename)
 		self.getLogger().debug("putFile: " + str(res))
 		return res
 
@@ -907,6 +915,39 @@ class Client(Nodes.ConnectingNode):
 
 		archiveFileObject.close()
 	
+	##
+	# Package management
+	##
+	
+	def createPackageFile(self, path):
+		"""
+		Extracts a package file from a package
+		This implementation always request the package file as compressed data
+		(gzip + base64 encoding).
+		
+		@type  path: string
+		@param path: complete path within the docroot of the package to retrieve
+		
+		@throws Exception in case of a (technical) error.
+		
+		@rtype: (buffer) string, or None
+		@returns: the package file (.tpk) content, or None if the package was not found.
+		"""
+		start = time.time()
+		self.getLogger().debug("Getting package file from %s..." % path)
+		res = None
+		try:
+			content = self.__proxy.createPackageFile(path, True)
+			if content:
+				content = zlib.decompress(base64.decodestring(content))
+				self.getLogger().debug("Package file extracted, loaded in %fs" % (time.time() - start))
+		except xmlrpclib.Fault, e:
+			self.getLogger().error("!! createPackageFile: Fault: " + str(e.faultString))
+			raise e
+		return content
+		
+		
+
 	##
 	# Probe management
 	##
