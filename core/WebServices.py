@@ -118,8 +118,8 @@ def scheduleAts(source, atsId, username, session, at, path = None):
 	
 	@since: 1.0
 	
-	@type  ats: string
-	@param ats: the ats contents, as a utf-8 string
+	@type  source: string
+	@param source: the ats contents, as a utf-8 string
 	@type  atsId: string
 	@param atsId: a friendly identifier/job label
 	@type  username: string
