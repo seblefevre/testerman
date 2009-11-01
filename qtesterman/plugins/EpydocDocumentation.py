@@ -306,7 +306,7 @@ class WPlugin(Plugin.DocumentationGenerator):
 		Plugin.DocumentationGenerator.__init__(self, parent)
 
 	def activate(self, model):
-		self._showContentDocumentation(content = model.getBody(), key = model.getUrl().toString())
+		self._showContentDocumentation(content = unicode(model.getBodyModel()), key = model.getUrl().toString())
 
 	def isDocumentTypeSupported(self, documentType):
 		return documentType in [ DocumentModels.TYPE_ATS, DocumentModels.TYPE_MODULE ]

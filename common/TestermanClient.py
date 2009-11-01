@@ -192,7 +192,7 @@ class Client(Nodes.ConnectingNode):
 		Schedules an ATS to be executed at 'at' time.
 		If 'at' is lower than the current server's time, an immediate execution occurs. 
 		
-		@type  ats: unicode
+		@type  ats: buffer string (utf-8 encoded string)
 		@param ats: the ATS to schedule
 		@type  atsId: unicode
 		@param atsId: a name identifying the ATS
@@ -219,7 +219,7 @@ class Client(Nodes.ConnectingNode):
 				for (k, v) in session.items():
 					s[k.encode('utf-8')] = v.encode('utf-8')
 			
-			return self.__proxy.scheduleAts(ats.encode('utf-8'), atsId.encode('utf-8'), username.encode('utf-8'), s, at, path)
+			return self.__proxy.scheduleAts(ats, atsId.encode('utf-8'), username.encode('utf-8'), s, at, path)
 		except xmlrpclib.Fault, e:
 			self.getLogger().error("ATS Scheduling fault: " + str(e))
 			raise Exception(e.faultString)
@@ -229,7 +229,7 @@ class Client(Nodes.ConnectingNode):
 		Schedules a campaign to be executed at 'at' time.
 		If 'at' is lower than the current server's time, an immediate execution occurs. 
 		
-		@type  ats: unicode
+		@type  ats: buffer string (utf-8 encoded string)
 		@param ats: the ATS to schedule
 		@type  campaignId: unicode
 		@param campaignId: a name identifying the campaign
@@ -256,7 +256,7 @@ class Client(Nodes.ConnectingNode):
 				for (k, v) in session.items():
 					s[k.encode('utf-8')] = v.encode('utf-8')
 			
-			return self.__proxy.scheduleCampaign(source.encode('utf-8'), campaignId.encode('utf-8'), username.encode('utf-8'), s, at, path)
+			return self.__proxy.scheduleCampaign(source, campaignId.encode('utf-8'), username.encode('utf-8'), s, at, path)
 		except xmlrpclib.Fault, e:
 			self.getLogger().error("Campaign Scheduling fault: " + str(e))
 			raise Exception(e.faultString)

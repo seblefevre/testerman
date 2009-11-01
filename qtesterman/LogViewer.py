@@ -975,6 +975,9 @@ class WLogViewer(QWidget):
 		@param notification: a Xc notification related to the subscribed job URI.
 		"""
 		if notification.getMethod() == "LOG":
+			ret = notification.getApplicationBody()
+			if 'ment' in ret:
+				print "DEBUG: raw notification content:\n" + ret
 			self._logModel.feedXmlEvent(notification.getApplicationBody())
 		elif notification.getMethod() == "JOB-EVENT":
 			info = notification.getApplicationBody()

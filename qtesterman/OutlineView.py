@@ -265,7 +265,7 @@ class WOutlineViewDock(QDockWidget):
 
 	def onDocumentTabWidgetChanged(self, index):
 		documentModel = self._documentTabWidget.currentWidget().model
-		self._outlineTreeWidget.setModel(documentModel.getBody().encode('utf-8'))
+		self._outlineTreeWidget.setModel(unicode(documentModel.getBodyModel()).encode('utf-8'))
 	
 	def onOutlineItemActivated(self, line):
 		self._documentTabWidget.currentWidget().goTo(line)

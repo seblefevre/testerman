@@ -39,12 +39,10 @@ def html_escape(s):
 	The usual escape and transformations to turns a string
 	into something more (X)HTML compliant.
 	"""
-	print ">> html_escape: %s" % repr(s)
 	s = s.replace("&", "&amp;").strip()
 	s = s.replace("<", "&lt;")
 	s = s.replace(">", "&gt;")
 	s = s.replace("\n", "<br />")
-	print "<< html_escape: %s" % repr(s)
 	return s
 
 
@@ -158,7 +156,6 @@ class MyWebView(QtWebKit.QWebView):
 		self.connect(reloadAction, SIGNAL('triggered(bool)'), self.reload)
 
 	def reload(self):
-		print "Reloading..."
 		self._manager.reapplyTemplate()
 		
 ##############################################################################

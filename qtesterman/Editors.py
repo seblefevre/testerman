@@ -147,7 +147,7 @@ class WDocumentEditor(QWidget):
 		try:
 			f = open(unicode(filename), 'w')
 			# Store files as utf8
-			f.write(self.model.getDocument().encode('utf-8'))
+			f.write(self.model.getDocumentSource())
 			f.close()
 			QApplication.instance().get('gui.statusbar').showMessage("Successfully saved as %s" % (filename))
 			self.model.setSavedAttributes(url = QUrl.fromLocalFile(filename), timestamp = time.time())
@@ -155,6 +155,7 @@ class WDocumentEditor(QWidget):
 			QApplication.instance().get('gui.statusbar').setFileLocation(self.model.getUrl())
 			return True
 		except Exception, e:
+			log(getBacktrace())
 			CommonWidgets.systemError(self, "Unable to save file as %s: %s" % (filename, str(e)))
 			QApplication.instance().get('gui.statusbar').showMessage("Unable to save file as %s: %s" % (filename, str(e)))
 			return False
@@ -174,10 +175,11 @@ class WDocumentEditor(QWidget):
 		try:
 			# Store files as utf8
 			# compress the files on the wire (requires Ws 1.3)
-			ret = getProxy().putFile(self.model.getDocument().encode('utf-8'), unicode(filename), useCompression = True)
+			ret = getProxy().putFile(self.model.getDocumentSource(), unicode(filename), useCompression = True)
 			if not ret:
 				error = "Please check permissions."
 		except Exception, e:
+			log(getBacktrace())
 			error =	str(e)
 
 		if error is None:
@@ -379,7 +381,7 @@ class WModuleDocumentEditor(WDocumentEditor):
 		self.connect(self.model, SIGNAL('documentReplaced()'), self.onModelDocumentReplaced)
 
 	def onModelDocumentReplaced(self):
-		self.editor.setPlainText(self.model.getBody())
+		self.editor.setPlainText(self.model.getBodyModel())
 
 	def __createWidgets(self):
 		"""
@@ -389,14 +391,8 @@ class WModuleDocumentEditor(WDocumentEditor):
 		"""
 
 		layout = QVBoxLayout()
-		self.editor = WPythonCodeEditor(self.model.getBody(), self)
+		self.editor = WPythonCodeEditor(self.model.getBodyModel(), self)
 		self.connect(self.editor, SIGNAL('modificationChanged(bool)'), self.model.onBodyModificationChanged)
-# FFS: a secondary view on the same document
-#		self.secondaryEditor = WPythonCodeEditor(scintillaDocument = self.editor.document(), parent = self)
-#		splitter = QSplitter(Qt.Vertical)
-#		splitter.addWidget(self.editor)
-#		splitter.addWidget(self.secondaryEditor)
-#		layout.addWidget(splitter)
 
 		layout.addWidget(self.editor)
 
@@ -407,9 +403,9 @@ class WModuleDocumentEditor(WDocumentEditor):
 		actionLayout = QHBoxLayout()
 		actionLayout.addWidget(self.find)
 
-		# Actions associated with ATS edition:
+		# Actions associated with Module edition:
 		# syntax check,
-		# documentation via ATS documentation plugins,
+		# documentation via Module documentation plugins,
 		# run with several options (session parameters, scheduling)
 		# By default, icon sizes are 24x24. We resize them to 16x16 to avoid too large buttons.
 
@@ -442,7 +438,7 @@ class WModuleDocumentEditor(WDocumentEditor):
 		return self.verify(False)
 
 	def updateModel(self):
-		self.model.setBody(self.editor.getCode())
+		self.model.setBodyModel(self.editor.getCode())
 
 	def goTo(self, line, col = 0):
 		self.editor.goTo(line, col)
@@ -458,7 +454,7 @@ class WModuleDocumentEditor(WDocumentEditor):
 		self.updateModel()
 		self.editor.clearHighlight()
 		try:
-			body = self.model.getBody().encode('utf-8')
+			body = unicode(self.model.getBodyModel()).encode('utf-8')
 			parser.suite(body).compile()
 			compiler.parse(body)
 			if displayNoError:
@@ -506,7 +502,7 @@ class WAtsDocumentEditor(WDocumentEditor):
 		self.connect(self.model, SIGNAL('documentReplaced()'), self.onModelDocumentReplaced)
 
 	def onModelDocumentReplaced(self):
-		self.editor.setPlainText(self.model.getBody())
+		self.editor.setPlainText(self.model.getBodyModel())
 
 	def __createWidgets(self):
 		"""
@@ -518,7 +514,7 @@ class WAtsDocumentEditor(WDocumentEditor):
 		layout = QVBoxLayout()
 
 		# The code editor
-		self.editor = WPythonCodeEditor(self.model.getBody(), self)
+		self.editor = WPythonCodeEditor(self.model.getBodyModel(), self)
 		# QsciScintilla directly manage the signal
 		self.connect(self.editor, SIGNAL('modificationChanged(bool)'), self.model.onBodyModificationChanged)
 		layout.addWidget(self.editor)
@@ -581,7 +577,7 @@ class WAtsDocumentEditor(WDocumentEditor):
 		self.setLayout(layout)
 
 	def updateModel(self):
-		self.model.setBody(self.editor.getCode())
+		self.model.setBodyModel(self.editor.getCode())
 		
 	def goTo(self, line, col = 0):
 		self.editor.goTo(line, col)
@@ -597,7 +593,7 @@ class WAtsDocumentEditor(WDocumentEditor):
 		self.updateModel()
 		self.editor.clearHighlight()
 		try:
-			body = self.model.getBody().encode('utf-8')
+			body = unicode(self.model.getBodyModel()).encode('utf-8')
 			parser.suite(body).compile()
 			compiler.parse(body)
 			if displayNoError:
@@ -618,7 +614,8 @@ class WAtsDocumentEditor(WDocumentEditor):
 		if at is None:
 			at = time.time() + 1.0
 		try:
-			res = getProxy().scheduleAts(self.model.getDocument(), unicode(self.model.getName()), unicode(QApplication.instance().username()), session, at)
+			print type(self.model.getDocumentSource())
+			res = getProxy().scheduleAts(self.model.getDocumentSource(), unicode(self.model.getName()), unicode(QApplication.instance().username()), session, at)
 		except Exception, e:
 			CommonWidgets.systemError(self, str(e))
 			return None
@@ -723,7 +720,7 @@ class WCampaignDocumentEditor(WDocumentEditor):
 		self.connect(self.model, SIGNAL('documentReplaced()'), self.onModelDocumentReplaced)
 
 	def onModelDocumentReplaced(self):
-		self.editor.setPlainText(self.model.getBody())
+		self.editor.setPlainText(self.model.getBodyModel())
 
 	def __createWidgets(self):
 		"""
@@ -733,7 +730,7 @@ class WCampaignDocumentEditor(WDocumentEditor):
 		"""
 		layout = QVBoxLayout()
 		# The code editor
-		self.editor = WPythonCodeEditor(self.model.getBody(), self)
+		self.editor = WPythonCodeEditor(self.model.getBodyModel(), self)
 		# QsciScintilla directly manage the signal
 		self.connect(self.editor, SIGNAL('modificationChanged(bool)'), self.model.onBodyModificationChanged)
 		layout.addWidget(self.editor)
@@ -766,7 +763,7 @@ class WCampaignDocumentEditor(WDocumentEditor):
 		self.setLayout(layout)
 
 	def updateModel(self):
-		self.model.setBody(self.editor.getCode())
+		self.model.setBodyModel(self.editor.getCode())
 
 	def replace(self):
 		"""
@@ -783,7 +780,7 @@ class WCampaignDocumentEditor(WDocumentEditor):
 		if at is None:
 			at = time.time() + 1.0
 		try:
-			res = getProxy().scheduleCampaign(self.model.getDocument(), unicode(self.model.getName()), unicode(QApplication.instance().username()), session, at)
+			res = getProxy().scheduleCampaign(self.model.getDocumentSource(), unicode(self.model.getName()), unicode(QApplication.instance().username()), session, at)
 		except Exception, e:
 			CommonWidgets.systemError(self, str(e))
 			return None
@@ -931,9 +928,6 @@ class WDocumentManager(QWidget):
 			log("Unknown URL scheme. Not opening.")
 			return False
 
-		# We store files as UTF-8. Decode then to unicode.
-		contents = contents.decode('utf-8')
-		
 		# Now, creates a model based on the file to open
 		filename = os.path.split(unicode(path))[1]
 		documentModelClass = DocumentModels.getDocumentModelClass(filename)
@@ -942,7 +936,7 @@ class WDocumentManager(QWidget):
 			return False
 		
 		model = documentModelClass()
-		model.setDocument(contents)
+		model.setDocumentSource(contents)
 		model.setSavedAttributes(url = url, timestamp = fileTimestamp)
 		return self.openTab(model)
 
@@ -1056,7 +1050,7 @@ class WDocumentManager(QWidget):
 			try:
 				path = model.getUrl().toLocalFile()
 				f = open(unicode(path), 'r')
-				contents = f.read().decode('utf-8')
+				contents = f.read()
 				f.close()
 				fileTimestamp = os.stat(unicode(path)).st_mtime
 			except Exception, e:
@@ -1064,9 +1058,7 @@ class WDocumentManager(QWidget):
 
 		if contents is not None and fileTimestamp is not None:
 			try:
-				# We store files as UTF-8. Decode then to unicode.
-				contents = contents.decode('utf-8')
-				model.setDocument(contents)
+				model.setDocumentSource(contents)
 				model.setSavedAttributes(url = model.getUrl(), timestamp = fileTimestamp)
 				model.resetModificationFlag()
 				QApplication.instance().get('gui.statusbar').showMessage('Document reloaded.', 5000)
@@ -1079,7 +1071,7 @@ class WDocumentManager(QWidget):
 		"""
 		model = DocumentModels.AtsModel()
 		model.setSavedAttributes(url = QUrl('unsaved:///%s' % self.getNewName('new ats')), timestamp = time.time())
-		model.setDocument('# ATS Script for Testerman\n')
+		model.setDocumentSource('# ATS Script for Testerman\n')
 		self.openTab(model)
 
 	def newCampaign(self):
@@ -1088,7 +1080,7 @@ class WDocumentManager(QWidget):
 		"""
 		model = DocumentModels.CampaignModel()
 		model.setSavedAttributes(url = QUrl('unsaved:///%s' % self.getNewName('new campaign')), timestamp = time.time())
-		model.setDocument('# Campaign description file for Testerman\n')
+		model.setDocumentSource('# Campaign description file for Testerman\n')
 		self.openTab(model)
 
 	def newModule(self):
@@ -1097,7 +1089,7 @@ class WDocumentManager(QWidget):
 		"""
 		model = DocumentModels.ModuleModel()
 		model.setSavedAttributes(url = QUrl('unsaved:///%s' % self.getNewName('new module')), timestamp = time.time())
-		model.setDocument('# Module file for Testerman\n')
+		model.setDocumentSource('# Module file for Testerman\n')
 		self.openTab(model)
 
 	def documentUrlsUpdated(self):
@@ -1588,10 +1580,13 @@ class WPythonCodeEditor(sci.QsciScintilla):
 	def getCode(self):
 		"""
 		Return the code being edited.
+		
+		@rtype: QString
+		@returns: the current code being edited
 		"""
 		# Get rids of possible ^M, etc.
 		self.convertEols(self.eolMode())
-		return unicode(self.text())
+		return self.text()
 
 	def multiLineInsert(self, ch):
 		"""
@@ -2097,6 +2092,7 @@ class WPackageDescriptionDocumentEditor(WDocumentEditor):
 	"""
 	def __init__(self, documentModel, parent = None):
 		WDocumentEditor.__init__(self, documentModel, parent)
+		self._initialStatus = "designing"
 		self.__createWidgets()
 		self.filenameTemplate = "Testerman Package Description (*.xml)"
 		self.connect(self.model, SIGNAL('modificationChanged(bool)'), self.onModelModificationChanged)
@@ -2111,28 +2107,33 @@ class WPackageDescriptionDocumentEditor(WDocumentEditor):
 		"""
 		layout = QVBoxLayout()
 		
+		self._packageNameLineEdit = QLineEdit()
+		self._packageNameLineEdit.setReadOnly(True)
 		self._authorLineEdit = QLineEdit()
-		self._entryPointLineEdit = QLineEdit()
+		self._defaultScriptLineEdit = QLineEdit()
 		self._descriptionTextEdit = QTextEdit()
+		
+		self._statusComboBox = QComboBox()
+		self._statusComboBox.addItems([ "designing", "testing", "ready" ])
+		
 		# Let's reference the different isModified() functions
 		self._editorModifiedFunctions = [ 
 			lambda: self._authorLineEdit.isModified(), 
-			lambda: self._entryPointLineEdit.isModified(), 
+			lambda: self._defaultScriptLineEdit.isModified(), 
 			lambda: self._descriptionTextEdit.document().isModified()
 		]
 		self.connect(self._authorLineEdit, SIGNAL('textChanged(const QString&)'), self.maybeModified)
-		self.connect(self._entryPointLineEdit, SIGNAL('textChanged(const QString&)'), self.maybeModified)
+		self.connect(self._defaultScriptLineEdit, SIGNAL('textChanged(const QString&)'), self.maybeModified)
+		self.connect(self._statusComboBox, SIGNAL('currentIndexChanged(const QString&)'), self.maybeModified)
 		self.connect(self._descriptionTextEdit, SIGNAL('textChanged()'), self.maybeModified)
 
-		grid = QGridLayout()
-		grid.addWidget(QLabel("Author:"), 0, 0, Qt.AlignRight)
-		grid.addWidget(self._authorLineEdit, 0, 1)
-		grid.addWidget(QLabel("Entry point:"), 1, 0, Qt.AlignRight)
-		grid.addWidget(self._entryPointLineEdit, 1, 1)
-		grid.addWidget(QLabel("Description:"), 2, 0, Qt.AlignRight | Qt.AlignTop)
-		grid.addWidget(self._descriptionTextEdit, 2, 1)
-		grid.setColumnStretch(1, 1)
-		layout.addLayout(grid)
+		form = QFormLayout()
+		form.addRow("Package:", self._packageNameLineEdit)
+		form.addRow("Author:", self._authorLineEdit)
+		form.addRow("Default script:", self._defaultScriptLineEdit)
+		form.addRow("Status:", self._statusComboBox)
+		form.addRow("Description:", self._descriptionTextEdit)
+		layout.addLayout(form)
 
 		# The action bar below
 		actionLayout = QHBoxLayout()
@@ -2168,14 +2169,21 @@ class WPackageDescriptionDocumentEditor(WDocumentEditor):
 				# Something has been modified.
 				self.model.onBodyModificationChanged(True)
 				return
+		if self._statusComboBox.currentText() != self._initialStatus:
+			self.model.onBodyModificationChanged(True)
+			return
+		
 		# Back to unmodified flag
 		self.model.onBodyModificationChanged(False)
 
 	def onModelUpdated(self):
-		root = self.model.getBody().documentElement()
+		root = self.model.getBodyModel().documentElement()
+		self._packageNameLineEdit.setText(self.model.getPackageName())
 		self._authorLineEdit.setText(root.firstChildElement('author').text())
-		self._entryPointLineEdit.setText(root.firstChildElement('entry-point').text())
+		self._defaultScriptLineEdit.setText(root.firstChildElement('default-script').text())
 		self._descriptionTextEdit.setText(root.firstChildElement('description').text())
+		self._initialStatus = root.firstChildElement('status').text()
+		self._statusComboBox.setCurrentIndex(self._statusComboBox.findText(self._initialStatus))
 		self.model.onBodyModificationChanged(False)
 
 	def aboutToSave(self):
@@ -2184,7 +2192,7 @@ class WPackageDescriptionDocumentEditor(WDocumentEditor):
 	def _updateModelElement(self, name, value):
 		# Can't update a text value directly with QtXml....
 		# We have to create a new child and replace the previous one
-		doc = self.model.getBody()
+		doc = self.model.getBodyModel()
 		root = doc.documentElement()
 		oldChild = root.firstChildElement(name)
 		newChild = doc.createElement(name)
@@ -2199,11 +2207,13 @@ class WPackageDescriptionDocumentEditor(WDocumentEditor):
 		Commit the changes to the model.
 		"""
 		author = self._authorLineEdit.text()
-		entryPoint = self._entryPointLineEdit.text()
+		defaultScript = self._defaultScriptLineEdit.text()
+		status = self._statusComboBox.currentText()
 		description = self._descriptionTextEdit.toPlainText()
 		self._updateModelElement('author', author)
+		self._updateModelElement('default-script', defaultScript)
+		self._updateModelElement('status', status)
 		self._updateModelElement('description', description)
-		self._updateModelElement('entry-point', entryPoint)
 
 	def prepareDocumentationPluginsMenu(self):
 		self.documentationPluginsMenu.clear()

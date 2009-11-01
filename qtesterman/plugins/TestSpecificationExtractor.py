@@ -208,7 +208,7 @@ class WPlugin(Plugin.DocumentationGenerator):
 			'path': model.getUrl().path(),
 		}
 		# Testcases
-		variables['testcases'] = getTestCaseVariables(model.getBody().encode('utf-8'))
+		variables['testcases'] = getTestCaseVariables(unicode(model.getBodyModel()).encode('utf-8'))
 		return variables
 
 
