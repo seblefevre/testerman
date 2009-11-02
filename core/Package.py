@@ -189,12 +189,13 @@ def checkPackageFile(content):
 	tfile = tarfile.open("tpk", "r:gz", tpk)
 	contents = tfile.getmembers()
 	for c in contents:
+		# print "(%s) %s, %s" % (c.name, c.isfile(), c.isdir())
 		if c.name == "package.xml" and c.isfile():
 			metadata = parsePackageDescription(tfile.extractfile(c).read())
 			packageDescriptionPresent = True
-		elif c.name == "src" and c.isdir():
+		elif c.name in [ "src", "src/" ] and c.isdir():
 			srcPresent = True
-		elif c.name == "profiles" and c.isdir():
+		elif c.name in [ "profiles", "profiles/" ] and c.isdir():
 			profilePresent = True
 	
 	if not packageDescriptionPresent:
@@ -202,7 +203,7 @@ def checkPackageFile(content):
 	if not srcPresent:
 		raise Exception("Missing source folder (src)")
 	if not profilePresent:
-		raise Exception("Missing profile folder (profile)")
+		raise Exception("Missing profiles folder (profiles)")
 	
 	# Now we should check the package.xml file, too
 	return True
