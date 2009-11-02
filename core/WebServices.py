@@ -114,7 +114,7 @@ def getXcVersion():
 
 def scheduleAts(source, atsId, username, session, at, path = None):
 	"""
-	Schedule an ATS to start at <at>
+	Schedules an ATS to start at <at>
 	
 	@since: 1.0
 	
@@ -781,7 +781,7 @@ def getDependencies(path, recursive = False):
 # service: package (package management)
 ################################################################################
 
-def createPackageFile(path, useCompression = False):
+def exportPackage(path, useCompression = False):
 	"""
 	Creates and returns a testerman package file (.tpk) from a package whose root docroot-path
 	is path.
@@ -824,6 +824,105 @@ def createPackageFile(path, useCompression = False):
 		getLogger().info("<< createPackageFile(%s): package not found" % (path))
 	return ret
 
+def importPackageFile(content, path, useCompression = False):
+	"""
+	Import a .tpk file into the repository.
+	
+	@since: 1.3
+
+	@type  content: buffer string, encoded in mime64
+	@param content: the content of the tpk file
+	@type  path: string
+	@param path: a document-root path where the package should be "unpacked". Must NOT exist.
+	@type  useCompression: bool
+	@param useCompression: if set to True, the content has been gziped before being mime64-encoded.
+
+	@rtype: bool
+	@returns: True if OK, False otherwise
+	"""
+	getLogger().info(">> importPackageFile(%s, %s)" % (path, useCompression))
+
+	res = False
+	try:
+		content = base64.decodestring(content)
+		if useCompression:
+			content = zlib.decompress(content)
+		
+		res = Package.importPackageFile(content, path)
+	except Exception, e:
+		e =  Exception("Unable to perform operation: %s\n%s" % (str(e), Tools.getBacktrace()))
+		getLogger().info("<< importPackageFile(...): Fault:\n" + str(e))
+		raise(e)
+	
+	getLogger().info("<< importPackageFile(): %s" % str(res))
+	return res
+
+def createPackage(path):
+	"""
+	Creates a new package tree somewhere in the docroot.
+
+	@since: 1.3
+
+	@type  path: string
+	@param path: docroot path to the package root
+
+	@throws Exception on error
+
+	@rtype: bool
+	@returns: True if OK, False otherwise
+	"""
+	getLogger().info(">> createPackage(%s)" % (path))
+
+	res = False
+	try:
+		res = Package.createPackage(path)
+	except Exception, e:
+		e =  Exception("Unable to perform operation: %s\n%s" % (str(e), Tools.getBacktrace()))
+		getLogger().info("<< createPackage(...): Fault:\n" + str(e))
+		raise(e)
+	
+	getLogger().info("<< createPackage(): %s" % str(res))
+	return res
+
+def schedulePackage(path, username, session, at, script = None, profileName = None):
+	"""
+	Schedules a package to start at <at>.
+	
+	If script is provided, the package's default-script attribute is ignored
+	and script is used instead.
+	
+	@since: 1.3
+	"""
+	getLogger().info(">> schedulePackage(%s, script = %s)" % (path, script))
+
+	try:
+		metadata = Package.getPackageMetadata(path)
+		
+		if not script:
+			script = metadata['default-script']
+
+		scriptFilename = "%s/src/%s" % (path, script)
+		scriptPath = os.path.split(scriptFilename)[0]
+		
+		label = "%s:%s" % ('/'.join(path.split('/')[2:]), script)
+		
+		getLogger().info("Using package script filename %s, path %s" % (scriptFilename, scriptPath))
+		
+		if script.endswith(".campaign"):
+			res = scheduleCampaign(FileSystemManager.instance().read(scriptFilename).decode('utf-8'), label, username, session, at = at, path = scriptPath)
+		elif script.endswith(".ats"):
+			res = scheduleAts(FileSystemManager.instance().read(scriptFilename).decode('utf-8'), label, username, session, at = at, path = scriptPath)
+		else:
+			raise Exception("Invalid script/default script for package execution (unrecognized job type based on extension - %s)" % script)
+	
+	except Exception, e:
+		e =  Exception("Scheduling error: %s" % (str(e)))
+		getLogger().info("<< schedulePackage(...): Fault:\n%s" % Tools.getBacktrace())
+		raise(e)
+
+	getLogger().info("<< schedulePackage(...): %s" % str(res))
+	return res
+		
 
 ################################################################################
 # service: xc (Xc interface management)

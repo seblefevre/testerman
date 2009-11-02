@@ -35,7 +35,7 @@ import urlparse
 
 
 
-VERSION = "0.2.3"
+VERSION = "0.3.0"
 
 # Returned in case of a job submission-related execution error
 RETCODE_EXECUTION_ERROR = 70
@@ -192,6 +192,53 @@ class LogExpander:
 		log("Fetching included path '%s'..." % path)
 		return self._client.getFile(path)
 
+###############################################################################
+# Executable Source URI
+###############################################################################
+
+class SourceUri:
+	TYPE_CAMPAIGN = 'campaign'
+	TYPE_ATS = 'ats'
+	TYPE_PACKAGE = 'package'
+
+	def __init__(self, uri):
+		self._scheme = None
+		self._path = None # includes the extension
+		self._type = None 
+		self.parse(uri)
+	
+	def parse(self, uri):
+		try:
+			self._scheme, self._path = uri.split(':', 1)
+		except Exception, e:
+			raise Exception("Invalid source URI format (%s)" % uri)
+		
+		if self._path.endswith('.campaign'):
+			self._type = self.TYPE_CAMPAIGN
+		elif self._path.endswith('.ats'):
+			self._type = self.TYPE_ATS
+		elif self._path.endswith('.tpk'):
+			self._type = self.TYPE_PACKAGE
+		elif self.isRepository():
+			self._type = self.TYPE_PACKAGE
+		else:
+			raise Exception("Unable to detect source URI type from file extension (%s)" % self._path)
+		
+	def isLocal(self):
+		return self._scheme in ['local']
+	
+	def isRepository(self):
+		return self._scheme in ['repository']
+	
+	def getPath(self):
+		return self._path
+	
+	def getType(self):
+		return self._type
+	
+	def __str__(self):
+		return "%s:%s" % (self._scheme, self._path)
+		
 
 ###############################################################################
 # The CLI Client
@@ -215,6 +262,23 @@ class TestermanCliClient:
 	##
 	# High level functions
 	##
+	def scheduleJobByUri(self, uri, username = None, session = {}, at = None, **kwargs):
+		uri = SourceUri(uri)
+		if uri.isLocal():
+			if uri.getType() == uri.TYPE_ATS:
+				return self.scheduleAtsByFilename(uri.getPath(), username, session, at)
+			elif uri.getType() == uri.TYPE_CAMPAIGN:
+				return self.scheduleCampaignByFilename(uri.getPath(), username, session, at)
+			elif uri.getType() == uri.TYPE_PACKAGE:
+				return self.schedulePackageByFilename(uri.getPath(), username, session, at, kwargs.get('packageScript', None))
+		elif uri.isRepository():
+			if uri.getType() == uri.TYPE_ATS:
+				return self.scheduleAtsByPath(uri.getPath(), username, session, at)
+			elif uri.getType() == uri.TYPE_CAMPAIGN:
+				return self.scheduleCampaignByPath(uri.getPath(), username, session, at)
+			elif uri.getType() == uri.TYPE_PACKAGE:
+				return self.schedulePackageByPath(uri.getPath(), username, session, at, kwargs.get('packageScript', None))
+		raise Exception("Unsupported URI scheme or job type (%s)" % uri)
 	
 	def scheduleAtsByFilename(self, sourceFilename, username = None, session = {}, at = None):
 		"""
@@ -225,7 +289,7 @@ class TestermanCliClient:
 		# Load the file
 		try:
 			f = open(sourceFilename)
-			source = f.read().decode('utf-8')
+			source = f.read()
 			f.close()
 		except Exception, e:
 			err = "Error: unable to read ATS file %s (%s)" % (sourceFilename, str(e))
@@ -264,8 +328,6 @@ class TestermanCliClient:
 		Schedule an ATS whose source is provided by source and returns its JobID once scheduled,
 		or None in case of an error.
 		"""
-		# TODO: parameter and sessionFilename read
-		
 		# Prepare Ws.scheduleAts() parameters
 		self.log("Scheduling ATS...")
 
@@ -289,7 +351,7 @@ class TestermanCliClient:
 		# Load the file
 		try:
 			f = open(sourceFilename)
-			source = f.read().decode('utf-8')
+			source = f.read()
 			f.close()
 		except Exception, e:
 			err = "Error: unable to read Campaign file %s (%s)" % (sourceFilename, str(e))
@@ -328,8 +390,6 @@ class TestermanCliClient:
 		Schedules a Campaign whose source is provided by source and returns its JobID once scheduled,
 		or None in case of an error.
 		"""
-		# TODO: parameter and sessionFilename read
-		
 		# Prepare Ws.scheduleCampaign() parameters
 		self.log("Scheduling Campaign...")
 
@@ -344,6 +404,54 @@ class TestermanCliClient:
 			self.log(str(e))
 			return None
 	
+	def schedulePackageByFilename(self, sourceFilename, username = None, session = {}, at = None, script = None, profileName = None):
+		"""
+		Imports a package to a temporary folder,
+		executes it.
+		
+		Returns the jobId once scheduled, or None in case of an error.
+		"""
+		# Generate a temporary package name
+		tmpPackagePath = "/tmp/%s-%s" % (time.time(), username) # a real random name is required.
+		# Import the file
+		self.log("Uploading %s to %s..." % (sourceFilename, tmpPackagePath))
+		try:
+			f = open(sourceFilename, 'r')
+			contents = f.read()
+			f.close()
+			
+			ret = self.__client.importPackageFile(contents, tmpPackagePath)
+			if not ret:
+				raise Exception("Unable to upload package (no error provided)")
+			self.log("%s correctly uploaded to %s" % (sourceFilename, tmpPackagePath))
+		except Exception, e:
+			self.log("Sorry, unable to import package: %s" % str(e))
+
+		# Execute it
+		return self._schedulePackage(tmpPackagePath, username, session, at, script, profileName)
+		# Normally remove the package once completed.
+	
+	def schedulePackageByPath(self, path, username = None, session = {}, at = None, script = None, profileName = None):
+		return self._schedulePackage("/repository/%s" % path, username, session, at, script, profileName)
+
+	def _schedulePackage(self, path, username, session = {}, at = None, script = None, profileName = None):
+		"""
+		Schedules a Campaign whose source is provided by source and returns its JobID once scheduled,
+		or None in case of an error.
+		"""
+		self.log("Scheduling Package...")
+
+		# Schedule the ATS		
+		try:
+			ret = self.__client.schedulePackage(path, username, session, at, script, profileName)
+			jobId = ret['job-id']
+			header = [ ('job-id', 'job-id'), ('message', 'message') ]
+			self.log("Schedule Package result:\n%s" % prettyPrintDictList(header, [ ret ]))
+			return jobId
+		except Exception, e:
+			self.log(str(e))
+			return None
+
 	def listRegisteredProbes(self):
 		"""
 		Displays the currently registered probes
@@ -506,51 +614,103 @@ class TestermanCliClient:
 		except Exception, e:
 			self.log("Sorry, unable to extract package: %s" % str(e))
 
+	def importPackage(self, path, filename):
+		"""
+		Import the package filename to path
+		"""
+		if not filename:
+			print "Sorry, missing input filename"
+			return
+		
+		print "Importing %s to %s..." % (filename, path)
+		try:
+			f = open(filename, 'r')
+			contents = f.read()
+			f.close()
+			
+			ret = self.__client.importPackageFile(contents, "/repository/%s" % path)
+			if not ret:
+				raise Exception("Unable to import package (no error provided)")
+			print "%s correctly imported as %s" % (filename, path)
+		except Exception, e:
+			self.log("Sorry, unable to import package: %s" % str(e))
+
 ###############################################################################
 # Main
 ###############################################################################
 
 def getVersion():
-	return "Testerman Minimal CLI Client %s" % VERSION
+	return "Testerman CLI Client %s" % VERSION
 
 def main():
 	parser = optparse.OptionParser(version = getVersion())
-	parser.add_option("--debug", dest = "debug", action = "store_true", help = "turn debug mode on (default: %default)", default = False)
-	parser.add_option("--log-filename", dest = "logFilename", metavar = "FILE", help = "set log filename to FILE (default: none used)", default = None)
-	parser.add_option("-s", "--server", dest = "serverUrl", metavar = "URL", help = "use URL as Testerman serverURL (default: %default)", default = os.environ.get('TESTERMAN_SERVER', None) or "http://localhost:8080")
-	parser.add_option("-u", "--username", dest = "username", metavar = "USERNAME", help = "use USERNAME as Testerman user (default: %default)", default = os.environ.get('LOGNAME', None))
+
+	# General Options
+	group = optparse.OptionGroup(parser, "General Options")
+	group.add_option("--debug", dest = "debug", action = "store_true", help = "turn debug mode on (default: %default)", default = False)
+	group.add_option("--log-filename", dest = "logFilename", metavar = "FILE", help = "set log filename to FILE (default: none used)", default = None)
+	group.add_option("-s", "--server", dest = "serverUrl", metavar = "URL", help = "use URL as Testerman serverURL (default: %default). You may set TESTERMAN_SERVER environment variable, too.", default = os.environ.get('TESTERMAN_SERVER', None) or "http://localhost:8080")
+	group.add_option("-u", "--username", dest = "username", metavar = "USERNAME", help = "use USERNAME as Testerman user (default: %default)", default = os.environ.get('LOGNAME', None))
+	group.add_option("--output-filename", "-o", dest = "outputFilename", metavar = "FILENAME", help = "the file to use for actions that require or may use an output file", default = None)
+	group.add_option("--input-filename", "-i", dest = "inputFilename", metavar = "FILENAME", help = "the file to use for actions that require or may use an input file", default = None)
+	parser.add_option_group(group)
 
 	# Actions
-	parser.add_option("--run-local-ats", dest = "atsFilename", metavar = "FILENAME", help = "run FILENAME as an ATS, monitor it and wait for its completion", default = None)
-	parser.add_option("--run-ats", dest = "atsPath", metavar = "PATH", help = "run an ATS whose path in the repository is PATH, monitor it and wait for its completion", default = None)
-	parser.add_option("--run-local-campaign", dest = "campaignFilename", metavar = "FILENAME", help = "run FILENAME as a campaign, monitor it and wait for its completion", default = None)
-	parser.add_option("--run-campaign", dest = "campaignPath", metavar = "PATH", help = "run a campaign whose path in the repository is PATH, monitor it and wait for its completion", default = None)
-	parser.add_option("--nowait", dest = "waitForJobCompletion", action = "store_false", help = "when executing an ATS, immediately returns without waiting for its completion (default: false)", default = True)
-	parser.add_option("--output-filename", dest = "outputFilename", metavar = "FILENAME", help = "if used with --run-* without the --nowait option, dump the execution logs into FILENAME once the execution is complete. Also used as the target tpk file for a package extraction.", default = None)
-	parser.add_option("--session-filename", dest = "sessionParametersFilename", metavar = "FILENAME", help = "initial session parameters file", default = None)
-	parser.add_option("--session-parameters", dest = "sessionParameters", metavar = "PARAMETERS", help = "initial session parameters, overriding those from form session-filename, if any", default = "")
+	
+	# Runners
+	group = optparse.OptionGroup(parser, "Job Runners")
+	group.add_option("--run", dest = "runUri", metavar = "URI", help = "run a ats/campaign/package, either local or from the repository, then monitor it and wait for its completion.\nThe URI format is: local:<path> or repository:<path>. The filename extension (.ats, .campaign, .tpk) indicate the job type.\nIf --output-filename is provided, dump the logs once the job is complete.", default = None)
+	# Deprecated runners
+	group.add_option("--run-local-ats", dest = "atsFilename", metavar = "FILENAME", help = "[DEPRECATED - use --run instead]\nrun FILENAME as an ATS, monitor it and wait for its completion", default = None)
+	group.add_option("--run-ats", dest = "atsPath", metavar = "PATH", help = "[DEPRECATED - use --run instead]\nrun an ATS whose path in the repository is PATH, monitor it and wait for its completion", default = None)
+	group.add_option("--run-local-campaign", dest = "campaignFilename", metavar = "FILENAME", help = "[DEPRECATED - use --run instead]\nrun FILENAME as a campaign, monitor it and wait for its completion", default = None)
+	group.add_option("--run-campaign", dest = "campaignPath", metavar = "PATH", help = "[DEPRECATED - use --run instead]\nrun a campaign whose path in the repository is PATH, monitor it and wait for its completion", default = None)
+	# Run options
+	group.add_option("--nowait", dest = "waitForJobCompletion", action = "store_false", help = "when executing an ATS, immediately return without waiting for its completion (default: false)", default = True)
+	group.add_option("--session-filename", dest = "sessionParametersFilename", metavar = "FILENAME", help = "initial session parameters file", default = None)
+	group.add_option("--session-parameters", dest = "sessionParameters", metavar = "PARAMETERS", help = "initial session parameters, overriding those from form session-filename, if any", default = "")
+	group.add_option("--override-default-script", dest = "packageScriptName", metavar = "SCRIPTNAME", help = "when executing a package, override the default script provided in the package description, and run SCRIPTNAME instead. Must be a path relative to the src/ package folder.", default = None)
+	parser.add_option_group(group)
 
-	parser.add_option("--monitor", dest = "monitorUri", metavar = "URI", help = "monitor events on URI", default = None)
+	# Job runtime management
+	group = optparse.OptionGroup(parser, "Job Runtime Management")
+	group.add_option("--monitor", dest = "monitorUri", metavar = "URI", help = "monitor events on URI", default = None)
+	group.add_option("--send-signal", dest = "sendSignal", metavar = "SIGNAL", help = "send SIGNAL to job ID", default = None)
+	group.add_option("-j", "--job-id", dest = "jobId", metavar = "ID", help = "job ID to send signals to, when using --send-signal", default = None)
+	parser.add_option_group(group)
 
-	parser.add_option("--get-log", dest = "logJobId", metavar = "ID", help = "get the current logs for job ID", default = None)
-	parser.add_option("--expand-logs", dest = "expandLogs", action = "store_true", help = "expand include elements in retrieved log files", default = False)
+	# Log management
+	group = optparse.OptionGroup(parser, "Log Management")
+	group.add_option("--get-log", dest = "logJobId", metavar = "ID", help = "get the current logs for job ID", default = None)
+	group.add_option("--expand-logs", dest = "expandLogs", action = "store_true", help = "expand include elements in retrieved log files", default = False)
+	parser.add_option_group(group)
 
-	parser.add_option("--deploy", dest = "deployProbeName", metavar = "NAME", help = "deploy a probe named NAME", default = None)
-	parser.add_option("--undeploy", dest = "undeployProbeName", metavar = "NAME", help = "undeploy a probe named NAME", default = None)
-	parser.add_option("--agent", dest = "deployAgentName", metavar = "NAME", help = "on agent named NAME", default = None)
-	parser.add_option("--type", dest = "deployProbeType", metavar = "TYPE", help = "with type TYPE (deploy only)", default = None)
+	# Probe management
+	group = optparse.OptionGroup(parser, "Probe Management")
+	group.add_option("--list-probes", dest = "listProbes", action = "store_true", help = "list registered agents and probes", default = False)
+	group.add_option("--deploy", dest = "deployProbeName", metavar = "NAME", help = "deploy a probe named NAME", default = None)
+	group.add_option("--undeploy", dest = "undeployProbeName", metavar = "NAME", help = "undeploy a probe named NAME", default = None)
+	group.add_option("--agent", dest = "deployAgentName", metavar = "NAME", help = "on agent named NAME", default = None)
+	group.add_option("--type", dest = "deployProbeType", metavar = "TYPE", help = "with type TYPE (deploy only)", default = None)
+	parser.add_option_group(group)
 
-	parser.add_option("--restart-agent", dest = "restartAgentName", metavar = "NAME", help = "restart agent named NAME", default = None)
-	parser.add_option("--update-agent", dest = "updateAgentName", metavar = "NAME", help = "update agent named NAME to the latest version in its branch", default = None)
+	# Agent management
+	group = optparse.OptionGroup(parser, "Agent Management")
+	group.add_option("--restart-agent", dest = "restartAgentName", metavar = "NAME", help = "restart the agent named NAME", default = None)
+	group.add_option("--update-agent", dest = "updateAgentName", metavar = "NAME", help = "update the agent named NAME to the latest version in its branch", default = None)
+	parser.add_option_group(group)
 
-	parser.add_option("--list-probes", dest = "listProbes", action = "store_true", help = "list registered agents and probes", default = False)
+	# Package management
+	group = optparse.OptionGroup(parser, "Package Management")
+	group.add_option("--extract-package", dest = "extractPackage", metavar = "PATH", help = "extract the package whose repository path is PATH to a tpk file indicated with --output-filename", default = None)
+	group.add_option("--import-package-to", dest = "importPackage", metavar = "PATH", help = "import the package provided by --input-filename to the repository path PATH", default = None)
+	parser.add_option_group(group)
 
-	parser.add_option("--list-dependencies", dest = "listDependencies", metavar = "PATH", help = "list the dependencies of the file whose repository path is PATH", default = None)
+	# Misc
+	group = optparse.OptionGroup(parser, "Misc Options")
+	group.add_option("--list-dependencies", dest = "listDependencies", metavar = "PATH", help = "list the dependencies of the file whose repository path is PATH", default = None)
+	parser.add_option_group(group)
 
-	parser.add_option("--extract-package", dest = "extractPackage", metavar = "PATH", help = "extract package whose repository path is PATH to a tpk file indicated with --output-filename", default = None)
-
-	parser.add_option("--send-signal", dest = "sendSignal", metavar = "SIGNAL", help = "send SIGNAL to job ID", default = None)
-	parser.add_option("-j", "--job-id", dest = "jobId", metavar = "ID", help = "job ID to send signals to, when using --send-signal", default = None)
 
 	(options, args) = parser.parse_args()
 	
@@ -568,7 +728,7 @@ def main():
 	client = TestermanCliClient(options.serverUrl)
 	
 	try:
-		if options.atsFilename or options.atsPath or options.campaignFilename or options.campaignPath:
+		if options.atsFilename or options.atsPath or options.campaignFilename or options.campaignPath or options.runUri:
 			# Load initial session parameters
 			try:
 				session = loadSessionParameters(options.sessionParametersFilename, options.sessionParameters)
@@ -577,8 +737,12 @@ def main():
 				return RETCODE_EXECUTION_ERROR
 		
 			client.startXc()
-			# First, schedule the ATS (either a local or a repository one)
-			if options.atsFilename:
+			
+			# First, schedule the job
+			if options.runUri:
+				jobId = client.scheduleJobByUri(options.runUri, options.username, session = session, packageScript = options.packageScriptName)
+			# other way to schedule jobs kept for compatibility
+			elif options.atsFilename:
 				jobId = client.scheduleAtsByFilename(options.atsFilename, options.username, session = session)
 			elif options.atsPath:
 				jobId = client.scheduleAtsByPath(options.atsPath, options.username, session = session)
@@ -651,6 +815,9 @@ def main():
 		
 		elif options.extractPackage:
 			client.extractPackage(options.extractPackage, options.outputFilename)
+
+		elif options.importPackage:
+			client.importPackage(options.importPackage, options.inputFilename)
 		
 		else:
 			parser.print_help()

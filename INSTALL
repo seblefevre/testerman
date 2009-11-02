@@ -8,11 +8,12 @@ Minimal Requirements
 - libxml2-python (debian:python-libxml2 and dependencies)
 
 2. Client-side (QTesterman):
-- Python 2.4+ (tested with 2.5.2)
+- Python 2.4+ (tested with 2.5+)
 - Qt 4.4.1+ with PyQt bindings (debian:python-qt4 and dependencies)
 - QScintilla2 for python (debian:python-qscintilla2 and dependencies)
-- Only tested under Linux/Ubuntu 8.10 for now, should work
-  on any Python systems, including Windows
+- Tested under Ubuntu 8.10, 9.04, 9.10, OpenSUSE 11.1,
+  Windows XP SP2, Windows XP SP3, Windows Vista SP1, Windows 7
+  and should run on any Python systems
 
 Optional Requirements
 =====================

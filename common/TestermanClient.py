@@ -919,7 +919,27 @@ class Client(Nodes.ConnectingNode):
 	# Package management
 	##
 	
-	def createPackageFile(self, path):
+	def createPackage(self, path):
+		"""
+		Creates a new package tree somewhere in the docroot.
+		
+		@type  path: string
+		@param path: docroot path to the package root
+		
+		@throws Exception on error
+		
+		@rtype: bool
+		"""
+		self.getLogger().debug("Creating new package %s..." % path)
+		ret = None
+		try:
+			ret = self.__proxy.createPackage(path)
+		except xmlrpclib.Fault, e:
+			self.getLogger().error("!! exportPackage: Fault: " + str(e.faultString))
+			raise e
+		return ret
+	
+	def exportPackage(self, path):
 		"""
 		Extracts a package file from a package
 		This implementation always request the package file as compressed data
@@ -934,19 +954,57 @@ class Client(Nodes.ConnectingNode):
 		@returns: the package file (.tpk) content, or None if the package was not found.
 		"""
 		start = time.time()
-		self.getLogger().debug("Getting package file from %s..." % path)
+		self.getLogger().debug("Exporting package %s..." % path)
 		res = None
 		try:
-			content = self.__proxy.createPackageFile(path, True)
+			content = self.__proxy.exportPackage(path, True)
 			if content:
 				content = zlib.decompress(base64.decodestring(content))
 				self.getLogger().debug("Package file extracted, loaded in %fs" % (time.time() - start))
 		except xmlrpclib.Fault, e:
-			self.getLogger().error("!! createPackageFile: Fault: " + str(e.faultString))
+			self.getLogger().error("!! exportPackage: Fault: " + str(e.faultString))
 			raise e
 		return content
+	
+	def importPackageFile(self, content, path):
+		"""
+		Imports a package file to a package folder in the doc root.
 		
+		The destination patch must not exist.
 		
+		@type  path: string
+		@param path: docroot path to the package root
+		
+		@throws Exception on error
+		
+		@rtype: bool
+		@returns: True if the import was OK.
+		"""
+		start = time.time()
+		self.getLogger().debug("Importing package file to %s..." % path)
+		res = False
+		try:
+			res = self.__proxy.importPackageFile(base64.encodestring(content), path, False)
+			self.getLogger().debug("Package file imported, loaded in %fs" % (time.time() - start))
+		except xmlrpclib.Fault, e:
+			self.getLogger().error("!! importPackageFile: Fault: " + str(e.faultString))
+			raise e
+		return res
+
+	def schedulePackage(self, path, username, session = {}, at = 0.0, script = None, profileName = None):
+		"""
+		TODO: documentation (once the API is stable)
+		"""
+		try:
+			s = {}
+			if not (session is None):
+				for (k, v) in session.items():
+					s[k.encode('utf-8')] = v.encode('utf-8')
+
+			return self.__proxy.schedulePackage(path, username.encode('utf-8'), s, at, script, profileName)
+		except xmlrpclib.Fault, e:
+			self.getLogger().error("Package Scheduling fault: " + str(e))
+			raise Exception(e.faultString)
 
 	##
 	# Probe management

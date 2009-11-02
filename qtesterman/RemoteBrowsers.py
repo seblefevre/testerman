@@ -552,6 +552,9 @@ class BaseWidgetItem(QTreeWidgetItem):
 	
 	def isPackageDescription(self):
 		return isinstance(self, PackageDescriptionWidgetItem)
+
+	def isVirtual(self):
+		return False
 	
 	def isLocked(self):
 		# A locked file is a file that is within a locked package.
@@ -890,6 +893,9 @@ class RevisionsWidgetItem(ExpandableWidgetItem):
 	def getUrl(self):
 		return None
 
+	def isVirtual(self):
+		return True
+
 
 class RevisionWidgetItem(BaseWidgetItem):
 	"""
@@ -898,6 +904,9 @@ class RevisionWidgetItem(BaseWidgetItem):
 	def __init__(self, path, parent = None):
 		BaseWidgetItem.__init__(self, path, parent)
 		self.setIcon(0, icon(':/icons/item-types/revision'))
+
+	def isVirtual(self):
+		return True
 
 
 class ExecutionLogsWidgetItem(ExpandableWidgetItem):
@@ -953,6 +962,9 @@ class ExecutionLogWidgetItem(BaseWidgetItem):
 
 	def updateFlags(self):
 		self.setFlags(Qt.ItemIsEnabled | Qt.ItemIsSelectable)
+
+	def isVirtual(self):
+		return True
 				
 class LogWidgetItem(BaseWidgetItem):
 	"""
@@ -1198,6 +1210,8 @@ class WServerFileSystemTreeWidget(QTreeWidget):
 				menu.addAction("Edit", lambda: self._open(item))
 			elif item.isDir():
 				menu.addAction("New folder...", lambda: self._createDirectory(item))
+				if not item.isInPackageProfilesTree():
+					menu.addAction("New package...", lambda: self._createPackage(item))
 				menu.addAction("Delete", lambda: self._deleteDirectory(item))
 
 			if item.isExpandable():
@@ -1358,14 +1372,17 @@ class WServerFileSystemTreeWidget(QTreeWidget):
 			CommonWidgets.userError(self, "The following characters are forbidden in a folder name:\n%s" % ', '.join([x for x in RESTRICTED_NAME_CHARACTERS]))
 			(name, status) = QInputDialog.getText(self, "New folder", "Folder name:")
 
-		if not name.isEmpty():
-			self._client.makeDirectory("%s/%s" % (path, name))
-			# As usual, the new folder creation will be notified by the server, so
-			# no local view update to perform synchronously
+		if status and not name.isEmpty():
+			try:
+				self._client.makeDirectory("%s/%s" % (path, name))
+				# As usual, the new folder creation will be notified by the server, so
+				# no local view update to perform synchronously
+			except Exception, e:
+				CommonWidgets.systemError(self, 'Unable to create this folder here: %s' % str(e))
 
 	def _exportPackage(self, item):
 		path = item.getUrl().path()
-		print "DEBUG: creating package from %s..." % path
+		print "DEBUG: exporting package from %s..." % path
 
 		settings = QSettings()
 		directory = settings.value('lastVisitedDirectory', QVariant("")).toString()
@@ -1376,7 +1393,7 @@ class WServerFileSystemTreeWidget(QTreeWidget):
 			if not filename.split('.')[-1] == 'tpk':
 				filename = u"%s.tpk" % (unicode(filename))
 			try:
-				contents = self._client.createPackageFile(unicode(path))
+				contents = self._client.exportPackage(unicode(path))
 				if contents:
 					f = open(unicode(filename), 'wb')
 					f.write(contents)
@@ -1387,6 +1404,20 @@ class WServerFileSystemTreeWidget(QTreeWidget):
 			except Exception, e:
 				CommonWidgets.systemError(self, 'Unable to export package: %s' % str(e))
 
+	def _createPackage(self, item):
+		path = item.getUrl().path()
+		
+		(name, status) = QInputDialog.getText(self, "New package", "Package name:")
+		while status and not validateDirectoryName(name):
+			# Display some error message
+			CommonWidgets.userError(self, "The following characters are forbidden in a package name:\n%s" % ', '.join([x for x in RESTRICTED_NAME_CHARACTERS]))
+			(name, status) = QInputDialog.getText(self, "New folder", "Package name:")
+
+		if status and not name.isEmpty():
+			try:
+				self._client.createPackage("%s/%s" % (path, name))
+			except Exception, e:
+				CommonWidgets.systemError(self, 'Unable to create this package here: %s' % str(e))
 
 	def _copyItems(self, sources, destination):
 		"""
@@ -1506,6 +1537,10 @@ class WServerFileSystemTreeWidget(QTreeWidget):
 			ret = self._copyItems(sources, destination)
 
 	def onItemChanged(self, item, col):
+		if hasattr(item, "isVirtual") and item.isVirtual():
+			# No renaming check for virtual items - they can be renamed "administratively"
+			return 
+		
 		if col == 0 and hasattr(item, "getBasename") and item.getBasename() != unicode(item.text(0)):
 			currentName = item.getBasename()
 			newName = unicode(item.text(0))

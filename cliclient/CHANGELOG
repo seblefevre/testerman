@@ -1,8 +1,37 @@
 Testerman CLI Client Changelog
 
+
+KNOWN BUGS:
+
+- when passing a session parameter value containing spaces with
+  --session-parameters, only the first word is taken into account.
+  Values with spaces work correctly from a session file, however.
+
+
+REVISION HISTORY:
+
+0.3.0:
+- Added: support for testerman package (.tpk) execution
+- Added: --run <uri> replaces all the --run-{local-,}-{ats,campaign} command
+  line options. However, these options are still available for compatibility.
+  The job source uri has a 'local' or 'repository' scheme. The path extension
+  determines the job type (.ats: ats, .campaign: campaign, .tpk: package):
+
+  local:/local/path/to/ats.ats
+  local:/local/path/to/campaign.campaign
+  local:/local/path/to/package.tpk
+  
+  repository:/repository-path/to/ats.ats
+  repository:/repository-path/to/campaign.campaign
+  repository:/repository-path/to/package (no extension for repository package)
+
+- Modified: inline help has been reorganized.
+
+
 0.2.1:
 - Fixed a regression preventing running scripts
   when no session-parameters were provided.
+
 
 0.2.0:
 - Added support for session parameters:
@@ -13,10 +42,6 @@ Testerman CLI Client Changelog
   --session-parameters KEY=value[,KEY=value]*
   All key names and values should be provided in utf-8.
 	
-KNOWN BUG:
-- when passing a session parameter value containing spaces with
-  --session-parameters, only the first word is taken into account.
-  Values with spaces work correctly from a session file, however.
 
 0.1.1:
 - Added support for campaign log expansion.
@@ -24,6 +49,7 @@ KNOWN BUG:
   additional --expand-logs flag to follow <include> log elements and
   perform an inline expansion of the included log files.
   The resulting log file then contains all the execution traces.
+
 
 0.1.0:
 - First really usable version.

@@ -162,14 +162,10 @@ class MetadataModel(QObject):
 		self.description = u''
 		self.parameters = {}
 		
-		print "hello4: reading metadataSource:\n" + metadataSource
-
 		# Parse into a DOM document
 		metadataDoc = QDomDocument()
 		(res, errorMessage, errorLine, errorColumn) = metadataDoc.setContent(metadataSource, False)
 		
-		print "hello5"
-
 		if not res:
 			raise Exception("Invalid metadata: %s (line %d, column %d)" % (unicode(errorMessage), errorLine, errorColumn))
 
@@ -576,18 +572,11 @@ class DocumentModel(QObject):
 		log("Replacing document in Model")
 
 		(metadataSource, self._bodyModel) = self._split(documentSource)
-		log("hello1")
 		if metadataSource is not None:
-			log("hello2")
 			self._metadataModel = MetadataModel(metadataSource)
-			log("hello3")
-		log("hello")
 		self.emit(SIGNAL('metadataUpdated()'))
-		log("hello")
 		self.emit(SIGNAL('bodyUpdated()'))
-		log("hello")
 		self.emit(SIGNAL('documentReplaced()'))
-		log("hello")
 
 		# We act as a proxy for the metadata sub-model,
 		# i.e. we reemit a local signal whenever we have a modification here.
@@ -887,9 +876,8 @@ class PackageDescriptionModel(DocumentModel):
 		@rtype: (buffer string, QDomDocument)
 		@returns: (metadataSource, body model)
 		"""
-		print "DEBUG: raw input document:\n" + documentSource
 		if not documentSource:
-			documentSource = u'<?xml version="1.0" encoding="utf-8"?><package><author></author><default-script></default-script><status>designing</status><description><description></package>'
+			documentSource = u'<?xml version="1.0" encoding="utf-8"?><package></package>'
 		
 		metadataSource = None
 		bodyModel = QDomDocument()

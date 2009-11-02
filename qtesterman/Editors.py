@@ -614,7 +614,6 @@ class WAtsDocumentEditor(WDocumentEditor):
 		if at is None:
 			at = time.time() + 1.0
 		try:
-			print type(self.model.getDocumentSource())
 			res = getProxy().scheduleAts(self.model.getDocumentSource(), unicode(self.model.getName()), unicode(QApplication.instance().username()), session, at)
 		except Exception, e:
 			CommonWidgets.systemError(self, str(e))
