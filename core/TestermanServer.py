@@ -100,24 +100,61 @@ def getVersion():
 
 def main():
 	parser = optparse.OptionParser(version = getVersion())
-	parser.add_option("--debug", dest = "debug", action = "store_true", help = "turn debug traces on (default: %default)", default = False)
-	parser.add_option("-d", dest = "daemonize", action = "store_true", help = "daemonize (default: do not daemonize)", default = False)
-	parser.add_option("-r", dest = "docRoot", metavar = "PATH", help = "set PATH as document root (default: %default)", default = "/tmp")
-	parser.add_option("--ws-ip", dest = "wsIp", metavar = "ADDRESS", help = "set listening Ws IP address to ADDRESS (default: %default)", default = "")
-	parser.add_option("--ws-port", dest = "wsPort", metavar = "PORT", help = "set listening Ws port to PORT (default: %default)", default = 8080, type = "int")
-	parser.add_option("--xc-ip", dest = "xcIp", metavar = "ADDRESS", help = "set Xc service IP address to ADDRESS (default: Ws IP, or hostname resolution)", default = "")
-	parser.add_option("--xc-port", dest = "xcPort", metavar = "PORT", help = "set Xc service port to PORT (default: %default)", default = 8081, type = "int")
-	parser.add_option("--tacs-ip", dest = "tacsIp", metavar = "ADDRESS", help = "set TACS Ia target IP address to ADDRESS (default: %default)", default = "127.0.0.1")
-	parser.add_option("--tacs-port", dest = "tacsPort", metavar = "PORT", help = "set TACS Ia target port address to PORT (default: %default)", default = 8087, type = "int")
-	parser.add_option("--il-ip", dest = "ilIp", metavar = "ADDRESS", help = "set Il IP address to ADDRESS (default: %default)", default = "")
-	parser.add_option("--il-port", dest = "ilPort", metavar = "PORT", help = "set Il port address to PORT (default: %default)", default = 8082, type = "int")
-	parser.add_option("--ih-ip", dest = "ihIp", metavar = "ADDRESS", help = "set Ih IP address to ADDRESS (default: %default)", default = "")
-	parser.add_option("--ih-port", dest = "ihPort", metavar = "PORT", help = "set Ih port address to PORT (default: %default)", default = 8083, type = "int")
-	parser.add_option("--log-filename", dest = "logFilename", metavar = "FILE", help = "set log filename to FILE (default: none used)", default = None)
-	parser.add_option("--pid-filename", dest = "pidFilename", metavar = "FILE", help = "use FILE to dump the process PID when daemonizing (default: no pidfile)", default = None)
-	parser.add_option("--var", dest = "variables", metavar = "VARS", help = "set additional variables as VARS (format: key=value[,key=value]*)", default = None)
+	group = optparse.OptionGroup(parser, "Basic Options")
+	group.add_option("--debug", dest = "debug", action = "store_true", help = "turn debug traces on (default: %default)", default = False)
+	group.add_option("-d", dest = "daemonize", action = "store_true", help = "daemonize (default: do not daemonize)", default = False)
+	group.add_option("-r", dest = "docRoot", metavar = "PATH", help = "set PATH as document root (default: %default)", default = "/tmp")
+	group.add_option("--log-filename", dest = "logFilename", metavar = "FILE", help = "set log filename to FILE (default: none used)", default = None)
+	group.add_option("--pid-filename", dest = "pidFilename", metavar = "FILE", help = "use FILE to dump the process PID when daemonizing (default: no pidfile)", default = None)
+	parser.add_option_group(group)
+
+	group = optparse.OptionGroup(parser, "IPs and Ports Options")
+	group.add_option("--ws-ip", dest = "wsIp", metavar = "ADDRESS", help = "set listening Ws IP address to ADDRESS (default: %default)", default = "")
+	group.add_option("--ws-port", dest = "wsPort", metavar = "PORT", help = "set listening Ws port to PORT (default: %default)", default = 8080, type = "int")
+	group.add_option("--xc-ip", dest = "xcIp", metavar = "ADDRESS", help = "set Xc service IP address to ADDRESS (default: Ws IP, or hostname resolution)", default = "")
+	group.add_option("--xc-port", dest = "xcPort", metavar = "PORT", help = "set Xc service port to PORT (default: %default)", default = 8081, type = "int")
+	group.add_option("--il-ip", dest = "ilIp", metavar = "ADDRESS", help = "set Il IP address to ADDRESS (default: %default)", default = "")
+	group.add_option("--il-port", dest = "ilPort", metavar = "PORT", help = "set Il port address to PORT (default: %default)", default = 8082, type = "int")
+	group.add_option("--ih-ip", dest = "ihIp", metavar = "ADDRESS", help = "set Ih IP address to ADDRESS (default: %default)", default = "")
+	group.add_option("--ih-port", dest = "ihPort", metavar = "PORT", help = "set Ih port address to PORT (default: %default)", default = 8083, type = "int")
+	group.add_option("--tacs-ip", dest = "tacsIp", metavar = "ADDRESS", help = "set TACS Ia target IP address to ADDRESS (default: %default)", default = "127.0.0.1")
+	group.add_option("--tacs-port", dest = "tacsPort", metavar = "PORT", help = "set TACS Ia target port address to PORT (default: %default)", default = 8087, type = "int")
+	parser.add_option_group(group)
+
+	group = optparse.OptionGroup(parser, "Advanced Options")
+	group.add_option("-c", "--conf-dir", dest = "configurationDir", metavar = "PATH", help = "use PATH to save/restore Testerman Server configuration. Also used to persist some runtime variables, such as the job queue.", default = None)
+	group.add_option("--var", dest = "variables", metavar = "VARS", help = "set additional variables as VARS (format: key=value[,key=value]*)", default = None)
+	parser.add_option_group(group)
 
 	(options, args) = parser.parse_args()
+	
+	# Attempt to read the settings from the saved configuration
+#	if not ConfigManager.read(options.configurationDir, "server.conf"):
+#		# Set default values	
+#		# standard paths within the document root. Actually, they shouldn't even be configurable.
+#		ConfigManager.set("constants.repository", "repository")
+#		ConfigManager.set("constants.archives", "archives")
+#		ConfigManager.set("constants.modules", "modules")
+#		ConfigManager.set("constants.components", "components")
+#
+#		ConfigManager.set("interface.ws.ip", options.wsIp)
+#		ConfigManager.set("interface.ws.port", options.wsPort)
+#		ConfigManager.set("interface.xc.ip", options.xcIp)
+#		ConfigManager.set("interface.xc.port", options.xcPort)
+#		ConfigManager.set("interface.il.ip", options.ilIp)
+#		ConfigManager.set("interface.il.port", options.ilPort)
+#		ConfigManager.set("interface.ih.ip", options.ihIp)
+#		ConfigManager.set("interface.ih.port", options.ihPort)
+#
+#		ConfigManager.set("tacs.ip", options.tacsIp)
+#		ConfigManager.set("tacs.port", options.tacsPort)
+#
+#		ConfigManager.set("ts.daemonize", options.daemonize)
+#		ConfigManager.set("ts.debug", options.debug)
+#		ConfigManager.set("ts.logfilename", options.logFilename)
+
+
+	# Override loaded settings if needed
 	
 	# interfaces settings: listening interfaces
 	ConfigManager.set("interface.ws.ip", options.wsIp)
@@ -127,7 +164,7 @@ def main():
 	if not options.xcIp: # Not provided ? defaults to ws
 		ConfigManager.set("interface.xc.ip", options.wsIp)
 	ip = ConfigManager.get("interface.xc.ip")
-	if not ip or ip == '0.0.0.': # Not fully qualified ? defaults to the hostname resolution.
+	if not ip or ip == '0.0.0.0': # Not fully qualified ? defaults to the hostname resolution.
 		ConfigManager.set("interface.xc.ip", socket.gethostbyname(socket.gethostname()))
 	ConfigManager.set("interface.il.ip", options.ilIp)
 	ConfigManager.set("interface.il.port", options.ilPort)
@@ -158,7 +195,8 @@ def main():
 	ConfigManager.set("testerman.rootdir", root)
 	ConfigManager.set("testerman.server_path", "%s/core" % root)
 	# Typically overriden on command line
-	ConfigManager.set("testerman.configuration_path", "%s/conf" % root)
+	if options.configurationDir:
+		ConfigManager.set("testerman.configuration_path", options.configurationDir)
 
 	# testerman.te.*: test executable-related variables
 	# Interpreter for Python scripts

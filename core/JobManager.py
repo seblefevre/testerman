@@ -35,6 +35,8 @@ import Tools
 import Versions
 
 import compiler
+import cPickle as pickle
+import copy_reg
 import fcntl
 import logging
 import os
@@ -244,8 +246,9 @@ class Job(object):
 	STATE_CANCELLED = "cancelled"
 	STATE_KILLED = "killed"
 	STATE_ERROR = "error"
+	STATE_CRASHED = "crashed" # unable to complete due to a server crash
 	STARTED_STATES = [ STATE_RUNNING, STATE_KILLING, STATE_PAUSED ]
-	FINAL_STATES = [ STATE_COMPLETE, STATE_CANCELLED, STATE_KILLED, STATE_ERROR ]
+	FINAL_STATES = [ STATE_COMPLETE, STATE_CANCELLED, STATE_KILLED, STATE_ERROR, STATE_CRASHED ]
 	STATES = [ STATE_INITIALIZING, STATE_WAITING, STATE_RUNNING, STATE_KILLING, STATE_CANCELLING, STATE_PAUSED, STATE_COMPLETE, STATE_CANCELLED, STATE_KILLED, STATE_ERROR ]
 
 	BRANCH_SUCCESS = 0 # actually, this is more a "default" or "normal completion"
@@ -1422,7 +1425,68 @@ class JobManager:
 		self._lock()
 		self._jobQueue.append(job)
 		self._unlock()
-	
+
+	def persist(self):
+		"""
+		Persist the current job queue to disk.
+		WARNING: not thread safe.
+		Must be called when the queue manager is stopped (no further activity within the 
+		job queue)
+		"""
+		if not ConfigManager.get('testerman.configuration_path'):
+			return 
+
+		queueFilename = ConfigManager.get('testerman.configuration_path') + '/jobqueue.dump'
+		getLogger().debug("Persisting queue to %s..." % queueFilename)
+		self._lock()
+		try:
+			dump = pickle.dumps(self._jobQueue)
+			f = open(queueFilename, 'w')
+			f.write(dump)
+			f.close()
+		except Exception, e:
+			getLogger().warning("Unable to persist job queue to %s: %s" % (queueFilename, str(e)))
+		self._unlock()
+
+	def restore(self):
+		"""
+		Reload the queue for the persisted queue.
+		Called on restart.
+		Jobs in running states are flagged as "crashed".
+		
+		WARNING: not thread safe, must be called before any new job registration.
+		"""
+		if not ConfigManager.get('testerman.configuration_path'):
+			return 
+
+		maxId = 0
+		queueFilename = ConfigManager.get('testerman.configuration_path') + '/jobqueue.dump'
+		try:		
+			f = open(queueFilename)
+			dump = f.read()
+			f.close()
+		except:
+			return
+		
+		getLogger().info("Restoring job queue from %s..." % queueFilename)
+		try:
+			self._jobQueue = pickle.loads(dump)
+			for job in self._jobQueue:
+				if job.getState() in [ job.STATE_RUNNING, job.STATE_PAUSED, job.STATE_CANCELLING, job.STATE_INITIALIZING ]:
+					getLogger().info("Job %s marked as being crashed" % job.getId())
+					job.setState(job.STATE_CRASHED)
+				elif job.getState() in [ job.STATE_KILLING ]:
+					job.setState(job.STATE_KILLED)
+				if job.getId() > maxId:
+					maxId = job.getId()
+			getLogger().info("Job queue restored: %s jobs recovered." % len(self._jobQueue))
+			global _GeneratorBaseId
+			_GeneratorBaseId = maxId
+			getLogger().info("Continuing job IDs at %s" % maxId)
+		except Exception, e:
+			getLogger().info("Unable to restore job queue: %s" % str(e))
+#		self._unlock()
+		
 	def submitJob(self, job):
 		"""
 		Submits a new job in the queue.
@@ -1535,10 +1599,14 @@ def instance():
 	return TheJobManager
 
 def initialize():
+	# Enable to pickle - and unpickle - the RLock contained into a Job structure.
+	copy_reg.pickle(threading._RLock, lambda x: (threading._RLock, (None,)))
+	instance().restore()
 	instance().start()
 
 def finalize():
+	instance().stop()
 	getLogger().info("Killing all jobs...")
 	instance().killAll()
-	instance().stop()
+	instance().persist()
 
