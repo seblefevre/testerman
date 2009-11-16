@@ -219,13 +219,11 @@ class WConnectionSettings(WSettings):
 		self.usernameLineEdit.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
 
 		layout = QVBoxLayout()
-		paramLayout = QGridLayout()
-		paramLayout.addWidget(QLabel("Server URL:"), 0, 0, Qt.AlignRight)
-		paramLayout.addWidget(self.urlComboBox, 0, 1)
-		paramLayout.addWidget(QLabel("Username:"), 1, 0, Qt.AlignRight)
-		paramLayout.addWidget(self.usernameLineEdit, 1, 1)
-		paramLayout.setColumnStretch(1, 1)
-		layout.addLayout(paramLayout)
+		form = QFormLayout()
+		form.setMargin(2)
+		form.addRow("Server URL:", self.urlComboBox)
+		form.addRow("Username:", self.usernameLineEdit)
+		layout.addLayout(form)
 		layout.addStretch()
 
 		self.setLayout(layout)

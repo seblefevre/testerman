@@ -2127,6 +2127,7 @@ class WPackageDescriptionDocumentEditor(WDocumentEditor):
 		self.connect(self._descriptionTextEdit, SIGNAL('textChanged()'), self.maybeModified)
 
 		form = QFormLayout()
+		form.setMargin(2)
 		form.addRow("Package:", self._packageNameLineEdit)
 		form.addRow("Author:", self._authorLineEdit)
 		form.addRow("Default script:", self._defaultScriptLineEdit)

@@ -482,6 +482,7 @@ class WConnectionDialog(QDialog):
 	def __createWidgets(self):
 		self.setWindowTitle("Testerman login")
 		self.setWindowIcon(icon(':icons/testerman.png'))
+		self.setSizePolicy(QSizePolicy.Preferred, QSizePolicy.Preferred)
 		
 		layout = QVBoxLayout()
 		layout.setMargin(0)

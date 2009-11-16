@@ -1077,6 +1077,53 @@ class PackageDescriptionWidgetItem(BaseWidgetItem):
 
 
 ################################################################################
+# Local Dialogs
+################################################################################
+
+class WImportConfirmation(QDialog):
+	"""
+	A dialog that displays the files, including dependencies,
+	to import to a package.
+	Displayed when drag&dropping something to the src folder of a package.
+	"""
+	def __init__(self, filesToCreate, title, parent = None, size = None):
+		QDialog.__init__(self, parent)
+		self._filesToCreate = filesToCreate
+		self._title = title
+		self.__createWidgets()
+		if not size:
+			size = QSize(600, 400) # an arbitrary default size
+		self.resize(size)
+
+	def __createWidgets(self):
+		self.setWindowTitle(self._title)
+
+		layout = QVBoxLayout()
+		# A label		
+		layout.addWidget(QLabel("This will create the following files in the package (existing files will be overwritten):"))
+		# The list of files
+		self._textEdit = QTextEdit(self)
+		self._textEdit.setPlainText("\n".join(self._filesToCreate))
+		self._textEdit.setReadOnly(True)
+		layout.addWidget(self._textEdit)
+		defaultFont = QFont("courier", 8)
+		defaultFont.setFixedPitch(True)
+		self._textEdit.setFont(defaultFont)
+
+		# Buttons
+		self._okButton = QPushButton("Import")
+		self.connect(self._okButton, SIGNAL("clicked()"), self.accept)
+		self._cancelButton = QPushButton("Cancel")
+		self.connect(self._cancelButton, SIGNAL("clicked()"), self.reject)
+		buttonLayout = QHBoxLayout()
+		buttonLayout.addStretch()
+		buttonLayout.addWidget(self._okButton)
+		buttonLayout.addWidget(self._cancelButton)
+		layout.addLayout(buttonLayout)
+
+		self.setLayout(layout)
+
+################################################################################
 # Tree Widget
 ################################################################################
 
@@ -1466,37 +1513,109 @@ class WServerFileSystemTreeWidget(QTreeWidget):
 		May display user notifications in case of misoperations.
 		
 		@type  sources: list of QUrls
+		@param sources: a list of urls to files to copy (MUST be located in the repository)
+		                Only the first url is taken into account.
 		@type  destination: QString (path)
+		@param destination: the docroot path to the destination *folder*
 		
 		@rtype: bool
 		@returns: True if the import copy was OK. False otherwise.
 		"""
+		if not sources:
+			return False
+		
 		# We assume a source list containing only one URL (single selection only)
 		# Will require some clean up one day.
-		for url in sources:
-			print "DEBUG: importing %s to %s..." % (url.path(), destination)
-			src = unicode(url.path())
-			srcBasename = os.path.split(src)[1]
-			dst = unicode(destination)
-			dstBasename = os.path.split(dst)[1]
-			# Minimal checks to avoid self/recursive copy, etc
-			if os.path.split(src)[0] == dst:
-				# copy a file/folder to its own folder
-				CommonWidgets.userInformation(self, "Cannot import %s to itself" % srcBasename)
-				return False
-			elif dst.startswith('%s/' % src) or src == dst:
-				# copy a folder to one of its sub-folders (or itself)
-				# NB: this is not possible due to the current copy implementation on the server:
-				# it will not create a list of files to copy before starting the copy, leading
-				# to some infinite recursion operations. To fix on server side.
-				CommonWidgets.userInformation(self, "Cannot import %s to itself or to one of its sub-folders" % srcBasename)
-				return False
-			else:
-				if QMessageBox.question(self, "Import to package", "Are you sure you want to import %s and its dependencies to package folder %s?\n(existing files will be overwritten)" % (srcBasename, dstBasename),
-					QMessageBox.Yes|QMessageBox.No, QMessageBox.Yes) == QMessageBox.Yes:
-					return self.getClient().copy(src, dst)
-				else:
-					return False
+		url = sources[0]
+
+		print "DEBUG: importing %s to %s..." % (url.path(), destination)
+		src = unicode(url.path())
+		srcBasename = os.path.split(src)[1]
+		dst = unicode(destination)
+
+		# Minimal checks to avoid self/recursive copy, etc
+		if os.path.split(src)[0] == dst:
+			# copy a file/folder to its own folder
+			CommonWidgets.userInformation(self, "Cannot import %s to itself" % srcBasename)
+			return False
+
+		if dst.startswith('%s/' % src) or src == dst:
+			# copy a folder to one of its sub-folders (or itself)
+			# NB: this is not possible due to the current copy implementation on the server:
+			# it will not create a list of files to copy before starting the copy, leading
+			# to some infinite recursion operations. To fix on server side.
+			CommonWidgets.userInformation(self, "Cannot import %s to itself or to one of its sub-folders" % srcBasename)
+			return False
+
+		# TODO: check if we are importing a file or a folder.
+		# If it's a folder, no dependency management. Just propose to copy the folder as is.
+
+		# We assume this is a file.
+		# Compute the list of dependencies, and show it to the user for import confirmation.
+		transient = CommonWidgets.WTransientWindow()
+		transient.showTextLabel("Computing dependencies...")
+		ex = None
+		try:
+			deps = self.getClient().getDependencies(src)
+		except Exception, e:
+			ex = e
+		transient.dispose()
+		if ex:
+			CommonWidgets.userInformation(self, "Unable to compute dependencies: %s" % str(ex))
+			return False
+
+		# Everything was OK, display a list of deps to copy
+		# filesToImport is a list of unicode docroot paths to src files to copy.
+		filesToImport = [ src ]
+		filesToImport += deps
+
+		# filesToCreate are a list of target filenames relative to the package/src folder
+		# Used to notify the user about what we'll do
+		filesToCreate = [ x[len('/repository/'):] for x in filesToImport ]
+
+		dlg = WImportConfirmation(filesToCreate, title = "Import to package", parent = self)
+		if dlg.exec_() == QDialog.Accepted:
+			# Copy files
+			targets = []
+			for f in filesToImport:
+				# Compute the dest path - replace the '/repository/' prefix with the dst folder
+				targets.append("%s/%s" % (dst, f[len('/repository/'):]))
+			self.copy(filesToImport, targets)
+			return True
+		else:
+			return False
+
+	def copy(self, sources, destinations):
+		"""
+		Copy dialog.
+		sources contains (docroot path to) source items (folders or files)
+		destinations contains (docroot path to) destination items (folders or files).
+		Sources and destinations lists must have the same length.
+		
+		@type  sources: list of unicode strings
+		@type  destinations: list of unicode strings
+		"""
+		progress = QProgressDialog("Copying files...", "Cancel", 0, len(sources), self)
+		progress.setWindowTitle("Copying files")
+		progress.setMinimumDuration(0)
+		progress.show()
+
+		try:
+			for i in range(len(sources)):
+				src = sources[i]
+				dst = destinations[i]
+				print "DEBUG: copying %s to %s..." % (src, dst)
+				progress.setLabelText("Copying %s to %s..." % (src, dst))
+				QApplication.instance().processEvents()
+				self.getClient().copy(src, dst)
+				progress.setValue(i)
+				QApplication.instance().processEvents()
+				if progress.wasCanceled():
+					break
+			progress.setParent(None)
+		except Exception, e:
+			progress.setParent(None)
+			CommonWidgets.systemError(self, "Unable to complete operation: %s" % str(e))
 
 	def _moveItems(self, sources, destination):
 		"""
