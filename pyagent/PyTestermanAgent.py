@@ -721,6 +721,7 @@ class Agent(Nodes.ConnectingNode):
 
 def scanPlugins(paths, label):
 	for path in paths:
+		getLogger().info("Looking for %s plugins in %s..." % (label, path))
 		if not path in sys.path:
 			sys.path.append(path)
 		try:
@@ -747,5 +748,5 @@ def initialize(probePaths = ["plugins/probes"], codecPaths = ["plugins/codecs"])
 	ProbeImplementationManager.setLogger(logging.getLogger("Agent.Probe"))
 	# Loading plugins: probes & codecs
 	currentDir = os.path.normpath(os.path.realpath(os.path.dirname(sys.modules[globals()['__name__']].__file__)))
-	scanPlugins(["%s/%s" % (currentDir, x) for x in codecPaths], label = "codec")
-	scanPlugins(["%s/%s" % (currentDir, x) for x in probePaths], label = "probe")
+	scanPlugins([os.path.normpath("%s/%s" % (currentDir, x)) for x in codecPaths], label = "codec")
+	scanPlugins([os.path.normpath("%s/%s" % (currentDir, x)) for x in probePaths], label = "probe")

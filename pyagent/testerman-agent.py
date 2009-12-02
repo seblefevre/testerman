@@ -119,7 +119,6 @@ def main():
 
 	parser = optparse.OptionParser(version = "Testerman PyAgent %s" % Agent.getVersion())
 	parser.add_option("-c", "--controller", dest = "controllerIp", metavar = "ADDRESS", help = "set agent controller Xa IP address to ADDRESS (default: %default)", default = "127.0.0.1")
-	parser.add_option("--codec-path", dest = "codecPaths", metavar = "PATHS", help = "search for codec modules in PATHS, which is a comma-separated list of paths (default: %default)", default = "plugins/codecs")
 	if not sys.platform in [ 'win32', 'win64']:
 		parser.add_option("-d", dest = "daemonize", action = "store_true", help = "daemonize (default: do not daemonize)", default = False)
 	parser.add_option("--debug", dest = "debug", action = "store_true", help = "turn debug mode on (default: %default)", default = False)
@@ -131,6 +130,7 @@ def main():
 	if not sys.platform in [ 'win32', 'win64']:
 		parser.add_option("--pid-filename", dest = "pidFilename", metavar = "FILE", help = "use FILE to dump the process PID when daemonizing (default: no pidfile)", default = None)
 	parser.add_option("--probe-path", dest = "probePaths", metavar = "PATHS", help = "search for probe modules in PATHS, which is a comma-separated list of paths (default: %default)", default = "plugins/probes")
+	parser.add_option("--codec-path", dest = "codecPaths", metavar = "PATHS", help = "search for codec modules in PATHS, which is a comma-separated list of paths (default: %default)", default = "plugins/codecs")
 
 	(options, args) = parser.parse_args()
 
