@@ -115,7 +115,8 @@ def daemonize(pidFilename = None, stdout = None, stderr = None, displayPid = Fal
 def main():
 	Agent.Restarter.initialize()
 	# Make sure that the current directory is in PYTHON path (for probe/plugins)
-	sys.path.append(os.path.normpath(os.path.realpath(os.path.dirname(sys.modules[globals()['__name__']].__file__))))
+	localPath = os.path.normpath(os.path.realpath(os.path.dirname(sys.modules[globals()['__name__']].__file__)))
+	sys.path.append(localPath)
 
 	parser = optparse.OptionParser(version = "Testerman PyAgent %s" % Agent.getVersion())
 	parser.add_option("-c", "--controller", dest = "controllerIp", metavar = "ADDRESS", help = "set agent controller Xa IP address to ADDRESS (default: %default)", default = "127.0.0.1")
@@ -129,8 +130,8 @@ def main():
 	parser.add_option("-p", "--port", dest = "controllerPort", metavar = "PORT", help = "set agent controller Xa port address to PORT (default: %default)", default = 40000, type="int")
 	if not sys.platform in [ 'win32', 'win64']:
 		parser.add_option("--pid-filename", dest = "pidFilename", metavar = "FILE", help = "use FILE to dump the process PID when daemonizing (default: no pidfile)", default = None)
-	parser.add_option("--probe-path", dest = "probePaths", metavar = "PATHS", help = "search for probe modules in PATHS, which is a comma-separated list of paths (default: %default)", default = "plugins/probes")
-	parser.add_option("--codec-path", dest = "codecPaths", metavar = "PATHS", help = "search for codec modules in PATHS, which is a comma-separated list of paths (default: %default)", default = "plugins/codecs")
+	parser.add_option("--probe-path", dest = "probePaths", metavar = "PATHS", help = "search for probe modules in PATHS, which is a comma-separated list of paths (default: %default)", default = os.path.normpath("%s/../plugins/probes" % localPath))
+	parser.add_option("--codec-path", dest = "codecPaths", metavar = "PATHS", help = "search for codec modules in PATHS, which is a comma-separated list of paths (default: %default)", default = os.path.normpath("%s/../plugins/codecs" % localPath))
 
 	(options, args) = parser.parse_args()
 

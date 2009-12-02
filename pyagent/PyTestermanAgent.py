@@ -741,12 +741,12 @@ def scanPlugins(paths, label):
 # Main
 ################################################################################
 
-def initialize(probePaths = ["plugins/probes"], codecPaths = ["plugins/codecs"]):
+def initialize(probePaths = ["../plugins/probes"], codecPaths = ["../plugins/codecs"]):
 	# CodecManager logging diversion
 	CodecManager.instance().setLogCallback(logging.getLogger("Agent.Codec").debug)
 	# ProbeImplementationManager logging diversion
 	ProbeImplementationManager.setLogger(logging.getLogger("Agent.Probe"))
 	# Loading plugins: probes & codecs
-	currentDir = os.path.normpath(os.path.realpath(os.path.dirname(sys.modules[globals()['__name__']].__file__)))
-	scanPlugins([os.path.normpath("%s/%s" % (currentDir, x)) for x in codecPaths], label = "codec")
-	scanPlugins([os.path.normpath("%s/%s" % (currentDir, x)) for x in probePaths], label = "probe")
+	localPath = os.path.normpath(os.path.realpath(os.path.dirname(sys.modules[globals()['__name__']].__file__)))
+	scanPlugins([ ((x.startswith('/') and x) or os.path.normpath(os.path.realpath('%s/%s' % (os.getcwd(), x)))) for x in codecPaths], label = "codec")
+	scanPlugins([ ((x.startswith('/') and x) or os.path.normpath(os.path.realpath('%s/%s' % (os.getcwd(), x)))) for x in probePaths], label = "probe")
