@@ -148,6 +148,12 @@ RETURN_CODE_TTCN3_ERROR = 12
 RETURN_CODE_TE_ERROR = 13
 RETURN_CODE_OK = 0
 
+PASS = "pass"
+FAIL = "fail"
+ERROR = "error"
+NONE = "none"
+INCONC = "inconc"
+
 TS_VERSION = %(version)s
 
 ATS_ID = %(name)s
