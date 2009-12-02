@@ -99,6 +99,8 @@ def getVersion():
 	return ret
 
 def main():
+	localPath = os.path.normpath(os.path.realpath(os.path.dirname(sys.modules[globals()['__name__']].__file__)))
+
 	parser = optparse.OptionParser(version = getVersion())
 	group = optparse.OptionGroup(parser, "Basic Options")
 	group.add_option("--debug", dest = "debug", action = "store_true", help = "turn debug traces on (default: %default)", default = False)
@@ -123,6 +125,8 @@ def main():
 
 	group = optparse.OptionGroup(parser, "Advanced Options")
 	group.add_option("-c", "--conf-dir", dest = "configurationDir", metavar = "PATH", help = "use PATH to save/restore Testerman Server configuration. Also used to persist some runtime variables, such as the job queue.", default = None)
+	group.add_option("--probe-path", dest = "probePaths", metavar = "PATHS", help = "search for probe modules in PATHS, which is a comma-separated list of paths (default: %default)", default = os.path.normpath("%s/../plugins/probes" % localPath))
+	group.add_option("--codec-path", dest = "codecPaths", metavar = "PATHS", help = "search for codec modules in PATHS, which is a comma-separated list of paths (default: %default)", default = os.path.normpath("%s/../plugins/codecs" % localPath))
 	group.add_option("--var", dest = "variables", metavar = "VARS", help = "set additional variables as VARS (format: key=value[,key=value]*)", default = None)
 	parser.add_option_group(group)
 
@@ -205,6 +209,10 @@ def main():
 	ConfigManager.set("testerman.te.python.ttcn3module", "TestermanTTCN3")
 	# the maximum dumpable payload in log (as a single value). Bigger payloads are truncated to this size, in bytes.
 	ConfigManager.set("testerman.te.log.maxpayloadsize", 64*1024)
+
+	# set the absolute codec/probe paths as normalized lists of paths
+	ConfigManager.set("testerman.te.codec_paths", [ ((x.startswith('/') and x) or os.path.normpath(os.path.realpath('%s/%s' % (os.getcwd(), x)))) for x in options.codecPaths.split(',')])
+	ConfigManager.set("testerman.te.probe_paths", [ ((x.startswith('/') and x) or os.path.normpath(os.path.realpath('%s/%s' % (os.getcwd(), x)))) for x in options.probePaths.split(',')])
 
 	if options.variables:
 		for var in options.variables.split(','):
