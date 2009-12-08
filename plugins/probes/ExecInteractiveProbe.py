@@ -160,7 +160,7 @@ class InteractiveExecProbe(ProbeImplementationManager.ProbeImplementation):
 	|| '''Name''' || '''Type''' || '''Default value''' || '''Description''' ||
 	|| `separator` || string || `None` || Should we notify only complete lines (or whatever) based on this separator ? ||
 	|| `timeout`|| float || `0.5` || Maximum amount of time to wait for new data before notifying of it, when no separator is used ||
-	|| `encoding` || string || `'utf-8'` || The encoding to use to turns the output into unicode (also used to encode data sent to the started process) ||
+	|| `encoding` || string || `'utf-8'` || The encoding to use to turn the output into unicode (also used to encode data sent to the started process) ||
 
 
 	= Overview =
@@ -185,7 +185,7 @@ class InteractiveExecProbe(ProbeImplementationManager.ProbeImplementation):
 	Whenever you output to stdout/stderr is detected, based on `separator` and `timeout` properties, it checks that
 	it matches at least one of the regular expressions provided above before enqueing a `OutputNotification` message
 	to userland. If the matched regular expression contains named groups, corresponding fields are automatically
-	added in this message (as for the ProbeWatcherFile).
+	added in this message (as for the ProbeFileWatcher).
 	
 	At any time, you may send some input to the started process using the `input` choice of the `InteractiveExecCommand`
 	message (don't forget possible trailing carriage returns, as they are not sent automatically) or send a
