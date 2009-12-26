@@ -52,15 +52,15 @@ docroot=$1
 branch=$2
 version=$3
 
-if [ "x${branch}" == "x" ]; then
+if [ "x${branch}" = "x" ]; then
 	branch="testing"
 fi
 
-if [ "x${version}" == "x" ]; then
+if [ "x${version}" = "x" ]; then
 	version=`cat ${sourcerootdir}/qtesterman/Base.py | grep ^CLIENT_VERSION | cut -d\" -f 2`
 fi
 
-if [ "x${version}" == "x" ]; then
+if [ "x${version}" = "x" ]; then
 	echo "Error: cannot autodetect component version."
 	exit 1
 fi
