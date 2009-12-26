@@ -1,0 +1,15 @@
+<!DOCTYPE RCC><RCC version="1.0">
+<qresource prefix="icons">
+<!-- generate Resources.py file with:
+pyrcc4 resources.qrc -o Resources.py
+-->
+	<!-- main application icons -->
+	<file alias="testerman.png">resources/semn.png</file>
+
+</qresource>
+
+<qresource prefix="images">
+	<file alias="splash-banner.png">resources/splash-banner.png</file>
+</qresource>
+
+</RCC>
