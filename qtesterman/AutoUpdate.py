@@ -70,11 +70,11 @@ class Restarter:
 # Auto update management
 ################################################################################
 
-def updateComponent(proxy, basepath, component, currentVersion = None, branches = [ "stable" ]):
+def updateComponent(proxy, destinationPath, component, currentVersion = None, branches = [ "stable" ]):
 	"""
 	Checks for updates, and proposes the user to update if a newer version is available.
 
-	@type  basepath: QString 
+	@type  basepath: unicode string 
 	@param basepath: the application basepath were we should unpack the update archive
 
 	@throws exceptions
@@ -109,8 +109,8 @@ def updateComponent(proxy, basepath, component, currentVersion = None, branches 
 		if ret == QMessageBox.Yes:
 			# Download and unpack the archive
 
-			try:			
-				proxy.installComponent(url, unicode(basepath))
+			try:
+				proxy.installComponent(url, destinationPath)
 			except Exception, e:
 				QMessageBox.warning(None, "Update manager", "Unable to install the update:\n%s\nContinuing with the current version." % str(e))
 				return False

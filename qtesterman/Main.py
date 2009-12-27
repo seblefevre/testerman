@@ -1089,7 +1089,7 @@ Please install the appropriate package for your Linux/Unix distribution or downl
 	if acceptUnstableUpdates:
 		branches.append('testing')
 		branches.append('experimental')
-	if AutoUpdate.updateComponent(proxy = QApplication.instance().client(), basepath = QApplication.instance().get('basepath'), component = "qtesterman", currentVersion = getClientVersion(), branches = branches):
+	if AutoUpdate.updateComponent(proxy = QApplication.instance().client(), destinationPath = QApplication.instance().get('basepath'), component = "qtesterman", currentVersion = getClientVersion(), branches = branches):
 		# Update done. Restart ?
 		AutoUpdate.Restarter.restart()
 	log("Updates checked.")

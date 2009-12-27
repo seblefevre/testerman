@@ -883,18 +883,20 @@ class Client(Nodes.ConnectingNode):
 		ret.reverse()
 		return ret
 	
-	def installComponent(self, url, basepath):
+	def installComponent(self, archivePath, destinationPath):
 		"""
-		Download the component file referenced by url, and install it in basepath.
+		Download the component file referenced by url, and install it into basepath.
 		
-		@type  url: string
-		@type  basepath: unicode string
-		@param url: the url of the coponent archive to download, relative to the docroot
+		@type  archivePath: string
+		@param archivePath: the docroot-path to the component archive to install
+		@type  destinationPath: unicode string
+		@param destinationPath: the local destination path to unpack the package to
+		
 		"""
 		# We retrieve the archive
-		archive = self.getFile(url)
+		archive = self.getFile(archivePath)
 		if not archive:
-			raise Exception("Archive file not found on server (%s)" % url)
+			raise Exception("Archive file not found on server (%s)" % archivePath)
 		
 		# We untar it into the current directory.
 		archiveFileObject = StringIO.StringIO(archive)
@@ -904,8 +906,8 @@ class Client(Nodes.ConnectingNode):
 			# untar each file into the qtesterman directory
 
 			for c in contents:
-				self.getLogger().debug("Unpacking %s to %s..." % (c.name, basepath))
-				tfile.extract(c, basepath)
+				self.getLogger().debug("Unpacking %s to %s..." % (c.name, destinationPath))
+				tfile.extract(c, destinationPath)
 				# TODO: make sure to set write rights to allow future updates
 				# os.chmod("%s/%s" % (basepath, c), ....)
 			tfile.close()
