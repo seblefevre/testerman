@@ -24,13 +24,13 @@
 # execution.
 # 
 #
-# Low-level input handling, however, is based on readline.
+# Low-level input handling, however, is based on readline or other adapters.
 #
 #
 # Usage:
 # - create a CommandContext and register one or multiple commands
 # in it. These commands have a syntax tree based on a SequenceNode.
-# - ... ?
+# - ... 
 # 
 #
 ##
@@ -41,19 +41,40 @@ import sys
 # Some usual exceptions
 ##
 
-class InvalidSyntax(Exception):
+class ParsingException(Exception):
+	"""
+	An exception forward mechanism enables
+	to reconstruct the path to the node that raises
+	the exception on the fly.
+	"""
+	def __init__(self, error = ""):
+		self._error = error
+		self._forwarded = False
+
+	def forwardAs(self, name):
+		if not self._forwarded:
+			# first node naming
+			self._error = "%s: %s" % (name, self._error)
+			self._forwarded = True
+		else:
+			# Continue to construct the node path
+			self._error = "%s.%s" % (name, self._error)
+		raise self
+
+	def __str__(self):
+		return self._error
+
+class InvalidSyntax(ParsingException):
 	pass
 
-class UnexpectedToken(Exception):
+class UnexpectedToken(ParsingException):
 	pass
 
-class MissingToken(Exception):
+class MissingToken(ParsingException):
 	pass
 
 class ShellExit(Exception):
 	pass
-
-
 
 
 
@@ -67,16 +88,23 @@ class SyntaxNode:
 	
 	A syntax node enables to define syntax trees
 	for command arguments.
-	"""
-	def __init__(self, typeName, description):
-		self._typeName = typeName
-		self._description = description
 	
-	def getDescription(self):
-		return self._description
+	The name and description of the node are properties of the
+	association between the node and its parent.
+	
+	This way, a SyntaxNode with child could be considered
+	as a fully resuable type, registered into different
+	context with different description and naming.
+	"""
 
+	# type description - to override in each subclass
+	_typeName = "<undefined>"
+	
+	def __init__(self):
+		pass
+	
 	def __str__(self):
-		return "%s (%s)" % (self._typeName, self._description)	
+		return "%s" % (self._typeName)	
 	
 	# To implement in sub-classes
 	
@@ -134,19 +162,23 @@ class StringNode(SyntaxNode):
 	"""
 	Simple string node.
 	"""
-	def __init__(self, description = None):
-		SyntaxNode.__init__(self, '<string>', description)
+	_typeName = "<string>"
+	
+	def __init__(self):
+		SyntaxNode.__init__(self)
 
 	def parse(self, tokens):
 		if not tokens:
-			raise MissingToken("%s: missing value" % self) 
+			raise MissingToken("missing value")
 
 		return (tokens[0], tokens[1:])
 	
 	def suggestNextTokens(self, tokens):
 		if not tokens:
-			return [ (self._typeName, self.getDescription()) ], True, tokens
+			# Suggest the user to enter a string value
+			return [ (None, "a string value") ], True, tokens
 		else:
+			# no suggestion
 			return [], False, tokens[1:]
 		
 
@@ -154,26 +186,30 @@ class IntegerNode(SyntaxNode):
 	"""
 	Simple integer node.
 	"""
-	def __init__(self, description = None):
-		SyntaxNode.__init__(self, '<integer>', description)
+	
+	_typeName = "<integer>"
+	
+	def __init__(self):
+		SyntaxNode.__init__(self)
 
 	def parse(self, tokens):
 		if not tokens:
-			raise MissingToken("%s: missing value" % self) 
+			raise MissingToken("missing value") 
 		try:
 			int(tokens[0])
 		except:
-			raise InvalidSyntax("%s: integer expected" % self)
+			raise InvalidSyntax("integer value expected")
 		return (int(tokens[0]), tokens[1:])
 
 	def suggestNextTokens(self, tokens):
 		if not tokens:
-			return [ (self._typeName, self.getDescription()) ], True, tokens
+			# Suggest to enter an integer value
+			return [ (None, "an integer value") ], True, tokens
 		else:
 			try:
 				int(tokens[0])
 			except:
-				raise InvalidSyntax("%s: integer expected" % self)
+				raise InvalidSyntax("integer value expected")
 			return [], False, tokens[1:]
 
 
@@ -181,13 +217,17 @@ class NullNode(SyntaxNode):
 	"""
 	'constant'-like. Useful in choices.
 	"""
-	def __init__(self, description = None):
-		SyntaxNode.__init__(self, '<null>', description)
+	
+	_typeName = "<null>"
+	
+	def __init__(self):
+		SyntaxNode.__init__(self)
 
 	def parse(self, tokens):
 		return (None, tokens)
 
 	def suggestNextTokens(self, tokens):
+		# nothing to suggest
 		return [], False, tokens
 
 
@@ -198,24 +238,27 @@ class SequenceNode(SyntaxNode):
 	When valuated, returns a dict.
 	
 	MyType ::= SEQUENCE {
-		field1 INTEGER optional,
-		field2 String
+		field1 INTEGER optional, -- this is field1
+		field2 String -- optional field2
 	}
 	
 	would be declared as:
 	MyType = SequenceNode()
-	MyType.addField("field1", IntegerNode(), True)
-	MyType.addField("field2", StringNode())
+	MyType.addField("field1", "this is field1", IntegerNode(), True)
+	MyType.addField("field2", "optional field2", StringNode())
 	"""
-	def __init__(self, description = None):
-		SyntaxNode.__init__(self, "<sequence>", description)
+	
+	_typeName = "<sequence>"
+	
+	def __init__(self):
+		SyntaxNode.__init__(self)
 		self._fields = {}
 	
-	def addField(self, fieldName, syntaxNode, optional = False):
+	def addField(self, fieldName, description, syntaxNode, optional = False):
 		"""
 		Declares a new field in the sequence.
 		""" 
-		self._fields[fieldName] = (syntaxNode, optional)
+		self._fields[fieldName] = (description, syntaxNode, optional)
 
 	def parse(self, tokens):
 		"""
@@ -235,16 +278,19 @@ class SequenceNode(SyntaxNode):
 				break
 			
 			if fieldName in parsedFields:
-				raise UnexpectedToken("%s: duplicated field %s" % (self, fieldName))
+				raise UnexpectedToken("duplicated field %s" % (fieldName))
 			parsedFields.append(fieldName)
 
-			v, nextTokens = self._fields[fieldName][0].parse(nextTokens[1:])
+			try:
+				v, nextTokens = self._fields[fieldName][1].parse(nextTokens[1:])
+			except ParsingException, e:
+				e.forwardAs(fieldName)
 			ret[fieldName] = v
 			
 		# Check if we have all mandatory fields
-		for fieldName, (node, optional)  in self._fields.items():
+		for fieldName, (description, node, optional)  in self._fields.items():
 			if not optional and not fieldName in parsedFields:
-				raise MissingToken("%s: missing mandatory field %s" % (self, fieldName))
+				raise MissingToken("missing mandatory field %s (%s)" % (fieldName, description))
 
 		return (ret, nextTokens)		
 
@@ -261,17 +307,20 @@ class SequenceNode(SyntaxNode):
 				break
 			
 			if fieldName in parsedFields:
-				raise UnexpectedToken("%s: duplicated field %s" % (self, fieldName))
+				raise UnexpectedToken("duplicated field %s" % (fieldName))
 			parsedFields.append(fieldName)
 			
 			# Check if the current field wants to complete something or not
-			suggestions, completionRequired, nextTokens = self._fields[fieldName][0].suggestNextTokens(nextTokens[1:])
+			try:
+				suggestions, completionRequired, nextTokens = self._fields[fieldName][1].suggestNextTokens(nextTokens[1:])
+			except ParsingException, e:
+				e.forwardAs(fieldName)
 
 			if completionRequired:
 				if nextTokens:
 					# well, this field could have consumed other tokens,
 					# but it did not: missing a token somewhere
-					raise MissingToken("%s: field %s misses a value" % (self, fieldName))
+					raise MissingToken("field %s misses a value" % (fieldName))
 				else:
 					# OK, first suggest to complete this token
 					break
@@ -288,10 +337,10 @@ class SequenceNode(SyntaxNode):
 				# in this case, we may complete with:
 				# optional tokens for the last started field branch
 				# and any non-entered field names in the current sequence
-				for fieldName, (node, optional) in self._fields.items():
+				for fieldName, (description, node, optional) in self._fields.items():
 					if not fieldName in parsedFields:
 						# we prefix the description with a * for mandatory fields
-						suggestions.append((fieldName, (not optional and "*" or "") + node.getDescription()))
+						suggestions.append((fieldName, (not optional and "*" or "") + description))
 						if not optional:
 							# At least one non-optional field: completion required.
 							completionRequired = True
@@ -300,9 +349,9 @@ class SequenceNode(SyntaxNode):
 		else:
 			# The line has not been consumed completely - just check that
 			# we have all our mandatory fields
-			for fieldName, (node, optional)  in self._fields.items():
+			for fieldName, (description, node, optional)  in self._fields.items():
 				if not optional and not fieldName in parsedFields:
-					raise MissingToken("%s: missing mandatory field %s" % (self, fieldName))
+					raise MissingToken("missing mandatory field %s (%s)" % (fieldName, description))
 
 			# OK, we have everything, and nothing can't be completed at
 			# our level (i.e. in this node branch) anymore
@@ -314,26 +363,29 @@ class ChoiceNode(SyntaxNode):
 	Equivalent of a ASN.1 CHOICE:
 	
 	MyType ::= CHOICE {
-		choice1 INTEGER,
-		choice2 String
+		choice1 INTEGER, -- this is choice 1
+		choice2 String -- this is choice 2
 	}
 	
 	translates into:
 	MyType = ChoiceNode()
-	MyType.addChoice("choice1", IntegerNode())
-	MyType.addChoice("choice2", StringNode())
+	MyType.addChoice("choice1", "this is choice 1", IntegerNode())
+	MyType.addChoice("choice2", "this is choice 2", StringNode())
 	"""
-	def __init__(self, description = None):
-		SyntaxNode.__init__(self, "<choice>", description)
+	
+	_typeName = "<choice>"
+	
+	def __init__(self):
+		SyntaxNode.__init__(self)
 		self._choices = {}
 	
-	def addChoice(self, choiceName, syntaxNode):
-		self._choices[choiceName] = syntaxNode
-		return self
+	def addChoice(self, name, description, syntaxNode):
+		self._choices[name] = (description, syntaxNode)
+		return self # enable cascading multiple addChoice()
 
 	def addChoices(self, choices):
-		for choiceName, syntaxNode in choices:
-			self.addChoice(choiceName, syntaxNode)
+		for choiceName, choiceDescription, syntaxNode in choices:
+			self.addChoice(choiceName, choiceDescription, syntaxNode)
 		return self
 	
 	def parse(self, tokens):
@@ -341,30 +393,37 @@ class ChoiceNode(SyntaxNode):
 		For a choice, returns a tuple (choiceName, value)
 		"""
 		if not tokens:
-			raise MissingToken("%s: missing choice name" % self) 
+			raise MissingToken("missing choice name") 
 		# Check that we have one of or choice names
 		choiceName = tokens[0]
 		if choiceName in self._choices:
-			v, remaining = self._choices[choiceName].parse(tokens[1:])
+			try:
+				v, remaining = self._choices[choiceName][1].parse(tokens[1:])
+			except ParsingException, e:
+				e.forwardAs(choiceName)
+
 			return ( (choiceName, v), remaining )
 		else:
-			raise InvalidSyntax("%s: invalid choice name (%s)" % (self, choiceName))
+			raise InvalidSyntax("invalid choice name (%s)" % (choiceName))
 
 	def suggestNextTokens(self, tokens):
 		if not tokens:
 			# Suggest one choice
 			suggestions = []
-			for choiceName, node in self._choices.items():
-				suggestions.append((choiceName, node.getDescription()))
+			for choiceName, (choiceDescription, node) in self._choices.items():
+				suggestions.append((choiceName, choiceDescription))
 			return suggestions, True, tokens
 
 		else:
 			# Delegate to the selected choice
 			choiceName = tokens[0]
 			if choiceName in self._choices:
-				return self._choices[choiceName].suggestNextTokens(tokens[1:])
+				try:
+					return self._choices[choiceName][1].suggestNextTokens(tokens[1:])
+				except ParsingException, e:
+					e.forwardAs(choiceName)
 			else:
-				raise InvalidSyntax("%s: invalid choice name (%s)" % (self, choiceName)) 
+				raise InvalidSyntax("invalid choice name (%s)" % (choiceName)) 
 
 
 
@@ -380,23 +439,34 @@ class ChoiceNode(SyntaxNode):
 
 class CommandContext(ChoiceNode):
 	"""
-	Do not instanciate directly.
-	Instead, call ContextManager.getNewContext(contextName, description, parent = None)
+	A special container to register commands whose exec line is
+	usually a sequence node.
+	
+	A context must be registered into a ContextManager to
+	be reachable. Such a registration enables context navigation.
+	
+	Once created, use ContextManager.registerContext(name, description, context, parent = None)
+	to register the context.
+	
+	
+	Alternatively, you may directly get a registered context with:
+	ContextManager.createContext(contextName, description, parent = ...)
+	or ContextManager.createRootContext(contextName, description)
 	"""
-	def __init__(self, description):
-		ChoiceNode.__init__(self, description)
+	def __init__(self):
+		ChoiceNode.__init__(self)
 		self.__commands = {}
 		# Automatically injected by the context manager (upon registration)
 		self._parentContext = None
 		self._contextManager = None
 		self._name = None
 		
-	def __str__(self):
-		return "%s" % self._name
-
 	##
 	# "Private" methods
 	##
+	
+	def __str__(self):
+		return self._name	
 
 	def _execute(self, tokens):
 		"""
@@ -407,7 +477,7 @@ class CommandContext(ChoiceNode):
 		
 		value, remainingTokens = self.parse(tokens)
 		if remainingTokens:
-			raise UnexpectedToken("%s: unexpected token at: %s" % (self, remainingTokens[0]))
+			raise UnexpectedToken("unexpected token at: %s" % (remainingTokens[0]))
 
 		# Let's execute the command
 		(commandName, args) = value
@@ -428,13 +498,13 @@ class CommandContext(ChoiceNode):
 		suggestions, completionRequired, remainingTokens = self.suggestNextTokens(tokens[:-1])
 
 		if remainingTokens:
-			raise UnexpectedToken("%s: unexpected token at: %s" % (self, remainingTokens[0]))
+			raise UnexpectedToken("unexpected token at: %s" % (remainingTokens[0]))
 
 		if not tokens[-1]:
 			# Command completion
 			# We don't have the beginning of a token.
 			# Simply suggest pure continuations	
-			return suggestions
+			return completionRequired, suggestions
 		
 		else:
 			# Word/token completion
@@ -442,7 +512,10 @@ class CommandContext(ChoiceNode):
 			tokenToComplete = tokens[-1]
 			
 			adjustedSuggestions = [ x for x in suggestions if x[0].startswith(tokenToComplete) ]
-			return adjustedSuggestions				
+			
+			if not adjustedSuggestions:
+				raise InvalidSyntax("unrecognized command: %s" % tokenToComplete)
+			return True, adjustedSuggestions
 
 	def _getFormattedSuggestions(self, tokens):
 		"""
@@ -472,10 +545,17 @@ class CommandContext(ChoiceNode):
 			return self._parentContext.getContextName() + '/' + self._name
 		else:
 			return self._name
-	
-	def setContextName(self, name):
-		self._name = name
-	
+
+	def addContext(self, name, description, context):
+		"""
+		Add a sub-context.
+		Convenience function, calls the context registration
+		on the context manager.
+		"""
+		if not self._contextManager:
+			raise Exception("Please register this context into a context manager before adding sub-contexts to it")
+		self._contextManager.registerContext(name, description, context, self)
+
 	def error(self, txt):
 		self._contextManager.write("%% error: %s\n" % txt)
 
@@ -485,7 +565,7 @@ class CommandContext(ChoiceNode):
 	def notify(self, txt):
 		self._contextManager.write(txt + "\n")
 	
-	def registerCommand(self, commandName, node, callback):
+	def addCommand(self, commandName, description, syntaxNode, callback):
 		"""
 		Register a new command into the context.
 		The callback is a function that will take arguments according
@@ -493,7 +573,7 @@ class CommandContext(ChoiceNode):
 		
 		Node is the syntaxNode representing the command arguments.
 		"""
-		self.addChoice(commandName, node)
+		self.addChoice(commandName, description, syntaxNode)
 		self.__commands[commandName] = callback
 		return self
 
@@ -526,23 +606,23 @@ class ContextManager:
 	
 	# Factory-oriented method	
 	def createContext(self, contextName, description, parentContext):
-		context = CommandContext(description)
-		return self.registerContext(contextName, context, parentContext)
+		context = CommandContext()
+		return self.registerContext(contextName, description, context, parentContext)
 	
 	# Registration-oriented method	
-	def registerContext(self, contextName, context, parentContext):
+	def registerContext(self, contextName, description, context, parentContext):
 		# Some injections
 		context._parentContext = parentContext
 		context._contextManager = self
-		context.setContextName(contextName)
+		context._name = contextName
 		
 		if parentContext:
 			# Register a way to navigate to the context
-			parentContext.registerCommand(contextName, NullNode("enter " + context.getDescription() + " context"), lambda: self.setCurrentContext(context))
+			parentContext.addCommand(contextName, "enter " + description + " context", NullNode(), lambda: self.setCurrentContext(context))
 			# Register a way to exit the context
-			context.registerCommand("exit", NullNode("exit to parent context"), self.goUp)
+			context.addCommand("exit", "exit to parent context", NullNode(), self.goUp)
 		else:
-			context.registerCommand("exit", NullNode("exit"), self.goUp)
+			context.addCommand("exit", "exit " + description, NullNode(), self.goUp)
 		
 		return context
 		
@@ -593,6 +673,7 @@ class ContextManager:
 # Could be a telnet layer, or raw input, readline, cmd.Cmd...
 
 import cmd
+import readline
 
 class CmdContextManagerAdapter(ContextManager):
 	"""
@@ -603,6 +684,8 @@ class CmdContextManagerAdapter(ContextManager):
 		def __init__(self, contextManager):
 			cmd.Cmd.__init__(self)
 			self._contextManager = contextManager
+			
+			readline.set_completer_delims(" ")
 			
 			# Warning: python 2.6+ only !
 			try:
@@ -622,9 +705,7 @@ class CmdContextManagerAdapter(ContextManager):
 			Overrides the cmd.Cmd implementation.
 			Completes the words after the first one.
 			"""
-			tokens = self.tokenize(line)
-			ret = self._contextManager.getSuggestions(tokens)
-			return [token for (token, desc) in ret]
+			return self.completenames(line)
 
 		def completenames(self, text, *ignored):
 			"""
@@ -632,8 +713,43 @@ class CmdContextManagerAdapter(ContextManager):
 			Completes the first word (command).
 			"""
 			tokens = self.tokenize(text)
-			ret = self._contextManager.getSuggestions(tokens)
-			return [token for (token, desc) in ret]
+			
+			try:
+				completionRequired, ret = self._contextManager.getSuggestions(tokens)
+			except ParsingException, e:
+				self.stdout.write("\n%% error: %s\n" % str(e))
+				self.redisplay()
+				return []
+
+			# Trick to display both token and description in readline:
+			# If we need to display a help, 
+			# we serialize the token and its description a special
+			# way. The deserialization will be done into displayCompletion.
+			#
+			# If we need to display a help with a single item, we
+			# add a second empty item to trick readline into thinking that
+			# we have multiple choices.
+			
+			# If we have a required completion, let's check if we have a
+			# single one.
+			if completionRequired:
+				if len(ret) == 1:
+					# Single suggestion. A real one or a help suggestion ?
+					token, description = ret[0]
+					if token is not None:
+					# If we have only one suggestion, autocomplete with it.
+						return [ token ]
+					else:
+						# We have a None suggestion, i.e. we can't complete for the user (int/string value, ...)
+						return ["<value>||%s" % description, ""]
+				else:
+					# we have multiple suggestions (ret == [] with completionRequired is normally impossible)
+					# Let's serialize them with their description text
+					return ["%s||%s" % (token, desc) for (token, desc) in ret]
+			
+			else:
+				# We may have multiple, optional completions, and the <CR> option, too
+				return ["%s||%s" % (token, desc) for (token, desc) in ret] + ["<CR>||", ""]
 
 		def tokenize(self, line):
 			"""
@@ -648,6 +764,7 @@ class CmdContextManagerAdapter(ContextManager):
 				return
 				
 			if line == "EOF":
+				self.stdout.write("\n")
 				self._contextManager.goUp()
 				return
 			
@@ -661,26 +778,31 @@ class CmdContextManagerAdapter(ContextManager):
 		def displayCompletion(self, substitute, matches, longest_match_length):
 			"""
 			This hook enables to retrieve the token descriptions
-			provided through the CommandContext, and display then
+			provided through the CommandContext, and displays then
 			inline "a la Cisco".
 			
 			This is a hook to avoid re-implementing a readline-like lib with
 			this enhanced suggestion display.
 			"""
-			suggestions = [ (x, "description") for x in matches ]
+#			suggestions = [ (x, "description") for x in matches ]
+			suggestions = [ x.split('||', 1) for x in matches if x ]
 			
 			maxTokenLength = max([ len(x[0]) for x in suggestions])
-			fmt = " %%%ss  %%s\n" % maxTokenLength
+			fmt = " %%-%ss      %%s\n" % maxTokenLength
 			self.stdout.write("\n")
 			for token, description in suggestions:
 				self.stdout.write(fmt % (token, description))
-			
+
+			self.redisplay()			
+
+		def redisplay(self):
 			# a readline.redisplay() is not enough: for readline, nothing
 			# has changed and it won't redisplay the prompt> line
 			# Instead, we should call rl_forced_update_display,
 			# but this is not exported through the Python wrapper.
 #			readline.redisplay()
 			self.stdout.write(self.prompt + readline.get_line_buffer())
+		
 		
 	def __init__(self, intro):
 		ContextManager.__init__(self)

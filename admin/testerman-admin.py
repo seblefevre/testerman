@@ -2,7 +2,7 @@
 # -*- coding: utf-8 -*-
 ##
 # This file is part of Testerman, a test automation system.
-# Copyright (c) 2009 Sebastien Lefevre and other contributors
+# Copyright (c) 2010 Sebastien Lefevre and other contributors
 #
 # This program is free software; you can redistribute it and/or modify it under
 # the terms of the GNU General Public License as published by the Free Software
@@ -17,44 +17,16 @@
 ##
 # Testerman server-side administration console.
 # 
-# Experimental.
 #
 ##
 
+# A cisco-like command-line shell with support for completion
+# and parsing to value trees from syntax trees.
+from CiscoCommandShell import *
 
 import readline
 import cmd
 import sys
-
-
-
-##
-# A cisco-like command-line shell, using
-# "inline" value tree representations,
-# based on a syntax that can be described with ASN.1 primitives
-# (sequence, choice, integer, string)
-#
-#
-# Support for autocompletion.
-# Not based on Python standard's cmd module due to a
-# different way to autocomplete tokens and propose next ones.
-#
-# Low-level input handling, however, is based on readline.
-#
-#
-# Usage:
-# - create a CommandContext and register one or multiple commands
-# in it. These commands have a syntax tree based on a SequenceNode.
-# - ... ?
-# 
-#
-##
-
-
-from CiscoCommandShell import *
-
-
-
 
 
 ##
@@ -126,7 +98,7 @@ def parseTest():
 # Administration functions
 ##
 
-import ComponentContext
+import contexts.ComponentManagement
 
 def main():
 
@@ -134,8 +106,7 @@ def main():
 
 	# Root context
 	rootContext = adminShell.createRootContext("testerman", "testerman administration")
-	
-	adminShell.registerContext("component", ComponentContext.Context(), rootContext)
+	rootContext.addContext("component", "component management", contexts.ComponentManagement.Context())
 
 	try:
 		adminShell.run()

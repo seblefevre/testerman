@@ -271,22 +271,22 @@ from CiscoCommandShell import *
 
 class Context(CommandContext):
 	def __init__(self):
-		CommandContext.__init__(self, "component deployment management")
+		CommandContext.__init__(self)
 		# Deploy command
-		node = SequenceNode("deploy a new component on server")
-		node.addField("branch", ChoiceNode("deployment branch").addChoices([("stable", NullNode("stable component")), ("testing", NullNode("testing component"))]), True)
-		node.addField("component", StringNode("component name"))
-		node.addField("archive", StringNode("path to archive"))
-		node.addField("version", StringNode("version to announce"), True)
-		self.registerCommand("deploy", node, self.deployComponent)
+		node = SequenceNode()
+		node.addField("branch", "deployment branch", ChoiceNode().addChoices([("stable", "stable component", NullNode()), ("testing", "testing component", NullNode())]), True)
+		node.addField("component", "component name", StringNode())
+		node.addField("archive", "path to archive", StringNode())
+		node.addField("version", "version to announce", StringNode(), True)
+		self.addCommand("deploy", "deploy a new component on server", node, self.deployComponent)
 		# List command		
-		self.registerCommand("list", NullNode("list deployed components"), self.listComponents)
+		self.addCommand("list", "list deployed components", NullNode(), self.listComponents)
 
 	def listComponents(self):
 		docroot = os.environ.get('TESTERMAN_DOCROOT')
 
 		if not docroot:
-			self.error("missing document root.")
+			self.error("Sorry, the document root is not set (TESTERMAN_DOCROOT).")
 			return
 
 		docroot = os.path.realpath(docroot)
