@@ -597,6 +597,7 @@ class ContextManager:
 	"""
 	def __init__(self):
 		self._currentContext = None
+		self._registeredContexts = {} # contexts, by complete name/path. Used for direct access.
 
 	# Factory-oriented method	
 	def createRootContext(self, contextName, description = None):
@@ -618,12 +619,14 @@ class ContextManager:
 		
 		if parentContext:
 			# Register a way to navigate to the context
-			parentContext.addCommand(contextName, "enter " + description + " context", NullNode(), lambda: self.setCurrentContext(context))
+			parentContext.addCommand(contextName, "go to " + description + " context", NullNode(), lambda: self.setCurrentContext(context))
 			# Register a way to exit the context
 			context.addCommand("exit", "exit to parent context", NullNode(), self.goUp)
 		else:
 			context.addCommand("exit", "exit " + description, NullNode(), self.goUp)
-		
+
+		# Registration for direct access				
+		self._registeredContexts[context.getContextName()] = context
 		return context
 		
 	def getCurrentContextName(self):
@@ -631,6 +634,16 @@ class ContextManager:
 	
 	def setCurrentContext(self, context):
 		self._currentContext = context
+
+	def goTo(self, contextPath):
+		"""
+		Directly go to the context identified by the contextPath (path/to/context)
+		"""
+		context = self._registeredContexts.get(contextPath)
+		if not context:
+			raise Exception("Unknown context: %s" % contextPath)
+		else:
+			self.setCurrentContext(context)
 	
 	def goUp(self):
 		if self._currentContext._parentContext:
@@ -684,15 +697,7 @@ class CmdContextManagerAdapter(ContextManager):
 		def __init__(self, contextManager):
 			cmd.Cmd.__init__(self)
 			self._contextManager = contextManager
-			
 			readline.set_completer_delims(" ")
-			
-			# Warning: python 2.6+ only !
-			try:
-				readline.set_completion_display_matches_hook(self.displayCompletion)
-				pass
-			except:
-				pass
 			
 		def emptyline(self):
 			"""
@@ -710,7 +715,39 @@ class CmdContextManagerAdapter(ContextManager):
 		def completenames(self, text, *ignored):
 			"""
 			Overrides the cmd.Cmd implementation.
-			Completes the first word (command).
+			
+			Normally, we should only return a list of tokens to complete the current text.
+			Actually, we also display the possible completion options, if any, directly here,
+			as we display them "a la cisco", with an associated description (which is not
+			the case of the standard way of readline displaying completion suggestions).
+			
+			In this case, we just "simulate" that there are no possible completions so
+			that readline do not display them its own way.
+			
+			This avoids hooking the rl_completion_display_matches_hook via set_completion_display_matches (Python 2.6+)
+			or ctypes/cdll manipulation in 2.5.
+			"""
+			ret = self._getSuggestions(text)
+			if isinstance(ret, basestring):
+				# a single suggestion was returned. Complete with it.
+				return [ ret ]
+			elif isinstance(ret, list):
+				# multiple possibilities. Display them.
+				self.showCompletionSuggestions(ret)
+				# And do not complete anything
+				return []
+			else:
+				# Error during completion. Do not complete anything.
+				return []
+		
+
+		def _getSuggestions(self, text, *ignored):
+			"""
+			Returns a list of possible tokens or continuations, (list)
+			or a single token (completion), (string)
+			or None (error). (None)
+			
+			I'm not a big fan of dynamic return types, but it makes things easier here.
 			"""
 			tokens = self.tokenize(text)
 			
@@ -719,37 +756,28 @@ class CmdContextManagerAdapter(ContextManager):
 			except ParsingException, e:
 				self.stdout.write("\n%% error: %s\n" % str(e))
 				self.redisplay()
-				return []
+				return None
 
-			# Trick to display both token and description in readline:
-			# If we need to display a help, 
-			# we serialize the token and its description a special
-			# way. The deserialization will be done into displayCompletion.
-			#
-			# If we need to display a help with a single item, we
-			# add a second empty item to trick readline into thinking that
-			# we have multiple choices.
-			
-			# If we have a required completion, let's check if we have a
-			# single one.
+			# If we have a required completion, let's check if we have a single one.
 			if completionRequired:
 				if len(ret) == 1:
 					# Single suggestion. A real one or a help suggestion ?
 					token, description = ret[0]
 					if token is not None:
-					# If we have only one suggestion, autocomplete with it.
-						return [ token ]
+						# If we have only one suggestion, autocomplete with it.
+						return token
 					else:
 						# We have a None suggestion, i.e. we can't complete for the user (int/string value, ...)
-						return ["<value>||%s" % description, ""]
+						# Display it as a suggestion.
+						return [ ("<value>", description) ]
 				else:
-					# we have multiple suggestions (ret == [] with completionRequired is normally impossible)
-					# Let's serialize them with their description text
-					return ["%s||%s" % (token, desc) for (token, desc) in ret]
+					# We have multiple suggestions, display them.
+					return ret
 			
 			else:
 				# We may have multiple, optional completions, and the <CR> option, too
-				return ["%s||%s" % (token, desc) for (token, desc) in ret] + ["<CR>||", ""]
+				# Display them
+				return ret + [( '<CR>', '')]
 
 		def tokenize(self, line):
 			"""
@@ -775,24 +803,16 @@ class CmdContextManagerAdapter(ContextManager):
 			except Exception, e:
 				self.stdout.write("%% error: %s\n" % str(e))
 		
-		def displayCompletion(self, substitute, matches, longest_match_length):
+		def showCompletionSuggestions(self, suggestions):
 			"""
-			This hook enables to retrieve the token descriptions
-			provided through the CommandContext, and displays then
-			inline "a la Cisco".
-			
-			This is a hook to avoid re-implementing a readline-like lib with
-			this enhanced suggestion display.
+			Displays the completion suggestions "a la Cisco".
 			"""
-#			suggestions = [ (x, "description") for x in matches ]
-			suggestions = [ x.split('||', 1) for x in matches if x ]
 			
 			maxTokenLength = max([ len(x[0]) for x in suggestions])
 			fmt = " %%-%ss      %%s\n" % maxTokenLength
 			self.stdout.write("\n")
 			for token, description in suggestions:
 				self.stdout.write(fmt % (token, description))
-
 			self.redisplay()			
 
 		def redisplay(self):
@@ -800,7 +820,7 @@ class CmdContextManagerAdapter(ContextManager):
 			# has changed and it won't redisplay the prompt> line
 			# Instead, we should call rl_forced_update_display,
 			# but this is not exported through the Python wrapper.
-#			readline.redisplay()
+			# readline.redisplay()
 			self.stdout.write(self.prompt + readline.get_line_buffer())
 		
 		

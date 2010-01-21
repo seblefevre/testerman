@@ -16,109 +16,78 @@
 
 ##
 # Testerman server-side administration console.
-# 
+#
+# A centralized interactive shell for common administration tasks.
 #
 ##
 
 # A cisco-like command-line shell with support for completion
 # and parsing to value trees from syntax trees.
-from CiscoCommandShell import *
+import CiscoInteractiveShell
 
-import readline
-import cmd
-import sys
-
-
-##
-# Some almost unit tests to test the parsing and completion capabilities
-##
-
-def parseTest():
-	"""
-	Some unit tests
-	"""
-	def deploy(component, archive, version = None, branch = ("testing", None)):
-		print "Deploying package %s as component %s, version %s, branch %s..." % (archive, component, version, branch[0])
-	
-	
-	cm = ContextManager()
-	
-	deployment = cm.createRootContext("deployment", "component deployment context")
-	
-	deployNode = SequenceNode("deploy a new component on server")
-	deployNode.addField("branch", ChoiceNode("deployment branch").addChoice("stable", NullNode("stable component")).addChoice("testing", NullNode("testing component")), True)
-	deployNode.addField("component", StringNode("component name"))
-	deployNode.addField("archive", StringNode("path to archive"))
-	deployNode.addField("version", StringNode("version to announce"), True)
-	deployment.registerCommand("deploy", deployNode, deploy)
-
-
-	cmd = "deploy component test branch testing archive /tmp/ version 1.0.0"
-	print cmd
-	print cm.getFormattedSuggestions(cmd.split(' '))
-
-	cmd = "deploy component test branch stable archive /tmp/"
-	print cmd
-	print cm.getFormattedSuggestions(cmd.split(' '))
-
-	cmd = "deploy component test archive"
-	print cmd
-	print cm.getFormattedSuggestions(cmd.split(' '))
-
-	cmd = "d"
-	print cmd
-	print cm.getFormattedSuggestions(cmd.split(' '))
-
-	cmd = "deploy"
-	print cmd
-	print cm.getFormattedSuggestions(cmd.split(' '))
-
-	cmd = "deploy "
-	print cmd
-	print cm.getFormattedSuggestions(cmd.split(' '))
-
-	cmd = "deploy comp"
-	print cmd
-	print cm.getFormattedSuggestions(cmd.split(' '))
-
-	cmd = "deploy component "
-	print cmd
-	print cm.getFormattedSuggestions(cmd.split(' '))
-
-	cmd = "deploy component t"
-	print cmd
-	print cm.getFormattedSuggestions(cmd.split(' '))
-
-	cmd = "deploy component t "
-	print cmd
-	print cm.getFormattedSuggestions(cmd.split(' '))
-
-
-##
-# Administration functions
-##
-
+# Administration modules
 import contexts.ComponentManagement
+
+import sys
+import optparse
+import os
+import os.path
+
+
+VERSION = "0.0.5"
+
+
+def getVersion():
+	return "Testerman Administration Console %s" % VERSION
+
 
 def main():
 
-	adminShell = CmdContextManagerAdapter("Welcome to Testerman Administration Console")
+	parser = optparse.OptionParser(version = getVersion())
+	parser.add_option("-r", dest = "docRoot", metavar = "PATH", help = "set document root to PATH (default: %default). Alternatively, you may set the TESTERMAN_DOCROOT environment variable.", default = os.environ.get("TESTERMAN_DOCROOT", '.'))
+	parser.add_option("-S", dest = "sourceRoot", metavar = "PATH", help = "set Testerman source root to PATH. Useful to deploy experimental components from source.", default = None)
+	parser.add_option("-s", "--server", dest = "serverUrl", metavar = "URL", help = "use URL as Testerman server URL (default: %default). Alternatively, you may set the TESTERMAN_SERVER environment variable. ", default = os.environ.get("TESTERMAN_SERVER", "http://localhost:8080"))
+	parser.add_option("-c", "--context", dest = "context", metavar = "CONTEXT", help = "set the initial working context to CONTEXT. Also useful when used with --execute.", default = None)
+	parser.add_option("-e", "--execute", dest = "command", metavar = "COMMAND", help = "do not run an interactive shell. Instead, execute the command line provided here from the initial working context.", default = None)
 
+	(options, args) = parser.parse_args()
+
+	if options.docRoot: os.environ["TESTERMAN_DOCROOT"] = os.path.realpath(options.docRoot)
+	if options.sourceRoot: os.environ["TESTERMAN_SOURCE"] = os.path.realpath(options.sourceRoot)
+	if options.serverUrl: os.environ["TESTERMAN_SERVER"] = os.path.realpath(options.serverUrl)
+
+	# Shell creation
+	adminShell = CiscoInteractiveShell.CmdContextManagerAdapter("Welcome to Testerman Administration Console")
 	# Root context
 	rootContext = adminShell.createRootContext("testerman", "testerman administration")
 	rootContext.addContext("component", "component management", contexts.ComponentManagement.Context())
 
-	try:
-		adminShell.run()
-	except ShellExit:
-		print
-		sys.exit(0)
-	except KeyboardInterrupt:
-		print
-		sys.exit(0)
+	if options.context:
+		adminShell.goTo(options.context)
+
+	# Non-interactive mode
+	if options.command:
+		ok = True
+		try:
+			adminShell.execute(options.command.split(' ')) # rough tokenization
+		except Exception, e:
+			print str(e)
+			ok = False
+
+		sys.exit(ok and 0 or 1)
+
+	# Interactive mode
+	else:
+		try:
+			adminShell.run()
+		except CiscoInteractiveShell.ShellExit:
+			print
+			sys.exit(0)
+		except KeyboardInterrupt:
+			print
+			sys.exit(0)
 	
 
 if __name__ == "__main__":
 	main()
-	#parseTest()
 	

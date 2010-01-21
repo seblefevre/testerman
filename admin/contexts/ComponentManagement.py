@@ -116,7 +116,7 @@ class UpdateMetadataWrapper:
 		Displays the currently deployed components and their status.
 		"""
 		if not fileExists(self._filename):
-			return
+			raise Exception("Cannot find updates.xml file (%s)" % self._filename)
 		
 		f = open(self._filename, 'r')
 		content = ''.join([x.strip() for x in f.readlines()])
@@ -267,7 +267,7 @@ class UpdateMetadataWrapper:
 # Context definition
 ##
 
-from CiscoCommandShell import *
+from CiscoInteractiveShell import *
 
 class Context(CommandContext):
 	def __init__(self):
