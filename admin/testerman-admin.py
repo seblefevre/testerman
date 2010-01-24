@@ -26,7 +26,8 @@
 import CiscoInteractiveShell
 
 # Administration modules
-import contexts.ComponentManagement
+import contexts.component
+
 
 import sys
 import optparse
@@ -45,22 +46,25 @@ def main():
 
 	parser = optparse.OptionParser(version = getVersion())
 	parser.add_option("-r", dest = "docRoot", metavar = "PATH", help = "set document root to PATH (default: %default). Alternatively, you may set the TESTERMAN_DOCROOT environment variable.", default = os.environ.get("TESTERMAN_DOCROOT", '.'))
-	parser.add_option("-S", dest = "sourceRoot", metavar = "PATH", help = "set Testerman source root to PATH. Useful to deploy experimental components from source.", default = None)
+	parser.add_option("-S", dest = "sourceRoot", metavar = "PATH", help = "set Testerman source root to PATH. Useful to publish experimental components from source.", default = None)
 	parser.add_option("-s", "--server", dest = "serverUrl", metavar = "URL", help = "use URL as Testerman server URL (default: %default). Alternatively, you may set the TESTERMAN_SERVER environment variable. ", default = os.environ.get("TESTERMAN_SERVER", "http://localhost:8080"))
 	parser.add_option("-c", "--context", dest = "context", metavar = "CONTEXT", help = "set the initial working context to CONTEXT. Also useful when used with --execute.", default = None)
 	parser.add_option("-e", "--execute", dest = "command", metavar = "COMMAND", help = "do not run an interactive shell. Instead, execute the command line provided here from the initial working context.", default = None)
+	parser.add_option("--debug", dest = "debug", action = "store_true", help = "turn debug traces on (default: %default)", default = False)
 
 	(options, args) = parser.parse_args()
 
 	if options.docRoot: os.environ["TESTERMAN_DOCROOT"] = os.path.realpath(options.docRoot)
-	if options.sourceRoot: os.environ["TESTERMAN_SOURCE"] = os.path.realpath(options.sourceRoot)
+	if options.sourceRoot: os.environ["TESTERMAN_SRCROOT"] = os.path.realpath(options.sourceRoot)
 	if options.serverUrl: os.environ["TESTERMAN_SERVER"] = os.path.realpath(options.serverUrl)
 
 	# Shell creation
 	adminShell = CiscoInteractiveShell.CmdContextManagerAdapter("Welcome to Testerman Administration Console")
+	adminShell.setDebug(options.debug)
+	
 	# Root context
 	rootContext = adminShell.createRootContext("testerman", "testerman administration")
-	rootContext.addContext("component", "component management", contexts.ComponentManagement.Context())
+	rootContext.addContext("component", "component management", contexts.component.Context())
 
 	if options.context:
 		adminShell.goTo(options.context)

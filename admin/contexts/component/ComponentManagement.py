@@ -1,4 +1,3 @@
-#!/usr/bin/env python
 # -*- coding: utf-8 -*-
 ##
 # This file is part of Testerman, a test automation system.
@@ -15,7 +14,8 @@
 ##
 
 ##
-# Component management context for testerman-admin
+# Component management context for testerman-admin:
+# publish, unpublish, etc.
 ##
 
 
@@ -23,6 +23,7 @@ import xml.dom.minidom
 import os
 import shutil
 import sys
+import tempfile
 
 ###############################################################################
 # Some usual tools
@@ -43,9 +44,9 @@ def fatal(txt = None, retcode = 1):
 		error(txt)
 	sys.exit(retcode)
 
-def prettyPrintDictList(header = [], distList = []):
+def formatTable(header = [], distList = []):
 	"""
-	Pretty display the list of dict according to the header list.
+	Pretty format the list of dict according to the header list.
 	Header names not found in the dict are not displayed, and
 	only header names found in the dict are displayed.
 	
@@ -53,25 +54,25 @@ def prettyPrintDictList(header = [], distList = []):
 	If it is a tuple, label is used to display the header, and name
 	to look for the element in the dicts.
 	"""
-	def formatLine(cols, widths):
+	def formatRow(cols, widths):
 		"""
 		Formatting helper: array pretty print.
 		"""
-		line = "%s%s " % (cols[0], (widths[0]-len(cols[0]))*' ')
+		line = " %s%s " % (cols[0], (widths[0]-len(cols[0]))*' ')
 		for i in range(1, len(cols)):
 			line = line + "| %s%s " % (cols[i], (widths[i]-len(cols[i]))*' ')
 		return line
 
 	# First, we compute the max widths for each col
-	displayableHeader = []
-	width = []
+	colLabels = []
+	widths = []
 	for h in header:
 		try:
 			name, label = h
 		except:
 			label = h
-		width.append(len(label))
-		displayableHeader.append(label)
+		widths.append(len(label))
+		colLabels.append(label)
 
 	lines = [ ]
 	for entry in distList:
@@ -84,7 +85,7 @@ def prettyPrintDictList(header = [], distList = []):
 				name = h
 			if entry.has_key(name):
 				e = str(entry[name])
-				if len(e) > width[i]: width[i] = len(e)
+				if len(e) > widths[i]: widths[i] = len(e)
 				line.append(e)
 			else:
 				line.append('') # element not found for this dict entry
@@ -92,10 +93,11 @@ def prettyPrintDictList(header = [], distList = []):
 		lines.append(line)
 
 	# Then we can display them
-	res = formatLine(displayableHeader, width)
-	res +="\n" + '-'*len(res) + "\n"
+	res = formatRow(colLabels, widths)
+	res += "\n"
+	res += '-'*len(res) + "\n"
 	for line in lines:
-		res += formatLine(line, width) + "\n"
+		res += formatRow(line, widths) + "\n"
 	return res
 
 
@@ -113,7 +115,7 @@ class UpdateMetadataWrapper:
 
 	def getFormattedComponentsList(self):
 		"""
-		Displays the currently deployed components and their status.
+		Displays the currently published components and their status.
 		"""
 		if not fileExists(self._filename):
 			raise Exception("Cannot find updates.xml file (%s)" % self._filename)
@@ -136,11 +138,11 @@ class UpdateMetadataWrapper:
 				status = 'Missing archive file'
 			ret.append(dict(version = version, component = component, branch = branch, archive = url, status = status))
 		
-		return prettyPrintDictList([ 'component', 'version', 'branch', 'archive', 'status' ], ret)
+		return formatTable([ 'component', 'version', 'branch', 'archive', 'status' ], ret)
 
-	def isComponentDeployed(self, componentName, componentVersion):
+	def isComponentPublished(self, componentName, componentVersion):
 		"""
-		Returns { 'url', 'branch' } if the component is already deployed,
+		Returns { 'url', 'branch' } if the component is already published,
 		or None if not.
 		"""
 		if not fileExists(self._filename):
@@ -160,14 +162,17 @@ class UpdateMetadataWrapper:
 				return dict(url = url, component = component, version = version, branch = branch)
 		return None 
 	
-	def deployComponent(self, componentName, componentVersion, componentUrl, componentBranch):
+	def publishComponent(self, componentName, componentVersion, componentUrl, componentBranch):
 		"""
 		Updates the updates.xml file:
-		adds a new entry to deploy the component,
+		adds a new entry to publish the component,
 		or update an existing one, if any.
 
 		Creates a new updates.xml file if needed.
+		
+		Returns a string status.
 		"""
+		status = ""
 		if not fileExists(self._filename):
 			content = '<?xml version="1.0" ?>\n<updates/>\n'
 
@@ -186,7 +191,7 @@ class UpdateMetadataWrapper:
 			if version == componentVersion and component == componentName:
 				e.attributes['branch'] = componentBranch
 				e.attributes['url'] = componentUrl
-				print "Component %s %s (%s) has been redeployed successfully" % (component, version, branch)
+				status = "Component %s %s (%s) has been republished successfully" % (component, version, branch)
 				updated = True
 				break
 		
@@ -197,20 +202,21 @@ class UpdateMetadataWrapper:
 			e.attributes['component'] = componentName
 			e.attributes['branch'] = componentBranch
 			doc.firstChild.appendChild(e)
-			print "Component %s %s (%s) has been deployed successfully" % (componentName, componentVersion, componentBranch)
+			status = "Component %s %s (%s) has been published successfully" % (componentName, componentVersion, componentBranch)
 
 		f = open(self._filename, 'w')
 		f.write(doc.toprettyxml())
 		f.close()
-		return True
+		return status
 
-	def undeployComponent(self, componentName, componentVersion):
+	def unpublishComponent(self, componentName, componentVersion):
 		"""
 		Removes a component from the advertised list of components.
 		"""
+		status = ""
 		if not fileExists(self._filename):
 			# Nothing to do
-			return False
+			raise Exception("Unable to find updates.xml file (%s)" % self._filename)
 
 		f = open(self._filename, 'r')
 		content = ''.join([x.strip() for x in f.readlines()])
@@ -223,12 +229,12 @@ class UpdateMetadataWrapper:
 			branch = e.attributes['branch'].value
 			if version == componentVersion and component == componentName:
 				doc.firstChild.removeChild(e)
-				print "Component %s %s (%s) has been undeployed" % (component, version, branch)
+				status = "Component %s %s (%s) has been unpublished" % (component, version, branch)
 				
 		f = open(self._filename, 'w')
 		f.write(doc.toprettyxml())
 		f.close()
-		return True
+		return status
 
 	def updateComponent(self, componentName, componentVersion, toBranch = None, toUrl = None):
 		"""
@@ -269,31 +275,116 @@ class UpdateMetadataWrapper:
 
 from CiscoInteractiveShell import *
 
+
+import ComponentPackager
+
 class Context(CommandContext):
 	def __init__(self):
 		CommandContext.__init__(self)
-		# Deploy command
+		# Publish command
 		node = SequenceNode()
-		node.addField("branch", "deployment branch", ChoiceNode().addChoices([("stable", "stable component", NullNode()), ("testing", "testing component", NullNode())]), True)
+		node.addField("branch", "advertised component stability (default: testing)", ChoiceNode().addChoices([("stable", "stable component", NullNode()), ("testing", "testing component", NullNode()), ("experimental", "experimental component", NullNode())]), True)
 		node.addField("component", "component name", StringNode())
 		node.addField("archive", "path to archive", StringNode())
-		node.addField("version", "version to announce", StringNode(), True)
-		self.addCommand("deploy", "deploy a new component on server", node, self.deployComponent)
+		node.addField("version", "advertised version", StringNode())
+		self.addCommand("publish", "publish a new component on server", node, self.publishComponent)
+		# Source-publish command
+		node = SequenceNode()
+		node.addField("branch", "advertised component stability (default: testing)", ChoiceNode().addChoices([("stable", "stable component", NullNode()), ("testing", "testing component", NullNode()), ("experimental", "experimental component", NullNode())]), True)
+		node.addField("component", "component name", ChoiceNode().addChoices([("qtesterman", "QTesterman client", NullNode()), ("pyagent", "general purpose python agent", NullNode())]))
+		node.addField("version", "advertised version", StringNode(), True)
+		self.addCommand("source-publish", "publish a new component on server from its source", node, self.publishComponentFromSource)
+		# Unpublish command
+		node = SequenceNode()
+		node.addField("component", "component name to unpublish", StringNode())
+		node.addField("version", "version to unpublish", StringNode())
+		self.addCommand("unpublish", "unpublish an existing component", node, self.unpublishComponent)
 		# List command		
-		self.addCommand("list", "list deployed components", NullNode(), self.listComponents)
+		self.addCommand("list", "list published components", NullNode(), self.listComponents)
+
+	def _getDocroot(self):
+		docroot = os.environ.get('TESTERMAN_DOCROOT')
+		if not docroot:
+			raise Exception("Sorry, the document root is not set (TESTERMAN_DOCROOT).")
+		docroot = os.path.realpath(docroot)
+		return docroot
+	
+	def _getMetadataWrapper(self):
+		updateFilename = "%s/updates.xml" % (self._getDocroot())
+		return UpdateMetadataWrapper(updateFilename)
+
+	def _copyComponent(self, archiveFilename, docroot, componentName, componentVersion):
+		"""
+		Copies a component archive to the docroot/updates/<componentName>-<componentVersion>,
+		making directories on the fly if needed.
+
+		@rtype: string
+		@returns: the "url" of the file to reference in
+	          	the updates.xml file (docroot-path to the file)
+		"""
+		docroot = os.path.realpath(docroot)
+		archiveFilename = os.path.realpath(archiveFilename)
+
+		url = "/updates/%s-%s%s" % (componentName, componentVersion, os.path.splitext(archiveFilename)[1])
+		dst = "%s%s" % (docroot, url)
+
+		updateDir = os.path.split(dst)[0]
+		if not fileExists(updateDir):
+			try:
+				os.makedirs(updateDir, 0755)
+			except Exception, e:
+				raise Exception("Cannot create the updates directory (%s)" % str(e))
+		try:
+			shutil.copyfile(archiveFilename, dst)
+			os.chmod(dst, 0644)
+		except Exception, e:
+			raise Exception("Cannot copy %s to %s (%s)" % (archiveFilename, dst, str(e)))
+
+		return url
 
 	def listComponents(self):
-		docroot = os.environ.get('TESTERMAN_DOCROOT')
+		metadata = self._getMetadataWrapper()
+		self.notify(metadata.getFormattedComponentsList())
 
-		if not docroot:
-			self.error("Sorry, the document root is not set (TESTERMAN_DOCROOT).")
-			return
+	def publishComponent(self, component, archive, version, branch = ("testing", None)):
+		branch = branch[0]
+		self.notify("Publishing package %s as component %s %s (%s)..." % (archive, component, version, branch))
+		metadata = self._getMetadataWrapper()
 
-		docroot = os.path.realpath(docroot)
-		updateFilename = "%s/updates.xml" % docroot
-		umu = UpdateMetadataWrapper(updateFilename)
-		self.notify(umu.getFormattedComponentsList())
+		url = self._copyComponent(archive, self._getDocroot(), component, version)
+		if not url:
+			raise Exception("Sorry, unable to copy the archive to the docroot updates folder (invalid archive file ?)")
 
-	def deployComponent(self, component, archive, version = None, branch = ("testing", None)):
-		self.notify("Deploying package %s as component %s, version %s, branch %s..." % (archive, component, version, branch[0]))
+		status = metadata.publishComponent(component, version, url, branch)
+		self.notify(status)
+
+	def unpublishComponent(self, component, version):
+		self.notify("Unpublishing component %s %s..." % (component, version))
+		status = self._getMetadataWrapper().unpublishComponent(component, version)
+		self.notify(status)
+
+	def publishComponentFromSource(self, component, version = None, branch = ("testing", None)):
+		component = component[0]
+		branch = branch[0]
+		self.notify("Publishing component %s %s (%s) from source..." % (component, version, branch))
+
+		sourceRoot = os.environ.get('TESTERMAN_SRCROOT')
+		if not sourceRoot:
+			raise Exception("Sorry, the Testerman source root is not set (TESTERMAN_SRCROOT).")
+		
+		metadata = self._getMetadataWrapper()
+		
+		componentSourceRoot = "%s/%s" % (sourceRoot, component)
+		
+		archiveFile = tempfile.NamedTemporaryFile(suffix = ".tgz")
+		archiveFilename = archiveFile.name
+		ComponentPackager.createPackage(componentSourceRoot, archiveFilename)
+		
+		url = self._copyComponent(archiveFilename, self._getDocroot(), component, version)
+		if not url:
+			raise Exception("Sorry, unable to copy the archive to the updates folder")
+
+		status = metadata.publishComponent(component, version, url, branch)
+		self.notify(status)
+
 

@@ -37,6 +37,16 @@
 
 import sys
 
+def getBacktrace():
+	import traceback
+	import StringIO
+	backtrace = StringIO.StringIO()
+	traceback.print_exc(None, backtrace)
+	ret = backtrace.getvalue()
+	backtrace.close()
+	return ret
+
+
 ##
 # Some usual exceptions
 ##
@@ -598,6 +608,13 @@ class ContextManager:
 	def __init__(self):
 		self._currentContext = None
 		self._registeredContexts = {} # contexts, by complete name/path. Used for direct access.
+		self._debug = False
+	
+	def setDebug(self, debug):
+		self._debug = debug
+	
+	def isDebug(self):
+		return self._debug
 
 	# Factory-oriented method	
 	def createRootContext(self, contextName, description = None):
@@ -801,13 +818,15 @@ class CmdContextManagerAdapter(ContextManager):
 			except ShellExit:
 				raise
 			except Exception, e:
+				if self._contextManager.isDebug():
+					self.stdout.write(getBacktrace() + "\n")
 				self.stdout.write("%% error: %s\n" % str(e))
 		
 		def showCompletionSuggestions(self, suggestions):
 			"""
 			Displays the completion suggestions "a la Cisco".
 			"""
-			
+			suggestions.sort()
 			maxTokenLength = max([ len(x[0]) for x in suggestions])
 			fmt = " %%-%ss      %%s\n" % maxTokenLength
 			self.stdout.write("\n")
