@@ -291,14 +291,18 @@ class Context(CommandContext):
 		# Source-publish command
 		node = SequenceNode()
 		node.addField("branch", "advertised component stability (default: testing)", ChoiceNode().addChoices([("stable", "stable component", NullNode()), ("testing", "testing component", NullNode()), ("experimental", "experimental component", NullNode())]), True)
-		node.addField("component", "component name", ChoiceNode().addChoices([("qtesterman", "QTesterman client", NullNode()), ("pyagent", "general purpose python agent", NullNode())]))
+		# supported source components
+		components = ChoiceNode()
+		components.addChoice("qtesterman", "QTesterman client", NullNode())
+		components.addChoice("pyagent", "general purpose python agent", NullNode())
+		node.addField("component", "component name", components)
 		node.addField("version", "advertised version", StringNode(), True)
 		self.addCommand("source-publish", "publish a new component on server from its source", node, self.publishComponentFromSource)
 		# Unpublish command
 		node = SequenceNode()
 		node.addField("component", "component name to unpublish", StringNode())
 		node.addField("version", "version to unpublish", StringNode())
-		self.addCommand("unpublish", "unpublish an existing component", node, self.unpublishComponent)
+		self.addCommand("unpublish", "unpublish an existing component version", node, self.unpublishComponent)
 		# List command		
 		self.addCommand("list", "list published components", NullNode(), self.listComponents)
 
@@ -378,7 +382,7 @@ class Context(CommandContext):
 		
 		archiveFile = tempfile.NamedTemporaryFile(suffix = ".tgz")
 		archiveFilename = archiveFile.name
-		ComponentPackager.createPackage(componentSourceRoot, archiveFilename)
+		ComponentPackager.createPackage(componentSourceRoot, archiveFilename, baseDir = component)
 		
 		url = self._copyComponent(archiveFilename, self._getDocroot(), component, version)
 		if not url:

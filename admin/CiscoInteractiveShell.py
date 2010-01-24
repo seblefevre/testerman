@@ -269,6 +269,7 @@ class SequenceNode(SyntaxNode):
 		Declares a new field in the sequence.
 		""" 
 		self._fields[fieldName] = (description, syntaxNode, optional)
+		return self
 
 	def parse(self, tokens):
 		"""

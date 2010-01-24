@@ -1,0 +1,8 @@
+# Files to exclude when packaging this component.
+
+PACKAGE
+PACKAGE.exclude
+.CVS
+.svn
+*.asn
+*.pyc

@@ -81,7 +81,7 @@ def wildcardToRegexp(s):
 	return s.replace('.', '\\.').replace('?', '.').replace('*', '.*') + '$'
 
 
-def _createPackage(sources, filename, excluded = []):
+def _createPackage(sources, filename, baseDir = "", excluded = []):
 	"""
 	Creates the component package.
 	This function is wrapped into createPackage() for convenience.
@@ -106,7 +106,7 @@ def _createPackage(sources, filename, excluded = []):
 		# Now, create a tar file
 		t = tarfile.open(name = filename, mode = 'w:gz')
 		for name in walk([tmpdir + '/*'], isExcluded):
-			t.add(name, arcname = name[len(tmpdir + '/'):], recursive = False) # strip the tmpdir from the archive name
+			t.add(name, arcname = name.replace(tmpdir, baseDir), recursive = False) # strip the tmpdir from the archive name
 		t.close()
 #		print "archive %s created." % filename
 
@@ -120,13 +120,15 @@ def _createPackage(sources, filename, excluded = []):
 		raise e
 
 
-def createPackage(sourceRoot, filename):
+def createPackage(sourceRoot, filename, baseDir = ""):
 	"""
 	Creates a package that is suitable for a deployment for the component 
 	whose source is located in sourceRoot.
 	
 	This function automatically searches for the PACKAGE and PACKAGE.exclude
 	files to create the package, whose filename is provided by the user.
+	
+	The baseDir is the resulting base directory in the final archive.
 	"""
 	pfile = os.path.join(sourceRoot, "PACKAGE")
 	pefile = os.path.join(sourceRoot, "PACKAGE.exclude")
@@ -141,7 +143,7 @@ def createPackage(sourceRoot, filename):
 
 	sources = [ '%s/%s' % (sourceRoot, x) for x in sources ]
 
-	return _createPackage(sources, filename, excluded)
+	return _createPackage(sources, filename, baseDir, excluded)
 
 
 if __name__ == "__main__":
