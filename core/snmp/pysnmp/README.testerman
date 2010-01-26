@@ -1,0 +1,14 @@
+This is a partial extract of the pysnmp 4.1.12a distribution,
+included into Testerman for convenience.
+
+Pysnmp is under the BSD license, see LICENSE.
+
+The documentation, examples, and tools coming with pysnmp
+are not available in this folder.
+
+The full package can be found at:
+http://pysnmp.sourceforge.net/
+
+
+A big thanks to Ilya Etingof and all pysnmp contributors !
+

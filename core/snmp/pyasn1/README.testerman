@@ -1,0 +1,13 @@
+This is a partial extract of the pyasn1 0.0.10a distribution,
+included into Testerman for convenience.
+
+Pyasn1 is under the BSD license, see LICENSE.
+
+The documentation and tests coming with pyasn1
+are not available in this folder.
+
+The full package can be found at:
+http://pyasn1.sourceforge.net/
+
+
+A big thanks to Ilya Etingof and all pyasn1 contributors !
