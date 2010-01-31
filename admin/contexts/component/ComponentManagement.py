@@ -16,6 +16,7 @@
 ##
 # Component management context for testerman-admin:
 # publish, unpublish, etc.
+#
 ##
 
 
@@ -44,61 +45,6 @@ def fatal(txt = None, retcode = 1):
 		error(txt)
 	sys.exit(retcode)
 
-def formatTable(header = [], distList = []):
-	"""
-	Pretty format the list of dict according to the header list.
-	Header names not found in the dict are not displayed, and
-	only header names found in the dict are displayed.
-	
-	Header is a list of either simple string (name) or tuple (name, label).
-	If it is a tuple, label is used to display the header, and name
-	to look for the element in the dicts.
-	"""
-	def formatRow(cols, widths):
-		"""
-		Formatting helper: array pretty print.
-		"""
-		line = " %s%s " % (cols[0], (widths[0]-len(cols[0]))*' ')
-		for i in range(1, len(cols)):
-			line = line + "| %s%s " % (cols[i], (widths[i]-len(cols[i]))*' ')
-		return line
-
-	# First, we compute the max widths for each col
-	colLabels = []
-	widths = []
-	for h in header:
-		try:
-			name, label = h
-		except:
-			label = h
-		widths.append(len(label))
-		colLabels.append(label)
-
-	lines = [ ]
-	for entry in distList:
-		i = 0
-		line = []
-		for h in header:
-			try:
-				name, label = h
-			except:
-				name = h
-			if entry.has_key(name):
-				e = str(entry[name])
-				if len(e) > widths[i]: widths[i] = len(e)
-				line.append(e)
-			else:
-				line.append('') # element not found for this dict entry
-			i += 1
-		lines.append(line)
-
-	# Then we can display them
-	res = formatRow(colLabels, widths)
-	res += "\n"
-	res += '-'*len(res) + "\n"
-	for line in lines:
-		res += formatRow(line, widths) + "\n"
-	return res
 
 
 ###############################################################################
@@ -113,7 +59,7 @@ class UpdateMetadataWrapper:
 		self._filename = filename
 		self._docroot = os.path.split(self._filename)[0]
 
-	def getFormattedComponentsList(self):
+	def getComponentsList(self):
 		"""
 		Displays the currently published components and their status.
 		"""
@@ -138,7 +84,7 @@ class UpdateMetadataWrapper:
 				status = 'Missing archive file'
 			ret.append(dict(version = version, component = component, branch = branch, archive = url, status = status))
 		
-		return formatTable([ 'component', 'version', 'branch', 'archive', 'status' ], ret)
+		return [ 'component', 'version', 'branch', 'archive', 'status' ], ret
 
 	def isComponentPublished(self, componentName, componentVersion):
 		"""
@@ -278,7 +224,7 @@ from CiscoInteractiveShell import *
 
 import ComponentPackager
 
-class Context(CommandContext):
+class ComponentContext(CommandContext):
 	def __init__(self):
 		CommandContext.__init__(self)
 		# Publish command
@@ -348,7 +294,8 @@ class Context(CommandContext):
 
 	def listComponents(self):
 		metadata = self._getMetadataWrapper()
-		self.notify(metadata.getFormattedComponentsList())
+		headers, rows = metadata.getComponentsList()
+		self.printTable(headers, rows)
 
 	def publishComponent(self, component, archive, version, branch = ("testing", None)):
 		branch = branch[0]

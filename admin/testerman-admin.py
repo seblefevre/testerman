@@ -26,7 +26,7 @@
 import CiscoInteractiveShell
 
 # Administration modules
-import contexts.component
+import contexts
 
 
 import sys
@@ -56,7 +56,7 @@ def main():
 
 	if options.docRoot: os.environ["TESTERMAN_DOCROOT"] = os.path.realpath(options.docRoot)
 	if options.sourceRoot: os.environ["TESTERMAN_SRCROOT"] = os.path.realpath(options.sourceRoot)
-	if options.serverUrl: os.environ["TESTERMAN_SERVER"] = os.path.realpath(options.serverUrl)
+	if options.serverUrl: os.environ["TESTERMAN_SERVER"] = options.serverUrl
 
 	# Shell creation
 	adminShell = CiscoInteractiveShell.CmdContextManagerAdapter("Welcome to Testerman Administration Console")
@@ -64,7 +64,8 @@ def main():
 	
 	# Root context
 	rootContext = adminShell.createRootContext("testerman", "testerman administration")
-	rootContext.addContext("component", "component management", contexts.component.Context())
+	rootContext.addContext("component", "components management", contexts.ComponentContext())
+	rootContext.addContext("agent", "agents and probes management", contexts.AgentContext())
 
 	if options.context:
 		adminShell.goTo(options.context)

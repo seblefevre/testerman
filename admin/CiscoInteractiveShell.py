@@ -46,6 +46,109 @@ def getBacktrace():
 	backtrace.close()
 	return ret
 
+##
+# Tools/output pretty printers
+##
+
+def formatTable(header = [], distList = []):
+	"""
+	Pretty format the list of dict according to the header list.
+	Header names not found in the dict are not displayed, and
+	only header names found in the dict are displayed.
+	
+	Header is a list of either simple string (name) or tuple (name, label).
+	If it is a tuple, label is used to display the header, and name
+	to look for the element in the dicts.
+	"""
+	def formatRow(cols, widths):
+		"""
+		Formatting helper: row pretty print.
+		"""
+		line = " %s%s " % (cols[0], (widths[0]-len(cols[0]))*' ')
+		for i in range(1, len(cols)):
+			line = line + "| %s%s " % (cols[i], (widths[i]-len(cols[i]))*' ')
+		return line
+
+	# First, we compute the max widths for each col
+	colLabels = []
+	widths = []
+	for h in header:
+		try:
+			name, label = h
+		except:
+			label = h
+		widths.append(len(label))
+		colLabels.append(label)
+
+	lines = [ ]
+	for entry in distList:
+		i = 0
+		line = []
+		for h in header:
+			try:
+				name, label = h
+			except:
+				name = h
+			if entry.has_key(name):
+				e = str(entry[name])
+				if len(e) > widths[i]: widths[i] = len(e)
+				line.append(e)
+			else:
+				line.append('') # element not found for this dict entry
+			i += 1
+		lines.append(line)
+
+	# Then we can display them
+	res = formatRow(colLabels, widths)
+	res += "\n"
+	res += '-'*len(res) + "\n"
+	for line in lines:
+		res += formatRow(line, widths) + "\n"
+	return res
+
+def formatForm(header = [], values = {}):
+	"""
+	Pretty format the dict according to the header list, as a form.
+	Header names not found in the dict are not displayed, and
+	only header names found in the dict are displayed.
+	
+	Header is a list of either simple string (name) or tuple (name, label).
+	If it is a tuple, label is used to display the header, and name
+	to look for the element in the dict of values.
+	
+	Support multiline values.
+	"""
+	# First, we compute the max width for the label column
+	labelWidth = 0
+	for h in header:
+		try:
+			name, label = h
+		except:
+			label = h
+		labelWidth = max(labelWidth, len(label))
+	
+	labelWidth += 1 # includes the automatically added ':'
+
+	lines = [ ]
+	for h in header:
+		try:
+			name, label = h
+		except:
+			name = h
+			label = h
+		
+		value = ""
+		if values.has_key(name):
+			value = str(values[name])
+		
+		# Support for multilines
+		value = value.split('\n')
+		lines.append((" %%-%ss  %%s" % labelWidth) % (label+":", value[0]))
+		for v in value[1:]:
+			lines.append((" %%-%ss  %%s" % labelWidth) % ("", v))
+
+	return "\n".join(lines)		
+
 
 ##
 # Some usual exceptions
@@ -575,6 +678,12 @@ class CommandContext(ChoiceNode):
 
 	def notify(self, txt):
 		self._contextManager.write(txt + "\n")
+	
+	def printTable(self, headers, rows):
+		self.notify(formatTable(headers, rows))
+
+	def printForm(self, headers, rows):
+		self.notify(formatForm(headers, rows))
 	
 	def addCommand(self, commandName, description, syntaxNode, callback):
 		"""
