@@ -43,7 +43,6 @@ def getVersion():
 
 
 def main():
-
 	parser = optparse.OptionParser(version = getVersion())
 	parser.add_option("-r", dest = "docRoot", metavar = "PATH", help = "set document root to PATH (default: %default). Alternatively, you may set the TESTERMAN_DOCROOT environment variable.", default = os.environ.get("TESTERMAN_DOCROOT", '.'))
 	parser.add_option("-S", dest = "sourceRoot", metavar = "PATH", help = "set Testerman source root to PATH. Useful to publish experimental components from source.", default = None)
@@ -66,6 +65,7 @@ def main():
 	rootContext = adminShell.createRootContext("testerman", "testerman administration")
 	rootContext.addContext("component", "components management", contexts.ComponentContext())
 	rootContext.addContext("agent", "agents and probes management", contexts.AgentContext())
+	rootContext.addContext("job", "job management", contexts.JobContext())
 
 	if options.context:
 		adminShell.goTo(options.context)

@@ -50,15 +50,16 @@ def getBacktrace():
 # Tools/output pretty printers
 ##
 
-def formatTable(header = [], distList = []):
+def formatTable(headers = [], rows = []):
 	"""
-	Pretty format the list of dict according to the header list.
+	Pretty format the list of dict (rows) according to the header list (headers)
 	Header names not found in the dict are not displayed, and
 	only header names found in the dict are displayed.
 	
-	Header is a list of either simple string (name) or tuple (name, label).
+	Header is a list of either simple string (name) or tuple (name, label, [formatter]).
 	If it is a tuple, label is used to display the header, and name
 	to look for the element in the dicts.
+	The optional formatter is a function that will take the value to format as single arg.
 	"""
 	def formatRow(cols, widths):
 		"""
@@ -69,28 +70,36 @@ def formatTable(header = [], distList = []):
 			line = line + "| %s%s " % (cols[i], (widths[i]-len(cols[i]))*' ')
 		return line
 
-	# First, we compute the max widths for each col
+	def expand(header):
+		"""
+		returns the name, label, and formatter for a header entry.
+		"""
+		if isinstance(header, tuple):
+			if len(header) == 2:
+				return header[0], header[1], lambda x: x
+			elif len(header) == 3:
+				return header
+			else:
+				raise Exception("Invalid header")
+		else:
+			return header, header, lambda x:x
+
+	headers = map(expand, headers)
+
+	# First, we initialize the widths for each column
 	colLabels = []
 	widths = []
-	for h in header:
-		try:
-			name, label = h
-		except:
-			label = h
+	for name, label, _ in headers:
 		widths.append(len(label))
 		colLabels.append(label)
 
 	lines = [ ]
-	for entry in distList:
+	for entry in rows:
 		i = 0
 		line = []
-		for h in header:
-			try:
-				name, label = h
-			except:
-				name = h
+		for name, label, formatter in headers:
 			if entry.has_key(name):
-				e = str(entry[name])
+				e = str(formatter(entry[name]))
 				if len(e) > widths[i]: widths[i] = len(e)
 				line.append(e)
 			else:
@@ -493,7 +502,9 @@ class ChoiceNode(SyntaxNode):
 		SyntaxNode.__init__(self)
 		self._choices = {}
 	
-	def addChoice(self, name, description, syntaxNode):
+	def addChoice(self, name, description, syntaxNode = None):
+		if not syntaxNode:
+			syntaxNode = NullNode()
 		self._choices[name] = (description, syntaxNode)
 		return self # enable cascading multiple addChoice()
 
