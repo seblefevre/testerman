@@ -35,7 +35,7 @@ import urlparse
 
 
 
-VERSION = "0.3.0"
+VERSION = "0.4.0"
 
 # Returned in case of a job submission-related execution error
 RETCODE_EXECUTION_ERROR = 70
@@ -262,21 +262,25 @@ class TestermanCliClient:
 	##
 	# High level functions
 	##
-	def scheduleJobByUri(self, uri, username = None, session = {}, at = None, **kwargs):
+	def scheduleJobByUri(self, uri, username = None, session = {}, at = None, hint = None, **kwargs):
 		uri = SourceUri(uri)
+		if hint:
+			type_ = hint
+		else:
+			type_ = uri.getType()
 		if uri.isLocal():
-			if uri.getType() == uri.TYPE_ATS:
+			if type_ == uri.TYPE_ATS:
 				return self.scheduleAtsByFilename(uri.getPath(), username, session, at)
-			elif uri.getType() == uri.TYPE_CAMPAIGN:
+			elif type_ == uri.TYPE_CAMPAIGN:
 				return self.scheduleCampaignByFilename(uri.getPath(), username, session, at)
-			elif uri.getType() == uri.TYPE_PACKAGE:
+			elif type_ == uri.TYPE_PACKAGE:
 				return self.schedulePackageByFilename(uri.getPath(), username, session, at, kwargs.get('packageScript', None))
 		elif uri.isRepository():
-			if uri.getType() == uri.TYPE_ATS:
+			if type_ == uri.TYPE_ATS:
 				return self.scheduleAtsByPath(uri.getPath(), username, session, at)
-			elif uri.getType() == uri.TYPE_CAMPAIGN:
+			elif type_ == uri.TYPE_CAMPAIGN:
 				return self.scheduleCampaignByPath(uri.getPath(), username, session, at)
-			elif uri.getType() == uri.TYPE_PACKAGE:
+			elif type_ == uri.TYPE_PACKAGE:
 				return self.schedulePackageByPath(uri.getPath(), username, session, at, kwargs.get('packageScript', None))
 		raise Exception("Unsupported URI scheme or job type (%s)" % uri)
 	
@@ -659,13 +663,14 @@ def main():
 	
 	# Runners
 	group = optparse.OptionGroup(parser, "Job Runners")
-	group.add_option("--run", dest = "runUri", metavar = "URI", help = "run a ats/campaign/package, either local or from the repository, then monitor it and wait for its completion.\nThe URI format is: local:<path> or repository:<path>. The filename extension (.ats, .campaign, .tpk) indicate the job type.\nIf --output-filename is provided, dump the logs once the job is complete.", default = None)
+	group.add_option("--run", dest = "runUri", metavar = "URI", help = "run a ats/campaign/package, either local or from the repository, then monitor it and wait for its completion.\nThe URI format is: local:<path> or repository:<path>. The filename extension (.ats, .campaign, .tpk) indicates the job type.\nIf --output-filename is provided, dump the logs once the job is complete.", default = None)
 	# Deprecated runners
 	group.add_option("--run-local-ats", dest = "atsFilename", metavar = "FILENAME", help = "[DEPRECATED - use --run instead]\nrun FILENAME as an ATS, monitor it and wait for its completion", default = None)
 	group.add_option("--run-ats", dest = "atsPath", metavar = "PATH", help = "[DEPRECATED - use --run instead]\nrun an ATS whose path in the repository is PATH, monitor it and wait for its completion", default = None)
 	group.add_option("--run-local-campaign", dest = "campaignFilename", metavar = "FILENAME", help = "[DEPRECATED - use --run instead]\nrun FILENAME as a campaign, monitor it and wait for its completion", default = None)
 	group.add_option("--run-campaign", dest = "campaignPath", metavar = "PATH", help = "[DEPRECATED - use --run instead]\nrun a campaign whose path in the repository is PATH, monitor it and wait for its completion", default = None)
 	# Run options
+	group.add_option("--at", dest = "scheduledDate", metavar = "YYYYMMDD-hhmm", help = "instead of an immediate run, schedule it to start at YYYYMMDD-hhmm (localtime). This implies --nowait.", default = None)
 	group.add_option("--nowait", dest = "waitForJobCompletion", action = "store_false", help = "when executing an ATS, immediately return without waiting for its completion (default: false)", default = True)
 	group.add_option("--session-filename", dest = "sessionParametersFilename", metavar = "FILENAME", help = "initial session parameters file", default = None)
 	group.add_option("--session-parameters", dest = "sessionParameters", metavar = "PARAMETERS", help = "initial session parameters, overriding those from form session-filename, if any", default = "")
@@ -727,7 +732,17 @@ def main():
 
 	client = TestermanCliClient(options.serverUrl)
 	
+	
 	try:
+		# Run options
+		
+		if options.scheduledDate:
+			try:
+				options.scheduledDate = time.mktime(time.strptime(options.scheduledDate, '%Y%m%d-%H%M'))
+			except:
+				print "Invalid date/time format. Please see the inline documentation (--help)."
+				return RETCODE_EXECUTION_ERROR
+
 		if options.atsFilename or options.atsPath or options.campaignFilename or options.campaignPath or options.runUri:
 			# Load initial session parameters
 			try:
@@ -740,22 +755,24 @@ def main():
 			
 			# First, schedule the job
 			if options.runUri:
-				jobId = client.scheduleJobByUri(options.runUri, options.username, session = session, packageScript = options.packageScriptName)
+				jobId = client.scheduleJobByUri(options.runUri, options.username, session = session, at = options.scheduledDate, packageScript = options.packageScriptName)
 			# other way to schedule jobs kept for compatibility
 			elif options.atsFilename:
-				jobId = client.scheduleAtsByFilename(options.atsFilename, options.username, session = session)
+				jobId = client.scheduleAtsByFilename(options.atsFilename, options.username, session = session, at = options.scheduledDate)
 			elif options.atsPath:
-				jobId = client.scheduleAtsByPath(options.atsPath, options.username, session = session)
+				jobId = client.scheduleAtsByPath(options.atsPath, options.username, session = session, at = options.scheduledDate)
 			elif options.campaignFilename:
-				jobId = client.scheduleCampaignByFilename(options.campaignFilename, options.username, session = session)
+				jobId = client.scheduleCampaignByFilename(options.campaignFilename, options.username, session = session, at = options.scheduledDate)
 			else:
-				jobId = client.scheduleCampaignByPath(options.campaignPath, options.username, session = session)
+				jobId = client.scheduleCampaignByPath(options.campaignPath, options.username, session = session, at = options.scheduledDate)
 			if jobId is None:
 				client.stopXc()
 				return RETCODE_EXECUTION_ERROR
 			
+			result = 0
+			
 			# Now, if we are in synchronous execution, let's wait
-			if options.waitForJobCompletion:
+			if options.waitForJobCompletion and not options.scheduledDate:
 				try:
 					result = client.monitorUntilCompletion(jobId)
 				except KeyboardInterrupt:
@@ -779,14 +796,8 @@ def main():
 			# If result == 40, no log available.
 			return result
 
-		elif options.listProbes:
-			client.listRegisteredProbes()
-		
-		elif options.monitorUri:
-			client.startXc()
-			client.monitor(options.monitorUri)
-			client.stopXc()
-		
+
+		# Log options
 		elif options.logJobId:
 			log = client.getLog(int(options.logJobId), options.expandLogs)
 			if log:
@@ -794,6 +805,26 @@ def main():
 				return 0
 			else:
 				return 1
+		
+		# Tools options
+		elif options.listDependencies:
+			client.listDependencies(options.listDependencies)
+		
+		elif options.extractPackage:
+			client.extractPackage(options.extractPackage, options.outputFilename)
+
+		elif options.importPackage:
+			client.importPackage(options.importPackage, options.inputFilename)
+		
+
+		# Administrative options (now replaced by testerman-admin, but kept here for convenience and compatibility)
+		elif options.listProbes:
+			client.listRegisteredProbes()
+		
+		elif options.monitorUri:
+			client.startXc()
+			client.monitor(options.monitorUri)
+			client.stopXc()
 		
 		elif options.sendSignal and options.jobId:
 			client.sendSignal(int(options.jobId), options.sendSignal)
@@ -809,15 +840,6 @@ def main():
 
 		elif options.updateAgentName:
 			client.updateAgent(options.updateAgentName)
-		
-		elif options.listDependencies:
-			client.listDependencies(options.listDependencies)
-		
-		elif options.extractPackage:
-			client.extractPackage(options.extractPackage, options.outputFilename)
-
-		elif options.importPackage:
-			client.importPackage(options.importPackage, options.inputFilename)
 		
 		else:
 			parser.print_help()
