@@ -161,7 +161,7 @@ class Manager:
 		self._lock()
 		if not self._subscriptions.has_key(uri):
 			self._unlock()
-			self.getLogger().warning("Unsubscription attempt for a non-known uri. Discarding.")
+			self.getLogger().warning("Unsubscription attempt for an unknown uri (%s). Discarding." % uri)
 			return
 
 		if channel in self._subscriptions[uri]:
@@ -172,7 +172,7 @@ class Manager:
 		# Garbage collecting:
 		# The uri may be watched by anybody else
 		if len(self._subscriptions[uri]) == 0:
-			self.getLogger().info("Subscription without any other channel, garbage collecting it...")
+			self.getLogger().info("No other subscription on uri %s, garbage collecting it..." % uri)
 			del self._subscriptions[uri]
 
 		self._unlock()
