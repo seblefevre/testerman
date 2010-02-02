@@ -257,8 +257,8 @@ def initialize():
 	starts listening on Xc and Il interfaces.
 	"""
 	global TheManager
-	xcAddress = (ConfigManager.get("interface.xc.ip"), ConfigManager.get("interface.xc.port"))
-	ilAddress = (ConfigManager.get("interface.il.ip"), ConfigManager.get("interface.il.port"))
+	xcAddress = (ConfigManager.get("interface.xc.ip"), ConfigManager.get_int("interface.xc.port"))
+	ilAddress = (ConfigManager.get("interface.il.ip"), ConfigManager.get_int("interface.il.port"))
 	TheManager = Manager(xcAddress, ilAddress)
 	TheManager.initialize()
 	TheManager.start()

@@ -108,10 +108,10 @@ def createTestExecutable(name, ats):
 	"""
 	# For now, not everythin can be controlled by option flags.
 	tacsIp = ConfigManager.get("tacs.ip")
-	tacsPort = ConfigManager.get("tacs.port")
-	ilPort = ConfigManager.get("interface.il.port")
+	tacsPort = ConfigManager.get_int("tacs.port")
+	ilPort = ConfigManager.get_int("interface.il.port")
 	ilIp = ConfigManager.get("interface.il.ip")
-	maxLogPayloadSize = int(ConfigManager.get("testerman.te.log.maxpayloadsize"))
+	maxLogPayloadSize = int(ConfigManager.get("testerman.te.log.max_payload_size"))
 	adapterModuleName = ConfigManager.get("testerman.te.python.ttcn3module")
 	
 	codecPaths = ConfigManager.get("testerman.te.codec_paths")

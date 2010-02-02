@@ -938,7 +938,7 @@ def getXcInterfaceAddress():
 	@returns: the Xc interface IP + port
 	"""
 	getLogger().info(">> getXcInterfaceAddress()")
-	ret = { 'ip': ConfigManager.get('interface.xc.ip'), 'port': ConfigManager.get('interface.xc.port') }
+	ret = { 'ip': ConfigManager.get('interface.xc.ip'), 'port': ConfigManager.get_int('interface.xc.port') }
 	getLogger().info("<< getXcInterfaceAddress: %s" % str(ret))
 	return ret
 

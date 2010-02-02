@@ -1,6 +1,7 @@
+# -*- coding: utf-8 -*-
 ##
 # This file is part of Testerman, a test automation system.
-# Copyright (c) 2008-2009 Sebastien Lefevre and other contributors
+# Copyright (c) 2008,2009,2010 Sebastien Lefevre and other contributors
 #
 # This program is free software; you can redistribute it and/or modify it under
 # the terms of the GNU General Public License as published by the Free Software
@@ -13,7 +14,6 @@
 ##
 
 ##
-# -*- coding: utf-8 -*-
 # A general purpose Stat class for counter-based statistics.
 #
 # A CounterManager is a thread-safe class managing counters.
@@ -261,7 +261,31 @@ class CounterManager:
 		counter.dec(val)
 		self.mutex.release()
 	
-	def addCounter(self, path):
+	def addCounter(self, path, oid = None):
+		"""
+		Add a new counter in the tree, and return it.
+		
+		If oid is not null, automatically added into the SNMP MIB.
+		This oid is the relative oid path from the Testerman base oid.
+		"""
+		counter = self._add(path)
+		if counter and oid:
+			Snmp.registerCounter("%s.%s" % (SNMP_BASE_OID, oid), lambda: counter.get())
+		return counter		
+
+	def addGauge(self, path, oid = None):
+		"""
+		Add a new gauge in the tree, and return it.
+		
+		If oid is not null, automatically added into the SNMP MIB.
+		This oid is the relative oid path from the Testerman base oid.
+		"""
+		counter = self._add(path)
+		if counter and oid:
+			Snmp.registerGauge("%s.%s" % (SNMP_BASE_OID, oid), lambda: counter.get())
+		return counter		
+
+	def _add(self, path):
 		"""
 		Add a new counter in the tree, and return it.
 		"""
@@ -279,8 +303,9 @@ class CounterManager:
 			else:
 				currentNode.children[name] = CounterNode(name)
 				currentNode = currentNode.children[name]
-		
+
 		return currentNode.counter		
+
 
 	def get(self, path):
 		"""

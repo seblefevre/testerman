@@ -1,7 +1,7 @@
 ##
 # -*- coding: utf-8 -*-
 # This file is part of Testerman, a test automation system.
-# Copyright (c) 2008-2009 Sebastien Lefevre and other contributors
+# Copyright (c) 2008,2009,2010 Sebastien Lefevre and other contributors
 #
 # This program is free software; you can redistribute it and/or modify it under
 # the terms of the GNU General Public License as published by the Free Software
@@ -239,3 +239,14 @@ def daemonize(pidFilename = None, stdout = None, stderr = None, displayPid = Fal
 	except Exception, e:
 		# What should we do ?...
 		raise e
+
+def cleanup(pidFilename = None):
+	"""
+	Remove a pid file, if any.
+	"""
+	if pidFilename and fileExists(pidFilename):
+		try:
+			os.unlink(pidFilename)
+		except:
+			pass
+		
