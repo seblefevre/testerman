@@ -45,7 +45,7 @@ class JobContext(CommandContext):
 		states.addChoice("paused", "paused jobs only")
 		states.addChoice("cancelled", "cancelled jobs only")
 		states.addChoice("killed", "killed jobs only")
-		states.addChoice("completed", "successfully completed jobs only")
+		states.addChoice("complete", "successfully completed jobs only")
 		states.addChoice("error", "error jobs only")
 		node.addField("state", "filter on state", states, optional = True)
 		node.addField("username", "filter on username", StringNode(), optional = True)
