@@ -135,13 +135,15 @@ class UpdateMetadataWrapper:
 			component = e.attributes['component'].value
 			branch = e.attributes['branch'].value
 			if version == componentVersion and component == componentName:
+				# The current component version already exists - update it
 				e.attributes['branch'] = componentBranch
 				e.attributes['url'] = componentUrl
-				status = "Component %s %s (%s) has been republished successfully" % (component, version, branch)
+				status = "Component %s %s (%s) has been republished successfully" % (componentName, componentVersion, componentBranch)
 				updated = True
 				break
 		
 		if not updated:
+			# New addition to the metadata (new component or version)
 			e = doc.createElement('update')
 			e.attributes['version'] = componentVersion
 			e.attributes['url'] = componentUrl
@@ -227,28 +229,37 @@ import ComponentPackager
 class ComponentContext(CommandContext):
 	def __init__(self):
 		CommandContext.__init__(self)
+		
+		branches = ChoiceNode()
+		branches.addChoice("stable", "stable version"),
+		branches.addChoice("testing", "testing version")
+		branches.addChoice("experimental", "experimental version")
+	
 		# Publish command
 		node = SequenceNode()
-		node.addField("branch", "advertised component stability (default: testing)", ChoiceNode().addChoices([("stable", "stable component", NullNode()), ("testing", "testing component", NullNode()), ("experimental", "experimental component", NullNode())]), True)
+		node.addField("branch", "advertised component stability (default: testing)", branches, True)
 		node.addField("component", "component name", StringNode())
-		node.addField("archive", "path to archive", StringNode())
+		node.addField("archive", "path to archive file", StringNode())
 		node.addField("version", "advertised version", StringNode())
 		self.addCommand("publish", "publish a new component on server", node, self.publishComponent)
+
 		# Source-publish command
 		node = SequenceNode()
-		node.addField("branch", "advertised component stability (default: testing)", ChoiceNode().addChoices([("stable", "stable component", NullNode()), ("testing", "testing component", NullNode()), ("experimental", "experimental component", NullNode())]), True)
+		node.addField("branch", "advertised component stability (default: testing)", branches, True)
 		# supported source components
 		components = ChoiceNode()
-		components.addChoice("qtesterman", "QTesterman client", NullNode())
-		components.addChoice("pyagent", "general purpose python agent", NullNode())
+		components.addChoice("qtesterman", "QTesterman client")
+		components.addChoice("pyagent", "general purpose python agent")
 		node.addField("component", "component name", components)
 		node.addField("version", "advertised version", StringNode(), True)
 		self.addCommand("source-publish", "publish a new component on server from its source", node, self.publishComponentFromSource)
+
 		# Unpublish command
 		node = SequenceNode()
 		node.addField("component", "component name to unpublish", StringNode())
 		node.addField("version", "version to unpublish", StringNode())
 		self.addCommand("unpublish", "unpublish an existing component version", node, self.unpublishComponent)
+
 		# List command		
 		self.addCommand("list", "list published components", NullNode(), self.listComponents)
 
@@ -317,24 +328,34 @@ class ComponentContext(CommandContext):
 	def publishComponentFromSource(self, component, version = None, branch = ("testing", None)):
 		component = component[0]
 		branch = branch[0]
-		self.notify("Publishing component %s %s (%s) from source..." % (component, version, branch))
 
+		# Prerequisites
 		sourceRoot = os.environ.get('TESTERMAN_SRCROOT')
 		if not sourceRoot:
 			raise Exception("Sorry, the Testerman source root is not set (TESTERMAN_SRCROOT).")
 		
 		metadata = self._getMetadataWrapper()
-		
+
+		# Fetch package info		
 		componentSourceRoot = "%s/%s" % (sourceRoot, component)
-		
+		packageInfo = ComponentPackager.getPackageInfo(componentSourceRoot)
+		if not version:
+			version = packageInfo["version"]
+
+		# OK, here we go
+		self.notify("Publishing component %s %s (%s) from source..." % (component, version, branch))
+
+		# Create the archive		
 		archiveFile = tempfile.NamedTemporaryFile(suffix = ".tgz")
 		archiveFilename = archiveFile.name
-		ComponentPackager.createPackage(componentSourceRoot, archiveFilename, baseDir = component)
-		
+		ComponentPackager.createPackage(sources = packageInfo["sources"], baseDir = packageInfo['component'], excluded = packageInfo['excluded'], filename = archiveFilename)
+
+		# Copy it to the docroot		
 		url = self._copyComponent(archiveFilename, self._getDocroot(), component, version)
 		if not url:
 			raise Exception("Sorry, unable to copy the archive to the updates folder")
 
+		# Update the published metadata
 		status = metadata.publishComponent(component, version, url, branch)
 		self.notify(status)
 

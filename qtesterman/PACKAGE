@@ -1,5 +1,0 @@
-# QTesterman packages should contain the following files
-
-*
-../common/*.py
-

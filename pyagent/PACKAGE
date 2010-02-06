@@ -1,8 +1,0 @@
-# PyAgent packages should contain the following files
-
-../core/CodecManager.py
-../core/ProbeImplementationManager.py
-../plugins
-*.py
-../common/*.py
-

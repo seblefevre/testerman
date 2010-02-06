@@ -16,28 +16,26 @@
 ##
 # Component Package Creation from Source.
 #
-# A Testerman component source should include the following files in its
-# root folder:
+# A Testerman component source must define a PACKAGE.py module
+# in its root folder, will the following methods:
 #
-# PACKAGE: contains a list (one per line) of files to include in a package.
-# wildcards are accepted.
-# PACKAGE.exclude: contains a list of excluded files/dirs.
-#
-# Examples:
-# PACKAGE:
+# getIncludedFiles(): returning a list of files to include, for instance:
 # ../core/CodecManager.py
 # ../core/ProbeImplementationManager.py
 # ../plugins
 # *.py
 # ../common/*.py
 #
-# PACKAGE.exclude:
+# getExcludedFiles(): returning a list of files to exclude, for instance:
 # .svn
 # .CVS
 # *.asn
 # *.pyc
 # 
-# 
+# getVersion(): the current version of the component
+#
+# getComponentName(): returning a string representing the expected component name/base dir in package
+#
 ##
 
 import glob
@@ -46,6 +44,7 @@ import tempfile
 import tarfile
 import os.path
 import re
+import sys
 
 def fileExists(filename):
 	try:
@@ -81,11 +80,14 @@ def wildcardToRegexp(s):
 	return s.replace('.', '\\.').replace('?', '.').replace('*', '.*') + '$'
 
 
-def _createPackage(sources, filename, baseDir = "", excluded = []):
+def createPackage(sources, filename, baseDir = "", excluded = []):
 	"""
 	Creates the component package.
-	This function is wrapped into createPackage() for convenience.
+
+	The baseDir is the resulting base directory in the final archive.
 	"""
+	excluded = [ wildcardToRegexp(x.strip()) for x in excluded if x.strip() ]
+
 	def isExcluded(f):
 		for regexp in excluded:
 			if re.match(regexp, f):
@@ -120,33 +122,51 @@ def _createPackage(sources, filename, baseDir = "", excluded = []):
 		raise e
 
 
-def createPackage(sourceRoot, filename, baseDir = ""):
+def getPackageInfo(sourceRoot):
 	"""
+	Extract the package information (version, name, files...)
+	from the PACKAGE description in sourceRoot.
+	
 	Creates a package that is suitable for a deployment for the component 
 	whose source is located in sourceRoot.
 	
-	This function automatically searches for the PACKAGE and PACKAGE.exclude
-	files to create the package, whose filename is provided by the user.
-	
-	The baseDir is the resulting base directory in the final archive.
+	This function automatically loads the PACKAGE module in this folder.
 	"""
-	pfile = os.path.join(sourceRoot, "PACKAGE")
-	pefile = os.path.join(sourceRoot, "PACKAGE.exclude")
-	if not fileExists(pfile):
-		raise Exception("Unable to find a PACKAGE file in %s." % sourceRoot)
+	moduleBasename = "PACKAGE.py"
+	packageModuleFilename = os.path.join(sourceRoot, moduleBasename)
+	
+	if not fileExists(packageModuleFilename):
+		raise Exception("Unable to find the PACKAGE module in %s." % sourceRoot)
+	
+	# Load the file as a module
+	backup_syspath = [x for x in sys.path] # copy the current syspath
+	sys.path.insert(0, sourceRoot)
+	mod = None
+	try:
+		try:
+			import imp
+			f = open(packageModuleFilename)
+			mod = imp.load_module("mod", f, sourceRoot, (".py", "r", imp.PY_SOURCE))
+			f.close()
+		except Exception, e:
+			raise Exception("Unable to load the PACKAGE module from %s (%s)." % (sourceRoot, str(e)))
 
-	sources = [ x.strip() for x in open(pfile).readlines() if x.strip() and not x.strip().startswith('#') ]
+		packageInfo = {}
+		try:
+			packageInfo['sources'] = mod.getIncludedFiles()
+			packageInfo['component'] = mod.getComponentName()
+			packageInfo['excluded'] = mod.getExcludedFiles() + [moduleBasename] # automatically exclude the PACKAGE.py
+			packageInfo['version'] = mod.getVersion()
+		except Exception, e:
+			raise Exception("Unable to get component info (%s)." % str(e))
+	finally:
+		sys.path = [x for x in backup_syspath] # restore the previous syspath
 
-	excluded = []	
-	if fileExists(pefile):
-		excluded = [ wildcardToRegexp(x.strip()) for x in open(pefile).readlines() if x.strip() and not x.strip().startswith('#') ]
 
-	sources = [ '%s/%s' % (sourceRoot, x) for x in sources ]
+	return packageInfo 
 
-	return _createPackage(sources, filename, baseDir, excluded)
-
-
+	
 if __name__ == "__main__":
-	createPackage("/home/seb/dev/testerman/trunk/pyagent", "/tmp/pyagent.tgz")
+	print getPackageInfo("/home/seb/dev/testerman/trunk/qtesterman")
 
 

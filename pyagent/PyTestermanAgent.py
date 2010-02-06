@@ -23,6 +23,7 @@ import TestermanMessages as Messages
 import TestermanNodes as Nodes
 import CodecManager
 import ProbeImplementationManager
+import Version
 
 import time
 import os
@@ -32,7 +33,6 @@ import logging
 import cStringIO as StringIO
 import tarfile
 
-VERSION = "1.1.3"
 
 ################################################################################
 # Restarter/Reinitializer facility
@@ -85,7 +85,7 @@ def getLogger():
 	return logging.getLogger('Agent')
 
 def getVersion():
-	return VERSION
+	return Version.VERSION
 
 
 ################################################################################

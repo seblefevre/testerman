@@ -1,7 +1,9 @@
 #!/bin/sh
 ################################################################
-# Component deployment helper: pyagent
+# Component publishing helper: pyagent
 ################################################################
+#
+# (compatibility script - simply wraps testerman-admin)
 #
 # Sample usages:
 #
@@ -17,7 +19,7 @@
 # Build and deploy the same component, but advertise it
 # as being version 2.0.0 (this can be used to force updates):
 #
-# deploy-pyagent.sh ~/testerman stable 2.0.0
+#   deploy-pyagent.sh ~/testerman stable 2.0.0
 #
 
 
@@ -28,24 +30,11 @@ if [ $# -lt 1 ] ; then
 	exit 1
 fi
 
-# The usual software
-PYTHON=/usr/bin/python
-TAR=/bin/tar
-CP=/bin/cp
-MKDIR=/bin/mkdir
-RM=/bin/rm
-CHMOD=/bin/chmod
-MV=/bin/mv
-DIRNAME=/usr/bin/dirname
-CWD=`pwd`
-
 # Computed variables
 DIR=`/usr/bin/dirname $0`
-COMPONENT_ADMIN=${DIR}/component-admin.py
-TMP_DIR=/tmp/.$$
-TMP_ARCHIVE=${TMP_DIR}/.${component}.tgz
+TESTERMAN_ADMIN=${DIR}/../admin/testerman-admin.py
 # The Testerman source tree root
-sourcerootdir="${DIR}/.."
+TESTERMAN_SRCROOT="${DIR}/.."
 
 # User variables
 # Version
@@ -53,43 +42,15 @@ docroot=$1
 branch=$2
 version=$3
 
-if [ "x${branch}" = "x" ]; then
-	branch="testing"
+cmd="source-publish component ${component}"
+
+if [ "x${branch}" != "x" ]; then
+	cmd="${cmd} branch ${branch}"
 fi
 
-if [ "x${version}" = "x" ]; then
-	version=`cat ${sourcerootdir}/pyagent/PyTestermanAgent.py | grep ^VERSION | cut -d\" -f 2`
+if [ "x${version}" != "x" ]; then
+	cmd="${cmd} version ${version}"
 fi
 
-if [ "x${version}" = "x" ]; then
-	echo "Error: cannot autodetect component version."
-	exit 1
-fi
 
-echo "Deploying $component as version $version, branch $branch..."
-
-##
-# Component archive packaging
-##
-echo "Packaging $component..."
-$MKDIR -p $TMP_DIR/$component || exit 1
-
-$CP ${sourcerootdir}/core/CodecManager.py $TMP_DIR/$component/
-$CP ${sourcerootdir}/core/ProbeImplementationManager.py $TMP_DIR/$component/
-$CP -rfL ${sourcerootdir}/plugins $TMP_DIR/$component/plugins
-$CP -fL ${sourcerootdir}/pyagent/* $TMP_DIR/$component/
-$CP -fL ${sourcerootdir}/common/*.py $TMP_DIR/$component/
-# Make sure everything is writable (for autoupdates)
-$CHMOD u+w -R $TMP_DIR/*
-cd $TMP_DIR && $TAR cvzf $TMP_ARCHIVE --exclude "*.asn" --exclude "*.pyc" --exclude ".svn" ${component} > /dev/null
-
-##
-# Deployment
-##
-cd $CWD
-$PYTHON $COMPONENT_ADMIN deploy -c ${component} -v ${version} -b ${branch} -a $TMP_ARCHIVE -r ${docroot}
-
-##
-# Cleanup
-##
-$RM -rf $TMP_DIR
+${TESTERMAN_ADMIN} -r ${docroot} -S ${TESTERMAN_SRCROOT} -c testerman/component -e "${cmd}"
