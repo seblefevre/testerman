@@ -2,7 +2,7 @@
 # -*- coding: utf-8 -*-
 ##
 # This file is part of Testerman, a test automation system.
-# Copyright (c) 2008-2009 Sebastien Lefevre and other contributors
+# Copyright (c) 2008,2009,2010 Sebastien Lefevre and other contributors
 #
 # This program is free software; you can redistribute it and/or modify it under
 # the terms of the GNU General Public License as published by the Free Software
@@ -37,6 +37,7 @@
 # Error-management strategies: exception-based, not functional. Enables better error messages.
 ##
 
+import ConfigManager
 import CounterManager
 import TestermanMessages as Messages
 import TestermanNodes as Nodes
@@ -48,6 +49,10 @@ import optparse
 import posixpath
 import time
 import threading
+import os
+import sys
+
+cm = ConfigManager.instance()
 
 
 def getLogger():
@@ -308,6 +313,7 @@ class IaServer(Nodes.ListeningNode):
 	 R GET-PROBES
 	 R GET-AGENTS
 	 R GET-PROBE
+	 R GET-VARIABLES
 
 	TE -> Probe via TACS:
 	 R TRI-SEND
@@ -378,6 +384,12 @@ class IaServer(Nodes.ListeningNode):
 				probes = self._controller.getRegisteredAgents()
 				resp = Messages.Response(200, "OK")
 				resp.setApplicationBody(probes)
+				self.sendResponse(channel, transactionId, resp)
+			elif method == "GET-VARIABLES":
+				cm = ConfigurationManager.instance()
+				variables = dict(persistent = cm.getVariables(), transient = cm.getTransientVariables())
+				resp = Messages.Response(200, "OK")
+				resp.setApplicationBody(variables)
 				self.sendResponse(channel, transactionId, resp)
 			elif method == "GET-PROBE":
 				probeUri = request.getHeader('Probe-Uri')
@@ -470,6 +482,7 @@ class IaServer(Nodes.ListeningNode):
 		self.getLogger().info("%s disconnected" % str(channel))
 		self._controller.unregisterIaClient(channel)
 
+
 class Controller(object):
 	"""
 	A Controller is a simple translator between Ia and Xa.
@@ -508,10 +521,13 @@ class Controller(object):
 		self._iaServer.start()
 	
 	def stop(self):
-		self._xaServer.stop()
-		self._xaServer.finalize()
-		self._iaServer.stop()
-		self._iaServer.finalize()
+		try:
+			self._xaServer.stop()
+			self._xaServer.finalize()
+			self._iaServer.stop()
+			self._iaServer.finalize()
+		except Exception, e:
+			self.getLogger().error("Unable to stop gracefully: %s" % str(e))
 
 	def initialize(self):
 		pass
@@ -954,7 +970,6 @@ class Controller(object):
 		else:
 			raise TacsException("Agent %s not available on controller" % uri)
 
-
 	def getFile(self, path):
 		"""
 		Returns the content of a file indicated by path, from the document root.
@@ -990,65 +1005,147 @@ class Controller(object):
 		"""
 		self._dispatchNotification(notification)
 
+
+
+################################################################################
+# Testerman Agent Controller Server: Main
+################################################################################
+
+def getVersion():
+	ret = "Testerman Agent Controller Server %s" % Versions.getAgentControllerVersion()
+	return ret
+
 def main():
-	parser = optparse.OptionParser(version = "Testerman Agent Controller Server %s" % Versions.getAgentControllerVersion())
-	parser.add_option("--debug", dest = "debug", action = "store_true", help = "turn debug traces on (default: %default)", default = False)
-	parser.add_option("-d", dest = "daemonize", action = "store_true", help = "daemonize (default: do not daemonize)", default = False)
-	parser.add_option("--ia-ip", dest = "iaIp", metavar = "ADDRESS", help = "set listening Ia IP address to ADDRESS (default: %default)", default = "127.0.0.1")
-	parser.add_option("--ia-port", dest = "iaPort", metavar = "PORT", help = "set listening Ia port to PORT (default: %default)", default = 8087, type="int")
-	parser.add_option("--xa-ip", dest = "xaIp", metavar = "ADDRESS", help = "set listening Xa IP address to ADDRESS (default: %default)", default = "0.0.0.0")
-	parser.add_option("--xa-port", dest = "xaPort", metavar = "PORT", help = "set listening Xa port to PORT (default: %default)", default = 40000, type="int")
-	parser.add_option("--log-filename", dest = "logFilename", metavar = "FILE", help = "set log filename to FILE (default: output to stdout)", default = None)
-	parser.add_option("--pid-filename", dest = "pidFilename", metavar = "FILE", help = "use FILE to dump the process PID when daemonizing (default: no pidfile)", default = None)
-	parser.add_option("-r", dest = "docRoot", metavar = "PATH", help = "set PATH as document root (default: %default)", default = "/tmp")
+	server_root = os.path.abspath(os.path.dirname(sys.modules[globals()['__name__']].__file__))
+	testerman_home = os.path.abspath("%s/.." % server_root)
+	# Set transient values
+	cm.set_transient("testerman.testerman_home", testerman_home)
+	cm.set_transient("tacs.server_root", server_root)
+
+	# Register persistent variables
+	expandPath = lambda x: x and os.path.abspath(os.path.expandvars(os.path.expanduser(x)))
+	cm.register("interface.ia.ip", "127.0.0.1")
+	cm.register("interface.ia.port", 8087)
+	cm.register("interface.xa.ip", "0.0.0.0")
+	cm.register("interface.xa.port", 40000)
+	cm.register("tacs.daemonize", False)
+	cm.register("tacs.debug", False)
+	cm.register("tacs.log_filename", "", xform = expandPath)
+	cm.register("tacs.pid_filename", "", xform = expandPath)
+	cm.register("testerman.document_root", "/tmp", xform = expandPath, dynamic = True)
+	cm.register("testerman.var_root", "", xform = expandPath)
+
+
+	parser = optparse.OptionParser(version = getVersion())
+
+	group = optparse.OptionGroup(parser, "Basic Options")
+	group.add_option("--debug", dest = "debug", action = "store_true", help = "turn debug traces on")
+	group.add_option("-d", dest = "daemonize", action = "store_true", help = "daemonize")
+	group.add_option("-r", dest = "docRoot", metavar = "PATH", help = "use PATH as document root (default: %s)" % cm.get("testerman.document_root"))
+	group.add_option("--log-filename", dest = "logFilename", metavar = "FILENAME", help = "write logs to FILENAME instead of stdout")
+	group.add_option("--pid-filename", dest = "pidFilename", metavar = "FILENAME", help = "write the process PID to FILENAME when daemonizing (default: no pidfile)")
+	parser.add_option_group(group)
+
+	group = optparse.OptionGroup(parser, "IPs and Ports Options")
+	group.add_option("--ia-ip", dest = "iaIp", metavar = "ADDRESS", help = "set listening Ia IP address to ADDRESS (default: listening on localhost only)")
+	group.add_option("--ia-port", dest = "iaPort", metavar = "PORT", help = "set listening Ia port to PORT (default: %s)" % cm.get("interface.ia.port"), type="int")
+	group.add_option("--xa-ip", dest = "xaIp", metavar = "ADDRESS", help = "set listening Xa IP address to ADDRESS (default: listening on all interfaces)")
+	group.add_option("--xa-port", dest = "xaPort", metavar = "PORT", help = "set listening Xa port to PORT (default: %s)" % cm.get("interface.xa.port"), type="int")
+	parser.add_option_group(group)
+
+	group = optparse.OptionGroup(parser, "Advanced Options")
+	group.add_option("-V", dest = "varDir", metavar = "PATH", help = "use PATH to persist Testerman Server runtime variables. If not provided, no persistence occurs between restarts.")
+	group.add_option("-C", "--conf-file", dest = "configurationFile", metavar = "FILENAME", help = "path to a configuration file. You may still use the command line options to override most of the values it contains.")
+	parser.add_option_group(group)
 
 	(options, args) = parser.parse_args()
 
-	# Initialize logger
-	if options.debug:
-		level = logging.DEBUG
-	else:
-		level = logging.INFO
-	logging.basicConfig(level = level, format = '%(asctime)s.%(msecs)03d %(thread)d %(levelname)-8s %(name)-20s %(message)s', datefmt = '%Y%m%d %H:%M:%S', filename = options.logFilename)
+
+	# Configuration 
+	
+	# Read the settings from the saved configuration, if any
+	configFile = None
+	# Provided on the command line ?
+	if options.configurationFile is not None:
+		configFile = options.configurationFile
+	# No config file provided - fallback to $TESTERMAN_HOME/conf/testerman.conf if set and exists
+	elif Tools.fileExists("%s/conf/testerman.conf" % testerman_home):
+		configFile = "%s/conf/testerman.conf" % testerman_home
+	
+	cm.set_transient("tacs.configuration_filename", configFile)
+	
+	if configFile:
+		try:
+			cm.read(configFile)
+		except Exception, e:
+			print str(e)
+			return 1
+
+
+	# Now, override read settings with those set on explicit command line flags
+	cm.set_user("interface.ia.ip", options.iaIp)
+	cm.set_user("interface.ia.port", options.iaPort)
+	cm.set_user("interface.xa.ip", options.xaIp)
+	cm.set_user("interface.xa.port", options.xaPort)
+	cm.set_user("tacs.daemonize", options.daemonize)
+	cm.set_user("tacs.debug", options.debug)
+	cm.set_user("tacs.log_filename", options.logFilename)
+	cm.set_user("tacs.pid_filename", options.pidFilename)
+	cm.set_user("testerman.document_root", options.docRoot)
+	cm.set_user("testerman.var_root", options.varDir)
+
+	# Commit all provided values (construct actual values via registered xforms)
+	cm.commit()
+
+	# Compute/adjust actual variables where applies
+	# If an explicit pid file was provided, use it. Otherwise, fallback to the var_root/ts.pid if possible.
+	pidfile = cm.get("tacs.pid_filename")
+	if not pidfile and cm.get("testerman.var_root"):
+		# Set an actual value
+		pidfile = cm.get("testerman.var_root") + "/ts.pid"
+		cm.set_actual("tacs.pid_filename", pidfile)
+
+
+#	print Tools.formatTable([ ('key', 'Name'), ('format', 'Type'), ('dynamic', 'Dynamic'), ('default', 'Default value'), ('user', 'User value'), ('actual', 'Actual value')], cm.getVariables(), order = "key")
+
+	# Logger initialization
+	level = cm.get("tacs.debug") and logging.DEBUG or logging.INFO
+	logging.basicConfig(level = level, format = '%(asctime)s.%(msecs)03d %(thread)d %(levelname)-8s %(name)-20s %(message)s', datefmt = '%Y%m%d %H:%M:%S', filename = cm.get("tacs.log_filename"))
 	
 	# Display startup info
 	getLogger().info("Starting Testerman Agent Controller Server %s" % (Versions.getAgentControllerVersion()))
-	getLogger().info("Agent interface    (Xa) listening on tcp://%s:%d" % (options.xaIp, options.xaPort))
-	getLogger().info("Internal interface (Ia) listening on tcp://%s:%d" % (options.iaIp, options.iaPort))
+	getLogger().info("Agent interface    (Xa) listening on tcp://%s:%s" % (cm.get("interface.xa.ip"), cm.get("interface.xa.port")))
+	getLogger().info("Internal interface (Ia) listening on tcp://%s:%s" % (cm.get("interface.ia.ip"), cm.get("interface.ia.port")))
 
 	# Now we can daemonize if needed
-	if options.daemonize:
-		if options.pidFilename:
-			getLogger().info("Daemonizing, using pid file %s..." % options.pidFilename)
+	if cm.get("tacs.daemonize"):
+		if pidfile:
+			getLogger().info("Daemonizing, using pid file %s..." % pidfile)
 		else:
 			getLogger().info("Daemonizing...")
-		Tools.daemonize(pidFilename = options.pidFilename, displayPid = True)
+		Tools.daemonize(pidFilename = pidfile, displayPid = True)
 
+
+	# Main start
+	controller = None
 	try:
-		controller = Controller(xaAddress = (options.xaIp, options.xaPort), iaAddress = (options.iaIp, options.iaPort), documentRoot = options.docRoot)
+		controller = Controller(xaAddress = (cm.get("interface.xa.ip"), cm.get("interface.xa.port")), iaAddress = (cm.get("interface.ia.ip"), cm.get("interface.ia.port")), documentRoot = cm.get("testerman.doc_root"))
 		controller.start()
+		controller.getLogger().info("Started.")
+		while 1:
+			time.sleep(1)
+	except KeyboardInterrupt:	
+		getLogger().info("Shutting down Testerman Agent Controller Server...")
 	except Exception, e:
 		print "Unable to start server: " + str(e)
 		getLogger().critical("Unable to start server: " + str(e))
-		try:
-			controller.stop()
-		except: pass
-		logging.shutdown()
-		return
-		
-	controller.getLogger().info("Started.")
 
-	try:
-		while 1:
-			time.sleep(0.1)
-	except KeyboardInterrupt:	
-		getLogger().info("Shutting down Testerman Agent Controller...")
+	if controller:
 		controller.stop()
-	
-	# When the controller stops() (Keyboard interrupt, etc)
-	controller.finalize()
-	getLogger().info("Done.")
+		controller.finalize()
+	getLogger().info("Shut down.")
 	logging.shutdown()
+	Tools.cleanup(cm.get("ts.pid_filename"))
 
 if __name__ == "__main__":
 	main()

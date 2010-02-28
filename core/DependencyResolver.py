@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 ##
 # This file is part of Testerman, a test automation system.
-# Copyright (c) 2008-2009 Sebastien Lefevre and other contributors
+# Copyright (c) 2008,2009,2010 Sebastien Lefevre and other contributors
 #
 # This program is free software; you can redistribute it and/or modify it under
 # the terms of the GNU General Public License as published by the Free Software
@@ -33,8 +33,15 @@ import re
 import StringIO
 
 
+cm = ConfigManager.instance()
+
+################################################################################
+# Logging
+################################################################################
+
 def getLogger():
 	return logging.getLogger('DepResolver')
+
 
 ################################################################################
 # Python source management
@@ -232,7 +239,7 @@ def campaign_getDependencyFilenames(source, sourcePath = None, recursive = False
 		# Filename creation within the docroot
 		if filename.startswith('/'):
 			# absolute path within the *repository*
-			filename = '/%s%s' % (ConfigManager.get('constants.repository'), filename)
+			filename = '/%s%s' % (cm.get_transient('constants.repository'), filename)
 		else:
 			# just add the local campaign path
 			filename = '%s/%s' % (path, filename)               

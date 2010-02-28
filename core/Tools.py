@@ -1,5 +1,5 @@
-##
 # -*- coding: utf-8 -*-
+##
 # This file is part of Testerman, a test automation system.
 # Copyright (c) 2008,2009,2010 Sebastien Lefevre and other contributors
 #
@@ -37,9 +37,6 @@ def getBacktrace():
 	backtrace.close()
 	return ret
 
-def formatTimestamp(timestamp):
-	return time.strftime("%Y%m%d %H:%M:%S", time.localtime(timestamp))  + ".%3.3d" % int((timestamp * 1000) % 1000)
-
 def fileExists(f):
 	try:
 		os.stat(f)
@@ -47,9 +44,86 @@ def fileExists(f):
 	except:
 		return os.path.islink(f)
 
-##
+
+################################################################################
+# Pretty formatters
+################################################################################
+
+def formatTimestamp(timestamp):
+	return time.strftime("%Y%m%d %H:%M:%S", time.localtime(timestamp))  + ".%3.3d" % int((timestamp * 1000) % 1000)
+
+def formatTable(headers = [], rows = [], order = None, notAvailableLabel = "(n/a)"):
+	"""
+	Pretty format the list of dict (rows) according to the header list (headers)
+	Header names not found in the dict are not displayed, and
+	only header names found in the dict are displayed.
+	
+	Header is a list of either simple string (name) or tuple (name, label, [formatter]).
+	If it is a tuple, label is used to display the header, and name
+	to look for the element in the dicts.
+	The optional formatter is a function that will take the value to format as single arg.
+	"""
+	def formatRow(cols, widths):
+		"""
+		Formatting helper: row pretty print.
+		"""
+		line = " %s%s " % (cols[0], (widths[0]-len(cols[0]))*' ')
+		for i in range(1, len(cols)):
+			line = line + "| %s%s " % (cols[i], (widths[i]-len(cols[i]))*' ')
+		return line
+
+	def expand(header):
+		"""
+		Returns the name, label, and formatter for a header entry.
+		"""
+		if isinstance(header, tuple):
+			if len(header) == 2:
+				return header[0], header[1], lambda x: x
+			elif len(header) == 3:
+				return header
+			else:
+				raise Exception("Invalid header")
+		else:
+			return header, header, lambda x:x
+
+	headers = map(expand, headers)
+
+	# First, we initialize the widths for each column
+	colLabels = []
+	widths = []
+	for name, label, _ in headers:
+		widths.append(len(label))
+		colLabels.append(label)
+
+	if order:
+		rows.sort(lambda x, y: cmp(x.get(order), y.get(order)))
+
+	lines = [ ]
+	for entry in rows:
+		i = 0
+		line = []
+		for name, label, formatter in headers:
+			if entry.has_key(name):
+				e = str(formatter(entry[name]))
+			else:
+				e = notAvailableLabel
+			if len(e) > widths[i]: widths[i] = len(e)
+			line.append(e)
+			i += 1
+		lines.append(line)
+
+	# Then we can display them
+	res = formatRow(colLabels, widths)
+	res += "\n"
+	res += '-'*len(res) + "\n"
+	for line in lines:
+		res += formatRow(line, widths) + "\n"
+	return res
+
+
+################################################################################
 # Tools: get a whole process tree (as a flat list of pids)
-##
+################################################################################
 
 def parseStatusFile_linux(filename):
 	pid_ = None
@@ -156,6 +230,10 @@ def getChildrenPids(pid):
 	
 	return ret
 
+
+################################################################################
+# Daemon management
+################################################################################
 
 def daemonize(pidFilename = None, stdout = None, stderr = None, displayPid = False):
 	"""

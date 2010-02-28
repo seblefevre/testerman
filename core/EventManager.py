@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 ##
 # This file is part of Testerman, a test automation system.
-# Copyright (c) 2008-2009 Sebastien Lefevre and other contributors
+# Copyright (c) 2008,2009,2010 Sebastien Lefevre and other contributors
 #
 # This program is free software; you can redistribute it and/or modify it under
 # the terms of the GNU General Public License as published by the Free Software
@@ -30,6 +30,8 @@ import Versions
 
 import logging
 import threading
+
+cm = ConfigManager.instance()
 
 class XcException(Exception):
 	def __init__(self, description, code = 403, reason = "Invalid Xc request"):
@@ -257,8 +259,8 @@ def initialize():
 	starts listening on Xc and Il interfaces.
 	"""
 	global TheManager
-	xcAddress = (ConfigManager.get("interface.xc.ip"), ConfigManager.get_int("interface.xc.port"))
-	ilAddress = (ConfigManager.get("interface.il.ip"), ConfigManager.get_int("interface.il.port"))
+	xcAddress = (cm.get("interface.xc.ip"), cm.get("interface.xc.port"))
+	ilAddress = (cm.get("interface.il.ip"), cm.get("interface.il.port"))
 	TheManager = Manager(xcAddress, ilAddress)
 	TheManager.initialize()
 	TheManager.start()
@@ -268,8 +270,11 @@ def finalize():
 	Stops listening on Xc and Il interfaces,
 	frees resources.
 	"""
-	TheManager.stop()
-	TheManager.finalize()
+	try:
+		instance().stop()
+		instance().finalize()
+	except Exception, e:
+		getLogger().error("Unable to stop the event manager gracefully: %s" % str(e))
 	
 def instance():
 	return TheManager

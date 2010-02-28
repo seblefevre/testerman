@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 ##
 # This file is part of Testerman, a test automation system.
-# Copyright (c) 2008-2009 Sebastien Lefevre and other contributors
+# Copyright (c) 2008,2009,2010 Sebastien Lefevre and other contributors
 #
 # This program is free software; you can redistribute it and/or modify it under
 # the terms of the GNU General Public License as published by the Free Software
@@ -28,6 +28,8 @@ import posixpath
 import sys
 
 import ConfigParser
+
+cm = ConfigManager.instance()
 
 ################################################################################
 # Logging
@@ -125,7 +127,7 @@ def mountRoot():
 	if not backend:
 		raise Exception("Unable to find the backend type %s for mouting root file system." % rootBackendType)
 	# Set the backend properties
-	backend.setProperty('basepath', ConfigManager.get('testerman.document_root'))
+	backend.setProperty('basepath', cm.get('testerman.document_root'))
 	# Initialize it
 	try:
 		if not backend.initialize():
@@ -153,7 +155,7 @@ def mountAll():
 	mounts = []
 	
 	# Read other FS configurations from a file
-	confFilename = "%s/backends.ini" % ConfigManager.instance().get("testerman.configuration_path")
+	confFilename = "%s/conf/backends.ini" % cm.get_transient("testerman.testerman_home")
 	try:
 		c = ConfigParser.ConfigParser()
 		c.read([ confFilename ])
@@ -235,7 +237,7 @@ def scanFileSystemBackends():
 	"""
 	Convenience function.
 	"""
-	paths = [ ConfigManager.get("testerman.server_path") + "/backends" ]
+	paths = [ cm.get_transient("ts.server_root") + "/backends" ]
 	scanPlugins(paths, label = "backend")
 
 FileSystemBackendClasses = {}

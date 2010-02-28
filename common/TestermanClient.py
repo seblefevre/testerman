@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 ##
 # This file is part of Testerman, a test automation system.
-# Copyright (c) 2008-2009 Sebastien Lefevre and other contributors
+# Copyright (c) 2008,2009,2010 Sebastien Lefevre and other contributors
 #
 # This program is free software; you can redistribute it and/or modify it under
 # the terms of the GNU General Public License as published by the Free Software
@@ -16,7 +16,7 @@
 ##
 # Module to implement Testerman clients, interfacing both Ws and Xc interfaces.
 # 
-# This version implements Ws 1.3, but can connect to Ws 1.0, 1.1, 1.2 as well.
+# This version implements Ws 1.4, but can connect to Ws 1.0-1.3 as well.
 #
 ##
 
@@ -156,11 +156,11 @@ class Client(Nodes.ConnectingNode):
 	
 	def getJobQueue(self):
 		"""
-		Gets the current job in the queue, returning several attributes for each of them.
+		Gets the current jobs in the queue, returning several attributes for each of them.
 		
 		@throws Exception in case of an error.
 		
-		@rtype: a list of dict
+		@rtype: a list of dict (see the dict contents in getJobInfo() description)
 		@returns: the list of current job in the server queue. See getJobInfo() for details
 		about the dict.
 		"""
@@ -176,7 +176,14 @@ class Client(Nodes.ConnectingNode):
 
 		@exception: Exception in case of an error.
 		
-		@rtype: dict{'id': integer, 'parent-id': integer, 'state': string, ...}, or None
+		@rtype: dict{'id': integer, 'parent-id': integer, 'name': string,
+	        'state': string in ['waiting', 'running', 'stopped', 'cancelled', 'killed', 'paused'],
+	        'duration': float or None, 'result': integer or None, 'username': string, 
+					'start-time': float or None, 'stop-time': float or None, 'scheduled-at': float,
+	        'type': string in ['ats', 'campaign'],
+					'path': string (docroot-based path for jobs whose source is in docroot) or None (client-based source)
+	       }
+				 or None
 		@returns: job information regarding the jobId, or None if the jobId was not found.
 		"""
 		self.getLogger().debug("Getting job status for jobId %s" % str(jobId))
@@ -1126,6 +1133,12 @@ class Client(Nodes.ConnectingNode):
 		self.getLogger().debug("getConfigInformation()...")
 		res = self.__proxy.getConfigInformation()
 		self.getLogger().debug("getConfigInformation(): " + str(res))
+		return res
+
+	def getVariables(self, component):
+		self.getLogger().debug("getVariables()...")
+		res = self.__proxy.getVariables()
+		self.getLogger().debug("getVariables(): " + str(res))
 		return res
 
 

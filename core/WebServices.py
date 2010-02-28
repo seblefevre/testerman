@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 ##
 # This file is part of Testerman, a test automation system.
-# Copyright (c) 2008-2009 Sebastien Lefevre and other contributors
+# Copyright (c) 2008,2009,2010 Sebastien Lefevre and other contributors
 #
 # This program is free software; you can redistribute it and/or modify it under
 # the terms of the GNU General Public License as published by the Free Software
@@ -52,7 +52,7 @@ import zlib
 #: API versions: major.minor
 #: major += 1 if not backward compatible,
 #: minor += 1 if feature-enriched, backward compatible
-WS_VERSION = '1.3'
+WS_VERSION = '1.4'
 
 
 ################################################################################
@@ -938,7 +938,7 @@ def getXcInterfaceAddress():
 	@returns: the Xc interface IP + port
 	"""
 	getLogger().info(">> getXcInterfaceAddress()")
-	ret = { 'ip': ConfigManager.get('interface.xc.ip'), 'port': ConfigManager.get_int('interface.xc.port') }
+	ret = { 'ip': ConfigManager.instance().get('interface.xc.ip'), 'port': ConfigManager.instance().get('interface.xc.port') }
 	getLogger().info("<< getXcInterfaceAddress: %s" % str(ret))
 	return ret
 
@@ -1101,13 +1101,14 @@ def getConfigInformation():
 	Returns the current internal configuration values.
 	
 	@since: 1.0
+	@deprecated: 1.4 - use getVariables() instead.
 
 	@rtype: a dict[string] of strings
 	@returns: a dict containing the configuration values, indexed by their keys
 	"""	
 	ret = {}
-	for name, value in ConfigManager.instance().getValues().items():
-		ret[name] = str(value)
+	for variable in ConfigManager.instance().getVariables():
+		ret[variable['key']] = str(variable.get('actual'))
 	return ret
 
 def getBackendInformation():
@@ -1183,4 +1184,36 @@ def resetAllCounters():
 	TODO
 	"""
 	return False
+
+def getVariables(component = "ts"):
+	"""
+	Returns all persisted and transient variables for the provided server component, with
+	their different default/user-provided/actual values.
+	
+	Replaces getConfigInformation.
+	
+	The result is a dict containing 2 entries,
+	each containing a list of dict representing the variables:
+	dict[persistent]: list of dict(key, actual, default, user, type, dynamic)
+	dict[transient]: list of dict(key, value)
+	
+	@since: 1.4
+
+	@type  component: string
+	@param component: the server component to retrieve variables from.
+	ts = testerman server; tacs = connected TACS
+
+	@rtype: a dict[string] of list of dict
+	@returns: the 2 classes of internal variables for the server component
+	"""
+	
+	if component == "ts":
+		cm = ConfigManager.instance()
+		variables = dict(persistent = cm.getVariables(), transient = cm.getTransientVariables())
+		return variables
+	elif component == "tacs":
+		return None # To be implemented
+	else:
+		return None
+		
 	

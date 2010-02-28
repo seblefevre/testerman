@@ -1,0 +1,38 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml">
+  
+<head>
+	<title>${config.ts_name} - Testerman server</title>
+	<link rel="stylesheet" type="text/css" href="/static/testerman.css" />
+</head>
+<body>
+	<div id="page">
+		<div id="banner">
+			<div id="header">
+				<a id="logo" href="/"><img src="/static/testerman-logo.png" alt="testerman" /></a>
+			</div>
+		</div>
+		<div id="main">
+			<div id="content" class="wiki">
+				<div class="wikipage">
+
+<h1>Published Components</h1>
+<p>
+#if ($components)
+This server has published the following components:
+<ul>
+#foreach ($component in $components)
+	<li><a class="wiki" href="/docroot?${component.archive}">${component.component} ${component.version}</a> (${component.branch})</li>
+#end
+</ul>	
+Right-click and save as to download the corresponding archive.
+#else
+No components were published on this server.
+#end
+</p>
+				</div>
+			</div>
+		</div>
+	</div>
+</body>
+	 

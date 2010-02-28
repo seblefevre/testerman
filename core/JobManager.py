@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 ##
 # This file is part of Testerman, a test automation system.
-# Copyright (c) 2008-2009 Sebastien Lefevre and other contributors
+# Copyright (c) 2008,2009,2010 Sebastien Lefevre and other contributors
 #
 # This program is free software; you can redistribute it and/or modify it under
 # the terms of the GNU General Public License as published by the Free Software
@@ -49,6 +49,7 @@ import tempfile
 import threading
 import time
 
+cm = ConfigManager.instance()
 
 ################################################################################
 # Logging
@@ -601,7 +602,7 @@ class AtsJob(Job):
 			# We consider the atsPath to be /repository/ + the path indicated in
 			# the ATS name. So the name (constructed by the client) should follow some rules 
 			# to make it work correctly.
-			self._path = '/%s/%s' % (ConfigManager.get('constants.repository'), '/'.join(self.getName().split('/')[:-1]))
+			self._path = '/%s/%s' % (cm.get_transient('constants.repository'), '/'.join(self.getName().split('/')[:-1]))
 		# Basic normalization
 		if not self._path.startswith('/'):
 			self._path = '/%s' % self._path
@@ -783,12 +784,12 @@ class AtsJob(Job):
 		# Create some paths related to the final TE tree in the docroot
 
 		# docroot-path for all TE packages for this ATS
-		self._baseDocRootDirectory = os.path.normpath("/%s/%s" % (ConfigManager.get("constants.archives"), self.getName()))
+		self._baseDocRootDirectory = os.path.normpath("/%s/%s" % (cm.get_transient("constants.archives"), self.getName()))
 		# Base name for execution log and TE package dir
 		# FIXME: possible name collisions if the same user schedules 2 same ATSes at the same time...
 		self._basename = "%s_%s" % (time.strftime("%Y%m%d-%H%M%S", time.localtime(time.time())), self.getUsername())
 		# Corresponding absolute local path
-		self._baseDirectory = os.path.normpath("%s%s" % (ConfigManager.get("testerman.document_root"), self._baseDocRootDirectory))
+		self._baseDirectory = os.path.normpath("%s%s" % (cm.get("testerman.document_root"), self._baseDocRootDirectory))
 		# final TE package dir (absolute local path)
 		self._tePackageDirectory = "%s/%s" % (self._baseDirectory, self._basename)
 		# self._logFilename is a docroot-path for a retrieval via Ws
@@ -974,7 +975,7 @@ class AtsJob(Job):
 		if self._logFilename:
 			# Why not use the FileSystemManager acccess instead of an absolute, local path ? 
 			# Because of the file lock only ?
-			absoluteLogFilename = os.path.normpath("%s%s" % (ConfigManager.get("testerman.document_root"), self._logFilename))
+			absoluteLogFilename = os.path.normpath("%s%s" % (cm.get("testerman.document_root"), self._logFilename))
 			f = open(absoluteLogFilename, 'r')
 			fcntl.flock(f.fileno(), fcntl.LOCK_EX)
 			res = '<?xml version="1.0" encoding="utf-8" ?>\n<ats>\n%s</ats>' % f.read()
@@ -1020,7 +1021,7 @@ class CampaignJob(Job):
 			# We consider the atsPath to be /repository/ + the path indicated in
 			# the ATS name. So the name (constructed by the client) should follow some rules 
 			# to make it work correctly.
-			self._path = '/%s/%s' % (ConfigManager.get('constants.repository'), '/'.join(self.getName().split('/')[:-1]))
+			self._path = '/%s/%s' % (cm.get_transient('constants.repository'), '/'.join(self.getName().split('/')[:-1]))
 		# Basic normalization
 		if not self._path.startswith('/'):
 			self._path = '/%s' % self._path
@@ -1078,9 +1079,9 @@ class CampaignJob(Job):
 		In particular, enables to fill what is needed to provide a getLogFilename().
 		"""
 		# docroot-path for all files related to this job
-		baseDocRootDirectory = os.path.normpath("/%s/%s" % (ConfigManager.get("constants.archives"), self.getName()))
+		baseDocRootDirectory = os.path.normpath("/%s/%s" % (cm.get_transient("constants.archives"), self.getName()))
 		# Corresponding absolute local path
-		baseDirectory = os.path.normpath("%s%s" % (ConfigManager.get("testerman.document_root"), baseDocRootDirectory))
+		baseDirectory = os.path.normpath("%s%s" % (cm.get("testerman.document_root"), baseDocRootDirectory))
 		# FIXME: possible name collisions if the same user schedules 2 same ATSes at the same time...
 		basename = "%s_%s" % (time.strftime("%Y%m%d-%H%M%S", time.localtime(time.time())), self.getUsername())
 		self._logFilename = "%s/%s.log" % (baseDocRootDirectory, basename)
@@ -1278,7 +1279,7 @@ class CampaignJob(Job):
 			# Filename creation within the docroot
 			if filename.startswith('/'):
 				# absolute path within the *repository*
-				filename = '/%s%s' % (ConfigManager.get('constants.repository'), filename)
+				filename = '/%s%s' % (cm.get_transient('constants.repository'), filename)
 			else:
 				# just add the local campaign path
 				filename = '%s/%s' % (path, filename)               
@@ -1370,8 +1371,9 @@ class Scheduler(threading.Thread):
 	
 	def run(self):
 		getLogger().info("Job scheduler started.")
-		delay = float(ConfigManager.get('ts.jobscheduler.interval', 1000)) / 1000.0
 		while not self._stopEvent.isSet():
+			# this delay is dynamic - re-read at each iterations
+			delay = float(cm.get('ts.jobscheduler.interval')) / 1000.0
 			self._notifyEvent.wait(delay)
 			self._notifyEvent.clear()
 			self.check()
@@ -1433,10 +1435,10 @@ class JobManager:
 		Must be called when the queue manager is stopped (no further activity within the 
 		job queue)
 		"""
-		if not ConfigManager.get('testerman.configuration_path'):
+		if not cm.get('testerman.var_root'):
 			return 
 
-		queueFilename = ConfigManager.get('testerman.configuration_path') + '/jobqueue.dump'
+		queueFilename = cm.get('testerman.var_root') + '/jobqueue.dump'
 		getLogger().debug("Persisting queue to %s..." % queueFilename)
 		self._lock()
 		try:
@@ -1456,11 +1458,11 @@ class JobManager:
 		
 		WARNING: not thread safe, must be called before any new job registration.
 		"""
-		if not ConfigManager.get('testerman.configuration_path'):
+		if not cm.get('testerman.var_root'):
 			return 
 
 		maxId = 0
-		queueFilename = ConfigManager.get('testerman.configuration_path') + '/jobqueue.dump'
+		queueFilename = cm.get('testerman.var_root') + '/jobqueue.dump'
 		try:		
 			f = open(queueFilename)
 			dump = f.read()
@@ -1605,8 +1607,11 @@ def initialize():
 	instance().start()
 
 def finalize():
-	instance().stop()
-	getLogger().info("Killing all jobs...")
-	instance().killAll()
-	instance().persist()
+	try:
+		instance().stop()
+		getLogger().info("Killing all jobs...")
+		instance().killAll()
+		instance().persist()
+	except Exception, e:
+		getLogger().error("Unable to stop the job manager gracefully: %s" % str(e))
 

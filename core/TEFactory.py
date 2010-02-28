@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 ##
 # This file is part of Testerman, a test automation system.
-# Copyright (c) 2008-2009 Sebastien Lefevre and other contributors
+# Copyright (c) 2008,2009,2010 Sebastien Lefevre and other contributors
 #
 # This program is free software; you can redistribute it and/or modify it under
 # the terms of the GNU General Public License as published by the Free Software
@@ -37,6 +37,7 @@ import StringIO
 import modulefinder
 import imp
 
+cm = ConfigManager.instance()
 
 def getLogger():
 	return logging.getLogger('TEFactory')
@@ -107,15 +108,15 @@ def createTestExecutable(name, ats):
 	@returns: the test executable Python script content.
 	"""
 	# For now, not everythin can be controlled by option flags.
-	tacsIp = ConfigManager.get("tacs.ip")
-	tacsPort = ConfigManager.get_int("tacs.port")
-	ilPort = ConfigManager.get_int("interface.il.port")
-	ilIp = ConfigManager.get("interface.il.ip")
-	maxLogPayloadSize = int(ConfigManager.get("testerman.te.log.max_payload_size"))
-	adapterModuleName = ConfigManager.get("testerman.te.python.ttcn3module")
+	tacsIp = cm.get("tacs.ip")
+	tacsPort = cm.get("tacs.port")
+	ilPort = cm.get("interface.il.port")
+	ilIp = cm.get("interface.il.ip")
+	maxLogPayloadSize = cm.get("testerman.te.log.max_payload_size")
+	adapterModuleName = cm.get("testerman.te.python.ttcn3module")
 	
-	codecPaths = ConfigManager.get("testerman.te.codec_paths")
-	probePaths = ConfigManager.get("testerman.te.probe_paths")
+	codecPaths = cm.get("testerman.te.codec_paths")
+	probePaths = cm.get("testerman.te.probe_paths")
 
 	# We construct the te as a list to ''.join() for better performance (better than str += operator)
 	te = []
@@ -407,15 +408,15 @@ def createCommandLine(jobId, teFilename, logFilename, inputSessionFilename, outp
 	cmdOptions = [ str(jobId), logFilename, inputSessionFilename, outputSessionFilename ]
 
 	# Interpreter
-	pythonInterpreter = ConfigManager.get("testerman.te.python.interpreter")
+	pythonInterpreter = cm.get("testerman.te.python.interpreter")
 	ret['executable'] = pythonInterpreter
 
 	#	Env
-	# User modules are in the module paths, shared "administrative" modules are in server_path/modules
+	# User modules are in the module paths, shared "administrative" modules are in server_root/modules
 	pythonPath = '%(root)s:%(root)s/modules:%(modulepaths)s' % dict(
-		root = ConfigManager.get("testerman.server_path"),
+		root = cm.get_transient("ts.server_root"),
 		modulepaths = ':'.join(modulePaths))
-	libraryPath = '%(root)s:$LD_LIBRARY_PATH' % dict(root = ConfigManager.get("testerman.server_path"))
+	libraryPath = '%(root)s:$LD_LIBRARY_PATH' % dict(root = cm.get_transient("ts.server_root"))
 	ret['env'] = { 'LD_LIBRARY_PATH': libraryPath, 'PYTHONPATH': pythonPath }
 
 	# Executable arguments
@@ -580,7 +581,7 @@ def createDependency(dependencyContent):
 	@rtype: utf-8 string
 	@returns: the modified dependency content, ready to be dumped and used by the TE
 	"""
-	adapterModuleName = ConfigManager.get("testerman.te.python.ttcn3module")
+	adapterModuleName = cm.get("testerman.te.python.ttcn3module")
 
 	ret = ''
 	ret += """# -*- coding: utf-8 -*-

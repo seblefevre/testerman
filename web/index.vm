@@ -1,0 +1,42 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml">
+  
+<head>
+	<title>${config.ts_name} - Testerman server</title>
+	<link rel="stylesheet" type="text/css" href="/static/testerman.css" />
+</head>
+<body>
+	<div id="page">
+		<div id="banner">
+			<div id="header">
+				<a id="logo" href="/"><img src="/static/testerman-logo.png" alt="testerman" /></a>
+			</div>
+		</div>
+		<div id="main">
+			<div id="content" class="wiki">
+				<div class="wikipage">
+
+<h1>Welcome to Testerman</h1>
+<p>
+Testerman is an open-source test automation system inspired by the TTCN-3 standard.<br />
+For more information about it, please visit <a class="ext-link" href="http://www.testerman.fr">the official Testerman web site</a>.
+</p>
+<h2>About this Server</h2>
+<p>
+Friendly name: ${config.ts_name}<br />
+Server version: ${internal.ts_version}<br />
+Administrator: <a href="mailto:${config.testerman_administrator_email}">${config.testerman_administrator_name}</a><br />
+</p>
+
+<h2>Local Links</h2>
+<ul>
+	<li><a class="wiki" href="/qtestermaninstaller">QTesterman installer</a> - Download and run this file to install the QTesterman rich client on your computer</li>
+	<li><a class="wiki" href="/components.vm">Published components</a> - Directly download and install QTesterman or a PyAgent</li>
+</ul>	
+
+				</div>
+			</div>
+		</div>
+	</div>
+</body>
+	 

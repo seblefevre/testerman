@@ -1,5 +1,5 @@
-##
 # -*- coding: utf-8 -*-
+##
 # This file is part of Testerman, a test automation system.
 # Copyright (c) 2008,2009,2010 Sebastien Lefevre and other contributors
 #
@@ -28,12 +28,20 @@ import TestermanAgentControllerClient as TACC
 
 import logging
 
+
+cm = ConfigManager.instance()
+
 ################################################################################
 # Logging
 ################################################################################
 
 def getLogger():
 	return logging.getLogger('TS.ProbeManager')
+
+
+################################################################################
+# TACS Client
+################################################################################
 
 class ProbeManager:
 	"""
@@ -44,7 +52,7 @@ class ProbeManager:
 	
 	def initialize(self):
 		self._proxy = TACC.IaClient('TS.ProbeManager')
-		address = (ConfigManager.get("tacs.ip"), ConfigManager.get("tacs.port"))
+		address = (cm.get("tacs.ip"), cm.get("tacs.port"))
 		# Register callbacks
 		self._proxy.setProbeNotificationCallback(self._onProbeNotification)
 		self._proxy.initialize(address)
@@ -174,7 +182,11 @@ def initialize():
 	instance().initialize()
 
 def finalize():
-	instance().finalize()		
+	try:
+		instance().finalize()
+	except Exception, e:
+		getLogger().error("Unable to stop the probe manager gracefully: %s" % str(e))
+
 
 
 

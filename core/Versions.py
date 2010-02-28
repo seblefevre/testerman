@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 ##
 # This file is part of Testerman, a test automation system.
-# Copyright (c) 2008-2009 Sebastien Lefevre and other contributors
+# Copyright (c) 2008,2009,2010 Sebastien Lefevre and other contributors
 #
 # This program is free software; you can redistribute it and/or modify it under
 # the terms of the GNU General Public License as published by the Free Software
@@ -19,10 +19,10 @@
 ##
 
 #: Main TS implementation version
-TESTERMAN_SERVER_VERSION = '1.3.1'
+TESTERMAN_SERVER_VERSION = '1.3.2'
 
 #: Main TACS implementation version
-TESTERMAN_AGENT_CONTROLLER_VERSION = '1.1.0'
+TESTERMAN_AGENT_CONTROLLER_VERSION = '1.1.1'
 
 #: API versions: major.minor
 #: major += 1 if not backward compatible,

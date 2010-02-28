@@ -1,0 +1,213 @@
+/* Theme: wide/almost full page, inspired by www.portablepython.com (thanks to their designers !) */
+
+/* PNG transparency fix for IE 5.5, IE 6.0 - behavior is IE-specific attribute, non-standard */
+img { behavior: url(/trac/chrome/site/iepngfix.htc); }
+
+body, th, td {
+ font: normal 13px 'trebuchet ms', arial, verdana,'Bitstream Vera Sans',helvetica,sans-serif; /* Modified */
+}
+
+h1, h2, h3, h4 {
+ font-family: 'Century Gothic', 'Trebuchet MS', 'Arial Narrow', arial, verdana,'Bitstream Vera Sans',helvetica,sans-serif; 
+ font-weight: normal;
+ color: #a0a0a0; /* #326dc7; */ /* #728c40; */
+ letter-spacing: -0.018em;
+ page-break-after: avoid;
+}
+
+h1 {
+ margin-top: 30px;
+ border-width: 0 0 1px 0;
+ border-style: solid;
+ border-color: #eeeeee; 
+ font-size: 27px;
+ margin:0.15em 1em 0.5em 0;
+ /* text-transform: uppercase; */
+}
+
+/* Top-level element: page */
+/* page contains: 
+ * - banner (contains header, search, metanav [=login/pref/help/about]), 
+ * - mainnav [=wiki/timeline/...], 
+ * - main (which contains ctxtnav, content, altlinks), 
+ * - footer
+ */
+
+#page {
+ margin-left: 0px;
+ margin-right: 0px;
+ font-family: 'trebuchet ms', arial, verdana,'Bitstream Vera Sans',helvetica,sans-serif; 
+}
+
+body {
+ background: #fff url(/static/grey-stripes.png) repeat-x;
+ color: #000;
+ margin-top: 0px; 
+ margin-bottom: 0px;
+ margin-left: 0px;
+ margin-right: 0px;
+ padding: 0;
+}
+
+#content a {
+ color: #4d87ce;
+ text-decoration: none;
+ border: 0px;
+ font-weight: bold;
+}
+
+#content a:hover {
+ color: #2a65ad;
+}
+
+/* banner */
+
+#banner {
+ height: 68px;
+ margin-left: 0px;
+ margin-right: 0px;
+}
+
+/* header - The logo */
+#header img {
+ border: none;
+ margin: 0 0 -2.4em 4em;
+}
+
+/* search div */
+#search {
+ margin-right: 66px;
+ margin-top: -15px;
+}
+
+/* Meta navigation */
+#metanav li {
+ color: #aaa;
+}
+
+#metanav a {
+ color: #aaa;
+}
+
+#metanav a:hover {
+ color: #ffc800;
+ background: transparent;
+}
+
+#metanav {
+ margin-right: 61px;
+ margin-top: -2px;
+}
+
+/* Main navigation bar (Wiki/Timeline/Roadmap/etc) */
+#mainnav {
+ border: 0px;
+ background: #fff;
+ font: normal 10px 'arial','trebuchet ms',verdana,'Bitstream Vera Sans',helvetica,arial,sans-serif; /* Modified */
+ margin-bottom: 0px;
+ margin-left: 0px;
+ margin-right: 0px;
+ margin-top: -15px;
+ padding: .3em 50px .3em 0;
+ height: 15px;
+}
+
+#mainnav li {
+ border: 0px;
+ padding: .25em 0
+}
+
+#mainnav :link, #mainnav :visited {
+ background: transparent;
+ border: 0px; 
+ color: #000000; 
+ padding: .3em 20px; 
+}
+
+#mainnav :link:hover, #mainnav :visited:hover {
+ border: 0px; 
+ background: #ffc800;
+ padding: .3em 20px; 
+}
+
+/* current tab */
+#mainnav .active :link, #mainnav .active :visited {
+ border: 0px; 
+ background: #444444;
+ color: #ffffff;
+ font-weight: bold;
+ padding: .3em 20px; 
+}
+
+#mainnav .active :link:hover, #mainnav .active :visited:hover {
+ border: 0px; 
+ padding: .3em 20px; 
+}
+
+/* main */
+
+#main {
+ margin-left: 0px;
+ margin-right: 0px;
+}
+
+/* Contextual navigation bar */
+#ctxtnav {
+ border: 1px solid #eeeeee;
+ border-left: 0px;
+ border-right: 0px;
+ border-bottom: 0px;
+ background: #ffffff;
+ height: 20px;
+ padding: 5px 61px 0 0px;
+ margin: 0;
+ margin-top: -2px;
+} /* Modified */
+
+#ctxtnav a {
+ color: #aaa;
+ text-decoration: none;
+ border: none;
+}
+
+#ctxtnav a:hover {
+ color: #ffc800;
+ background: transparent;
+}
+
+
+#altlinks {
+ background: #fff;
+}
+
+/* footer */
+#footer {
+ margin-left: 0px;
+ margin-right: 0px;
+ background: #fff;
+ padding: 10px;
+}
+
+
+#content {
+ margin-top: 0;
+ margin-left: 0px;
+ margin-right: 0px;
+ padding-top: 15px;
+ padding-bottom: 15px;
+ padding-left: 60px;
+ padding-right: 60px;
+ background: #fff;
+}
+
+.wikipage {
+ padding-left: 18px;
+}
+
+.wikipage h1, .wikipage h2, .wikipage h3 {
+margin-left:-18px;
+}
+
+h2 {
+ font-size:16px;
+}
