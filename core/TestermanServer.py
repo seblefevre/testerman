@@ -294,6 +294,7 @@ def main():
 
 
 	# Main start
+	cm.set_transient("ts.pid", os.getpid())
 	try:
 		FileSystemManager.initialize()
 		EventManager.initialize() # Xc server, Ih server [TSE:CH], Il server [TSE:TL]

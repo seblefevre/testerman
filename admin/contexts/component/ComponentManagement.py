@@ -84,7 +84,7 @@ class UpdateMetadataWrapper:
 				status = 'Missing archive file'
 			ret.append(dict(version = version, component = component, branch = branch, archive = url, status = status))
 		
-		return [ 'component', 'version', 'branch', 'archive', 'status' ], ret
+		return ret
 
 	def isComponentPublished(self, componentName, componentVersion):
 		"""
@@ -221,7 +221,7 @@ class UpdateMetadataWrapper:
 # Context definition
 ##
 
-from CiscoInteractiveShell import *
+from StructuredInteractiveShell import *
 
 
 import ComponentPackager
@@ -230,7 +230,7 @@ class ComponentContext(CommandContext):
 	def __init__(self):
 		CommandContext.__init__(self)
 		
-		branches = ChoiceNode()
+		branches = EnumNode()
 		branches.addChoice("stable", "stable version"),
 		branches.addChoice("testing", "testing version")
 		branches.addChoice("experimental", "experimental version")
@@ -244,15 +244,16 @@ class ComponentContext(CommandContext):
 		self.addCommand("publish", "publish a new component on server", node, self.publishComponent)
 
 		# Source-publish command
-		node = SequenceNode()
-		node.addField("branch", "advertised component stability (default: testing)", branches, True)
-		# supported source components
-		components = ChoiceNode()
-		components.addChoice("qtesterman", "QTesterman client")
-		components.addChoice("pyagent", "general purpose python agent")
-		node.addField("component", "component name", components)
-		node.addField("version", "advertised version", StringNode(), True)
-		self.addCommand("source-publish", "publish a new component on server from its source", node, self.publishComponentFromSource)
+		if self.hasSource():
+			node = SequenceNode()
+			node.addField("branch", "advertised component stability (default: testing)", branches, True)
+			# supported source components
+			components = EnumNode()
+			components.addChoice("qtesterman", "QTesterman client")
+			components.addChoice("pyagent", "general purpose python agent")
+			node.addField("component", "component name", components)
+			node.addField("version", "advertised version", StringNode(), True)
+			self.addCommand("source-publish", "publish a new component on server from its source", node, self.publishComponentFromSource)
 
 		# Unpublish command
 		node = SequenceNode()
@@ -260,8 +261,11 @@ class ComponentContext(CommandContext):
 		node.addField("version", "version to unpublish", StringNode())
 		self.addCommand("unpublish", "unpublish an existing component version", node, self.unpublishComponent)
 
-		# List command		
-		self.addCommand("list", "list published components", NullNode(), self.listComponents)
+		# Show command		
+		self.addCommand("show", "show published components", NullNode(), self.showComponents)
+
+	def hasSource(self):
+		return os.environ.get('TESTERMAN_HOME')
 
 	def _getDocroot(self):
 		docroot = os.environ.get('TESTERMAN_DOCROOT')
@@ -303,13 +307,14 @@ class ComponentContext(CommandContext):
 
 		return url
 
-	def listComponents(self):
+	def showComponents(self):
 		metadata = self._getMetadataWrapper()
-		headers, rows = metadata.getComponentsList()
-		self.printTable(headers, rows)
+		rows = metadata.getComponentsList()
+		headers = [ ('component', 'Component'), ('version', 'Version'), ('branch', 'Branch'), ('archive', 'Archive File'), ('status', 'Status') ]
+		self.printTable(headers, rows, order = 'component')
 
-	def publishComponent(self, component, archive, version, branch = ("testing", None)):
-		branch = branch[0]
+	def publishComponent(self, component, archive, version, branch = "testing"):
+		branch = branch
 		self.notify("Publishing package %s as component %s %s (%s)..." % (archive, component, version, branch))
 		metadata = self._getMetadataWrapper()
 
@@ -325,14 +330,14 @@ class ComponentContext(CommandContext):
 		status = self._getMetadataWrapper().unpublishComponent(component, version)
 		self.notify(status)
 
-	def publishComponentFromSource(self, component, version = None, branch = ("testing", None)):
-		component = component[0]
-		branch = branch[0]
+	def publishComponentFromSource(self, component, version = None, branch = "testing"):
+		component = component
+		branch = branch
 
 		# Prerequisites
-		sourceRoot = os.environ.get('TESTERMAN_SRCROOT')
+		sourceRoot = os.environ.get('TESTERMAN_HOME')
 		if not sourceRoot:
-			raise Exception("Sorry, the Testerman source root is not set (TESTERMAN_SRCROOT).")
+			raise Exception("Sorry, the Testerman source root is not set (TESTERMAN_HOME).")
 		
 		metadata = self._getMetadataWrapper()
 

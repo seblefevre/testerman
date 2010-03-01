@@ -28,7 +28,7 @@ import time
 # Context definition
 ##
 
-from CiscoInteractiveShell import *
+from StructuredInteractiveShell import *
 
 class JobContext(CommandContext):
 	"""
@@ -39,7 +39,7 @@ class JobContext(CommandContext):
 		self._client = None
 		# list jobs
 		node = SequenceNode()
-		states = ChoiceNode()
+		states = EnumNode()
 		states.addChoice("running", "running jobs only")
 		states.addChoice("waiting", "scheduled but not started jobs only")
 		states.addChoice("paused", "paused jobs only")
@@ -49,11 +49,11 @@ class JobContext(CommandContext):
 		states.addChoice("error", "error jobs only")
 		node.addField("state", "filter on state", states, optional = True)
 		node.addField("username", "filter on username", StringNode(), optional = True)
-		self.addCommand("list", "list registered jobs", node, self.listJobs)
+		self.addCommand("show", "show registered jobs", node, self.showJobs)
 
 		# send a signal
 		node = SequenceNode()
-		signals = ChoiceNode()
+		signals = EnumNode()
 		signals.addChoice("kill", "kill the job")
 		signals.addChoice("pause", "pause a running job")
 		signals.addChoice("resume", "resume a paused job")
@@ -113,20 +113,19 @@ class JobContext(CommandContext):
 		"""
 		Sends a signal to a job.
 		"""
-		signal = signal[0]
 		self.notify("Sending signal %s to %s..." % (signal, job))
 		self._getClient().sendSignal(job, signal)
 
-	def listJobs(self, state = None, username = None):
+	def showJobs(self, state = None, username = None):
 		rows = self._getClient().getJobQueue()
-		headers = [('id', 'job id'), ('state', 'state'), ('name', 'name'), 
-			('type', 'type'), ('username', 'username'), 
-			('start-time', 'start', lambda x: x and time.strftime("%Y-%m-%d %H:%M:%S", time.localtime(x)) or 'n/a'),
-			('stop-time', 'stop', lambda x: x and time.strftime("%Y-%m-%d %H:%M:%S", time.localtime(x)) or 'n/a'),
-			('scheduled-at', 'scheduled', lambda x: x and time.strftime("%Y-%m-%d %H:%M:%S", time.localtime(x)) or ''),
+		headers = [('id', 'Job ID'), ('state', 'State'), ('name', 'Name'), 
+			('type', 'Type'), ('username', 'Username'), 
+			('start-time', 'Start', lambda x: x and time.strftime("%Y-%m-%d %H:%M:%S", time.localtime(x)) or 'n/a'),
+			('stop-time', 'Stop', lambda x: x and time.strftime("%Y-%m-%d %H:%M:%S", time.localtime(x)) or 'n/a'),
+			('scheduled-at', 'Scheduled', lambda x: x and time.strftime("%Y-%m-%d %H:%M:%S", time.localtime(x)) or ''),
 		]
 		if state:
-			rows = [ x for x in rows if x['state'] == state[0] ]
+			rows = [ x for x in rows if x['state'] == state ]
 		if username:
 			rows = [ x for x in rows if x['username'] == username ]
 		self.printTable(headers, rows)

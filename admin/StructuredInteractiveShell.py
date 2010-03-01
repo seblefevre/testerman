@@ -50,7 +50,7 @@ def getBacktrace():
 # Tools/output pretty printers
 ##
 
-def formatTable(headers = [], rows = []):
+def formatTable(headers = [], rows = [], order = None, notAvailableLabel = "(n/a)"):
 	"""
 	Pretty format the list of dict (rows) according to the header list (headers)
 	Header names not found in the dict are not displayed, and
@@ -93,6 +93,9 @@ def formatTable(headers = [], rows = []):
 		widths.append(len(label))
 		colLabels.append(label)
 
+	if order:
+		rows.sort(lambda x, y: cmp(x.get(order), y.get(order)))
+
 	lines = [ ]
 	for entry in rows:
 		i = 0
@@ -100,10 +103,10 @@ def formatTable(headers = [], rows = []):
 		for name, label, formatter in headers:
 			if entry.has_key(name):
 				e = str(formatter(entry[name]))
-				if len(e) > widths[i]: widths[i] = len(e)
-				line.append(e)
 			else:
-				line.append('') # element not found for this dict entry
+				e = notAvailableLabel
+			if len(e) > widths[i]: widths[i] = len(e)
+			line.append(e)
 			i += 1
 		lines.append(line)
 
@@ -286,8 +289,9 @@ class StringNode(SyntaxNode):
 	"""
 	_typeName = "<string>"
 	
-	def __init__(self):
+	def __init__(self, description = "a string value"):
 		SyntaxNode.__init__(self)
+		self._description = description
 
 	def parse(self, tokens):
 		if not tokens:
@@ -298,7 +302,7 @@ class StringNode(SyntaxNode):
 	def suggestNextTokens(self, tokens):
 		if not tokens:
 			# Suggest the user to enter a string value
-			return [ (None, "a string value") ], True, tokens
+			return [ (None,self._description) ], True, tokens
 		else:
 			# no suggestion
 			return [], False, tokens[1:]
@@ -311,8 +315,9 @@ class IntegerNode(SyntaxNode):
 	
 	_typeName = "<integer>"
 	
-	def __init__(self):
+	def __init__(self, description = "an integer value"):
 		SyntaxNode.__init__(self)
+		self._description = description
 
 	def parse(self, tokens):
 		if not tokens:
@@ -326,7 +331,7 @@ class IntegerNode(SyntaxNode):
 	def suggestNextTokens(self, tokens):
 		if not tokens:
 			# Suggest to enter an integer value
-			return [ (None, "an integer value") ], True, tokens
+			return [ (None, self._description) ], True, tokens
 		else:
 			try:
 				int(tokens[0])
@@ -479,7 +484,7 @@ class SequenceNode(SyntaxNode):
 			# OK, we have everything, and nothing can't be completed at
 			# our level (i.e. in this node branch) anymore
 			return [], False, nextTokens
-	
+
 
 class ChoiceNode(SyntaxNode):
 	"""
@@ -551,6 +556,153 @@ class ChoiceNode(SyntaxNode):
 				raise InvalidSyntax("invalid choice name (%s)" % (choiceName)) 
 
 
+class EnumNode(SyntaxNode):
+	"""
+	A string node that only accepts pre-defined values.
+	Enables to create choice-like based on string values instead
+	of the tuple value (choiceName, nodeValue).
+	"""
+	_typeName = "<enum-string>"
+	
+	def __init__(self):
+		SyntaxNode.__init__(self)
+		self._possibleValues = {}
+
+	def addChoice(self, name, description):
+		self._possibleValues[name] = description
+		return self
+
+	def parse(self, tokens):
+		if not tokens:
+			raise MissingToken("missing value")
+
+		if not tokens[0] in self._possibleValues:
+			raise InvalidSyntax("invalid value (%s)" % tokens[0])
+
+		return (tokens[0], tokens[1:])
+	
+	def suggestNextTokens(self, tokens):
+		if not tokens:
+			# Suggest the user to enter a string value
+			return self._possibleValues.items(), True, tokens
+		else:
+			if not tokens[0] in self._possibleValues:
+				raise InvalidSyntax("invalid value (%s)" % tokens[0])
+			# no suggestion
+			return [], False, tokens[1:]
+
+
+class PositionalSequenceNode(SyntaxNode):
+	"""
+	Similar to a sequence node, but arguments
+	are not named and must be provided in the correct order.
+	
+	When valuated, returns a dict.
+	
+	All arguments must be provided - no optional fields support.
+	
+	MyType ::= SEQUENCE {
+		field1 INTEGER, -- this is field1
+		field2 String, -- another field2
+	}
+	
+	would be declared as:
+	MyType = PositionalSequenceNode()
+	MyType.addField("field1", "this is field1", IntegerNode())
+	MyType.addField("field2", "another field2", StringNode())
+	"""
+	
+	_typeName = "<positional-sequence>"
+	
+	def __init__(self):
+		SyntaxNode.__init__(self)
+		self._fields = []
+	
+	def addField(self, fieldName, description, syntaxNode):
+		"""
+		Declares a new field in the sequence.
+		""" 
+		self._fields.append((fieldName, description, syntaxNode))
+		return self
+
+	def parse(self, tokens):
+		"""
+		Returns a dict {fieldName: value}
+		
+		All fields must be filled.
+		If not, an exception is raised.
+		"""
+		ret = {}
+
+		nextTokens = tokens
+		nextField = 0
+		
+		while nextTokens:
+			fieldName, fieldDescription, fieldSyntaxNode = self._fields[nextField]
+			try:
+				v, nextTokens = fieldSyntaxNode.parse(nextTokens)
+			except ParsingException, e:
+				e.forwardAs(fieldName)
+			ret[fieldName] = v
+			nextField += 1
+			
+		# Check if we have all mandatory fields
+		if nextField < len(self._fields):
+			raise MissingToken("missing mandatory positional argument %s (%s)" % (nextField, self._fields[nextField][1]))
+
+		return (ret, nextTokens)		
+
+	def suggestNextTokens(self, tokens):
+		suggestions = []
+		completionRequired = False
+
+		nextTokens = tokens
+		nextField = 0
+		
+		# Parse
+		while nextTokens:
+			fieldName, fieldDescription, fieldSyntaxNode = self._fields[nextField]
+			try:
+				suggestions, completionRequired, nextTokens = fieldSyntaxNode.suggestNextTokens(nextTokens)
+			except ParsingException, e:
+				e.forwardAs(fieldName)
+			
+			if completionRequired:
+				if nextTokens:
+					# well, this field could have consumed other tokens,
+					# but it did not: missing a token somewhere
+					raise MissingToken("positional argument %s (%s) misses a value" % (nextField, fieldDescription))
+				else:
+					# OK, first suggest to complete this token
+					break
+			
+			# otherwise, just continue with the next possible field
+			nextField += 1
+
+		# Now, let's analyse our current state	
+		if not nextTokens:
+			# The line ends here - we can propose some suggestions to continue it
+			if completionRequired:
+				return suggestions, completionRequired, nextTokens
+			else:
+				# Just check that we have our count of positional args
+				if nextField < len(self._fields):
+					# Suggest what the next positional arg suggests
+					return self._fields[nextField][2].suggestNextTokens(nextTokens)
+				else:
+					# Everything is OK
+					return [], False, nextTokens
+
+		else:
+			# The line has not been consumed completely - just check that
+			# we have all our mandatory fields
+			if nextField < len(self._fields):
+				raise MissingToken("missing mandatory positional argument %s (%s)" % (nextField, self._field[nextField][1]))
+
+			# OK, we have everything, and nothing can't be completed at
+			# our level (i.e. in this node branch) anymore
+			return [], False, nextTokens
+
 
 ##
 # Command Context
@@ -572,9 +724,11 @@ class CommandContext(ChoiceNode):
 	
 	Once created, use ContextManager.registerContext(name, description, context, parent = None)
 	to register the context.
+	Child contexts are automatically registered into the same context manager
+	(regardless they were added before or after this context registration).
+
 	
-	
-	Alternatively, you may directly get a registered context with:
+	Alternatively, you may directly get a prepared registered context with:
 	ContextManager.createContext(contextName, description, parent = ...)
 	or ContextManager.createRootContext(contextName, description)
 	"""
@@ -585,6 +739,8 @@ class CommandContext(ChoiceNode):
 		self._parentContext = None
 		self._contextManager = None
 		self._name = None
+		# Traversed by the context manager (upon registration)
+		self._contexts = {}
 		
 	##
 	# "Private" methods
@@ -671,27 +827,17 @@ class CommandContext(ChoiceNode):
 		else:
 			return self._name
 
-	def addContext(self, name, description, context):
-		"""
-		Add a sub-context.
-		Convenience function, calls the context registration
-		on the context manager.
-		"""
-		if not self._contextManager:
-			raise Exception("Please register this context into a context manager before adding sub-contexts to it")
-		self._contextManager.registerContext(name, description, context, self)
-
 	def error(self, txt):
 		self._contextManager.write("%% error: %s\n" % txt)
 
 	def out(self, txt):
 		self._contextManager.write(txt)
 
-	def notify(self, txt):
+	def notify(self, txt = ""):
 		self._contextManager.write(txt + "\n")
 	
-	def printTable(self, headers, rows):
-		self.notify(formatTable(headers, rows))
+	def printTable(self, headers, rows, order = None, notAvailableLabel = "(n/a)"):
+		self.notify(formatTable(headers, rows, order, notAvailableLabel))
 
 	def printForm(self, headers, rows):
 		self.notify(formatForm(headers, rows))
@@ -707,6 +853,18 @@ class CommandContext(ChoiceNode):
 		self.addChoice(commandName, description, syntaxNode)
 		self.__commands[commandName] = callback
 		return self
+
+	def addContext(self, name, description, context):
+		"""
+		Add a child context.
+		It won't be necessary to register this child context
+		into the context manager.
+		"""
+		self._contexts[name] = (name, description, context)
+		# Already registered into a context manager ? declare the child context into it
+		if self._contextManager:
+			self._contextManager.registerContext(name, description, context, self)
+
 
 
 ##
@@ -739,17 +897,38 @@ class ContextManager:
 
 	# Factory-oriented method	
 	def createRootContext(self, contextName, description = None):
+		"""
+		Returns a pre-registered root context.
+		"""
 		context = self.createContext(contextName, description, None)
 		self.setCurrentContext(context)
 		return context
 	
 	# Factory-oriented method	
 	def createContext(self, contextName, description, parentContext):
+		"""
+		Returns a pre-registered child context.
+		"""
 		context = CommandContext()
 		return self.registerContext(contextName, description, context, parentContext)
+
+	# Registration-oriented method	
+	def registerRootContext(self, contextName, description, context):
+		ret = self.registerContext(contextName, description, context, None)
+		self.setCurrentContext(context)
+		return ret
 	
 	# Registration-oriented method	
 	def registerContext(self, contextName, description, context, parentContext):
+		"""
+		Registers a context as root (parentContext = None) or as an existing
+		context child.
+		
+		Automatically adds the navigation commands to navigate from/to this context.
+		
+		Performs some injections so that each context (and sub-contexts) are aware
+		of their context manager.
+		"""
 		# Some injections
 		context._parentContext = parentContext
 		context._contextManager = self
@@ -765,6 +944,11 @@ class ContextManager:
 
 		# Registration for direct access				
 		self._registeredContexts[context.getContextName()] = context
+		
+		# Now, register the child contexts, if any
+		for n, d, c in context._contexts.values():
+			self.registerContext(n, d, c, context)
+		
 		return context
 		
 	def getCurrentContextName(self):

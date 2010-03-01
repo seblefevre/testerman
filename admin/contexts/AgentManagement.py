@@ -27,7 +27,7 @@ import os
 # Context definition
 ##
 
-from CiscoInteractiveShell import *
+from StructuredInteractiveShell import *
 
 class AgentContext(CommandContext):
 	"""
@@ -38,40 +38,40 @@ class AgentContext(CommandContext):
 		self._client = None
 		# Undeploy probe
 		node = SequenceNode()
-		node.addField("agent", "agent name", StringNode())
-		node.addField("probe", "probe name", StringNode())
+		node.addField("agent", "target agent", StringNode("agent name"))
+		node.addField("probe", "probe to undeploy", StringNode("probe name"))
 		self.addCommand("undeploy", "undeploy a probe", node, self.undeployProbe)
 
 		# Deploy probe
 		node = SequenceNode()
-		node.addField("agent", "agent name", StringNode())
-		node.addField("probe", "probe name", StringNode())
-		node.addField("type", "probe type", StringNode())
+		node.addField("agent", "target agent", StringNode("agent name"))	
+		node.addField("probe", "probe to deploy", StringNode("probe name"))		
+		node.addField("type", "probe type", StringNode("probe type"))
 		self.addCommand("deploy", "deploy a probe onto a running agent", node, self.deployProbe)
+
+		# Update agent
+		branches = EnumNode()
+		branches.addChoice("stable", "stable version"),
+		branches.addChoice("testing", "testing version")
+		branches.addChoice("experimental", "experimental version")
+		node = SequenceNode()
+		node.addField("agent", "target agent", StringNode("agent name"))
+		node.addField("branch", "agent component branch (default: stable)", branches, optional = True)
+		node.addField("version", "agent component version (default: latest in branch)", StringNode("component version"), optional = True)
+		self.addCommand("update", "update an agent", node, self.updateAgent)
 
 		# Restart agent		
 		node = SequenceNode()
-		node.addField("agent", "agent name", StringNode())
+		node.addField("agent", "agent to restart", StringNode("agent name"))
 		self.addCommand("restart", "restart an agent", node, self.restartAgent)
 
-		# Agent info
-		node = SequenceNode()
-		node.addField("agent", "agent name", StringNode())
-		self.addCommand("show", "display additional details about an agent", node, self.showAgent)
-
-		# Update agent		
-		node = SequenceNode()
-		node.addField("agent", "agent name", StringNode())
-		node.addField("branch", "agent component branch (default: stable)", ChoiceNode().addChoices([("stable", "stable agent branch", NullNode()), ("testing", "testing agent branch", NullNode()), ("experimental", "experimental agent branch", NullNode())]), optional = True)
-		node.addField("version", "agent component version (default: latest in branch)", StringNode(), optional = True)
-		self.addCommand("update", "update an agent", node, self.updateAgent)
-
-		# list command		
-		listableItems = ChoiceNode()
-		listableItems.addChoice("agents", "registered agents only", NullNode())
-		listableItems.addChoice("probes", "registered probes only", NullNode())
-		listableItems.addChoice("all", "all registered distributed components", NullNode())
-		self.addCommand("list", "list registered distributed components", listableItems, self.listRegisteredComponents)
+		# show
+		node = ChoiceNode()
+		node.addChoice("agent", "show details about an agent", StringNode("agent name"))
+		node.addChoice("agents", "show registered agents")
+		node.addChoice("probes", "show registered probes")
+		node.addChoice("all", "show all registered distributed components")
+		self.addCommand("show", "show various info", node, self.show)
 
 	def _getClient(self):
 		if not self._client:
@@ -79,27 +79,33 @@ class AgentContext(CommandContext):
 			if not serverUrl:
 				raise Exception("Sorry, no testerman server set (TESTERMAN_SERVER).")
 			self._client = TestermanClient.Client(name = "Testerman Admin", userAgent = "testerman-admin", serverUrl = serverUrl)
-
 		return self._client
 
-	def listRegisteredComponents(self, itemType):
+	def show(self, choice):
+		name, value = choice
+		if name == 'agent':
+			return self.showAgent(value)
+		elif name in [ 'agents', 'probes', 'all' ]:
+			return self.showRegisteredComponents(name)
+
+	def showRegisteredComponents(self, itemType):
 		ret = {}
 		headers = []
-		if itemType[0] == "agents":
-			headers = [ ('name', 'name'), ('uri', 'uri'), ('type', 'type'), ('contact', 'location'), ('user-agent', 'version') ]
+		if itemType == "agents":
+			headers = [ ('name', 'Name'), ('uri', 'URI'), ('type', 'Type'), ('contact', 'Location'), ('user-agent', 'Version') ]
 			ret = self._getClient().getRegisteredAgents()
-		elif itemType[0] == "probes":
-			headers = [ ('name', 'name'), ('uri', 'uri'), ('type', 'type'), ('contact', 'location'), ('user-agent', 'version') ]
+		elif itemType == "probes":
+			headers = [ ('name', 'Name'), ('uri', 'URI'), ('type', 'Type'), ('contact', 'Location'), ('user-agent', 'Version') ]
 			ret = self._getClient().getRegisteredProbes()
 		else:
-			headers = [ ('uri', 'uri'), ('type', 'type'), ('contact', 'location'), ('user-agent', 'version') ]
+			headers = [ ('uri', 'URI'), ('type', 'Type'), ('contact', 'Location'), ('user-agent', 'Version') ]
 			ret = self._getClient().getRegisteredProbes() + self._getClient().getRegisteredAgents()
 
 		self.printTable(headers, ret)
 
 	def showAgent(self, agent):
 		ret = {}
-		headers = [ ('name', 'name'), ('uri', 'uri'), ('type', 'type'), ('contact', 'location'), ('user-agent', 'version'), ('supported-probes', 'supported probes') ]
+		headers = [ ('name', 'Name'), ('uri', 'URI'), ('type', 'Type'), ('contact', 'Location'), ('user-agent', 'Version'), ('supported-probes', 'Supported probes') ]
 		ret = None
 		for ag in self._getClient().getRegisteredAgents():
 			if ag['name'] == agent:
@@ -144,12 +150,12 @@ class AgentContext(CommandContext):
 		else:
 			self.notify("Agent successfully restarted.")
 
-	def updateAgent(self, agent, branch = (None, None), version = None):
+	def updateAgent(self, agent, branch = 'stable', version = None):
 		"""
 		Requests the agent agent:agentName to update
 		"""
 		self.notify("Updating agent %s..." % agent)
-		ret = self._getClient().updateAgent(agent, branch[1], version)
+		ret = self._getClient().updateAgent(agent, branch, version)
 		if not ret:
 			self.notify("Unable to update this agent.")
 		else:
