@@ -87,10 +87,10 @@ def createPackage(sources, filename, baseDir = "", excluded = []):
 	The baseDir is the resulting base directory in the final archive.
 	"""
 	excluded = [ wildcardToRegexp(x.strip()) for x in excluded if x.strip() ]
-
+	
 	def isExcluded(f):
 		for regexp in excluded:
-			if re.match(regexp, f):
+			if re.search(regexp, f):
 				return True
 		return False
 	
@@ -140,31 +140,36 @@ def getPackageInfo(sourceRoot):
 	
 	# Load the file as a module
 	backup_syspath = [x for x in sys.path] # copy the current syspath
-	sys.path.insert(0, sourceRoot)
+	backup_sysmodules = sys.modules.keys() # snapshot the currently loaded modules to track the imported ones
+	sys.path = [ sourceRoot ]
 	mod = None
 	try:
 		try:
 			import imp
 			f = open(packageModuleFilename)
-			mod = imp.load_module("mod", f, sourceRoot, (".py", "r", imp.PY_SOURCE))
+			package = imp.load_module("package", f, sourceRoot, (".py", "r", imp.PY_SOURCE))
 			f.close()
 		except Exception, e:
-			raise Exception("Unable to load the PACKAGE module from %s (%s)." % (sourceRoot, str(e)))
+			raise Exception("Unable to load module PACKAGE from %s (%s)." % (sourceRoot, str(e)))
 
 		packageInfo = {}
 		try:
 			# The provided included files are relative to their own source path. Make then
 			# absolute
-			packageInfo['sources'] = [ "%s/%s" % (sourceRoot, x) for x in mod.getIncludedFiles() ]
-			packageInfo['component'] = mod.getComponentName()
+			packageInfo['sources'] = [ "%s/%s" % (sourceRoot, x) for x in package.getIncludedFiles() ]
+			packageInfo['component'] = package.getComponentName()
 			# Exclude files are filename patterns, not including a path
-			packageInfo['excluded'] = mod.getExcludedFiles() + [moduleBasename] # automatically exclude the PACKAGE.py
-			packageInfo['version'] = mod.getVersion()
+			packageInfo['excluded'] = package.getExcludedFiles() + [moduleBasename] # automatically exclude the PACKAGE.py
+			packageInfo['version'] = package.getVersion()
 		except Exception, e:
 			raise Exception("Unable to get component info (%s)." % str(e))
 	finally:
+		# Remove all modules that were imported during the PACKAGE importation.
+		# (so that we can re-import a PACKAGE module from another dir without any interactions)
+		for m in sys.modules.keys():
+			if not m in backup_sysmodules:
+				del sys.modules[m] # an explicit del is needed to unload the module
 		sys.path = [x for x in backup_syspath] # restore the previous syspath
-
 
 	return packageInfo 
 
