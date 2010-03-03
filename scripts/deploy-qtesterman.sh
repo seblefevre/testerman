@@ -53,4 +53,4 @@ if [ "x${version}" != "x" ]; then
 fi
 
 
-${TESTERMAN_ADMIN} -r ${docroot} -S ${TESTERMAN_SRCROOT} -c testerman/component -e "${cmd}"
+${TESTERMAN_ADMIN} -r ${docroot} -t ${TESTERMAN_SRCROOT} -c testerman/components -e "${cmd}"
