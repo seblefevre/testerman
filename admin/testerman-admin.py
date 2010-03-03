@@ -64,9 +64,9 @@ class RootContext(SIS.CommandContext):
 		SIS.CommandContext.__init__(self)
 		self._client = None
 
-		self.addContext("component", "components management", contexts.ComponentContext())
-		self.addContext("agent", "agents and probes management", contexts.AgentContext())
-		self.addContext("job", "job management", contexts.JobContext())
+		self.addContext("components", "components management", contexts.ComponentContext())
+		self.addContext("agents", "agents and probes management", contexts.AgentContext())
+		self.addContext("jobs", "job management", contexts.JobContext())
 
 		# Show
 		orderChoice = SIS.EnumNode()
@@ -359,6 +359,7 @@ def main():
 		
 	group = optparse.OptionGroup(parser, "Basic Options")
 	group.add_option("-t", "--target", dest = "target", metavar = "TARGET", help = "target to administrate. Either a path to a Testerman runtime directory (\"Testerman home\") or the URL of a Testerman server. When administrating a specific Testerman server by URL, some control functions (such as start/stop and configuration) may be disabled.", default = None)
+	group.add_option("-r", dest = "docroot", metavar = "DOCUMENT_ROOT", help = "force to use DOCUMENT_ROOT as the document root. This overrides the document root auto-detection from the target.", default = None)
 	parser.add_option_group(group)
 
 	group = optparse.OptionGroup(parser, "Inline Command Execution Options")
@@ -387,16 +388,21 @@ for instance:
 		os.environ["TESTERMAN_SERVER"] = serverUrl
 		# Now retrieve the docroot from the running server
 		client = TestermanClient.Client(name = "Testerman Admin", userAgent = "testerman-admin", serverUrl = serverUrl)
-		try:
-			for variable in client.getVariables("ts")['persistent']:
-				if variable['key'] == 'testerman.document_root':
-					docroot = variable['actual']
-					print "Found running Testerman server, using document root: %s" % docroot
-					os.environ["TESTERMAN_DOCROOT"] = docroot
-					break
-		except:
-			print "Sorry, cannot find a running Testerman server at %s." % serverUrl
-			sys.exit(1)
+		
+		# If we have a forced docroot, useless to perform the autodetection.
+		if options.docroot:
+			os.environ["TESTERMAN_DOCROOT"] = docroot
+		else:
+			try:
+				for variable in client.getVariables("ts")['persistent']:
+					if variable['key'] == 'testerman.document_root':
+						docroot = variable['actual']
+						print "Found running Testerman server, using document root: %s" % docroot
+						os.environ["TESTERMAN_DOCROOT"] = docroot
+						break
+			except:
+				print "Sorry, cannot find a running Testerman server at %s." % serverUrl
+				sys.exit(1)
 	
 	else:
 		# a Testerman home dir was provided.
@@ -414,6 +420,10 @@ for instance:
 		except Exception, e:
 			print "Invalid Testerman target - cannot find or read %s/conf/testerman.conf file." % home
 			sys.exit(1)
+
+		# Forced docroot overrides the autodetection
+		if options.docroot:
+			os.environ["TESTERMAN_DOCROOT"] = options.docroot
 		
 		# Also check if we have a running server
 		serverUrl = os.environ["TESTERMAN_SERVER"]
