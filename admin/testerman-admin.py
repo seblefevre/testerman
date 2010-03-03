@@ -51,8 +51,34 @@ import os.path
 import shutil
 import glob
 import subprocess
+import StringIO
+import signal
+import time
 
 VERSION = "0.99.0"
+
+
+import TestermanNodes
+import TestermanMessages
+class IaClient(TestermanNodes.ConnectingNode):
+	"""
+	A lightweight Ia Client to monitor the TACS.
+	Normal TACS commands are routed through the Testerman Server
+	directly (via a usual Ws Testerman Cient)
+	"""
+	def __init__(self, serverAddress):
+		TestermanNodes.ConnectingNode.__init__(self, "testerman-admin", "IaClient")
+		self.initialize(serverAddress)
+		
+	def getVariables(self, timeout = 1.0):
+		self.start()
+		request = TestermanMessages.Request("GET-VARIABLES", "system:tacs", "Ia", "1.0")
+		response = self.executeRequest(0, request, responseTimeout = timeout)
+		self.stop()
+		if response and response.getStatusCode() == 200:
+			return response.getApplicationBody()
+		else:
+			return None
 
 
 def makedir(path):
@@ -96,11 +122,14 @@ class RootContext(SIS.CommandContext):
 		if self.hasHome(): showNode.addChoice("saved-configuration", "show the currently saved testerman configuration")
 		showNode.addChoice("target", "show the currently managed testerman target")
 		self.addCommand("show", "show various info", showNode, self.show)
+
+		# Quick status
+		self.addCommand("status", "testerman process status", SIS.NullNode(), self.status)
 		
 		# start/stop/restart
 		if self.hasHome():
 			serverComponents = SIS.EnumNode()
-			serverComponents.addChoice("ts", "testerman server")
+			serverComponents.addChoice("server", "testerman server")
 			serverComponents.addChoice("tacs", "testerman agent controller server")
 			serverComponents.addChoice("all", "both testerman server and agent controller server")
 			self.addCommand("start", "start a server component, using the saved configuration", serverComponents, self.start)
@@ -178,9 +207,11 @@ class RootContext(SIS.CommandContext):
 			self.notify(" Testerman installation located at: %s" % os.environ.get("TESTERMAN_HOME"))
 			self.notify(" Configured to run a server at:     %s" % os.environ.get("TESTERMAN_SERVER"))
 			self.notify(" Using document root:               %s" % os.environ.get("TESTERMAN_DOCROOT"))
+			self.notify(" Using TACS at:                     %s" % os.environ.get("TESTERMAN_TACS"))
 		else:
 			self.notify(" Testerman server running at:   %s" % os.environ.get("TESTERMAN_SERVER"))
 			self.notify(" Currently using document root: %s" % os.environ.get("TESTERMAN_DOCROOT"))
+			self.notify(" Currently using TACS at:       %s" % os.environ.get("TESTERMAN_TACS"))
 
 	def showSavedConfiguration(self):
 		home = os.environ.get("TESTERMAN_HOME")
@@ -258,20 +289,19 @@ class RootContext(SIS.CommandContext):
 			self.printTable(headers, variables["transient"], order = order)
 
 	def start(self, component = "all"):
-		if component == "all":
-			components = [ "ts", "tacs" ]
-		else:	
-				components = [ component ]
-				
-		for c in components:		
-			if c == "ts":
-				if self.tsStart():
-					return 1
-			elif c == "tacs":
-				if self.tacsStart():
-					return 1
-		return 0
-		
+		if component == "server":
+			return self.tsStart()
+		elif component == "tacs":
+			return self.tacsStart()
+		elif component == "all":
+			ret = self.tsStart()
+			if not ret:
+				return self.tacsStart()
+			else:
+				return ret
+		else:
+			return -1
+
 	def tsStart(self):
 		srcroot = os.environ.get("TESTERMAN_HOME")
 
@@ -282,34 +312,74 @@ class RootContext(SIS.CommandContext):
 		# First, check the status
 		if self.tsProbe() >= 0:
 			self.error("A Testerman server is already running at %s. Please stop it first." % os.environ.get("TESTERMAN_SERVER"))
-			return 1
+			return -1
 		
 		self.notify("Starting Testerman server...")
 		p = subprocess.Popen(["%s/core/TestermanServer.py" % srcroot, "-d", "-r", docroot], 
 			env={"PYTHONPATH": "%s/common" % srcroot},
-			stdout=None, 
-			stderr=None)
+			stdout=subprocess.PIPE, 
+			stderr=subprocess.PIPE)
 		p.wait()
 		if p.returncode == 0:
 			self.notify("Testerman server started correctly.")
+		else:
+			self.error("Unable to start Testerman server.")
 		return p.returncode
 		
 	def tacsStart(self):
 		srcroot = os.environ.get("TESTERMAN_HOME")
 		docroot = os.environ.get("TESTERMAN_DOCROOT")
-		# First, check status (TODO)
+
+		# First, check the status
+		if self.tacsProbe() >= 0:
+			self.error("A Testerman Agent Controller server is already running at %s. Please stop it first." % os.environ.get("TESTERMAN_TACS"))
+			return -1
+
 		self.notify("Starting Testerman Agent Controller server...")
 		p = subprocess.Popen(["%s/core/TestermanAgentControllerServer.py" % srcroot, "-d", "-r", docroot], 
 			env={"PYTHONPATH": "%s/common" % srcroot},
-			stdout=None, 
-			stderr=None)
+			stdout=subprocess.PIPE, 
+			stderr=subprocess.PIPE)
 		p.wait()
 		if p.returncode == 0:
 			self.notify("Testerman Agent Controller server started correctly.")
+		else:
+			self.error("Unable to start Testerman Agent Controller server.")
 		return p.returncode
+
+	def doStop(self, component, probeFunction, timeout = 5.0):
+		pid = probeFunction()
+		if pid > 0:
+			self.notify("Stopping %s..." % component)
+			os.kill(pid, signal.SIGINT)
+			start = time.time()
+			while self.tsProbe() > 0 and time.time() < start + timeout:
+				time.sleep(0.5)
+			if self.tsProbe() > 0:
+				self.notify("Unable to stop %s gracefully." % component)
+				return -1
+			else:
+				self.notify("Stopped.")
+				return 0
+		else:
+			self.notify("%s is not running." % component)
+			return 0
 		
 	def stop(self, component = "all"):
-		self.error("Not yet implemented.")
+		tsStop = lambda: self.doStop(component = "Testerman server", probeFunction = self.tsProbe, timeout = 5.0)
+		tacsStop = lambda: self.doStop(component = "Testerman Agent Controller server", probeFunction = self.tacsProbe, timeout = 5.0)
+		if component == "server":
+			return tsStop()
+		elif component == "tacs":
+			return tacsStop()
+		elif component == "all":
+			# Stop whatever we can
+			ret = 0
+			if tsStop(): ret = -1
+			if tacsStop(): ret = -1
+			return ret
+		else:
+			return -1
 
 	def restart(self, component = "all"):
 		self.error("Not yet implemented.")
@@ -326,12 +396,12 @@ class RootContext(SIS.CommandContext):
 			return 0
 		else:
 			self.notify("No Testerman server started at %s" % os.environ.get("TESTERMAN_SERVER"))
-			return 1
+			return -1
 	
 	def tsProbe(self):
 		"""
 		Sends a probe to the server at $TESTERMAN_SERVER.
-		Returns the pid (> 0) if OK.
+		Returns the pid (> 0) if it is running.
 		"""
 		try:
 			client = self._getClient()
@@ -345,7 +415,51 @@ class RootContext(SIS.CommandContext):
 			return -1
 
 	def tacsStatus(self):
-		self.error("Not yet implemented.")
+		pid = self.tacsProbe()
+		if pid > 0:
+			self.notify("Testerman Agent Controller Server up and running at %s (management interface), pid %s" % (os.environ.get("TESTERMAN_TACS"), pid))
+			return 0
+		else:
+			self.notify("No Testerman Agent Controller server started at %s" % os.environ.get("TESTERMAN_TACS"))
+			return 1
+
+	def tacsProbe(self):
+		"""
+		Sends a probe to the server to its Ia interface.
+		Returns the pid (> 0) if it is running.
+		"""
+		try:
+			ip, port = os.environ.get("TESTERMAN_TACS").split(':')
+			client = IaClient((ip, int(port)))
+			variables = client.getVariables()["transient"]
+			for val in variables:
+				if val['key'] == "tacs.pid":
+					return val['value']
+			return -1
+		except Exception:
+#			print SIS.getBacktrace()
+			return -1
+	
+	def status(self):
+		headers = [ ('component', 'Component'), ('address', 'Management Address'), ('status', 'Status'), ('pid', 'PID')  ]
+		rows = []
+		pid = self.tsProbe()
+		if pid > 0:
+			rows.append(dict(component = 'server', status = 'running', pid = pid, address = os.environ.get("TESTERMAN_SERVER")))
+		else:
+			rows.append(dict(component = 'server', status = 'offline', address = os.environ.get("TESTERMAN_SERVER")))
+		pid = self.tacsProbe()
+		if pid > 0:
+			rows.append(dict(component = 'tacs', status = 'running', pid = pid, address = os.environ.get("TESTERMAN_TACS")))
+		else:
+			rows.append(dict(component = 'tacs', status = 'offline', address = os.environ.get("TESTERMAN_TACS")))
+		self.printTable(headers, rows, order = 'component')
+
+
+################################################################################
+# Main
+################################################################################
+
 
 def getVersion():
 	return "Testerman Administration Console %s" % VERSION
@@ -382,28 +496,44 @@ for instance:
 		sys.exit(1)
 
 
-	# Now, compute values from the target.
+	# According to the target, autodetect docroot/servers info
+
+	# Managed target: a running server
 	if options.target.startswith("http://"):
 		serverUrl = options.target
 		os.environ["TESTERMAN_SERVER"] = serverUrl
 		# Now retrieve the docroot from the running server
 		client = TestermanClient.Client(name = "Testerman Admin", userAgent = "testerman-admin", serverUrl = serverUrl)
 		
-		# If we have a forced docroot, useless to perform the autodetection.
+		# Detect settings from the running Testerman server
+		try:
+			docroot, tacs_ip, tacs_port = None, None, None
+			for variable in client.getVariables("ts")['persistent']:
+				if variable['key'] == 'testerman.document_root':
+					docroot = variable['actual']
+				elif variable['key'] == 'tacs.ip':
+					tacs_ip = variable['actual']
+				elif variable['key'] == 'tacs.port':
+					tacs_port = variable['actual']
+		except:
+			print "Sorry, cannot find a running Testerman server at %s." % serverUrl
+			sys.exit(1)
+
+		if not docroot or not tacs_ip or not tacs_port:
+			print "Sorry, the Testerman server running at %s cannot be managed (missing a mandatory configuration variable)."
+			sys.exit(-1)
+		
+		os.environ["TESTERMAN_DOCROOT"] = docroot
+		os.environ["TESTERMAN_TACS"] = "%s:%s" % (tacs_ip, tacs_port)
+
+		print "Found running Testerman server, using document root: %s" % docroot
+
+		# Forced docroot overrides the autodetection
 		if options.docroot:
 			os.environ["TESTERMAN_DOCROOT"] = docroot
-		else:
-			try:
-				for variable in client.getVariables("ts")['persistent']:
-					if variable['key'] == 'testerman.document_root':
-						docroot = variable['actual']
-						print "Found running Testerman server, using document root: %s" % docroot
-						os.environ["TESTERMAN_DOCROOT"] = docroot
-						break
-			except:
-				print "Sorry, cannot find a running Testerman server at %s." % serverUrl
-				sys.exit(1)
 	
+
+	# Managed target: a complete runtime environment.
 	else:
 		# a Testerman home dir was provided.
 		# Get all other values from the configuration file.
@@ -412,14 +542,17 @@ for instance:
 		cm = ConfigManager.ConfigManager()
 		try:
 			cm.read("%s/conf/testerman.conf" % home)
-			os.environ["TESTERMAN_DOCROOT"] = expandPath(cm.get("testerman.document_root"))
-			ip = cm.get("interface.ws.ip")
-			if not ip or ip == "0.0.0.0":
-				ip = "localhost"
-			os.environ["TESTERMAN_SERVER"] = "http://%s:%s" % (ip, cm.get("interface.ws.port"))
 		except Exception, e:
 			print "Invalid Testerman target - cannot find or read %s/conf/testerman.conf file." % home
 			sys.exit(1)
+
+		# Detect settings from the configuration file
+		os.environ["TESTERMAN_DOCROOT"] = expandPath(cm.get("testerman.document_root"))
+		ip = cm.get("interface.ws.ip", "")
+		if not ip or ip == "0.0.0.0":
+			ip = "localhost"
+		os.environ["TESTERMAN_SERVER"] = "http://%s:%s" % (ip, cm.get("interface.ws.port", 8080))
+		os.environ["TESTERMAN_TACS"] = "%s:%s" % (cm.get("tacs.ip", "127.0.0.1"), cm.get("tacs.port", 8087))
 
 		# Forced docroot overrides the autodetection
 		if options.docroot:
