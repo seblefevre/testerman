@@ -48,10 +48,16 @@ import sys
 import optparse
 import os
 import os.path
+import shutil
+import glob
 import subprocess
 
 VERSION = "0.99.0"
 
+
+def makedir(path):
+	if not os.path.exists(path):
+		os.makedirs(path, mode = 0755)
 
 class RootContext(SIS.CommandContext):
 	def __init__(self):
@@ -101,6 +107,12 @@ class RootContext(SIS.CommandContext):
 			self.addCommand("stop", "stop a server component", serverComponents, self.stop)
 			self.addCommand("restart", "restart a server component, using the saved configuration", serverComponents, self.restart)
 
+		# setup
+		if self.hasHome():
+			setupNode = SIS.ChoiceNode()
+			setupNode.addChoice("document-root", "initialize a defaut document root, installing samples")
+			self.addCommand("setup", "set up a Testerman environment", setupNode, self.setup)
+
 	def hasHome(self):
 		return os.environ.get('TESTERMAN_HOME')
 
@@ -112,6 +124,42 @@ class RootContext(SIS.CommandContext):
 			self._client = TestermanClient.Client(name = "Testerman Admin", userAgent = "testerman-admin", serverUrl = serverUrl)
 
 		return self._client
+
+	def setup(self, choice):
+		name, value = choice
+		if name == "document-root":
+			return self.setupDocroot()
+		
+	def setupDocroot(self):
+		"""
+		Sets up / reinitializes the document root.
+		This creates the default directories in it (and the docroot itself if needed)
+		and copy the samples from the home dir.
+		"""
+		docroot = os.environ.get("TESTERMAN_DOCROOT")
+		self.notify("Setting up document root %s..." % docroot)
+		self.notify("Creating default directories...")
+		try:
+			makedir(docroot)
+			makedir("%s/repository" % docroot)
+			makedir("%s/updates" % docroot)
+			makedir("%s/archives" % docroot)
+			makedir("%s/repository/samples" % docroot)
+		except Exception, e:
+			self.error("An error occured while creating directories: " + str(e))
+			return 1
+		self.notify("Copying samples...")
+		try:
+			srcroot = os.environ.get("TESTERMAN_HOME")
+			for f in glob.glob("%s/samples/*.ats" % srcroot):
+				shutil.copy(f, "%s/repository/samples" % docroot)
+			for f in glob.glob("%s/samples/*.campaign" % srcroot):
+				shutil.copy(f, "%s/repository/samples" % docroot)
+		except Exception, e:
+			self.error("An error occured while copying samples: " + str(e))
+			return 1
+		self.notify("Done")
+		return 0
 
 	def show(self, choice):
 		name, value = choice
@@ -366,6 +414,26 @@ for instance:
 		except Exception, e:
 			print "Invalid Testerman target - cannot find or read %s/conf/testerman.conf file." % home
 			sys.exit(1)
+		
+		# Also check if we have a running server
+		serverUrl = os.environ["TESTERMAN_SERVER"]
+		docroot = os.environ["TESTERMAN_DOCROOT"]
+		client = TestermanClient.Client(name = "Testerman Admin", userAgent = "testerman-admin", serverUrl = serverUrl)
+		try:
+			for variable in client.getVariables("ts")['transient']:
+				if variable['key'] == 'testerman.testerman_home':
+					runningHome = expandPath(variable['value'])
+					if home != runningHome:
+						print "WARNING: another Testerman server is already running using the configured URL (%s), located in %s" % (serverUrl, runningHome)
+					break
+			for variable in client.getVariables("ts")['persistent']:
+				if variable['key'] == 'testerman.document_root':
+					runningDocroot = expandPath(variable['actual'])
+					if docroot != runningDocroot:
+						print "WARNING: a Testerman server is already running using the configured URL (%s), but using a different document root (%s) as the one that will be managed by this session (%s)" % (serverUrl, runningDocroot, docroot)
+					break
+		except:
+			pass
 		
 
 	# Shell creation

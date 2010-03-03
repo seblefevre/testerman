@@ -153,8 +153,11 @@ def getPackageInfo(sourceRoot):
 
 		packageInfo = {}
 		try:
-			packageInfo['sources'] = mod.getIncludedFiles()
+			# The provided included files are relative to their own source path. Make then
+			# absolute
+			packageInfo['sources'] = [ "%s/%s" % (sourceRoot, x) for x in mod.getIncludedFiles() ]
 			packageInfo['component'] = mod.getComponentName()
+			# Exclude files are filename patterns, not including a path
 			packageInfo['excluded'] = mod.getExcludedFiles() + [moduleBasename] # automatically exclude the PACKAGE.py
 			packageInfo['version'] = mod.getVersion()
 		except Exception, e:
