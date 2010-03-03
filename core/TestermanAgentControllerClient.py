@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 ##
 # This file is part of Testerman, a test automation system.
 # Copyright (c) 2008-2009 Sebastien Lefevre and other contributors
@@ -13,7 +14,6 @@
 ##
 
 ##
-# -*- coding: utf-8 -*-
 # Uri-centric: probe addressing is performed using URI only.
 # 
 ##
@@ -348,6 +348,14 @@ class IaClient(Nodes.ConnectingNode):
 			return True
 		else:
 			return False
+
+	def getVariables(self):
+		request = Messages.Request("GET-VARIABLES", "system:tacs", "Ia", "1.0")
+		response = self.executeRequest(0, request)
+		if response and response.getStatusCode() == 200:
+			return response.getApplicationBody()
+		else:
+			return None
 
 	def getCounter(self, path):
 		return 0

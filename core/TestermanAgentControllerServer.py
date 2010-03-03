@@ -386,7 +386,7 @@ class IaServer(Nodes.ListeningNode):
 				resp.setApplicationBody(probes)
 				self.sendResponse(channel, transactionId, resp)
 			elif method == "GET-VARIABLES":
-				cm = ConfigurationManager.instance()
+				cm = ConfigManager.instance()
 				variables = dict(persistent = cm.getVariables(), transient = cm.getTransientVariables())
 				resp = Messages.Response(200, "OK")
 				resp.setApplicationBody(variables)
@@ -1127,6 +1127,7 @@ def main():
 
 
 	# Main start
+	cm.set_transient("tacs.pid", os.getpid())
 	controller = None
 	try:
 		controller = Controller(xaAddress = (cm.get("interface.xa.ip"), cm.get("interface.xa.port")), iaAddress = (cm.get("interface.ia.ip"), cm.get("interface.ia.port")), documentRoot = cm.get("testerman.doc_root"))
