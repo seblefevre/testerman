@@ -36,6 +36,7 @@
 ##
 
 import sys
+import shlex
 
 def getBacktrace():
 	import traceback
@@ -1020,6 +1021,7 @@ class CmdContextManagerAdapter(ContextManager):
 			cmd.Cmd.__init__(self)
 			self._contextManager = contextManager
 			readline.set_completer_delims(" ")
+			readline.parse_and_bind('"?": possible-completions')
 			
 		def emptyline(self):
 			"""
@@ -1105,7 +1107,14 @@ class CmdContextManagerAdapter(ContextManager):
 			"""
 			Tokenize a command line (simple version)
 			"""
-			return line.split(' ')
+			try:
+				ret = shlex.split(line)
+				if not line or line.endswith(' '):
+					return ret + [ '' ] # the trailing '' is here to force a continuation
+				else:
+					return ret # will force a word completion
+			except Exception, e:
+				return []
 		
 		def onecmd(self, line):
 			# Support for ^Z
