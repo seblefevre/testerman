@@ -34,22 +34,21 @@ Optional Requirements
 Testerman first run for the impatient
 =====================================
 
-1. Set up a document root (docroot):
-   in any directory (rw for the user you'll use to start the Testerman Server),
-   create:
-    repository/
-    archives/
+1. Configure a document root (docroot):
+   Edit conf/testerman.conf and set document_root to a directory that will contain
+   Testerman user scripts. It does not need to exist, but must be rw for the user
+   you'll use to start the server.
+   
+   The default is ~/testerman.
 
-2. Copy some samples to this repository:
-    copy samples/*.ats to repository/samples/*.ats
+2. Set up the document root:
+   admin/testerman-admin.py -t . setup document-root
 
-3. Start the Testerman Agent Controller Server (TACS):
-    from the source root: ./tacs.sh -r <docroot>
-    where <docroot> is the document root dir you set up
+3. Start the Testerman server components:
+   admin/testerman-admin.py -t . start all
 
-4. Start the Testerman Server
-    from the source root: ./ts.sh -r <docroot>
-    where <docroot> is the document root dir you set up
+4. Check if everything is running:
+   admin/testerman-admin.py -t . status
 
 5. Start an agent (not mandatory, but required for
    samples execution):
@@ -65,15 +64,13 @@ Testerman first run for the impatient
    and open "testerman.ats".
    Run it. All tests should be OK.
    Play with other samples on will.
-   Give feedbacks :-)
+   Give feedbacks.
 
 
-Summary/sample:
+Summary/sample (using the default docroot in ~/testerman):
 
-mkdir -p ~/testerman/{repository/samples,archives}
-cp samples/*.ats ~/testerman/repository/samples/
-./tacs.sh -r ~/testerman # use -d to daemonize if you prefer
-./ts.sh -r ~/testerman # use -d to daemonize if you prefer
+admin/testerman-admin.py -t . setup document-root
+admin/testerman-admin.py -t . start all
 ./pyagent.sh --name localhost # use -d to daemonize if you prefer
 ./qtesterman.sh
 

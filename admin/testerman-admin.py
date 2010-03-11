@@ -20,7 +20,7 @@
 # A centralized interactive shell for common administration tasks.
 #
 #
-# Can work in 2 disctinct modes:
+# Can work in 2 disctinct modes, depending on the target:
 # - managing a full testerman environment (by providing a testerman home dir):
 #   in this mode, it is possible to start, stop, and configure
 #   a server and a tacs.
@@ -32,6 +32,8 @@
 #   Only runtime actions are allowed.
 #   The TESTERMAN_DOCROOT is guessed by interrogating the TESTERMAN_SERVER.
 #
+# The target must be provided either via the -t <target> command line option,
+# or via the TESTERMAN_ADMIN_TARGET env variable.
 
 # A cisco-like command-line shell with support for completion
 # and parsing to value trees from syntax trees.
@@ -176,7 +178,7 @@ class RootContext(SIS.CommandContext):
 			makedir("%s/repository/samples" % docroot)
 		except Exception, e:
 			self.error("An error occured while creating directories: " + str(e))
-			return 1
+			return -1
 		self.notify("Copying samples...")
 		try:
 			srcroot = os.environ.get("TESTERMAN_HOME")
@@ -186,7 +188,7 @@ class RootContext(SIS.CommandContext):
 				shutil.copy(f, "%s/repository/samples" % docroot)
 		except Exception, e:
 			self.error("An error occured while copying samples: " + str(e))
-			return 1
+			return -1
 		self.notify("Done")
 		return 0
 
@@ -421,7 +423,7 @@ class RootContext(SIS.CommandContext):
 			return 0
 		else:
 			self.notify("No Testerman Agent Controller server started at %s" % os.environ.get("TESTERMAN_TACS"))
-			return 1
+			return -1
 
 	def tacsProbe(self):
 		"""
@@ -467,18 +469,19 @@ def getVersion():
 
 def main():
 	expandPath = lambda x: x and os.path.abspath(os.path.expandvars(os.path.expanduser(x)))
+	
+	usage = "usage: %prog [options] [command]"
 
-	# Command Line Options parsin
-	parser = optparse.OptionParser(version = getVersion())
+	# Command Line Options parsing
+	parser = optparse.OptionParser(version = getVersion(), usage = usage)
 		
 	group = optparse.OptionGroup(parser, "Basic Options")
-	group.add_option("-t", "--target", dest = "target", metavar = "TARGET", help = "target to administrate. Either a path to a Testerman runtime directory (\"Testerman home\") or the URL of a Testerman server. When administrating a specific Testerman server by URL, some control functions (such as start/stop and configuration) may be disabled.", default = None)
-	group.add_option("-r", dest = "docroot", metavar = "DOCUMENT_ROOT", help = "force to use DOCUMENT_ROOT as the document root. This overrides the document root auto-detection from the target.", default = None)
+	group.add_option("-t", "--target", dest = "target", metavar = "TARGET", help = "target to administrate. Either a path to a Testerman runtime directory (\"Testerman home\") or the URL of a Testerman server. When administrating a specific Testerman server by URL, some control functions (such as start/stop and configuration) may be disabled. You may also set TESTERMAN_ADMIN_TARGET environment variable.", default = os.environ.get("TESTERMAN_ADMIN_TARGET"))
+	group.add_option("-c", "--context", dest = "context", metavar = "CONTEXT", help = "set the initial working context to CONTEXT (for instance, testerman/component). Useful when executing a command directly.", default = None)
 	parser.add_option_group(group)
 
-	group = optparse.OptionGroup(parser, "Inline Command Execution Options")
-	group.add_option("-c", "--context", dest = "context", metavar = "CONTEXT", help = "set the initial working context to CONTEXT (for instance, testerman/component). Also useful when used with --execute.", default = None)
-	group.add_option("-e", "--execute", dest = "command", metavar = "COMMAND", help = "do not run an interactive shell. Instead, execute the command line provided here from the initial working context.", default = None)
+	group = optparse.OptionGroup(parser, "Advanced Options")
+	group.add_option("-r", dest = "docroot", metavar = "DOCUMENT_ROOT", help = "force to use DOCUMENT_ROOT as the document root. This overrides the document root auto-detection from the target.", default = None)
 	parser.add_option_group(group)
 
 	group = optparse.OptionGroup(parser, "Advanced Options")
@@ -489,12 +492,18 @@ def main():
 
 
 	if not options.target:
-		print """Missing mandatory target. Please use -t <testerman_home> or -t <server_url>,
+		print """
+Missing mandatory target. Please use -t <testerman_home> or -t <server_url>,
 for instance:
   testerman-admin -t http://server:8080
-  testerman-admin -t /path/to/testerman/installation"""
+  testerman-admin -t /path/to/testerman/installation
+
+or set the TESTERMAN_ADMIN_TARGET environment variable."""
 		sys.exit(1)
 
+
+	if options.docroot:
+		options.docroot = expandPath(options.docroot)
 
 	# According to the target, autodetect docroot/servers info
 
@@ -517,11 +526,11 @@ for instance:
 					tacs_port = variable['actual']
 		except:
 			print "Sorry, cannot find a running Testerman server at %s." % serverUrl
-			sys.exit(1)
+			sys.exit(2)
 
 		if not docroot or not tacs_ip or not tacs_port:
 			print "Sorry, the Testerman server running at %s cannot be managed (missing a mandatory configuration variable)."
-			sys.exit(-1)
+			sys.exit(2)
 		
 		os.environ["TESTERMAN_DOCROOT"] = docroot
 		os.environ["TESTERMAN_TACS"] = "%s:%s" % (tacs_ip, tacs_port)
@@ -544,7 +553,7 @@ for instance:
 			cm.read("%s/conf/testerman.conf" % home)
 		except Exception, e:
 			print "Invalid Testerman target - cannot find or read %s/conf/testerman.conf file." % home
-			sys.exit(1)
+			sys.exit(2)
 
 		# Detect settings from the configuration file
 		os.environ["TESTERMAN_DOCROOT"] = expandPath(cm.get("testerman.document_root"))
@@ -589,13 +598,12 @@ for instance:
 		adminShell.goTo(options.context)
 
 	# Non-interactive mode
-	if options.command:
+	if args:
 		try:
-			ret = adminShell.execute(options.command.split(' ')) # rough tokenization
+			ret = adminShell.execute(args)
 		except Exception, e:
 			print str(e)
-			ret = -1
-
+			ret = 3
 		sys.exit(ret)
 
 	# Interactive mode

@@ -755,7 +755,7 @@ class CommandContext(ChoiceNode):
 		Parse and execute the command provided by the tokenized line.
 		"""
 		if not tokens:
-			return
+			return 0
 		
 		value, remainingTokens = self.parse(tokens)
 		if remainingTokens:
@@ -764,11 +764,11 @@ class CommandContext(ChoiceNode):
 		# Let's execute the command
 		(commandName, args) = value
 		if isinstance(args, dict):
-			self.__commands[commandName](**args)
+			return self.__commands[commandName](**args)
 		elif args is None:
-			self.__commands[commandName]()
+			return self.__commands[commandName]()
 		else:
-			self.__commands[commandName](args)
+			return self.__commands[commandName](args)
 	
 	def _getSuggestions(self, tokens):
 		if not tokens:
@@ -976,9 +976,15 @@ class ContextManager:
 	
 	def execute(self, tokens):
 		"""
-		Forward the execution signal to the current context
+		Forward the execution signal to the current context.
+		Return a status code that is suitable for a shell-based exec.
 		"""
-		self._currentContext._execute(tokens)
+		ret = self._currentContext._execute(tokens)
+		if not isinstance(ret, int):
+			return 0
+		elif ret < 0:
+			return -ret
+		return ret
 	
 	def getFormattedSuggestions(self, tokens):
 		"""
