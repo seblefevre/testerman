@@ -225,7 +225,7 @@ class WTemplateApplicationWidget(QWidget):
 		path = "plugins/%s/" % self._pluginId
 		settings = QSettings()
 		directory = settings.value(path + 'lastVisitedDirectory', QVariant("")).toString()
-		filename = QFileDialog.getSaveFileName(self, "Save test cases specification as...", directory)
+		filename = QFileDialog.getSaveFileName(self, "Save as...", directory)
 		if filename.isEmpty():
 			return False
 
@@ -236,7 +236,7 @@ class WTemplateApplicationWidget(QWidget):
 			f = open(filename, 'w')
 			f.write(self._source)
 			f.close()
-			QMessageBox.information(self, getClientName(), "Test case specification saved successfully.", QMessageBox.Ok)
+			QMessageBox.information(self, getClientName(), "File saved successfully.", QMessageBox.Ok)
 			return True
 		except Exception, e:
 			CommonWidgets.systemError(self, "Unable to save file as %s: %s" % (filename, unicode(e)))

@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 ##
 # This file is part of Testerman, a test automation system.
-# Copyright (c) 2009 QTesterman contributors
+# Copyright (c) 2009, 2010 QTesterman contributors
 #
 # This program is free software; you can redistribute it and/or modify it under
 # the terms of the GNU General Public License as published by the Free Software
@@ -700,7 +700,6 @@ class WLogViewer(QWidget):
 		self._url = None
 		self.title = ''
 		self.standalone = standalone
-		self.trackingActivated = False
 		self.jobState = 'n/a'
 
 		# Report plugins
@@ -708,6 +707,7 @@ class WLogViewer(QWidget):
 
 		# get display preferences
 		settings = QSettings()
+		self.trackingActivated = settings.value('logs/autotracking', QVariant(True)).toBool()
 		self.useRawView = settings.value('logs/raws', QVariant(True)).toBool()
 
 		# Dialog box that may appear if an action is required by the user
@@ -976,8 +976,6 @@ class WLogViewer(QWidget):
 		"""
 		if notification.getMethod() == "LOG":
 			ret = notification.getApplicationBody()
-			if 'ment' in ret:
-				print "DEBUG: raw notification content:\n" + ret
 			self._logModel.feedXmlEvent(notification.getApplicationBody())
 		elif notification.getMethod() == "JOB-EVENT":
 			info = notification.getApplicationBody()
@@ -1099,10 +1097,11 @@ class WLogViewer(QWidget):
 		if res:
 			transient.showTextLabel("Clearing views...")
 			log("Clearing views...")
-			# Context preservation: if a TestCase was selected, we'll have to select it after the update.
+			# UI Context preservation: if a TestCase was selected, we'll have to select it after the update.
 			# FIXME: need a correct support now that the test case view is a tree
 			if self.testCaseView.currentItem():
-				previousSelectedItemIndex = self.testCaseView.indexOfTopLevelItem(self.testCaseView.currentItem())
+				previousSelectedItemIndex = self.testCaseView.currentItem().getIndexPath()
+#				print "DEBUG: saved UI context: %s" % previousSelectedItemIndex
 			self.testCaseView.clearLog()
 			self.rawView.clearLog()
 			for view in self.reportViews:
@@ -1135,8 +1134,6 @@ class WLogViewer(QWidget):
 		transient.showTextLabel("Preparing views...")
 		log("Preparing views...")
 		self.testCaseView.displayLog()
-		if previousSelectedItemIndex is not None:
-			self.testCaseView.setCurrentItem(self.testCaseView.topLevelItem(previousSelectedItemIndex))
 		# This should switch to a "onEvent" raw view feeding
 		if self.useRawView:
 			self.rawView.setLog(xmlLog)
@@ -1145,6 +1142,11 @@ class WLogViewer(QWidget):
 		transient.hide()
 		transient.setParent(None)
 		log("View displayed")
+
+		# UI Context restoration
+		if previousSelectedItemIndex is not None:
+#			print "DEBUG: restoring UI context from: %s" % previousSelectedItemIndex
+			self.testCaseView.setCurrentItemAtIndexPath(previousSelectedItemIndex)
 
 	def closeEvent(self, event):
 		"""
@@ -1419,7 +1421,7 @@ class WTextualLogView(QTreeWidget):
 		QTreeWidget.__init__(self, parent)
 		self.currentHiddenLogClasses = [ "internal", "discarded" ]
 		settings = QSettings()
-		self.trackingActivated = settings.value('logs/autotracking', QVariant(True)).toBool()
+		self.trackingActivated = False
 		self.__createWidgets()
 		self.__createActions()
 
@@ -1578,6 +1580,15 @@ class TestCaseItem(QTreeWidgetItem):
 			self.setForeground(0, QBrush(QColor(Qt.darkRed)))
 			self.setIcon(0, icon(':/icons/job-states/warning'))
 
+	def getIndexPath(self):
+		"""
+		Returns the "path" of this item as a list of node index from the tree root.
+		Used for UI context preservation (restoring item selection after
+		tree re-construction).
+		"""
+		return self.parent().getIndexPath() + [ self.parent().indexOfChild(self) ]
+
+
 class AtsItem(QTreeWidgetItem):
 	"""
 	Represents an ATS in the TestCase tree view.
@@ -1607,6 +1618,14 @@ class AtsItem(QTreeWidgetItem):
 		Returns a list of elements corresponding to this item
 		"""
 		return self._model.getDomElements()
+	
+	def getIndexPath(self):
+		"""
+		Returns the "path" of this item as a list of node index from the tree root.
+		Used for UI context preservation (restoring item selection after
+		tree re-construction).
+		"""
+		return [ self.treeWidget().invisibleRootItem().indexOfChild(self) ]
 
 class WTestCaseView(QTreeWidget):
 	"""
@@ -1616,6 +1635,9 @@ class WTestCaseView(QTreeWidget):
 	to the associated test case. 
 	Each test case is directly represented by a TestCaseView Item that
 	stores the domElements for the test case.
+	
+	When selecting an item, its domElements are then used to create
+	a textual/visual/whatever view associated with it.
 	"""
 	def __init__(self, parent = None):
 		QTreeWidget.__init__(self, parent)
@@ -1678,7 +1700,27 @@ class WTestCaseView(QTreeWidget):
 #		self._mapping[testCaseLogModel].setComplete()
 		
 	def onEvent(self, domElement):
+		if self.trackingActivated:
+			# switch to the current node for which we fed an event
+			if self.__currentItem:
+				self.setCurrentItem(self.__currentItem)
+		
 		# If we are currently watching a tree item (i.e. an item is selected),
 		# forward the event to the view to display it.
 		if self.currentItem() and not self.currentItem()._model.isComplete():
 			self.emit(SIGNAL("testermanEvent(QDomElement)"), domElement)
+
+	def setCurrentItemAtIndexPath(self, indexPath):
+		"""
+		Search for the item at path provided by indexPath
+		(a list of indexes from the root), and make it current if available.
+		"""
+		item = self.invisibleRootItem()
+		for index in indexPath:
+			item = item.child(index)
+			if not item:
+				break
+		
+		if item:
+			self.setCurrentItem(item)
+			

@@ -982,7 +982,7 @@ class TestCaseScene(QGraphicsScene):
 		"""
 		(timestamp, status) = domElement.attribute("timestamp").toFloat()
 		if not status:
-			print "TestCaseScene: Invalid log event: incorrect timestamp"
+#			print "TestCaseScene: Invalid log event: incorrect timestamp"
 			return None
 		
 		element = domElement.tagName()
@@ -1010,7 +1010,7 @@ class TestCaseScene(QGraphicsScene):
 			if element == "tc-created":
 				actor = domElement.attribute("id")
 				self.__addActor(actor)
-				print "Added actor %s" % repr(actor)
+#				print "Added actor %s" % repr(actor)
 			elif element == "tc-started":
 				actor = domElement.attribute("id")
 				behaviour = domElement.attribute("behaviour")
