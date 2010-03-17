@@ -585,6 +585,9 @@ class WMainWindow(QMainWindow):
 		QApplication.instance().notifyInitializationProgress("Ready")
 
 	def onShow(self):
+		# Refresh browsers
+		self.repositoryBrowserDock.refresh()
+	
 		# Re-open files
 		if not self.reopenLastUrls():
 			# No file re-opened, create a default document (ATS)

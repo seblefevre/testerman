@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 ##
 # This file is part of Testerman, a test automation system.
-# Copyright (c) 2008-2009 Sebastien Lefevre and other contributors
+# Copyright (c) 2008,2009,2010 Sebastien Lefevre and other contributors
 #
 # This program is free software; you can redistribute it and/or modify it under
 # the terms of the GNU General Public License as published by the Free Software
@@ -267,9 +267,10 @@ class WRemoteFileListWidget(QListWidget):
 		"""
 		self._filter = filter_
 
-	def setClient(self, client):
+	def setClient(self, client, autorefresh = True):
 		self._client = client
-		self.refresh()
+		if autorefresh:
+			self.refresh()
 
 	def getClient(self):
 		return self._client
@@ -298,7 +299,7 @@ class WRemoteFileListWidget(QListWidget):
 		"""
 		p = os.path.normpath(unicode(path))
 		p = p.replace('\\', '/') # keep / as sep as we use the server convention
-		print "DEBUG: setting absolute path to %s..." % p
+#		print "DEBUG: setting absolute path to %s..." % p
 		# Restrict to base path
 		if not p.startswith(self._basePath):
 			p = self._basePath
@@ -306,7 +307,7 @@ class WRemoteFileListWidget(QListWidget):
 		self.refresh()
 
 	def createFolder(self):
-		print "DEBUG: creating a new folder in %s..." % self.getAbsolutePath()
+#		print "DEBUG: creating a new folder in %s..." % self.getAbsolutePath()
 		(name, status) = QInputDialog.getText(self, "New folder", "Folder name:")
 		while status and not validateDirectoryName(name):
 			# Display some error message
@@ -518,7 +519,7 @@ class BaseWidgetItem(QTreeWidgetItem):
 		basepath, _ = os.path.split(self._path)
 		self._path = "%s/%s" % (basepath, basename)
 		self.setText(0, basename)
-		print "DEBUG: new file path: %s" % self._path
+#		print "DEBUG: new file path: %s" % self._path
 
 	def isAts(self):
 		return isinstance(self, AtsWidgetItem)
@@ -600,7 +601,7 @@ class BaseWidgetItem(QTreeWidgetItem):
 
 class AsyncFetchingThread(QThread):
 	"""
-	This thread calls the fetching method to get child items.
+	This worker thread calls the fetching method to get child items.
 	Works with a lazyExpander.
 	"""
 	def __init__(self, asyncExpander, parent = None):
@@ -608,7 +609,18 @@ class AsyncFetchingThread(QThread):
 		self._asyncExpander = asyncExpander
 	
 	def run(self):
-		self._asyncExpander._fetchedChildItemData = self._asyncExpander._fetcher()
+		try:
+			self._asyncExpander._fetchedChildItemData = self._asyncExpander._fetcher()
+		except Exception, e:
+			pass
+		# Normally, it should be enough to let the QThread finish, send its finished() signal,
+		# then consider that child items are ready at this moment.
+		# However, randomly (?), I got a "QThread: Destroyed while thread is still running" segfault
+		# with this model, not even executing the slot connected to the finished() signal.
+		#
+		# With this application signal (requiring the exec_() to be sent), it just runs fine.
+		self.emit(SIGNAL("childItemsFetched"))
+		self.exec_()
 
 class AsyncExpander(QObject):
 	"""
@@ -630,6 +642,7 @@ class AsyncExpander(QObject):
 	ExpandableWidgetItem) to be able to apply it to the
 	invisibleRootItem() of the main QTreeWidget.
 	"""
+	
 	def __init__(self, item, fetchFunction, addChildrenFunction):
 		QObject.__init__(self)
 		self._item = item
@@ -638,18 +651,23 @@ class AsyncExpander(QObject):
 		self._fetchedChildItemData = []
 		self.loadingItem = None
 		self.loadingAnimation = None
+		self.fetchingThread = None
 
 	def expand(self):
 		"""
-		Overriden from the QTreeWidgetItem class.
-		Displays a loading icon when expanding
+		Expands the decorated QTreeWidgetItem.
+		
+		Starts a thread to fetch the child items, and during
+		this displays a loading icon.
+		On completion, the loading icon animation will be stopped and the 
+		fetched child items are added.
 		"""
 		self._item.takeChildren()
 		# Display a loading item
 		self._loading()
-		# Call our feeder
+		# Call our item feeder in a worker thread
 		self.fetchingThread = AsyncFetchingThread(self)
-		self.fetchingThread.connect(self.fetchingThread, SIGNAL("finished()"), self._childItemsFetched)
+		self.fetchingThread.connect(self.fetchingThread, SIGNAL("childItemsFetched"), self._childItemsFetched)
 		self.fetchingThread.start()
 	
 	def _loading(self):
@@ -667,7 +685,8 @@ class AsyncExpander(QObject):
 	
 	def _loaded(self):
 		"""
-		Removes the loading, animated icon added by _loading()
+		Removes the loading, animated icon added by _loading(),
+		add the fetched child items to the expanded node.
 		"""
 		self.loadingAnimation.stop()
 		self._item.removeChild(self.loadingItem)
@@ -685,7 +704,8 @@ class AsyncExpander(QObject):
 		adds the fetched items.
 		"""
 		self._loaded()
-		self.fetchingThread = None
+		self.fetchingThread.quit()
+
 
 class ExpandableWidgetItem(BaseWidgetItem):
 	"""
@@ -1275,9 +1295,10 @@ class WServerFileSystemTreeWidget(QTreeWidget):
 	def refresh(self):
 		AsyncExpander(self.invisibleRootItem(), self.fetchChildItems, self.addFetchedChildItems).expand()
 	
-	def setClient(self, client):
+	def setClient(self, client, autorefresh = True):
 		self._client = client
-		self.refresh()
+		if autorefresh:
+			self.refresh()
 	
 	def getClient(self):
 		return self._client
@@ -1734,6 +1755,8 @@ class WServerFileSystemTreeWidget(QTreeWidget):
 	# External actions
 	##
 	def _open(self, item):
+		if item.isDir():
+			return
 		url = item.getUrl()
 		if url:
 			print "DEBUG: opening url %s..." % url.toString()
@@ -1787,14 +1810,18 @@ class WRepositoryBrowsingDock(QDockWidget):
 		self.setWindowTitle("Remote browsing")
 		self.tab = QTabWidget(self)
 		self.repositoryTree = WServerFileSystemTreeWidget('/repository', self.tab)
-		self.repositoryTree.setClient(QApplication.instance().client())
+		self.repositoryTree.setClient(QApplication.instance().client(), autorefresh = False)
 		self.controller.addView(self.repositoryTree)
 		self.tab.addTab(self.repositoryTree, 'Repository')
 		self.archivesTree = WServerFileSystemTreeWidget('/archives', self.tab)
-		self.archivesTree.setClient(QApplication.instance().client())
+		self.archivesTree.setClient(QApplication.instance().client(), autorefresh = False)
 		self.controller.addView(self.archivesTree)
 		self.tab.addTab(self.archivesTree, 'Archives')
 		self.setWidget(self.tab)
+	
+	def refresh(self):
+		self.repositoryTree.refresh()
+		self.archivesTree.refresh()
 
 
 ################################################################################
