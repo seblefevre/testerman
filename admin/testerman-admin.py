@@ -41,6 +41,7 @@ import StructuredInteractiveShell as SIS
 
 import ConfigManager
 import TestermanClient
+import Tools
 
 # Administration modules
 import contexts
@@ -349,7 +350,7 @@ class RootContext(SIS.CommandContext):
 			self.error("Unable to start Testerman Agent Controller server.")
 		return p.returncode
 
-	def doStop(self, component, probeFunction, timeout = 5.0):
+	def _doStop(self, component, probeFunction, timeout = 5.0):
 		pid = probeFunction()
 		if pid > 0:
 			self.notify("Stopping %s..." % component)
@@ -358,8 +359,14 @@ class RootContext(SIS.CommandContext):
 			while self.tsProbe() > 0 and time.time() < start + timeout:
 				time.sleep(0.5)
 			if self.tsProbe() > 0:
-				self.notify("Unable to stop %s gracefully." % component)
-				return -1
+				self.notify("Unable to stop %s gracefully after %s seconds, killing it..." % (component, timeout))
+				for p in Tools.getChildrenPids(pid):
+					try:
+						os.kill(p, signal.SIGKILL)
+					except Exception, e:
+						self.notify("WARNING: unable to kill process %s (%s)" % (p, str(e)))
+				# But we assume we killed it...
+				return 0
 			else:
 				self.notify("Stopped.")
 				return 0
@@ -368,8 +375,8 @@ class RootContext(SIS.CommandContext):
 			return 0
 		
 	def stop(self, component = "all"):
-		tsStop = lambda: self.doStop(component = "Testerman server", probeFunction = self.tsProbe, timeout = 5.0)
-		tacsStop = lambda: self.doStop(component = "Testerman Agent Controller server", probeFunction = self.tacsProbe, timeout = 5.0)
+		tsStop = lambda: self._doStop(component = "Testerman server", probeFunction = self.tsProbe, timeout = 5.0)
+		tacsStop = lambda: self._doStop(component = "Testerman Agent Controller server", probeFunction = self.tacsProbe, timeout = 5.0)
 		if component == "server":
 			return tsStop()
 		elif component == "tacs":
@@ -384,7 +391,8 @@ class RootContext(SIS.CommandContext):
 			return -1
 
 	def restart(self, component = "all"):
-		self.error("Not yet implemented.")
+		self.stop(component)
+		self.start(component)
 
 	def tsStatus(self):
 		"""
@@ -468,6 +476,8 @@ def getVersion():
 
 
 def main():
+	defaultTarget = os.path.abspath(os.path.dirname(sys.modules[globals()['__name__']].__file__) + "/..")
+
 	expandPath = lambda x: x and os.path.abspath(os.path.expandvars(os.path.expanduser(x)))
 	
 	usage = "usage: %prog [options] [command]"
@@ -476,7 +486,7 @@ def main():
 	parser = optparse.OptionParser(version = getVersion(), usage = usage)
 		
 	group = optparse.OptionGroup(parser, "Basic Options")
-	group.add_option("-t", "--target", dest = "target", metavar = "TARGET", help = "target to administrate. Either a path to a Testerman runtime directory (\"Testerman home\") or the URL of a Testerman server. When administrating a specific Testerman server by URL, some control functions (such as start/stop and configuration) may be disabled. You may also set TESTERMAN_ADMIN_TARGET environment variable.", default = os.environ.get("TESTERMAN_ADMIN_TARGET"))
+	group.add_option("-t", "--target", dest = "target", metavar = "TARGET", help = "target to administrate. Either a path to a Testerman runtime directory (\"Testerman home\") or the URL of a Testerman server. When administrating a specific Testerman server by URL, some control functions (such as start/stop and configuration) may be disabled. You may also set TESTERMAN_ADMIN_TARGET environment variable.", default = os.environ.get("TESTERMAN_ADMIN_TARGET", defaultTarget))
 	group.add_option("-c", "--context", dest = "context", metavar = "CONTEXT", help = "set the initial working context to CONTEXT (for instance, testerman/component). Useful when executing a command directly.", default = None)
 	parser.add_option_group(group)
 

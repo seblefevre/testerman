@@ -206,7 +206,7 @@ def main():
 	elif Tools.fileExists("%s/conf/testerman.conf" % testerman_home):
 		configFile = "%s/conf/testerman.conf" % testerman_home
 	
-	cm.set_transient("tacs.configuration_filename", configFile)
+	cm.set_transient("ts.configuration_filename", configFile)
 
 	if configFile:
 		try:
@@ -296,11 +296,11 @@ def main():
 	# Main start
 	cm.set_transient("ts.pid", os.getpid())
 	try:
+		serverThread = XmlRpcServerThread() # Ws server
 		FileSystemManager.initialize()
 		EventManager.initialize() # Xc server, Ih server [TSE:CH], Il server [TSE:TL]
 		ProbeManager.initialize() # Ia client
 		JobManager.initialize() # Job scheduler
-		serverThread = XmlRpcServerThread() # Ws server
 		serverThread.start()
 		getLogger().info("Started.")
 		while 1:
@@ -308,7 +308,7 @@ def main():
 	except KeyboardInterrupt:
 		getLogger().info("Shutting down Testerman Server...")
 	except Exception, e:
-		print "Unable to start server: " + str(e)
+		sys.stderr.write("Unable to start server: %s\n" % str(e))
 		getLogger().critical("Unable to start server: " + str(e))
 
 	serverThread.stop()

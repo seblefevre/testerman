@@ -1,0 +1,10 @@
+#!/usr/bin/env python
+
+# Auto add ../cliclient in the PYTHONPATH
+import sys, os
+home = os.path.realpath(os.path.join(os.path.dirname(sys.modules[globals()['__name__']].__file__), os.pardir))
+sys.path.insert(0, os.path.join(home, 'common'))
+sys.path.insert(0, os.path.join(home, 'cliclient'))
+
+from testerman import main
+sys.exit(main())

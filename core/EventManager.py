@@ -33,6 +33,9 @@ import threading
 
 cm = ConfigManager.instance()
 
+def getLogger():
+	return logging.getLogger('TS.TL')
+
 class XcException(Exception):
 	def __init__(self, description, code = 403, reason = "Invalid Xc request"):
 		Exception.__init__(self, description)
