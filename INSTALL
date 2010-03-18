@@ -42,20 +42,20 @@ Testerman first run for the impatient
    The default is ~/testerman.
 
 2. Set up the document root:
-   admin/testerman-admin.py -t . setup document-root
+   bin/testerman-admin setup document-root
 
 3. Start the Testerman server components:
-   admin/testerman-admin.py -t . start all
+   bin/testerman-admin start all
 
 4. Check if everything is running:
-   admin/testerman-admin.py -t . status
+   bin/testerman-admin status
 
 5. Start an agent (not mandatory, but required for
    samples execution):
-    from the source root: ./pyagent.sh --name localhost
+    from the source root: bin/testerman-agent --name localhost
 
 6. Start the QTesterman client:
-    from the source root: ./qtesterman.sh
+    from the source root: bin/qtesterman
 
 7. Enter http://localhost:8080 as the server URL,
    use anything you wish as username (for instance 'guest')
@@ -69,10 +69,10 @@ Testerman first run for the impatient
 
 Summary/sample (using the default docroot in ~/testerman):
 
-admin/testerman-admin.py -t . setup document-root
-admin/testerman-admin.py -t . start all
-./pyagent.sh --name localhost # use -d to daemonize if you prefer
-./qtesterman.sh
+bin/testerman-admin setup document-root
+bin/testerman-admin start all
+bin/testerman-agent --name localhost # use -d to daemonize if you prefer
+bin/qtesterman
 
 
 
