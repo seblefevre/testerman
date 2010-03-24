@@ -76,7 +76,7 @@ def trim(docstring):
 	did not trim the docstrings by themselves.
 	"""
 	if not docstring:
-		return ''
+		return u''
 	maxint = 2147483647
 	# Convert tabs to spaces (following the normal Python rules)
 	# and split into a list of lines:
@@ -98,7 +98,7 @@ def trim(docstring):
 	while trimmed and not trimmed[0]:
 		trimmed.pop(0)
 	# Return a single string:
-	return '\n'.join(trimmed)
+	return u'\n'.join(trimmed)
 
 class LogSaver:
 	"""
@@ -195,7 +195,7 @@ class TestCaseLogModel:
 	Provides additional convenience functions for the usual
 	testcase properties, too.
 	"""
-	def __init__(self, id_, atsLogModel):
+	def __init__(self, id_, role, atsLogModel):
 		self._domElements = []
 		self._atsLogModel = atsLogModel
 		# Set by the main log model
@@ -203,6 +203,8 @@ class TestCaseLogModel:
 		self._description = None
 		self._id = id_
 		self._title = ''
+		if not role: role = "testcase"
+		self._role = role
 	
 	def _append(self, domElement):
 		"""
@@ -229,6 +231,15 @@ class TestCaseLogModel:
 	def isComplete(self):
 		return self._verdict is not None
 	
+	def getRole(self):
+		return self._role
+
+	def isPreamble(self):
+		return self._role == "preamble"
+
+	def isPostamble(self):
+		return self._role == "postamble"
+	
 	def getVerdict(self):
 		return self._verdict
 	
@@ -252,7 +263,7 @@ class AtsLogModel:
 		# Set by the main log model
 		self._result = None
 		self._id = id_
-		self._testCases = [] # list of TestCaseModels
+		self._testCases = [] # list of TestCaseLogModel
 	
 	def _append(self, domElement):
 		"""
@@ -372,11 +383,11 @@ class LogModel(QObject):
 				self._currentAts = None
 				self._currentTestCase = None
 
-		elif tag == "testcase-created": # FIXME: should be -started instead, but MTC/system creation logs are between -created and -started events
+		elif tag == "testcase-created":
 			if not self._currentAts:
 				log("TestCase started event received, but missed the started ATS event. Discarding.")
 			else:
-				testCaseLogModel = TestCaseLogModel(domElement.attribute('id'), self._currentAts)
+				testCaseLogModel = TestCaseLogModel(domElement.attribute('id'), domElement.attribute('role'), self._currentAts)
 				testCaseLogModel._append(domElement)
 				self._currentAts._testCases.append(testCaseLogModel)
 				self._currentTestCase = testCaseLogModel
@@ -1558,7 +1569,12 @@ class TestCaseItem(QTreeWidgetItem):
 	"""
 	def __init__(self, model, parent):
 		QTreeWidgetItem.__init__(self, parent)
-		self.setText(0, model.getId())
+		if model.isPreamble():
+			self.setText(0, model.getId() + " - preamble")
+		elif model.isPostamble():
+			self.setText(0, model.getId() + " - postamble")
+		else:
+			self.setText(0, model.getId())
 		self.setIcon(0, icon(':/icons/testcase'))
 		self._model = model
 

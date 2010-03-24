@@ -1,0 +1,117 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01//EN" "http://www.w3.org/TR/html4/strict.dtd">
+<!-- Default Test Specification report template for Test Case Specification Extractor plugin -->
+<html>
+<head>
+	<meta http-equiv="Content-Type" content="text/html;charset=utf-8" >
+	<style type="text/css">
+
+table {
+	border-width: 0px;
+	border-spacing: 0px;
+	border-style: outset;
+	border-color: gray;
+	border-collapse: collapse;
+	width: 600px;
+}
+table.testcase {
+	background-color: \#eeeeee;
+}
+table.postamble {
+	background-color: \#ffffff;
+}
+table.preamble {
+	background-color: \#ffffff;
+}
+table th {
+	border-width: 1px 1px 1px 1px;
+	padding: 3px;
+	border-style: inset;
+	border-color: gray;
+}
+table td {
+	border-width: 1px 1px 1px 1px;
+	padding: 3px;
+	border-style: inset;
+	border-color: gray;
+}
+
+
+h1, h2 {
+	color: \#A0A0A0;
+	font-family: 'Century Gothic','Trebuchet MS','Arial Narrow',arial,verdana,'Bitstream Vera Sans',helvetica,sans-serif;
+	font-weight: normal;
+}
+h1 {
+	border-color: \#eeeeee;
+	border-style: solid;
+	border-width: 0 0 1px;
+	font-size: 34px;
+	margin-top: 30px;
+	color: \#4D87CE;
+	font-weight: bold;
+	margin: 0.15em 1em 0.5em 0;
+}
+h2 {
+	font-size: 30px;
+}
+
+	</style>
+</head>
+
+<body>
+<h1>Documentation for ${ats.id}</h1>
+<p>Path: ${ats.path}</p>
+<br />
+
+
+<h2>Test Case Specifications</h2>
+#foreach ($testcase in $testcases)
+
+<p>
+
+#if ($testcase.role == "preamble")
+<table border="1" cellspacing="0" cellpadding="2" class="${testcase.role}">
+ <tr><td colspan="2"><b>Preamble: </b>${testcase.id}</td></tr>
+ <tr><td><b>Creation date: </b>$!{testcase.tag.date}</td><td><b>Created by:</b>$!{testcase.tag.author}</td></tr>
+ <tr><td colspan="2"><b>Description:</b></td></tr>
+ <tr><td colspan="2">#if ($testcase.description) $testcase.description #else &nbsp; #end</td></tr>
+ <tr><td colspan="2"><b>Preconditions and Setup:</b></td></tr>
+ <tr><td colspan="2">#if ($testcase.tag.prerequisites) $testcase.tag.prerequisites #else &nbsp; #end</td></tr>
+ <tr><td><b>Origin: </b>$!{testcase.tag.origin}</td><td><b>State: </b>$!{testcase.tag.state}</td></tr>
+</table>
+
+#elseif ($testcase.role == "postamble")
+<table border="1" cellspacing="0" cellpadding="2" class="${testcase.role}">
+ <tr><td colspan="2"><b>Postamble: </b>${testcase.id}</td></tr>
+ <tr><td><b>Creation date: </b>$!{testcase.tag.date}</td><td><b>Created by:</b>$!{testcase.tag.author}</td></tr>
+ <tr><td colspan="2"><b>Description:</b></td></tr>
+ <tr><td colspan="2">#if ($testcase.description) $testcase.description #else &nbsp; #end</td></tr>
+ <tr><td colspan="2"><b>Preconditions and Setup:</b></td></tr>
+ <tr><td colspan="2">#if ($testcase.tag.prerequisites) $testcase.tag.prerequisites #else &nbsp; #end</td></tr>
+ <tr><td><b>Origin: </b>$!{testcase.tag.origin}</td><td><b>State: </b>$!{testcase.tag.state}</td></tr>
+</table>
+
+#else
+<table border="1" cellspacing="0" cellpadding="2" class="${testcase.role}">
+ <tr><td colspan="2"><b>Test Case: </b>${testcase.id}</td></tr>
+ <tr><td><b>Creation date: </b>$!{testcase.tag.date}</td><td><b>Created by:</b>$!{testcase.tag.author}</td></tr>
+ <tr><td colspan="2"><b>Description:</b></td></tr>
+ <tr><td colspan="2">#if ($testcase.description) $testcase.description #else &nbsp; #end</td></tr>
+ <tr><td colspan="2"><b>Preconditions and Setup:</b></td></tr>
+ <tr><td colspan="2">#if ($testcase.tag.prerequisites) $testcase.tag.prerequisites #else &nbsp; #end</td></tr>
+ <tr><td><b>Origin: </b>$!{testcase.tag.origin}</td><td><b>Regression test: </b>$!{testcase.tag.regression}</td></tr>
+ <tr><td><b>Test Type: </b>$!{testcase.tag.type}</td><td><b>Test Case State: </b>$!{testcase.tag.state}</td></tr>
+</table>
+
+#end
+</p>
+<p>
+&nbsp;
+</p>
+
+#end
+
+</body>
+
+</html>
+

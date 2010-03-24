@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 ##
 # This file is part of Testerman, a test automation system.
-# Copyright (c) 2009 QTesterman contributors
+# Copyright (c) 2009, 2010 QTesterman contributors
 #
 # This program is free software; you can redistribute it and/or modify it under
 # the terms of the GNU General Public License as published by the Free Software
@@ -30,7 +30,7 @@ import Documentation
 import TemplateManagement
 
 import os
-
+import time
 
 
 ##############################################################################
@@ -47,7 +47,11 @@ are made available to them:
 <ul>
 <li>Global variables:</li>
 <pre>
-	record of Testcase testcases,
+	record of Ats atses, // hierarchical model: atses that contain testcases
+	record of Testcase testcases, // flat model: all testcases are available directly
+
+	// global stats (all atses included)
+	// do not contains preamble/postamble stats
 	integer ats_count,
 	integer testcase_count,
 	integer pass_count,
@@ -64,8 +68,16 @@ are made available to them:
 </pre>
 <li>Types definition:</li>
 <pre>
+type record Ats {
+	charstring id
+	charstring duration,
+	charstring start_time,
+	charstring stop_time,
+	record of Testcase testcases // references to children Testcases
+}
+
 type record Testcase {
-	Ats ats,
+	Ats ats, // reference to the parent ATS
 	charstring id,
 	universal charstring title,
 	charstring verdict,
@@ -78,13 +90,6 @@ type record Testcase {
 	charstring stop_time,
 }
 
-type record Ats {
-	charstring id
-	charstring duration,
-	charstring start_time,
-	charstring stop_time,
-}
-
 type record Log {
 	charstring timestamp, // format HH:MM:SS.zzz, relative to start time
 	universal charstring message,
@@ -92,8 +97,12 @@ type record Log {
 </pre>
 """
 
-DEFAULT_TEMPLATE_FILENAME = "templates/default-simple-report.txt"
+DEFAULT_TEMPLATE_FILENAME = "templates/default-simple-report.vm"
 
+
+
+def formatTimestamp(timestamp):
+	return time.strftime("%Y-%m-%d %H:%M:%S", time.localtime(timestamp))  + ".%3.3d" % int((timestamp * 1000) % 1000)
 
 ##############################################################################
 # Variables wrappers
@@ -130,11 +139,21 @@ class AtsVariables:
 			return self._model.getId()
 		elif name == "result":
 			return self._model.getResult()
+		elif name == "start_time":
+			return formatTimestamp(self._startTimestamp)
+		elif name == "stop_time":
+			return formatTimestamp(self._stopTimestamp)
 		elif name == "duration":
 			if self._stopTimestamp is not None:
-				return "%.2f" % (self._stopTimestamp - self._startTimestamp)
+				return "%.3f" % (self._stopTimestamp - self._startTimestamp)
 			else:
 				return "N/A"
+		elif name == "testcases":
+			ret = []
+			for testcase in self._model.getTestCases():
+				if testcase.isComplete():
+					ret.append(TestCaseVariables(testcase))
+			return ret
 		else:
 			raise KeyError(name)
 
@@ -154,13 +173,15 @@ class TestCaseVariables:
 		self._taggedDescription = Documentation.TaggedDocstring()
 		self._taggedDescription.parse(self._model.getDescription())
 		self._tags = Documentation.DictWrapper(self._taggedDescription)
-		# extract starttime/stoptime
+		self._role = self._model.getRole()
 
+		# extract starttime/stoptime
 		element = self._model.getDomElements("testcase-started")[0]
 		self._startTimestamp = float(element.attribute('timestamp'))
 		
 		element = self._model.getDomElements("testcase-stopped")[0]
 		self._stopTimestamp = float(element.attribute('timestamp'))
+		
 
 	def __getitem__(self, name):
 		if name == "ats":
@@ -178,7 +199,13 @@ class TestCaseVariables:
 			# The untagged part of the docstring
 			return self._taggedDescription[''].value()
 		elif name == "duration":
-			return "%.2f" % (self._stopTimestamp - self._startTimestamp)
+			return "%.3f" % (self._stopTimestamp - self._startTimestamp)
+		elif name == "start_time":
+			return formatTimestamp(self._startTimestamp)
+		elif name == "stop_time":
+			return formatTimestamp(self._stopTimestamp)
+		elif name == "role":
+			return self._role
 		elif name == "tag":
 			return self._tags
 		elif name == "userlogs":
@@ -245,7 +272,7 @@ class WReportView(Plugin.WReportView):
 
 		for ats in self.getModel().getAtses():
 			atsCount += 1
-			for testcase in ats.getTestCases():
+			for testcase in (x for x in ats.getTestCases() if x.getRole() == "testcase"):
 				if testcase.isComplete():
 					v = testcase.getVerdict()
 					if v in counts:
@@ -279,15 +306,26 @@ class WReportView(Plugin.WReportView):
 					ret.append(TestCaseVariables(testcase))
 		return ret
 
+	def _getAtsesVariables(self):
+		"""
+		Returns a list of atses variables
+		"""
+		ret = []
+		for ats in self.getModel().getAtses():
+			ret.append(AtsVariables(ats))
+		return ret
+
 	##
 	# Plugin.WReportView reimplementation
 	##
 	def displayLog(self):
 		summary = self._getSummaryVariables()
 		testcases = self._getTestCasesVariables()
+		atses = self._getAtsesVariables()
 		context = { 
 			'summary': summary, 
 			'testcases': testcases,
+			'atses': atses,
 			'html_escape': TemplateManagement.html_escape
 		}
 		self._templateApplicationWidget.applyTemplate(context)

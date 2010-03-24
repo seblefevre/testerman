@@ -234,7 +234,7 @@ class WTemplateApplicationWidget(QWidget):
 		settings.setValue(path + 'lastVisitedDirectory', QVariant(directory))
 		try:
 			f = open(filename, 'w')
-			f.write(self._source)
+			f.write(unicode(self._source).encode('utf-8'))
 			f.close()
 			QMessageBox.information(self, getClientName(), "File saved successfully.", QMessageBox.Ok)
 			return True
@@ -256,7 +256,7 @@ class WTemplateApplicationWidget(QWidget):
 			if not filename.isEmpty():
 				try:
 					f = open(unicode(filename))
-					content = f.read()
+					content = f.read().decode('utf-8')
 					f.close()
 					template = airspeed.Template(content)
 				except Exception, e:

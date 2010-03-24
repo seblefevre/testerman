@@ -76,7 +76,8 @@ def _getNewId():
 # docstring trimmer - from PEP 257 sample code
 def trim(docstring):
 	if not docstring:
-		return ''
+		return u''
+	docstring = docstring.decode('utf-8')
 	maxint = 2147483647
 	# Convert tabs to spaces (following the normal Python rules)
 	# and split into a list of lines:
@@ -98,7 +99,7 @@ def trim(docstring):
 	while trimmed and not trimmed[0]:
 		trimmed.pop(0)
 	# Return a single string:
-	return '\n'.join(trimmed)
+	return u'\n'.join(trimmed)
 
 	
 # Contexts are general containers similar to TLS (Thread Local Storages).
@@ -1076,6 +1077,11 @@ class TestCase:
 	"""
 	Main TestCase class, representing a TTCN-3 testcase.
 	"""
+	
+	# The role the testcase is used for: preamble, postamble, or testcase/None,
+	# i.e. as an actual testcase.
+	_role = "testcase"
+	
 	def __init__(self, title = None, id_suffix = None):
 		self._title = title
 		if not self._title:
@@ -1086,7 +1092,7 @@ class TestCase:
 		self._name = self.__class__.__name__
 		# This is a list of the ptc created by/within this testcase.
 		self._ptcs = []
-		logTestcaseCreated(str(self))
+		logTestcaseCreated(str(self), role = self._role)
 
 		self._mtc = None
 		self._system = None
@@ -1278,9 +1284,11 @@ class TestCase:
 # is failed)
 # These aliases enables to create the correct logic in ATSes right now
 # without using TestCase the way they are not meant to be used.
-class Preamble(TestCase): pass
+class Preamble(TestCase):
+	_role = "preamble"
 
-class Postamble(TestCase): pass
+class Postamble(TestCase):
+	_role = "postamble"
 
 
 ###############################################################################

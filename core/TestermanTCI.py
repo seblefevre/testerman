@@ -172,7 +172,7 @@ def disableLogLevel(level):
 ################################################################################
 
 def toXml(element, attributes, value = ''):
-	return u'<%s %s>%s</%s>' % (element, " ".join(map(lambda e: '%s="%s"' % (e[0], str(e[1])), attributes.items())), value, element)
+	return u'<%s %s>%s</%s>' % (element, u" ".join(map(lambda e: u'%s="%s"' % (e[0], str(e[1])), attributes.items())), value, element)
 
 def logAtsStarted(id_):
 	tliLog('core', toXml('ats-started', { 'class': 'event', 'timestamp': time.time(), 'id': id_ }))
@@ -198,14 +198,14 @@ def logMessageSent(fromTc, fromPort, toTc, toPort, message, address = None):
 		ret = getBacktrace()
 		logUser(unicode(e) + u'\n' + unicode(ret))
 
-def logTestcaseCreated(id_):
-	tliLog('core', toXml('testcase-created', { 'class': 'event', 'timestamp': time.time(), 'id': id_ }))
+def logTestcaseCreated(id_, role):
+	tliLog('core', toXml('testcase-created', { 'class': 'event', 'timestamp': time.time(), 'id': id_, 'role': role }))
 
 def logTestcaseStarted(id_, title):
 	tliLog('core', toXml('testcase-started', { 'class': 'event', 'timestamp': time.time(), 'id': id_ }, cgi.escape(title)))
 
 def logTestcaseStopped(id_, verdict, description):
-	tliLog('core', toXml('testcase-stopped', { 'class': 'event', 'timestamp': time.time(), 'id': id_, 'verdict': verdict }, cgi.escape(description)))
+	tliLog('core', toXml('testcase-stopped', { 'class': 'event', 'timestamp': time.time(), 'id': id_, 'verdict': verdict }, u"<![CDATA[%s]]>" % description))
 
 def logTimerStarted(id_, tc, duration):
 	tliLog('event', toXml('timer-started', { 'class': 'event', 'timestamp': time.time(), 'id': id_, 'duration': str(duration), 'tc': tc }))

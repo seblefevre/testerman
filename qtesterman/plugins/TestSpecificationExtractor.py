@@ -50,7 +50,7 @@ PLUGIN_DESCRIPTION = "Extracts Test Specification from an ATS"
 PLUGIN_VERSION = "1.0.0"
 
 
-DEFAULT_TEMPLATE_FILENAME = "templates/default-testcase-specification.txt"
+DEFAULT_TEMPLATE_FILENAME = "templates/default-test-specification.vm"
 
 
 ##############################################################################
@@ -61,8 +61,9 @@ class TestCaseVariables:
 	"""
 	Behaves as a dict to access testcase-related properties.
 	"""
-	def __init__(self, name, docstring):
+	def __init__(self, name, docstring, role):
 		self._name = name
+		self._role = role
 		self._taggedDescription = Documentation.TaggedDocstring()
 		self._taggedDescription.parse(docstring)
 		self._tags = Documentation.DictWrapper(self._taggedDescription)
@@ -76,6 +77,8 @@ class TestCaseVariables:
 		elif name == "description":
 			# The untagged part of the docstring
 			return self._taggedDescription[''].value()
+		elif name == "role":
+			return self._role
 		elif name == "tag":
 			return self._tags
 		else:
@@ -107,9 +110,17 @@ class DocstringAstVisitor(compiler.visitor.ASTVisitor):
 			self.dispatch(child, parentTestCase)
 
 	def visitClass(self, node, parent = None):
+		role = None
 		if len(node.bases) > 0 and "TestCase" in [hasattr(x, 'name') and x.name or None for x in node.bases]:
-			# This is a TestCase instance.
-			currentTestCase = TestCaseVariables(node.name, Documentation.trim(node.doc))
+			role = "testcase"
+		elif len(node.bases) > 0 and "Preamble" in [hasattr(x, 'name') and x.name or None for x in node.bases]:
+			role = "preamble"
+		elif len(node.bases) > 0 and "Postamble" in [hasattr(x, 'name') and x.name or None for x in node.bases]:
+			role = "postamble"
+
+		if role:
+			# This is a TestCase/Preamble/Postamble instance.
+			currentTestCase = TestCaseVariables(node.name, docstring = Documentation.trim(node.doc).decode('utf-8'), role = role)
 			self._results.append(currentTestCase)
 			# Search for its body() function.
 			self.walkChildren(node.code, currentTestCase)
