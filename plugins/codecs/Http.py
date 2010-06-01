@@ -135,7 +135,7 @@ class HttpResponseCodec(CodecManager.IncrementalCodec):
 		
 		contentLengthAdded = False
 		ret = []
-		ret.append('%s %s %s' % (str(status), reason, version))
+		ret.append('%s %s %s' % (version, str(status), reason))
 		for key, val in headers.items():
 			if val is None:
 				continue
