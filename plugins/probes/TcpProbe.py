@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 ##
 # This file is part of Testerman, a test automation system.
-# Copyright (c) 2008-2009 Sebastien Lefevre and other contributors
+# Copyright (c) 2008,2009,2010 Sebastien Lefevre and other contributors
 #
 # This program is free software; you can redistribute it and/or modify it under
 # the terms of the GNU General Public License as published by the Free Software
@@ -106,6 +106,8 @@ class TcpProbe(ProbeImplementationManager.ProbeImplementation):
 		in RequestType;
 		out NotificationType;
 		in, out octetstring;
+		out any; // if the default_decoder is used, the raised structure is the decoder's output
+		in any; // if the default_encoder is used
 	}
 	}}}
 	"""
@@ -187,10 +189,17 @@ class TcpProbe(ProbeImplementationManager.ProbeImplementation):
 				conn = self._connect(addr)
 			elif cmd == "disconnectionRequest":
 				self._disconnect(addr, "disconnected by local user")
+			elif self['default_encoder']:
+				# send the message
+				if not conn:
+					conn = self._connect(addr)
+				if conn:
+					# Now we can send our payload
+					self._send(conn, message)
 			else:
 				raise Exception("Unsupported request (%s)" % cmd)
 		
-		elif isinstance(message, basestring):
+		elif isinstance(message, basestring) or self['default_encoder']:
 			if not conn:
 				conn = self._connect(addr)
 			if conn:
@@ -263,10 +272,10 @@ class TcpProbe(ProbeImplementationManager.ProbeImplementation):
 		encoder = self['default_encoder']
 		if encoder:
 			try:
-				(encodedMessage, summary) = CodecManager.encode(encoder, data)
+				(data, summary) = CodecManager.encode(encoder, data)
 			except Exception:
 				raise ProbeImplementationManager.ProbeException('Cannot encode outgoing message using defaut encoder:\n%s' % ProbeImplementationManager.getBacktrace())
-			self.logSentPayload(summary, encodedMessage, "%s:%s" % conn.socket.getpeername())
+			self.logSentPayload(summary, data, "%s:%s" % conn.socket.getpeername())
 		else:
 			self.logSentPayload("TCP data", data, "%s:%s" % conn.socket.getpeername())
 		conn.socket.send(data)
@@ -401,6 +410,8 @@ class TcpProbe(ProbeImplementationManager.ProbeImplementation):
 					# And raise the decoded message
 					self.logReceivedPayload(summary, buf[:consumedSize], addr)
 					self.triEnqueueMsg(decodedMessage, addr)
+					# make sure we update the local loop buffer, too
+					buf = conn.decodingBuffer 
 				else: # status == CodecManager.IncrementalCodec.DECODING_ERROR:
 					self.getLogger().error("Unable to decode raw data with the default encoder (codec %s). Ignoring the segment." % decoder)
 					break
