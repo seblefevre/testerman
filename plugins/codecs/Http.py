@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 ##
 # This file is part of Testerman, a test automation system.
-# Copyright (c) 2008-2009 Sebastien Lefevre and other contributors
+# Copyright (c) 2008,2009,2010 Sebastien Lefevre and other contributors
 #
 # This program is free software; you can redistribute it and/or modify it under
 # the terms of the GNU General Public License as published by the Free Software
@@ -26,7 +26,7 @@ REQUESTLINE_REGEXP = re.compile(r'(?P<method>[a-zA-Z0-9_-]+)\s*(?P<url>[^\s]*)\s
 STATUSLINE_REGEXP = re.compile(r'(?P<version>[a-zA-Z0-9_/\.-]+)\s*(?P<status>[0-9]+)\s*(?P<reason>.*)')
 
 
-class HttpRequestCodec(CodecManager.Codec):
+class HttpRequestCodec(CodecManager.IncrementalCodec):
 	"""
 	Encode/decode from to:
 	
@@ -73,9 +73,43 @@ class HttpRequestCodec(CodecManager.Codec):
 		ret = '\r\n'.join(ret)
 		return (ret, self.getSummary(template))
 
-	def decode(self, data):
+#	def decode(self, data):
+#		ret = {}
+#		lines = data.split('\r\n')
+#		m = REQUESTLINE_REGEXP.match(lines[0])
+#		if not m:
+#			raise Exception("Invalid request line")
+#		ret['method'] = m.group('method')
+#		ret['url'] = m.group('url')
+#		ret['version'] = m.group('version')
+#		ret['headers'] = {}
+#		
+#		i = 1
+#		for header in lines[1:]:
+#			i += 1
+#			l = header.strip()
+#			if not header:
+#				break # reached body
+#			m = HEADERLINE_REGEXP.match(l)
+#			if m:
+#				ret['headers'][m.group('header').lower()] = m.group('value')
+#			else:
+#				raise Exception("Invalid header in message (%s)" % str(l))
+#		
+#		ret['body'] = "\r\n".join(lines[i:])
+#		
+#		return (ret, self.getSummary(ret))
+
+	def incrementalDecode(self, data):
+		"""
+		Incremental decoder version:
+		- detect missing bytes if a content-length is provided
+		- able to decode Transfer-Encoding: chunked
+		"""
 		ret = {}
 		lines = data.split('\r\n')
+		
+		# Request line
 		m = REQUESTLINE_REGEXP.match(lines[0])
 		if not m:
 			raise Exception("Invalid request line")
@@ -84,21 +118,71 @@ class HttpRequestCodec(CodecManager.Codec):
 		ret['version'] = m.group('version')
 		ret['headers'] = {}
 		
+		# Header lines
+		bodyStarted = False
 		i = 1
 		for header in lines[1:]:
 			i += 1
 			l = header.strip()
 			if not header:
-				break # reached body
+				bodyStarted = True
+				break # reached body and its empty line
 			m = HEADERLINE_REGEXP.match(l)
 			if m:
 				ret['headers'][m.group('header').lower()] = m.group('value')
 			else:
 				raise Exception("Invalid header in message (%s)" % str(l))
 		
-		ret['body'] = "\r\n".join(lines[i:])
+		if not bodyStarted:
+			return self.needMoreData()
 		
-		return (ret, self.getSummary(ret))
+		# Body
+		ret['body'] = ''
+		
+		encoding = ret['headers'].get('transfer-encoding', None)
+		if encoding == 'chunked':
+			# Chunked based
+			# The chunksize is on a single line, in hexa
+			try:
+#				print "DEBUG: %s" % lines[i]
+				chunkSize = int(lines[i].strip(), 16)
+				while chunkSize != 0:
+					i += 1
+#					print "DEBUG: %s" % lines[i]
+					chunkStartLine = i
+					currentLen = 0
+					while currentLen < chunkSize:
+						currentLen += len(lines[i]) + 2 # +2 for \r\n
+#						print "DEBUG: current len is %s, expected %s" % (currentLen, chunkSize)
+						i += 1
+					if currentLen == chunkSize:
+						# OK, perfect. We now have an empty line terminating the chunk.
+						ret['body'] += '\r\n'.join(lines[chunkStartLine:i])
+						# Skip the empty line
+						i += 1
+#						print "DEBUG: %s" % lines[i]
+						chunkSize = int(lines[i].strip(), 16)
+					else:
+						# currentLen > chunkSize
+						raise Exception("Invalid chunk size: expected %s, got %s" % (chunkSize, currentLen))
+			except IndexError:
+				return self.needMoreData()
+		
+		else:
+			# No chunk
+			ret['body'] ="\r\n".join(lines[i:])
+			# If Content-length present, additional check
+			contentLength = ret['headers'].get('content-length', None)
+			if contentLength is not None:
+				cl = int(contentLength)
+				bl = len(ret['body'])
+				if bl < cl:
+					return self.needMoreData()
+				elif bl > cl:
+					# Truncate the body
+					ret['body'] = ret['body'][:cl]
+		
+		return self.decoded(ret, self.getSummary(ret))
 
 	def getSummary(self, template):
 		"""
@@ -108,6 +192,7 @@ class HttpRequestCodec(CodecManager.Codec):
 		return '%s %s' % (template.get('method', 'GET'), template['url'])
 		
 CodecManager.registerCodecClass('http.request', HttpRequestCodec)
+
 
 class HttpResponseCodec(CodecManager.IncrementalCodec):
 	"""
@@ -198,23 +283,23 @@ class HttpResponseCodec(CodecManager.IncrementalCodec):
 			# Chunked based
 			# The chunksize is on a single line, in hexa
 			try:
-				print "DEBUG: %s" % lines[i]
+#				print "DEBUG: %s" % lines[i]
 				chunkSize = int(lines[i].strip(), 16)
 				while chunkSize != 0:
 					i += 1
-					print "DEBUG: %s" % lines[i]
+#					print "DEBUG: %s" % lines[i]
 					chunkStartLine = i
 					currentLen = 0
 					while currentLen < chunkSize:
 						currentLen += len(lines[i]) + 2 # +2 for \r\n
-						print "DEBUG: current len is %s, expected %s" % (currentLen, chunkSize)
+#						print "DEBUG: current len is %s, expected %s" % (currentLen, chunkSize)
 						i += 1
 					if currentLen == chunkSize:
 						# OK, perfect. We now have an empty line terminating the chunk.
 						ret['body'] += '\r\n'.join(lines[chunkStartLine:i])
 						# Skip the empty line
 						i += 1
-						print "DEBUG: %s" % lines[i]
+#						print "DEBUG: %s" % lines[i]
 						chunkSize = int(lines[i].strip(), 16)
 					else:
 						# currentLen > chunkSize

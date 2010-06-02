@@ -19,6 +19,7 @@
 ##
 
 import ProbeImplementationManager
+import CodecManager
 
 import select
 import socket
@@ -31,7 +32,8 @@ class Connection:
 		self.socket = None
 		self.incoming = False
 		self.peerAddress = None
-		self.buffer = ''
+		self.buffer = '' # raw buffer
+		self.decodingBuffer = '' # accumulation of raw buffers for incremental decoding
 
 class TcpProbe(ProbeImplementationManager.ProbeImplementation):
 	"""
@@ -49,11 +51,22 @@ class TcpProbe(ProbeImplementationManager.ProbeImplementation):
 	|| `separator` || string || `None` || Separator-based packet strategy: if set to a character or a string, only raises messages when `separator` has been encountered; this separator is assumed to be a packet separator, and is not included in the raised message. May be useful for, for instance, \\x00-based packet protocols. ||
 	|| `enable_notifications` || boolean || `False` || If set, you may get connection/disconnection notification and connectionConfirm/Error notification messages ||
 	|| `default_sut_address` || string (ip:port) || `None` || If set, used as a default SUT address if none provided by the user ||
-	
+	|| `default_decoder` || string || `None` || If set, must be a valid codec name (aliases are currently not supported). This codec is then used to decode all incoming packets, and only the probe only raises an incoming message when the codec successfully decoded something. This is particular convenient when used with an incremental codec (such as `'http.request'`) that will then be responsible for identifying the actual application PDU in the TCP stream. ||
+	|| `default_encoder` || string || `None` || If set, must be a valid codec name (aliases are currently not supported). This codec is then used to encode all outgoing packets, without a need to use it when sending the message through the port mapped to this probe. ||
 
 	= Overview =
 	
 	...
+	
+	== ADPU identification ==
+	
+	The probe first waits for `size` bytes (if the `size` property is set) or (exclusively) for the `separator` character(s) (is the `separator` property is set).
+	If none of those properties are set, the probe only considers what it read in the stream (which is system-dependent).[[BR]]
+	Then, the default decoder, if set, tries to decode this first raw segment. If it needs more input, it waits for the next raw segment. If multiple APDUs are detected, multiple incoming messages are raised.
+	If undecodable data is detected, the raw segment is ignored.[[BR]]
+	If no decoder is set, the raw segment is raised as raw data.
+
+	...	
 
 	== Availability ==
 
@@ -112,6 +125,8 @@ class TcpProbe(ProbeImplementationManager.ProbeImplementation):
 		self.setDefaultProperty('separator', None)
 		self.setDefaultProperty('enable_notifications', False)
 		self.setDefaultProperty('default_sut_address', None)
+		self.setDefaultProperty('default_decoder', None)
+		self.setDefaultProperty('default_encoder', None)
 
 	# ProbeImplementation reimplementation
 	def onTriMap(self):
@@ -245,7 +260,15 @@ class TcpProbe(ProbeImplementationManager.ProbeImplementation):
 		return conn
 	
 	def _send(self, conn, data):
-		self.logSentPayload("TCP data", data, "%s:%s" % conn.socket.getpeername())
+		encoder = self['default_encoder']
+		if encoder:
+			try:
+				(encodedMessage, summary) = CodecManager.encode(encoder, data)
+			except Exception:
+				raise ProbeImplementationManager.ProbeException('Cannot encode outgoing message using defaut encoder:\n%s' % ProbeImplementationManager.getBacktrace())
+			self.logSentPayload(summary, encodedMessage, "%s:%s" % conn.socket.getpeername())
+		else:
+			self.logSentPayload("TCP data", data, "%s:%s" % conn.socket.getpeername())
 		conn.socket.send(data)
 
 	def _disconnect(self, addr, reason):
@@ -340,24 +363,52 @@ class TcpProbe(ProbeImplementationManager.ProbeImplementation):
 			
 			size = self['size']
 			separator = self['separator']
+
 			if size:
 				while len(conn.buffer) >= size:
 					msg = conn.buffer[:size]
 					conn.buffer = conn.buffer[size+1:]
-					self.logReceivedPayload("TCP data", msg, "%s:%s" % addr)
-					self.triEnqueueMsg(msg, "%s:%s" % addr)
+					self._preEnqueueMsg(conn, msg, "%s:%s" % addr)
+
 			elif separator is not None:
 				msgs = conn.buffer.split(separator)
 				for msg in msgs[:-1]:
-					self.logReceivedPayload("TCP data", msg, "%s:%s" % addr)
-					self.triEnqueueMsg(msg, "%s:%s" % addr)
+					self._preEnqueueMsg(conn, msg, "%s:%s" % addr)
+
 				conn.buffer = msgs[-1]
 			else:
 				msg = conn.buffer
 				conn.buffer = ''
 				# No separator or size criteria -> send to userland what we received according to the tcp stack
-				self.logReceivedPayload("TCP data", msg, "%s:%s" % addr)
-				self.triEnqueueMsg(msg, "%s:%s" % addr)
+				self._preEnqueueMsg(conn, msg, "%s:%s" % addr)
+
+	def _preEnqueueMsg(self, conn, msg, addr):
+		decoder = self['default_decoder']
+		if decoder:
+			buf = conn.decodingBuffer + msg
+			# Loop on multiple possible APDUs
+			while buf:
+				(status, consumedSize, decodedMessage, summary) = CodecManager.incrementalDecode(decoder, buf)
+				if status == CodecManager.IncrementalCodec.DECODING_NEED_MORE_DATA:
+					# Do nothing. Just wait for new raw segments.
+					self.getLogger().info("Waiting for more raw segment to complete incremental decoding (using codec %s)." % decoder)
+					break
+				elif status == CodecManager.IncrementalCodec.DECODING_OK:
+					if consumedSize == 0:
+						consumedSize = len(buf)
+					# Store what was not consumed for later
+					conn.decodingBuffer = buf[consumedSize:]
+					# And raise the decoded message
+					self.logReceivedPayload(summary, buf[:consumedSize], addr)
+					self.triEnqueueMsg(decodedMessage, addr)
+				else: # status == CodecManager.IncrementalCodec.DECODING_ERROR:
+					self.getLogger().error("Unable to decode raw data with the default encoder (codec %s). Ignoring the segment." % decoder)
+					break
+
+		else: # No default decoder
+			self.logReceivedPayload("TCP data", msg, addr)
+			self.triEnqueueMsg(msg, addr)
+	
 
 	def _onIncomingConnection(self, sock, addr):
 		self._registerIncomingConnection(sock, addr)
@@ -414,7 +465,7 @@ class PollingThread(threading.Thread):
 								self._probe._feedData(addr, data)
 
 					except Exception, e:
-						self._probe.getLogger().warning("exception while polling active/listening sockets: %s" % str(e))
+						self._probe.getLogger().warning("exception while polling active/listening sockets: %s" % str(e) + ProbeImplementationManager.getBacktrace())
 					
 			except Exception, e:
 				self._probe.getLogger().warning("exception while polling active/listening sockets: %s" % str(e))

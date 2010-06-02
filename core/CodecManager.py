@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 ##
 # This file is part of Testerman, a test automation system.
-# Copyright (c) 2008-2009 Sebastien Lefevre and other contributors
+# Copyright (c) 2008,2009,2010 Sebastien Lefevre and other contributors
 #
 # This program is free software; you can redistribute it and/or modify it under
 # the terms of the GNU General Public License as published by the Free Software
@@ -50,6 +50,12 @@ class Codec:
 	Codec base class for all codec plugins.
 	Subclass it to create your own codec.
 	"""
+
+	# These constant are used for incremental decoding only.
+	DECODING_ERROR = -2
+	DECODING_NEED_MORE_DATA = -1
+	DECODING_OK = 0
+
 	def __init__(self):
 		self._properties = {}
 	
@@ -131,7 +137,27 @@ class Codec:
 		"""
 		instance().log(message)
 
-	# To reimplement	
+	def incrementalDecode(self, data):
+		"""
+		Provided for compatibility: so that non-incremental implementations
+		can be called transparently from code that assumes that an
+		incremental decoding method is available.
+		
+		Incremental decoders must reimplement this one,
+		usually by subclassing IncrementalCodec instead of this class.
+		"""
+		try:
+			(message, summary) = self.decode(data)
+		except:
+			return (self.DECODING_ERROR, 0, None, None)
+		if message is None:
+			return (self.DECODING_ERROR, 0, None, None)
+		# We assume that the whole data was consumed.
+		return (self.DECODING_OK, len(data), message, summary)
+		
+
+	# To reimplement in your own codecs
+
 	def encode(self, template):
 		"""
 		To implement in your Codec subclass.
@@ -182,7 +208,7 @@ class Codec:
 			If this summary is empty or None, it won't be taken into account.
 		"""
 		raise Exception("Decoding method not implemented")
-
+	
 
 class IncrementalCodec(Codec):
 	"""
@@ -202,11 +228,8 @@ class IncrementalCodec(Codec):
 	If you chose to implement an incremental codec, you don't need to
 	implement the decode(self, data) method of the standard Codec class.
 	"""
-	DECODING_ERROR = -2
-	DECODING_NEED_MORE_DATA = -1
-	DECODING_OK = 0
 	
-	# Convenience functions
+	# Convenience functions related to incremental decoding only
 	def decodingError(self):
 		return (self.DECODING_ERROR, 0, None, None)
 	
@@ -241,11 +264,11 @@ class IncrementalCodec(Codec):
 		  status = -2 (DECODING_ERROR): encoding error, and you did not want to use an exception
 		  status = -1 (DECODING_NEED_MORE_DATA): payload too short, missing bytes to decode the message
 			status = 0  (DECODING_OK): correctly decoded
-			consumedBytes: the number of bytes consumed in data. 
+			consumedSize: the number of bytes consumed in data. 
 				If status == ERROR, the caller will then garbage/drop these bytes.
 				If status == NEED_MORE_DATA, this returned value will be ignored, as you'll get a full
 				data payload on next attempt.
-				If status == OK, will remove these bytes from the data buffer. In this case, if consumedBytes == 0,
+				If status == OK, will remove these bytes from the data buffer. In this case, if consumedSize == 0,
 				the whole data is assumed to be consumed (equiv to len(data)).
 			message: the decoded message in case of status == OK. Ignored otherwise.
 			summary: an optional summary indicating what has been decoded.
@@ -261,7 +284,7 @@ class IncrementalCodec(Codec):
 		"""
 		Turns an incremental decoder into something callable from a non-incremental feeder.
 		"""
-		(status, consumedBytes, decodedMessage, summary) = self.incrementalDecode(data)
+		(status, consumedSize, decodedMessage, summary) = self.incrementalDecode(data)
 		if status == self.DECODING_OK:
 			return (decodedMessage, summary)
 		else:
