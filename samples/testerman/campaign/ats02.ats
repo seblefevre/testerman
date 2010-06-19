@@ -1,0 +1,43 @@
+# __METADATA__BEGIN__
+# <?xml version="1.0" encoding="utf-8" ?>
+# <metadata version="1.0">
+# <description>description</description>
+# <prerequisites>prerequisites</prerequisites>
+# <parameters>
+# <parameter name="PX_PARAM04" default="default" type="string"><![CDATA[]]></parameter>
+# <parameter name="PX_PARAM01" default="default" type="string"><![CDATA[]]></parameter>
+# <parameter name="PX_PARAM02" default="default" type="string"><![CDATA[]]></parameter>
+# <parameter name="PX_PARAM03" default="default" type="string"><![CDATA[]]></parameter>
+# </parameters>
+# </metadata>
+# __METADATA__END__
+# ATS Script for Testerman
+
+
+class TC_ATS02(TestCase):
+	def body(self):
+		if get_variable('PX_PARAM05'):
+			log("Unexpected PX_PARAM05 set: " + get_variable('PX_PARAM05'))
+			setverdict(FAIL)
+			stop()
+		
+		log("PX_PARAM01 is " + get_variable('PX_PARAM01'))
+		if not get_variable('PX_PARAM01') == "p01_overriden":
+			setverdict(FAIL)
+		log("PX_PARAM02 is " + get_variable('PX_PARAM02'))
+		if not get_variable('PX_PARAM02') == "p02_root":
+			setverdict(FAIL)
+		log("PX_PARAM03 is " + get_variable('PX_PARAM03'))
+		if not get_variable('PX_PARAM03') == "p03_overriden":
+			setverdict(FAIL)
+		log("PX_PARAM04 is " + get_variable('PX_PARAM04'))
+		if not get_variable('PX_PARAM04') == "p04_root":
+			setverdict(FAIL)
+
+		set_variable('PX_PARAM05', "p05_ats02")
+
+		setverdict(PASS)
+
+
+TC_ATS02().execute()
+

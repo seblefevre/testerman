@@ -1,0 +1,40 @@
+# __METADATA__BEGIN__
+# <?xml version="1.0" encoding="utf-8" ?>
+# <metadata version="1.0">
+# <description>description</description>
+# <prerequisites>prerequisites</prerequisites>
+# <parameters>
+# <parameter name="PX_PARAM04" default="p04_root" type="string"><![CDATA[]]></parameter>
+# <parameter name="PX_PARAM01" default="p01_root" type="string"><![CDATA[]]></parameter>
+# <parameter name="PX_PARAM02" default="p02_root" type="string"><![CDATA[]]></parameter>
+# <parameter name="PX_PARAM03" default="p03_root" type="string"><![CDATA[]]></parameter>
+# </parameters>
+# </metadata>
+# __METADATA__END__
+# This campaign is designed to check that input variables are correctly forwarded
+# from one ATS to the next one in a campaign.
+#
+# The campaign takes several input parameters:
+# PARAM01, valued to p01_root
+# PARAM02, valued to p02_root
+# PARAM03, valued to p03_root
+# PARAM04, valued to p04_root
+
+# All ATSes only contain one testcase.
+# ats01 checks that it correctly receives the campaign's initial values, then modified PARAM04.
+# ats01_01 checks that it correctly receives PARAM01/2/3 from the campaign, then PARAM04 from ats01. ats01_01 also adds a PARAM05.
+# the next ats01_01 should receive the same thing (in particular, no PARAM05)
+# ats01_01_01 should receive PARAM01/2/3 from the campaign, a modified PARAM04 from ats01, and a new PARAM05 from ats01_01.
+# the final ats01 should receive exactly the same thing as the first ats01.
+
+# ats02 should expect p01_overriden / p02_root / p03_overriden / p04_root and nothing else. It adds a PARAM05 set to p05_ats02
+# ats02_01 should expect p01_overriden / p02_root / p03_overriden / p04_root and the PARAM05 set to p05_ats02
+
+ats ats01.ats
+	ats ats01_01.ats
+	ats ats01_01.ats
+		ats ats01_01_01.ats
+ats ats01.ats
+ats ats02.ats with PX_PARAM01=p01_overriden,PX_PARAM03=p03_overriden
+	ats ats02_01.ats
+

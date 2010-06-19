@@ -2440,6 +2440,11 @@ def set_variable(name, value):
 		_AtsVariables[name] = value
 	_VariableMutex.release()
 
+def _get_all_session_variables():
+	# Not protected, not a deep copy - should
+	# ony used internally, not part of the Testerman TE API.
+	return _SessionVariables
+
 ################################################################################
 # codec management: 'with' support
 ################################################################################

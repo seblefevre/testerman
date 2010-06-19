@@ -427,6 +427,7 @@ class Job(object):
 			else:
 				# Never started. Keep start/stop and running time to None.
 				getLogger().info("%s aborted" % (str(self)))
+			self.postRun()
 			self.cleanup()
 		
 		self.notifyStateChange()
@@ -522,7 +523,7 @@ class Job(object):
 		"""
 		pass
 		
-	def aboutToRun(self):
+	def preRun(self):
 		"""
 		Called by the scheduler when just about to call run() in a dedicated thread.
 		
@@ -558,6 +559,15 @@ class Job(object):
 		          if no log is available.
 		"""		
 		return None
+
+	def postRun(self):
+		"""
+		Called when the job is complete, regardless of its status.
+		Used to perform post-run actions, such as sending a notification, etc.
+		
+		The job cleanup code should be delegated to cleanup() instead.
+		"""
+		pass
 
 	def cleanup(self):
 		"""
@@ -608,7 +618,7 @@ class AtsJob(Job):
 			self._path = '/%s' % self._path
 		
 		# Some internal variables persisted to 
-		# transit from prepare/aboutToRun/Run
+		# transit from prepare/preRun/Run
 		self._tePreparedPackageDirectory = None
 		self._baseDocRootDirectory = None
 		self._baseName = None
@@ -774,7 +784,7 @@ class AtsJob(Job):
 		# OK, we're ready.
 		self.setState(self.STATE_WAITING)
 
-	def aboutToRun(self):
+	def preRun(self):
 		"""
 		Called by the scheduler when just about to call run() in a dedicated thread.
 		
@@ -953,6 +963,7 @@ class AtsJob(Job):
 			f = open(outputSessionFilename, 'r')
 			self._outputSession = TEFactory.loadSession(f.read())
 			f.close()
+			getLogger().info('%s: output session parameters:\n%s' % (str(self), '\n'.join([ '%s = %s (%s)' % (x, y, repr(y)) for x, y in self._outputSession.items()])))
 		except Exception, e:
 			getLogger().warning("%s: unable to read output session file: %s" % (str(self), str(e)))
 
@@ -1073,7 +1084,7 @@ class CampaignJob(Job):
 		getLogger().info("%s: parsed OK" % str(self))
 		self.setState(self.STATE_WAITING)
 
-	def aboutToRun(self):
+	def preRun(self):
 		"""
 		Prepares the files that will be used for execution.
 		In particular, enables to fill what is needed to provide a getLogFilename().
@@ -1197,7 +1208,7 @@ class CampaignJob(Job):
 			if prepared:
 				getLogger().info("%s: starting child job %s, invoked by %s, on branch %s" % (str(self), str(job), str(callingJob), branch))
 				# Prepare a new thread, execute the job
-				job.aboutToRun()
+				job.preRun()
 				jobThread = threading.Thread(target = lambda: job.run(mergedInputSession))
 				jobThread.start()
 				# Now wait for the job to complete.
@@ -1385,7 +1396,7 @@ class Scheduler(threading.Thread):
 			if job.getScheduledStartTime() < time.time():
 				getLogger().info("Scheduler: starting new job: %s" % str(job))
 				# Prepare a new thread, execute the job
-				job.aboutToRun()
+				job.preRun()
 				jobThread = threading.Thread(target = lambda: job.run(job.getScheduledSession()))
 				jobThread.start()
 

@@ -365,8 +365,7 @@ except Exception, e:
 # Dumps the current session
 try:
 	f = open(OutputSessionFilename, 'w')
-	# FIXME: implement the real session dump
-	f.write(pickle.dumps({}))
+	f.write(pickle.dumps(Testerman._get_all_session_variables()))
 	f.close()
 except Exception, e:
 	TestermanTCI.logInternal("Unable to dump current session: %s" % str(e))

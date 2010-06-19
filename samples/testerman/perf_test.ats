@@ -1,0 +1,214 @@
+# __METADATA__BEGIN__
+# <?xml version="1.0" encoding="utf-8" ?>
+# <metadata version="1.0">
+# <description>description</description>
+# <prerequisites>prerequisites</prerequisites>
+# <parameters>
+# <parameter name="PX_PROBE_01" default="probe:tcp01@localhost" type="string"><![CDATA[]]></parameter>
+# <parameter name="PX_SERVER_PORT" default="2905" type="string"><![CDATA[]]></parameter>
+# <parameter name="PX_SERVER_IP" default="127.0.0.1" type="string"><![CDATA[]]></parameter>
+# <parameter name="PX_PROBE_02" default="probe:tcp02@localhost" type="string"><![CDATA[]]></parameter>
+# </parameters>
+# </metadata>
+# __METADATA__END__
+##
+# Sample script for Testerman
+#
+# This ATS demonstrates the tcp probe.
+#
+##
+
+class TESTCASE_TRANSPORT_TCP(TestCase):
+	"""
+	In this sample:
+	p02 listens for incoming connections from p01.
+	p01 connects, sends a payload
+	p02 replies with some payload, too
+	p01 receives it, disconnects.
+	p02 gets the disconnect notification ("disconnected by peer"), p01 too ("local")
+	
+	Note: you may use a single probe to run this testcase, since they can behave
+	as client and server as the same time ("peer"-like).
+	
+	This testcase requires client/server probes configured with enable_notifications = True
+	"""
+	def body(self, server_ip_port = "127.0.0.1:60009"):
+		
+		def connect_request():
+			return ('connectionRequest', None)
+		
+		def disconnect_request():
+			return ('disconnectionRequest', None)
+		
+		def connect_ok_event():
+			return ('connectionConfirm', any_or_none())
+
+		def new_connection_event():
+			return ('connectionNotification', any_or_none())
+
+		def disconnection_event():
+			return ('disconnectionNotification', any_or_none())
+
+		p01 = self.mtc['tcp01']
+		p02 = self.mtc['tcp02']
+		port_map(p01, self.system['client'])
+		port_map(p02, self.system['server'])
+
+		# We have 2s to complete the testcase
+		t = Timer(2.0, name = "Global watchdog")
+		t.start()
+		
+		activate([
+			[ t.TIMEOUT, 
+				lambda: log("Global timeout. Test case failed."),
+				lambda: setverdict("fail"),
+				lambda: stop()
+			],
+		])
+
+		# p01 connects
+		p01.send(connect_request(), server_ip_port)
+
+		# we should get a new-connection on p02
+		p02.receive(new_connection_event(), sender = 'client')
+		log("New connection from %s" % sender('client'))
+		client = sender('client')
+
+		# and a connect-response on p01
+		p01.receive(connect_ok_event(), from_ = server_ip_port),
+		log("Connection ok, sending some messages")
+		# We send a payload
+		p01.send("first payload", server_ip_port)
+		
+		# So we expect to get the message on p02
+		p02.receive("first payload", from_ = client)
+		# and we reply something, too
+		p02.send("first response", client)
+		
+		# Finally we expect the response message on p01
+		p01.receive("first response", from_ = server_ip_port),
+
+		# We disconnect
+		p01.send(disconnect_request(), server_ip_port),
+		# We should receive one connection-closed event on p01, another one on p02.
+		p01.receive(disconnection_event(), from_ = server_ip_port, value = 'msg')
+		log("connectiond closed on client side, reason:" + value("msg")[1]),
+			
+		# The connection closed event on p02
+		p02.receive(disconnection_event(), from_ = client, value = 'msg'),
+		log("connectiond closed on server side, reason:" + value("msg")[1]),
+		
+		t.stop()
+		self.setverdict("pass")
+		
+class TESTCASE_TRANSPORT_TCP_NO_NOTIFICATIONS(TestCase):
+	"""
+	Same as above, but do not check notifications.
+	
+	As a consequence, can work with probes configured with or without enabled notifications.
+	"""
+	def body(self, server_ip_port = "127.0.0.1:60009"):
+		
+		def disconnect_request():
+			return ('disconnectionRequest', None)
+		
+		p01 = self.mtc['tcp01']
+		p02 = self.mtc['tcp02']
+		port_map(p01, self.system['client'])
+		port_map(p02, self.system['server'])
+
+		# We have 2s to complete the testcase
+		t = Timer(2.0, name = "Global watchdog")
+		t.start()
+		
+		activate([
+			[ t.TIMEOUT, 
+				lambda: log("Global timeout. Test case failed."),
+				lambda: setverdict("fail"),
+				lambda: stop()
+			],
+		])
+
+		# We send a payload from p01 (automatic connection included)
+		p01.send("first payload", server_ip_port)
+		
+		# So we expect to get the message on p02 (and we discover the client address here)
+		p02.receive("first payload", sender = 'client')
+		client = sender('client')
+		# and we reply something, too
+		p02.send("first response", client)
+		
+		# Finally we expect the response message on p01
+		p01.receive("first response", from_ = server_ip_port),
+
+		# We disconnect
+		p01.send(disconnect_request(), server_ip_port),
+		
+		t.stop()
+		self.setverdict("pass")
+
+
+##
+# Test Adapter Configurations
+##
+
+conf = TestAdapterConfiguration('local')
+conf.bindByUri('client', 'probe:tcp01', 'tcp', enable_notifications = True)
+conf.bindByUri('server', 'probe:tcp02', 'tcp', enable_notifications = True, listening_port = int(get_variable('PX_SERVER_PORT')))
+
+conf = TestAdapterConfiguration('local.nonotif')
+conf.bindByUri('client', 'probe:tcp01', 'tcp')
+conf.bindByUri('server', 'probe:tcp02', 'tcp', listening_port = int(get_variable('PX_SERVER_PORT')))
+
+conf = TestAdapterConfiguration('remote')
+conf.bindByUri('client', 'probe:tcp01@localhost', 'tcp', enable_notifications = True)
+conf.bindByUri('server', 'probe:tcp02@localhost', 'tcp', enable_notifications = True, listening_port = int(get_variable('PX_SERVER_PORT')))
+
+conf = TestAdapterConfiguration('remote.nonotif')
+conf.bindByUri('client', 'probe:tcp01@localhost', 'tcp')
+conf.bindByUri('server', 'probe:tcp02@localhost', 'tcp', listening_port = int(get_variable('PX_SERVER_PORT')))
+
+
+##
+# Control definition
+##
+
+#enable_debug_logs()
+
+# This test is used to measure the end-to-end performance of Testerman low level
+# infrastructure (in particular, its messaging sub-system).
+
+# Run this test with
+# - a tacs running without any log, no --debug: ./TestermanAgentControllerServer.py >/dev/null 2>&1
+# - a ts running with any settings but no --debug
+# - an agent: bin/testerman-agent --name localhost >/dev/null 2>&1
+# Uncheck the "Display runtime log" when starting the test through QTesterman.
+
+
+# The reference loop count is 100.
+
+# On Core2 Duo 2.4Ghz, 4GB ram, Ubuntu 10.04 (everything running on the same machine),
+# here are some run durations (multiple runs to get an average) for the complete ATS, in seconds:
+# svn from 20100618; 37.99 / 36.37 / 35.68 / 35.72
+# with Etienne's patch in agent+tacs+ts: 19.81 / 20.11 / 19.89 / 19.98
+# with a fix to make sure we send "most" messages before disconnecting (client side only): 18.29 / 18.28 / 17.76
+# same fix on both client and server side: 17.90 / 17.83 / 17.78
+
+
+
+
+for i in range (100):
+	useTestAdapterConfiguration('local')
+	TESTCASE_TRANSPORT_TCP(id_suffix = 'LOCAL').execute(server_ip_port = '%s:%s' % (get_variable('PX_SERVER_IP'), get_variable('PX_SERVER_PORT')))
+	TESTCASE_TRANSPORT_TCP_NO_NOTIFICATIONS(id_suffix = 'LOCAL').execute(server_ip_port = '%s:%s' % (get_variable('PX_SERVER_IP'), get_variable('PX_SERVER_PORT')))
+	
+	useTestAdapterConfiguration('remote')
+	TESTCASE_TRANSPORT_TCP(id_suffix = 'REMOTE').execute(server_ip_port = '%s:%s' % (get_variable('PX_SERVER_IP'), get_variable('PX_SERVER_PORT')))
+	TESTCASE_TRANSPORT_TCP_NO_NOTIFICATIONS(id_suffix = 'REMOTE').execute(server_ip_port = '%s:%s' % (get_variable('PX_SERVER_IP'), get_variable('PX_SERVER_PORT')))
+	
+	useTestAdapterConfiguration('local.nonotif')
+	TESTCASE_TRANSPORT_TCP_NO_NOTIFICATIONS(id_suffix = 'LOCAL').execute(server_ip_port = '%s:%s' % (get_variable('PX_SERVER_IP'), get_variable('PX_SERVER_PORT')))
+	
+	useTestAdapterConfiguration('remote.nonotif')
+	TESTCASE_TRANSPORT_TCP_NO_NOTIFICATIONS(id_suffix = 'REMOTE').execute(server_ip_port = '%s:%s' % (get_variable('PX_SERVER_IP'), get_variable('PX_SERVER_PORT')))
+	
