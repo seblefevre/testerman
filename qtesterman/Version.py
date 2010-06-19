@@ -5,4 +5,4 @@
 # A += 1: major design changes. 
 # B += 1: new significant features added
 # C += 1: bugfixes and/or minor features added
-CLIENT_VERSION = "1.1.99-svn-20100311"
+CLIENT_VERSION = "1.2.0"

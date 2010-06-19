@@ -1043,7 +1043,7 @@ class WLogViewer(QWidget):
 				logfile = loadLog(self._url)
 
 		except Exception, e:
-			QMessageBox.information(self, getClientName(), "Unable to retrieve log: either the logfile has been deleted or the job cannot be found on this server (%s)" % str(e))
+			QMessageBox.information(self, getClientName(), "The log file for this job has been deleted.")
 			return
 
 		self.setJobState(state)

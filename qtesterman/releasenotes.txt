@@ -1,7 +1,7 @@
 This is QTesterman, a PyQt4-based GUI for Testerman.
 ====================================================
 
-1.1.99:
+1.2.0:
 - Added: preferences support to enable/disable code autocompletion
   (experimental - now disabled by default)
 - Added: scheduled run and rescheduling support
@@ -56,11 +56,6 @@ This is QTesterman, a PyQt4-based GUI for Testerman.
   local files.
 
 KNOWN BUGS:
-- When running an ATS, an error popup may be displayed, indicating that
-  a log file cannot be found. Then, when closed, the normal log
-  analyzer dialog appears and everything is fine. 
-- In the dialog analyzer, the "track events" option does not work correctly
-  when switching ATSes.
 - Root files in the repository are not monitored correctly, i.e. if
   an item is created (for instance) in the root repository folder, you won't
   see it before refreshing the whole browser view. However, files should not
