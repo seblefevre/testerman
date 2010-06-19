@@ -262,6 +262,8 @@ def getJobInfo(jobId = None):
 					'path': string (docroot-based path for jobs whose source is in docroot) or None (client-based source)
 	       }
 	@returns: a list of info for the given job, or for all jobs in the queue if jobId is None.
+
+	@throws Exception: when the job was not found, or when the job file was removed.
 	"""
 	getLogger().info(">> getJobInfo(%s)" % str(jobId))
 	res = []
@@ -287,7 +289,7 @@ def getJobLog(jobId, useCompression = True):
 	@param useCompression: if set to True, compress the log using zlib before encoding the response in base64
 	
 	@rtype: string
-	@returns: None if the job was not for, or the job's log in utf-8 encoded XML,
+	@returns: the job's log in utf-8 encoded XML,
 	          optionally gzip + base64 encoded if useCompression is set to True
 	"""
 	getLogger().info(">> getJobLog(%d, %s)" % (jobId, str(useCompression)))

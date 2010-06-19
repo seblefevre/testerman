@@ -984,15 +984,24 @@ class AtsJob(Job):
 		Returns the current known log.
 		"""
 		if self._logFilename:
-			# Why not use the FileSystemManager acccess instead of an absolute, local path ? 
-			# Because of the file lock only ?
-			absoluteLogFilename = os.path.normpath("%s%s" % (cm.get("testerman.document_root"), self._logFilename))
-			f = open(absoluteLogFilename, 'r')
-			fcntl.flock(f.fileno(), fcntl.LOCK_EX)
-			res = '<?xml version="1.0" encoding="utf-8" ?>\n<ats>\n%s</ats>' % f.read()
-			f.close()
-			return res
+			try:
+				# Logs are locally generated, so no need to access them through the FileSystemManager.
+				absoluteLogFilename = os.path.normpath("%s%s" % (cm.get("testerman.document_root"), self._logFilename))
+				f = open(absoluteLogFilename, 'r')
+				fcntl.flock(f.fileno(), fcntl.LOCK_EX)
+				res = '<?xml version="1.0" encoding="utf-8" ?>\n<ats>\n%s</ats>' % f.read()
+				f.close()
+				return res
+			except Exception, e:
+				if self.isFinished():
+					# The log was deleted. So raise the exception - we should have been able to read it.
+					raise e
+				else:
+					# The log file may have not been created yet.
+					# Just return an empty log.
+					return '<?xml version="1.0" encoding="utf-8" ?>\n<ats>\n</ats>'
 		else:
+			# The log file has not been initialized yet.
 			return '<?xml version="1.0" encoding="utf-8" ?>\n<ats>\n</ats>'
 	
 
