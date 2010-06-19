@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 ##
 # This file is part of Testerman, a test automation system.
-# Copyright (c) 2008-2009 Sebastien Lefevre and other contributors
+# Copyright (c) 2008,2009,2010 Sebastien Lefevre and other contributors
 #
 # This program is free software; you can redistribute it and/or modify it under
 # the terms of the GNU General Public License as published by the Free Software
@@ -122,6 +122,14 @@ class TcpPacketizerClientThread(threading.Thread):
 		self.last_activity_timestamp = time.time() # incoming activity only
 		self.keep_alive_interval = keep_alive_interval
 		self.last_keep_alive_timestamp = time.time()
+		# a "control port" that is used to notify the low-level that
+		# a message is ready to send (if the associated sending queue is not empty)
+		# or just to exit our polling loop (stop notification).
+		self.control_read, self.control_write = os.pipe()
+		
+	def __del__(self):
+		os.close(self.control_read)
+		os.close(self.control_write)
 
 	def run(self):
 		self.trace("Tcp client started, connecting from %s to %s" % (str(self.localAddress), str(self.serverAddress)))
@@ -188,13 +196,29 @@ class TcpPacketizerClientThread(threading.Thread):
 	def __main_receive_send_loop(self):
 		self.last_keep_alive_timestamp = time.time()
 		self.last_activity_timestamp = time.time()
+
+		write_socket = []
+
+		timeout = -1
+		if self.inactivity_timeout:
+			timeout = self.inactivity_timeout
+
+		if self.keep_alive_interval and self.keep_alive_interval < timeout:
+			timeout = self.keep_alive_interval
+
 		while not self.stopEvent.isSet():
 			try:
-				# Check if we have incoming data
-				r, w, e = select.select([ self.socket ], [], [ self.socket ], 0.001)
+				if timeout >= 0:
+					r, w, e = select.select([ self.socket, self.control_read ], write_socket, [ self.socket ], timeout)
+				else:
+					r, w, e = select.select([ self.socket, self.control_read ], write_socket, [ self.socket ])
+
+				# Received an error from the network
 				if self.socket in e:
 					raise EOFError("Socket select error: disconnecting")
-				elif self.socket in r:
+
+				# Received a message from the network
+				if self.socket in r:
 					read = self.socket.recv(65535)
 					if not read:
 						raise EOFError("Nothing to read on read event: disconnecting")
@@ -202,25 +226,41 @@ class TcpPacketizerClientThread(threading.Thread):
 					self.buf = ''.join([self.buf, read]) # faster than += r
 					self.__on_incoming_data()
 
-				# Check inactivity timeout 
-				elif self.inactivity_timeout:
-					if time.time() - self.last_activity_timestamp > self.inactivity_timeout:
-						raise EOFError("Inactivity timeout: disconnecting")
-
-				# Send (queue) a Keep-Alive if needed
-				if self.keep_alive_interval:
-					if time.time() - self.last_keep_alive_timestamp > self.keep_alive_interval:
-						self.last_keep_alive_timestamp = time.time()
-						self.trace("Sending Keep Alive")
-						self.send_packet(KEEP_ALIVE_PDU)
-
-				# Send queued messages
-				while not self.queue.empty():
-					# Make sure we can send something. If not, keep the message for later attempt.
-					r, w, e = select.select([ ], [ self.socket ], [ self.socket ], 0.001)
-					if self.socket in e:
-						raise EOFError("Socket select error when sending a message: disconnecting")
-					elif self.socket in w:	
+				# Received a send or stop notification from the higher level layers
+				if self.control_read in r:
+					# Consume the notification(s), if any, to avoid a pipe overflow.
+					os.read(self.control_read, 10000)
+					# If the queue is not empty, we assume this is a send notification.
+					# In this case, we first try to send messages now, not waiting for the next loop iteration
+					# This way, we avoid leaving some important messages in the sending queue while
+					# shutting down a TE (in particular). In such a case, we won't have a next iteration
+					# as the stopEvent is already set.
+					# The trade-off is that we can't wait forever here as we may have incoming messages
+					# to consume.
+					while not self.queue.empty():
+						_, ready, error = select.select([], [ self.socket ], [ self.socket ], 0.01)
+						if self.socket in error:
+							raise EOFError("Socket select error when sending a message: disconnecting")
+						elif self.socket in ready:
+							try:
+								message = self.queue.get(False)
+								self.socket.sendall(message)
+							except Queue.Empty:
+								pass
+							except Exception, e:
+								self.trace("Unable to send message: " + str(e))
+						else:
+							# Not ready yet. Will perform a new attempt on next main loop iteration.
+							# (which may never occur if we also set the stopEvent in the meantime)
+							if not(self.socket in write_socket):
+								write_socket.append(self.socket)
+							break # do not spend more time trying to send any messages.
+					
+				# We have something to send, and during the previous loop iteration
+				# we registered the socket in write mode to get notified when ready to
+				# send the messages.		
+				if self.socket in w:
+					while not self.queue.empty():
 						try:
 							message = self.queue.get(False)
 							self.socket.sendall(message)
@@ -228,9 +268,35 @@ class TcpPacketizerClientThread(threading.Thread):
 							pass
 						except Exception, e:
 							self.trace("Unable to send message: " + str(e))
-					else:
-						# Not ready. Will perform a new attempt on next main loop iteration
-						break
+					# No more enqueued messages to send - we don't need to wait for
+					# the network socket to be writable anymore.
+					write_socket = []
+	
+				current_time = time.time()
+
+				if not r and not w and not e:
+					# Check inactivity timeout 
+					if self.inactivity_timeout:
+						if current_time - self.last_activity_timestamp > self.inactivity_timeout:
+							raise EOFError("Inactivity timeout: disconnecting")
+
+					# Send (queue) a Keep-Alive if needed
+					if self.keep_alive_interval:
+						if current_time - self.last_keep_alive_timestamp > self.keep_alive_interval:
+							self.last_keep_alive_timestamp = time.time()
+							self.trace("Sending Keep Alive")
+							self.send_packet(KEEP_ALIVE_PDU)
+
+				timeout = -1
+				if self.inactivity_timeout :
+					tmp = self.inactivity_timeout - current_time - self.last_activity_timestamp
+					if tmp >= 0:
+						timeout = min(timeout, tmp)
+
+				if self.keep_alive_interval:
+					tmp = current_time - self.last_keep_alive_timestamp - self.keep_alive_interval
+					if tmp >= 0:
+						timeout = min(timeout, tmp)
 
 			except EOFError, e:
 				self.trace("Disconnected by peer.")
@@ -255,10 +321,13 @@ class TcpPacketizerClientThread(threading.Thread):
 
 	def stop(self):
 		self.stopEvent.set()
+		# This will force our blocking select to wake up in our main loop
+		os.write(self.control_write, 'b')
 		self.join()
 
 	def send_packet(self, packet):
 		self.queue.put(packet + self.terminator)
+		os.write(self.control_write, 'a')
 	
 	def disconnect(self):
 		try:
@@ -408,15 +477,24 @@ class TcpPacketizerServerThread(threading.Thread):
 			self.socket = None
 			self.last_activity_timestamp = time.time()
 			self.last_keep_alive_timestamp = time.time()
+			# a "control port" that is used to notify the low-level that
+			# a message is ready to send (if the associated sending queue is not empty)
+			# or just to exit our polling loop (stop notification).
+			self.control_read, self.control_write = os.pipe()
 			# The BaseRequestHandler.__init__ calls handle(); 
 			# thus members should be initialized first.
 			SocketServer.BaseRequestHandler.__init__(self, request, client_address, server)
+
+		def __del__(self):
+			os.close(self.control_read)
+			os.close(self.control_write)
 
 		def stop(self):
 			"""
 			Call this whenever you want to stop the client handling.
 			"""
 			self.stopEvent.set()
+			os.write(self.control_write, 'b')
 
 		def handle(self):
 			"""
@@ -430,6 +508,7 @@ class TcpPacketizerServerThread(threading.Thread):
 					self.__main_receive_send_loop()
 				except Exception, e:
 					# This means that the stream was broken
+					print str(e)
 					self.trace(str(e))
 					self.stop()
 
@@ -439,12 +518,27 @@ class TcpPacketizerServerThread(threading.Thread):
 			"""
 			self.last_keep_alive_timestamp = time.time()
 			self.last_activity_timestamp = time.time()
+			
+			write_socket = []
+
+			timeout = -1
+			if self.server.inactivity_timeout:
+				timeout = self.server.inactivity_timeout
+
+			if self.server.keep_alive_interval and self.server.keep_alive_interval < timeout:
+				timeout = self.server.keep_alive_interval
+
 			while not self.stopEvent.isSet():
-				# Check if we have incoming data
-				r, w, e = select.select([ self.socket ], [], [ self.socket ], 0.001)
+				if timeout >= 0:
+					r, w, e = select.select([ self.socket, self.control_read ], write_socket, [ self.socket ], timeout)
+				else:
+					r, w, e = select.select([ self.socket, self.control_read ], write_socket, [ self.socket ])
+
 				if self.socket in e:
+					print "eee"
 					raise EOFError("Socket select error: disconnecting")
-				elif self.socket in r:
+
+				if self.socket in r:
 					read = self.socket.recv(65535)
 					if not read:
 						raise EOFError("Nothing to read on read event: disconnecting")
@@ -452,39 +546,82 @@ class TcpPacketizerServerThread(threading.Thread):
 					self.buf = ''.join([self.buf, read]) # faster than += r
 					self.__on_incoming_data()
 
-				# Check inactivity timeout 
-				elif self.server.inactivity_timeout:
-					if time.time() - self.last_activity_timestamp > self.server.inactivity_timeout:
-						raise EOFError("Inactivity timeout: disconnecting")
+#				if self.control_read in r:
+#					if not self.queue.empty() and not(self.socket in write_socket):
+#						write_socket.append(self.socket)
+#					os.read(self.control_read, 10000)
 
-				# Send (queue) a Keep-Alive if needed
-				if self.server.keep_alive_interval:
-					if time.time() - self.last_keep_alive_timestamp > self.server.keep_alive_interval:
-						self.last_keep_alive_timestamp = time.time()
-						self.trace("Sending Keep Alive")
-						self.send_packet(KEEP_ALIVE_PDU)
-
-				# Send queued messages
-				while not self.queue.empty():
-					try:
-						# Make sure we can send something. If not, keep the message for later attempt.
-						r, w, e = select.select([ ], [ self.socket ], [ self.socket ], 0.001)
-						if self.socket in e:
-							raise IOError("Socket select error when sending a message: disconnecting")
-						elif self.socket in w:
+				# Received a send or stop notification from the higher level layers
+				if self.control_read in r:
+					# Consume the notification(s), if any, to avoid a pipe overflow.
+					os.read(self.control_read, 10000)
+					# If the queue is not empty, we assume this is a send notification.
+					# In this case, we first try to send messages now, not waiting for the next loop iteration
+					# This way, we avoid leaving some important messages in the sending queue while
+					# shutting down a TE (in particular). In such a case, we won't have a next iteration
+					# as the stopEvent is already set.
+					# The trade-off is that we can't wait forever here as we may have incoming messages
+					# to consume.
+					while not self.queue.empty():
+						_, ready, error = select.select([], [ self.socket ], [ self.socket ], 0.01)
+						if self.socket in error:
+							raise EOFError("Socket select error when sending a message: disconnecting")
+						elif self.socket in ready:
+							try:
+								message = self.queue.get(False)
+								self.socket.sendall(message)
+							except Queue.Empty:
+								pass
+							except Exception, e:
+								self.trace("Unable to send message: " + str(e))
+						else:
+							# Not ready yet. Will perform a new attempt on next main loop iteration.
+							# (which may never occur if we also set the stopEvent in the meantime)
+							if not(self.socket in write_socket):
+								write_socket.append(self.socket)
+							break # do not spend more time trying to send any messages.
+					
+				# We have something to send, and during the previous loop iteration
+				# we registered the socket in write mode to get notified when ready to
+				# send the messages.		
+				if self.socket in w:
+					while not self.queue.empty():
+						try:
 							message = self.queue.get(False)
 							self.socket.sendall(message)
-						else:
-							self.trace("Not ready to send a queued message. Will try again on next iteration.")
-							# Not ready. Will perform a new attempt on next main loop iteration
-							break
-					except Queue.Empty:
-						pass
-					except IOError, e:
-						self.trace("IOError while sending a packet to client (%s) - disconnecting" % str(e))
-						self.stop()
-					except Exception, e:
-						self.trace("Unable to send message: %s" % str(e))
+						except Queue.Empty:
+							pass
+						except IOError, e:
+							self.trace("IOError while sending a packet to client (%s) - disconnecting" % str(e))
+							self.stop()
+						except Exception, e:
+							self.trace("Unable to send message: %s" % str(e))
+					write_socket = []
+	
+				current_time = time.time()
+				if not r and not w and not e:
+					# Check inactivity timeout 
+					if self.server.inactivity_timeout:
+						if current_time - self.last_activity_timestamp > self.server.inactivity_timeout:
+							raise EOFError("Inactivity timeout: disconnecting")
+
+					# Send (queue) a Keep-Alive if needed
+					if self.server.keep_alive_interval:
+						if current_time - self.last_keep_alive_timestamp > self.server.keep_alive_interval:
+							self.last_keep_alive_timestamp = time.time()
+							self.trace("Sending Keep Alive")
+							self.send_packet(KEEP_ALIVE_PDU)
+
+				timeout = -1
+				if self.server.inactivity_timeout :
+					tmp = self.server.inactivity_timeout - current_time - self.last_activity_timestamp
+					if tmp >= 0:
+						timeout = min(timeout, tmp)
+
+				if self.server.keep_alive_interval:
+					tmp = current_time - self.last_keep_alive_timestamp - self.server.keep_alive_interval
+					if tmp >= 0:
+						timeout = min(timeout, tmp)
 
 		def __on_incoming_data(self):
 			"""
@@ -507,6 +644,7 @@ class TcpPacketizerServerThread(threading.Thread):
 			"""
 			# Asynchronous send.
 			self.queue.put(packet + self.terminator)
+			os.write(self.control_write, 'a')
 
 		def handle_packet(self, packet):
 			"""
@@ -838,28 +976,29 @@ class BaseNode(object):
 		"""
 		def __init__(self):
 			threading.Thread.__init__(self)
-			self._stopEvent = threading.Event()
 			self._queue = Queue.Queue(0)
+			self._running = False
 
 		def postCallback(self, cb):
 			self._queue.put(cb)
 
 		def run(self):
-			while not self._stopEvent.isSet():
-				while not self._queue.empty():
-					try:
-						cb = self._queue.get(False)
-						cb()
-					except Queue.Empty:
-						pass
-					except Exception, e:
-						pass
-				time.sleep(0.001)
+			self._running = True
+			while self._running:
+				try:
+					cb = self._queue.get()
+					cb()
+				except Queue.Empty:
+					pass
+				except Exception, e:
+					pass
+
+		def _stop(self):
+			self._running = False
 
 		def stop(self):
-			self._stopEvent.set()
+			self.postCallback(self._stop)
 			self.join()
-		
 	
 	def __init__(self, name, userAgent):
 		"""
@@ -1041,11 +1180,18 @@ class BaseNode(object):
 		self.__trace("%d --> sent request" % (transactionId))
 		# Now, wait for the response.		
 
-		# Implementation #1: clean event.wait(): ref test: 52s
-#		event.wait(responseTimeout)
-#		if event.isSet():
+		# I tried several implementation here.
+		
+		# Implementation #1: clean event.wait(): ref test (perf_test.ats): 25s
+		# event.wait(responseTimeout)
+		# if event.isSet():
+		
+		# Implementation #2: using a dedicated reply queue instead of an event.
+		# The response is directly posted in the queue - even not a need for
+		# locking the outgoingTransactions map to retrieve it.
+		# Yet, this is about 25s on perf_test.ats.
 
-		# Implementation #2: loop, waiting for the event: ref test: 45s
+		# Implementation #3: ugly loop, waiting for the event: ref test (perf_test.ats): 20s
 		timeout = False
 		while (not event.isSet()) and (not timeout):
 			time.sleep(0.00001)

@@ -736,7 +736,7 @@ class WLogViewer(QWidget):
 		@type  url: QUrl
 		@param url: the file to open
 		"""
-		log("DEBUG: opening '%s'" % unicode(url.toString()))
+		log("Opening '%s'" % unicode(url.toString()))
 		self._url = url
 		self.updateFromSource()
 		self.updateWindowTitle()
@@ -1065,19 +1065,19 @@ class WLogViewer(QWidget):
 			if not self.trackingActivated:
 				transient = WTransientWindow("Log Viewer", self)
 				transient.showTextLabel("Preparing views...")
-			log("DEBUG: Preparing...")
+#			log("DEBUG: Preparing...")
 			self.textualLogView.clearLog()
-			log("DEBUG: text cleared")
+#			log("DEBUG: text cleared")
 			self.textualLogView.displayPartialLog(newItem.getElements())
-			log("DEBUG: text prepared")
+#			log("DEBUG: text prepared")
 			self.visualLogView.clearLog()
-			log("DEBUG: visual cleared")
+#			log("DEBUG: visual cleared")
 			self.visualLogView.displayPartialLog(newItem.getElements())
-			log("DEBUG: visual prepared")
+#			log("DEBUG: visual prepared")
 			if not self.trackingActivated:
 				transient.hide()
 				transient.setParent(None)
-			log("DEBUG: Selected OK")
+#			log("DEBUG: Selected OK")
 
 	def setLog(self, xmlLog):
 		log("Loading log...")
@@ -1518,19 +1518,19 @@ class WTextualLogView(QTreeWidget):
 		
 		@type  domElements: list of QDomElement
 		"""
-		log("DEBUG: starting display...")
+#		log("DEBUG: starting display...")
 		item = None
 		for domElement in domElements:
 			item = TextualLogItem(None, domElement)
 			self.root.addChild(item)
 			item.parse()
-		log("DEBUG: applying filter display...")
+#		log("DEBUG: applying filter display...")
 		self.applyFilter(self.currentHiddenLogClasses)
-		log("DEBUG: filter applied display...")
+#		log("DEBUG: filter applied display...")
 
 		if self.trackingActivated and item:
 			self.scrollToItem(item)
-		log("DEBUG: ok, displayed...")
+#		log("DEBUG: ok, displayed...")
 
 	def onEvent(self, domElement):
 		"""

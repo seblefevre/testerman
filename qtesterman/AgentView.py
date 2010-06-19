@@ -201,7 +201,6 @@ class WAgentView(QTreeView):
 			# Forward the update to the model.
 			event = notification.getApplicationBody()
 			reason = notification.getHeader('Reason')
-			print "DEBUG: " + reason
 			
 			if reason == "agent-registered":
 				self.model().addAgent(event)
