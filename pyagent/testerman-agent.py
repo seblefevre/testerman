@@ -130,8 +130,8 @@ def main():
 	parser.add_option("-p", "--port", dest = "controllerPort", metavar = "PORT", help = "set agent controller Xa port address to PORT (default: %default)", default = 40000, type="int")
 	if not sys.platform in [ 'win32', 'win64']:
 		parser.add_option("--pid-filename", dest = "pidFilename", metavar = "FILE", help = "use FILE to dump the process PID when daemonizing (default: no pidfile)", default = None)
-	parser.add_option("--probe-path", dest = "probePaths", metavar = "PATHS", help = "search for probe modules in PATHS, which is a comma-separated list of paths (default: %default)", default = os.path.normpath("%s/../plugins/probes" % localPath))
-	parser.add_option("--codec-path", dest = "codecPaths", metavar = "PATHS", help = "search for codec modules in PATHS, which is a comma-separated list of paths (default: %default)", default = os.path.normpath("%s/../plugins/codecs" % localPath))
+	parser.add_option("--probe-path", dest = "probePaths", metavar = "PATHS", help = "search for probe modules in PATHS, which is a comma-separated list of paths")
+	parser.add_option("--codec-path", dest = "codecPaths", metavar = "PATHS", help = "search for codec modules in PATHS, which is a comma-separated list of paths")
 
 	(options, args) = parser.parse_args()
 
@@ -141,8 +141,17 @@ def main():
 		level = logging.INFO
 	logging.basicConfig(level = level, format = '%(asctime)s.%(msecs)03d %(thread)d %(levelname)-8s %(name)-20s %(message)s', datefmt = '%Y%m%d %H:%M:%S', filename = options.logFilename)
 	
+	probePaths = options.probePaths
+	if not probePaths:
+		# Some default values
+		probePaths = "%s,%s" % (os.path.normpath("%s/plugins/probes" % localPath), os.path.normpath("%s/../plugins/probes" % localPath))
+	codecPaths = options.codecPaths
+	if not codecPaths:
+		# Some default values
+		codecPaths = "%s,%s" % (os.path.normpath("%s/plugins/codecs" % localPath), os.path.normpath("%s/../plugins/codecs" % localPath))
+		
 	# Static initialization
-	Agent.initialize(probePaths = options.probePaths.split(','), codecPaths = options.codecPaths.split(','))
+	Agent.initialize(probePaths = probePaths.split(','), codecPaths = codecPaths.split(','))
 
 	# Now we can daemonize if needed (and if supported)
 	if not sys.platform in [ 'win32', 'win64']:
