@@ -1130,7 +1130,7 @@ def main():
 	cm.set_transient("tacs.pid", os.getpid())
 	controller = None
 	try:
-		controller = Controller(xaAddress = (cm.get("interface.xa.ip"), cm.get("interface.xa.port")), iaAddress = (cm.get("interface.ia.ip"), cm.get("interface.ia.port")), documentRoot = cm.get("testerman.doc_root"))
+		controller = Controller(xaAddress = (cm.get("interface.xa.ip"), cm.get("interface.xa.port")), iaAddress = (cm.get("interface.ia.ip"), cm.get("interface.ia.port")), documentRoot = cm.get("testerman.document_root"))
 		controller.start()
 		controller.getLogger().info("Started.")
 		while 1:
