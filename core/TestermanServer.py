@@ -140,6 +140,8 @@ def main():
 	cm.register("interface.il.port", 8082)
 	cm.register("interface.ih.ip", "0.0.0.0")
 	cm.register("interface.ih.port", 8083)
+	cm.register("interface.xa.ip", "0.0.0.0")
+	cm.register("interface.xa.port", 40000)
 	cm.register("tacs.ip", "127.0.0.1")
 	cm.register("tacs.port", 8087)
 	cm.register("ts.daemonize", False)
@@ -255,6 +257,13 @@ def main():
 		cm.set_actual("interface.xc.ip", ip)
 	if not ip or ip == '0.0.0.0':
 		cm.set_actual("interface.xc.ip", socket.gethostbyname(socket.gethostname())) # Not fully qualified ? defaults to the hostname resolution.
+
+	# Set the TACS IP address that can be used by agents
+	# Normally, we should ask the TACS the server is connected to to get this value.
+	tacs = cm.get("interface.xa.ip")
+	if not tacs or tacs == '0.0.0.0':
+		# We'll publish the XC as XA IP address. If it was also set to localhost, it's unlikely agents are deployed outside localhost too.
+		cm.set_actual("interface.xa.ip", cm.get("interface.xc.ip"))
 
 	# If an explicit pid file was provided, use it. Otherwise, fallback to the var_root/ts.pid if possible.
 	pidfile = cm.get("ts.pid_filename")

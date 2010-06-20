@@ -31,6 +31,7 @@ Administrator: <a href="mailto:${config.testerman_administrator_email}">${config
 <h2>Local Links</h2>
 <ul>
 	<li><a class="wiki" href="/qtestermaninstaller">QTesterman installer</a> - Download and run this file to install the QTesterman rich client on your computer</li>
+	<li><a class="wiki" href="/pyagentinstaller">PyAgent installer</a> - Download and run this command line script to install a PyAgent agent on your computer</li>
 	<li><a class="wiki" href="/components.vm">Published components</a> - Directly download and install QTesterman or a PyAgent</li>
 </ul>	
 

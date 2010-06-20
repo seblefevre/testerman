@@ -33,7 +33,9 @@ import zlib
 import StringIO
 
 
-# -*- coding: utf-8 -*-
+# This default value is overwritten
+# when this file is served through the Server's web interface.
+DEFAULT_SERVER_URL = "http://localhost:8080"
 
 # Resource object code
 #
@@ -1868,7 +1870,7 @@ class WInstallationDialog(QDialog):
 		
 		# Read the settings
 		settings = QSettings()
-		urllist = settings.value('connection/urllist', QVariant(QStringList(QString('http://localhost:8080')))).toStringList()
+		urllist = settings.value('connection/urllist', QVariant(QStringList(QString(DEFAULT_SERVER_URL)))).toStringList()
 
 		self.urlComboBox = QComboBox()
 		self.urlComboBox.setEditable(1)

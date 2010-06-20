@@ -27,6 +27,7 @@ import airspeed
 import logging
 import BaseHTTPServer
 import os.path
+import socket
 
 DEFAULT_PAGE = "/index.vm"
 
@@ -99,8 +100,6 @@ class WebRequestHandlerMixIn:
 		else:
 			path, args = self.path, None
 
-		print "DEBUG: %s, %s" % (path, args)
-
 		try:
 			handler = 'handle_%s' % path[1:]
 			# If we have a specific handler to serve the request, call it.
@@ -138,7 +137,7 @@ class WebRequestHandlerMixIn:
 
 		self._rawServeFile(path)
 		
-	def _rawServeFile(self, path, asFilename = None):
+	def _rawServeFile(self, path, asFilename = None, xform = None):
 		"""
 		Serves the file without additional verifications.
 		If asFilename is set, sends the file as attachment.
@@ -151,18 +150,25 @@ class WebRequestHandlerMixIn:
 		except:
 			self.send_error(404)
 		else:
-			contentType = self._getContentType(path)
-			if not contentType:
-				# Unsupported media type
-				self._sendError(415)
-				return
+			try:
+				if xform:
+					contents = xform(contents)
+			except:
+				# Internal transformation error
+				self.send_error(500)
+			else:
+				contentType = self._getContentType(path)
+				if not contentType:
+					# Unsupported media type
+					self.send_error(415)
+					return
 
-			self.send_response(200)
-			self.send_header('Content-Type', contentType)
-			if asFilename:
-				self.send_header('Content-Disposition', 'attachment; filename="%s"' % asFilename)
-			self.end_headers()
-			self.wfile.write(contents)
+				self.send_response(200)
+				self.send_header('Content-Type', contentType)
+				if asFilename:
+					self.send_header('Content-Disposition', 'attachment; filename="%s"' % asFilename)
+				self.end_headers()
+				self.wfile.write(contents)
 
 	def _sendError(self, code):
 		"""
@@ -258,11 +264,40 @@ class WebRequestHandlerMixIn:
 	def handle_qtestermaninstaller(self, args):
 		"""
 		Sends the latest installer script to install QTesterman.
+		Substitute a default server/port on the fly.
 		"""
+		def xform(source):
+			# The Ws connection url could be constructed from multipe sources:
+			# - the web connection IP address (self.connection.getsockname())
+			#   but this is an IP address and not very friendly. However, it will always
+			#   work, as the web listener is the same as for the Ws interface.
+			# - from a dedicated configuration variable so that the admin
+			#   can set a valid, resolvable hostname to connect to the server instead of an IP address.
+			# - using the interface.ws.port and the local hostname, but this hostname
+			#   may not be resolved by the client. However, we'll opt for this option for now
+			#   (more user friendly, and the chances that the hostname cannot be resolved or
+			#   resolved to an incorrect IP/interfaces are low - let me know if you have the need
+			#   for the second option instead).
+			url = 'http://%s:%s' % (socket.gethostname(), cm.get("interface.ws.port"))
+			return source.replace('DEFAULT_SERVER_URL = "http://localhost:8080"', 'DEFAULT_SERVER_URL = %s' % repr(url))
+
 		installerPath = os.path.abspath("%s/qtesterman/Installer.py" % cm.get_transient("testerman.testerman_home"))
 		# We should pre-configure the server Url on the fly
-		self._rawServeFile(installerPath, asFilename = "QTesterman-Installer.py")
+		self._rawServeFile(installerPath, asFilename = "QTesterman-Installer.py", xform = xform)
 	
+	def handle_pyagentinstaller(self, args):
+		"""
+		Sends the latest installer script to install a PyAgent.
+		Substitute a default server/port on the fly.
+		"""
+		def xform(source):
+			return source.replace('DEFAULT_TACS_IP = "127.0.0.1"', 'DEFAULT_TACS_IP = %s' % repr(cm.get("interface.xa.ip"))).replace(
+			'DEFAULT_TACS_PORT = 40000', 'DEFAULT_TACS_PORT = %s' % repr(int(cm.get("interface.xa.port"))))
+		
+		installerPath = os.path.abspath("%s/pyagent/agent-installer.py" % cm.get_transient("testerman.testerman_home"))
+		# We should pre-configure the server Url on the fly
+		self._rawServeFile(installerPath, asFilename = "agent-installer.py", xform = xform)
+
 	def handle_docroot(self, path):
 		"""
 		Download a file from the testerman (not web) docroot
