@@ -1785,6 +1785,12 @@ class WsClient:
 		archive = self.getFile(url)
 		if not archive:
 			raise Exception("Archive file not found on server (%s)" % url)
+
+		if not os.path.lexists(basepath):
+			try:
+				os.makedirs(basepath)
+			except Exception, e:
+				raise Exception("Unable to create the installation directory (%s): %s" % (basepath, e))
 		
 		# We untar it into the current directory.
 		archiveFileObject = StringIO.StringIO(archive)
@@ -1794,6 +1800,8 @@ class WsClient:
 			# untar each file into the qtesterman directory
 
 			for c in contents:
+				# Let's remove the first level of directory ("patch -p1")
+				c.name = '/'.join(c.name.split('/')[1:])
 				self.getLogger().debug("Unpacking %s to %s..." % (c.name, basepath))
 				tfile.extract(c, basepath)
 				# TODO: make sure to set write rights to allow future updates
@@ -1879,7 +1887,7 @@ class WInstallationDialog(QDialog):
 		self.urlComboBox.setMaximumWidth(250)
 
 		# Default: current directory
-		self.installationPathLineEdit = QLineEdit(os.path.normpath(unicode(QDir.currentPath())))
+		self.installationPathLineEdit = QLineEdit(os.path.normpath(unicode(QDir.currentPath()) + "/qtesterman"))
 		self.installationPathLineEdit.setMinimumWidth(150)
 
 		layout = QVBoxLayout()
