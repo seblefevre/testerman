@@ -752,5 +752,5 @@ def initialize(probePaths = ["../plugins/probes"], codecPaths = ["../plugins/cod
 	ProbeImplementationManager.setLogger(logging.getLogger("Agent.Probe"))
 	# Loading plugins: probes & codecs
 	localPath = os.path.normpath(os.path.realpath(os.path.dirname(sys.modules[globals()['__name__']].__file__)))
-	scanPlugins([ ((x.startswith('/') and x) or os.path.normpath(os.path.realpath('%s/%s' % (os.getcwd(), x)))) for x in codecPaths], label = "codec")
-	scanPlugins([ ((x.startswith('/') and x) or os.path.normpath(os.path.realpath('%s/%s' % (os.getcwd(), x)))) for x in probePaths], label = "probe")
+	scanPlugins([ ((os.path.isabs(x) and x) or os.path.normpath(os.path.realpath('%s/%s' % (os.getcwd(), x)))) for x in codecPaths], label = "codec")
+	scanPlugins([ ((os.path.isabs(x) and x) or os.path.normpath(os.path.realpath('%s/%s' % (os.getcwd(), x)))) for x in probePaths], label = "probe")

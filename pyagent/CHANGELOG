@@ -17,3 +17,6 @@
 
 1.1.4:
 - Modified: now includes an optimized Xa strack.
+
+1.1.5:
+- Fixed: now correctly scan plugins under Windows.
