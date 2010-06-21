@@ -470,6 +470,12 @@ class TcpPacketizerClientThread(threading.Thread):
 		self.trace("Tcp client stopped.")
 
 	def __main_receive_send_loop(self):
+		if sys.platform.startswith("win"):
+			return self.__main_receive_send_loop_win32()
+		else:
+			return self.__main_receive_send_loop_unix()
+
+	def __main_receive_send_loop_unix(self):
 		self.last_keep_alive_timestamp = time.time()
 		self.last_activity_timestamp = time.time()
 
@@ -573,6 +579,69 @@ class TcpPacketizerClientThread(threading.Thread):
 					tmp = current_time - self.last_keep_alive_timestamp - self.keep_alive_interval
 					if tmp >= 0:
 						timeout = min(timeout, tmp)
+
+			except EOFError, e:
+				self.trace("Disconnected by peer.")
+				raise e # We'll reconnect.
+
+			except socket.error, e:
+				self.trace("Low level error: " + str(e))
+				raise e # We'll reconnect
+
+			except Exception, e:
+				self.trace("Exception in main pool for incoming data: " + str(e))
+				pass
+
+	def __main_receive_send_loop_win32(self):
+		"""
+		This flavor currently does not use pipes to be notified
+		that the sending queue is not empty.
+		"""
+		self.last_keep_alive_timestamp = time.time()
+		self.last_activity_timestamp = time.time()
+		while not self.stopEvent.isSet():
+			try:
+				# Check if we have incoming data
+				r, w, e = select.select([ self.socket ], [], [ self.socket ], 0.001)
+				if self.socket in e:
+					raise EOFError("Socket select error: disconnecting")
+				elif self.socket in r:
+					read = self.socket.recv(65535)
+					if not read:
+						raise EOFError("Nothing to read on read event: disconnecting")
+					self.last_activity_timestamp = time.time()
+					self.buf = ''.join([self.buf, read]) # faster than += r
+					self.__on_incoming_data()
+
+				# Check inactivity timeout 
+				elif self.inactivity_timeout:
+					if time.time() - self.last_activity_timestamp > self.inactivity_timeout:
+						raise EOFError("Inactivity timeout: disconnecting")
+
+				# Send (queue) a Keep-Alive if needed
+				if self.keep_alive_interval:
+					if time.time() - self.last_keep_alive_timestamp > self.keep_alive_interval:
+						self.last_keep_alive_timestamp = time.time()
+						self.trace("Sending Keep Alive")
+						self.send_packet(KEEP_ALIVE_PDU)
+
+				# Send queued messages
+				while not self.queue.empty():
+					# Make sure we can send something. If not, keep the message for later attempt.
+					r, w, e = select.select([ ], [ self.socket ], [ self.socket ], 0.001)
+					if self.socket in e:
+						raise EOFError("Socket select error when sending a message: disconnecting")
+					elif self.socket in w:	
+						try:
+							message = self.queue.get(False)
+							self.socket.sendall(message)
+						except Queue.Empty:
+							pass
+						except Exception, e:
+							self.trace("Unable to send message: " + str(e))
+					else:
+						# Not ready. Will perform a new attempt on next main loop iteration
+						break
 
 			except EOFError, e:
 				self.trace("Disconnected by peer.")
@@ -1465,6 +1534,9 @@ class AgentInstaller(ConnectingNode):
 			ret = False
 		self.stop()
 		return ret
+	
+	def trace(self, txt):
+		print txt
 
 
 def main():
