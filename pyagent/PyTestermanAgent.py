@@ -711,8 +711,12 @@ class Agent(Nodes.ConnectingNode):
 		else:
 			return False # No newer version available, or preferred version not available
 
-		
-		
+	
+	def trace(self, txt):
+		"""
+		Overriden from ConnectingNode.
+		"""
+		self.getLogger().debug(txt)
 		
 	
 ################################################################################

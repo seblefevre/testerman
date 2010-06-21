@@ -37,7 +37,7 @@ import threading
 import select
 import socket
 
-VERSION = "1.0.0"
+VERSION = "1.0.1"
 
 def getVersion():
 	return VERSION
@@ -1260,7 +1260,7 @@ def getLogger():
 	return logging.getLogger("PyAgent Installer")
 
 class AgentInstaller(ConnectingNode):
-	def __init__(self, name = None):
+	def __init__(self, name = None, debug = False):
 		ConnectingNode.__init__(self, name = name, userAgent = "PyTestermanAgentInstaller/%s" % getVersion())
 		#: Declared probes, indexed by their name
 		self.probes = {}
@@ -1268,6 +1268,7 @@ class AgentInstaller(ConnectingNode):
 		self.channel = None
 		#: current agent registration status
 		self.registered = False
+		self._debug = debug
 
 	def initialize(self, controllerAddress, localAddress):
 		ConnectingNode.initialize(self, controllerAddress, localAddress)
@@ -1536,7 +1537,8 @@ class AgentInstaller(ConnectingNode):
 		return ret
 	
 	def trace(self, txt):
-		print txt
+		if self._debug:
+			self.getLogger().debug(txt)
 
 
 def main():
@@ -1558,7 +1560,7 @@ def main():
 		level = logging.INFO
 	logging.basicConfig(level = level, format = '%(asctime)s.%(msecs)03d %(thread)d %(levelname)-8s %(name)-20s %(message)s', datefmt = '%Y%m%d %H:%M:%S')
 
-	installer = AgentInstaller(name = "installer")
+	installer = AgentInstaller(name = "installer", debug = options.debug)
 	installer.initialize(controllerAddress = (options.controllerIp, options.controllerPort), localAddress = (options.localIp, 0))
 	getLogger().info("Trying to install a Testerman PyAgent from %s:%s..." % (options.controllerIp, options.controllerPort))
 	ret = installer.install(installDir = options.installDir, branches = options.branch, preferredVersion = options.version)
