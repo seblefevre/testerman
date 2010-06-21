@@ -187,6 +187,15 @@ class WebRequestHandlerMixIn:
 		else:
 			return None
 
+	def _sendPlainText(self, txt):
+		"""
+		Convenience function.
+		"""
+		self.send_response(200)
+		self.send_header('Content-Type', "text/plain")
+		self.end_headers()
+		self.wfile.write(txt)
+
 	##
 	# Templates (airspeed based)
 	##
@@ -268,17 +277,21 @@ class WebRequestHandlerMixIn:
 		"""
 		def xform(source):
 			# The Ws connection url could be constructed from multipe sources:
+			# - the HTTP 1.1 host header, if any
 			# - the web connection IP address (self.connection.getsockname())
 			#   but this is an IP address and not very friendly. However, it will always
 			#   work, as the web listener is the same as for the Ws interface.
 			# - from a dedicated configuration variable so that the admin
 			#   can set a valid, resolvable hostname to connect to the server instead of an IP address.
 			# - using the interface.ws.port and the local hostname, but this hostname
-			#   may not be resolved by the client. However, we'll opt for this option for now
+			#   may not be resolved by the client. However, we'll opt for this option as a fallback for now
 			#   (more user friendly, and the chances that the hostname cannot be resolved or
 			#   resolved to an incorrect IP/interfaces are low - let me know if you have the need
 			#   for the second option instead).
-			url = 'http://%s:%s' % (socket.gethostname(), cm.get("interface.ws.port"))
+			if "host" in self.headers:
+				url = 'http://%s' % self.headers["host"]
+			else:
+				url = 'http://%s:%s' % (socket.gethostname(), cm.get("interface.ws.port"))
 			return source.replace('DEFAULT_SERVER_URL = "http://localhost:8080"', 'DEFAULT_SERVER_URL = %s' % repr(url))
 
 		installerPath = os.path.abspath("%s/qtesterman/Installer.py" % cm.get_transient("testerman.testerman_home"))
