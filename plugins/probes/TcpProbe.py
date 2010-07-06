@@ -316,22 +316,30 @@ class TcpProbe(ProbeImplementationManager.ProbeImplementation):
 		self.getLogger().info("Starting listening on %s" % (str(addr)))
 		
 		# Should be mutex-protected
+		self._lock()
 		try:
 			self._listeningSocket = socket.socket(socket.AF_INET, socket.SOCK_STREAM, socket.IPPROTO_TCP)
 			self._listeningSocket.bind(addr)
 			self._listeningSocket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
 			self._listeningSocket.listen(10)
 		except Exception, e:
+			self._unlock()
 			raise e
+		self._unlock()
 	
 	def _stopListening(self):
 		self._disconnectIncomingConnections()
 		# Should be mutex-protected
-		if self._listeningSocket:
-			self.getLogger().info("Stopping listening...")
-			self._listeningSocket.close()
-			self._listeningSocket = None
-			self.getLogger().info("Stopped listening")
+		self._lock()
+		try:
+			if self._listeningSocket:
+				self.getLogger().info("Stopping listening...")
+				self._listeningSocket.close()
+				self._listeningSocket = None
+				self.getLogger().info("Stopped listening")
+		except Exception, e:
+			pass
+		self._unlock()
 	
 	def _startPollingThread(self):
 		if not self._pollingThread:
