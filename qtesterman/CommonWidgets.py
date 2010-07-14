@@ -613,18 +613,41 @@ class WGroupBox(QGroupBox):
 # Enhanced QTabWidget
 ################################################################################
 
+class WEnhancedTabBar(QTabBar):
+	"""
+	This slightly modified tab bar interprets a middle click on a tab
+	as a close request,
+	and a new "tabExpandRequested" event on double click.
+	"""
+	def mousePressEvent(self, event):
+		if event.button() == Qt.MidButton:
+			for i in range(self.count()):
+				if self.tabRect(i).contains(event.pos()):
+					self.emit(SIGNAL("tabCloseRequested(int)"), i)
+					break
+		return QTabBar.mousePressEvent(self, event)
+
+	def mouseDoubleClickEvent(self, event):
+		if event.button() == Qt.LeftButton:
+			for i in range(self.count()):
+				if self.tabRect(i).contains(event.pos()):
+					self.emit(SIGNAL("tabExpandRequested(int)"), i)
+					break
+		return QTabBar.mouseDoubleClickEvent(self, event)
+
 class WEnhancedTabWidget(QTabWidget):
 	"""
 	Utility widget.
 
 	Slightly enhanced tab widget with:
-	- close button support
+	- top right close button support + close on middle click
 	- automatic tab name renaming in case of duplicata
 	- send a signal "tabCountChanged" whenever a tab is added/removed
 	- send a closeCurrentTab signal when clicking on the close button
 	"""
 	def __init__(self, parent = None):
 		QTabWidget.__init__(self, parent)
+		self.setTabBar(WEnhancedTabBar())
 		self.__createWidgets()
 
 	def __createWidgets(self):
@@ -634,14 +657,17 @@ class WEnhancedTabWidget(QTabWidget):
 		self.closeButton.setDefaultAction(self.closeAction)
 		self.closeButton.setAutoRaise(1)
 		self.setCornerWidget(self.closeButton)
-		self.connect(self, SIGNAL('currentChanged(int)'), self.onTabChanged)
+		self.setTabsClosable(True)
+		self.connect(self.tabBar(), SIGNAL('tabExpandRequested(int)'), self.onTabExpandRequested)
 
-	def onTabChanged(self, index):
-		url = QTabWidget.widget(self, self.currentIndex()).model.getUrl()
-		QApplication.instance().get('gui.statusbar').setFileLocation(url)
-	
+	def onTabExpandRequested(self, index):
+		# Make current
+		
+		# Forward the signal
+		self.emit(SIGNAL('tabExpandRequested(int)'), index)
+
 	def closeCurrent(self):
-		self.emit(SIGNAL('closeCurrentTab()'))
+		self.emit(SIGNAL('tabCloseRequested(int)'), self.currentIndex())
 
 	def tabRemoved(self, index):
 		"""

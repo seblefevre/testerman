@@ -40,10 +40,13 @@ import PluginManager
 import OutlineView
 import ChatView
 import Preferences
+import DocumentManager
 
+# FIXME: editors should be loaded as "plugins"
 # The Editors module contains a reference to QScintilla.
 # We'll let the main application code display an error
 # dialog if the import fails.
+
 try:
 	import Editors
 except Exception, e:
@@ -407,7 +410,7 @@ class WAboutDialog(QDialog):
 
 	def __createWidgets(self):
 		self.setWindowTitle("About %s" % getClientName())
-		self.setWindowIcon(icon(':icons/testerman.png'))
+		self.setWindowIcon(icon(':icons/testerman-icon'))
 
 		licenseText = "This software is licensed under the General Public License 2.0"
 		authorsText = """Maintainer:
@@ -481,7 +484,7 @@ class WConnectionDialog(QDialog):
 
 	def __createWidgets(self):
 		self.setWindowTitle("Testerman login")
-		self.setWindowIcon(icon(':icons/testerman.png'))
+		self.setWindowIcon(icon(':icons/testerman-icon'))
 		self.setSizePolicy(QSizePolicy.Preferred, QSizePolicy.Preferred)
 		
 		layout = QVBoxLayout()
@@ -659,7 +662,7 @@ class WMainWindow(QMainWindow):
 			# The central things
 			QApplication.instance().notifyInitializationProgress("Initializing main window...")
 			self.setWindowTitle(getClientName() + ' ' + getClientVersion())
-			self.setWindowIcon(icon(':/icons/testerman.png'))
+			self.setWindowIcon(icon(':/icons/testerman-icon'))
 			
 			# Enable left side docks to maximize to full height
 			# (useful for file browsers, etc)
@@ -671,7 +674,7 @@ class WMainWindow(QMainWindow):
 			self.setDockNestingEnabled(True)
 
 			QApplication.instance().notifyInitializationProgress("Initializing document manager...")
-			self.documentManager = Editors.WDocumentManager(self)
+			self.documentManager = DocumentManager.WDocumentManager(self)
 			self.setCentralWidget(self.documentManager)
 
 			# Acceptable docks

@@ -5,6 +5,7 @@ pyrcc4 resources.qrc -o Resources.py
 -->
 	<!-- main application icons -->
 	<file alias="testerman.png">resources/semn.png</file>
+	<file alias="testerman-icon">resources/testerman.ico</file>
 
 	<!-- server status -->
 	<file alias="server-ok">resources/user-online.png</file>

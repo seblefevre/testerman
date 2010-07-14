@@ -8,6 +8,11 @@ KNOWN BUGS:
   be created/deleted/renamed at root level frequently.
 
 
+1.3.0-svn:
+- Added: ability to close tabs with the middle mouse button.
+- Modified: finally a dedicated Testerman icon !
+
+
 1.2.1:
 - Fixed: 100% usage and real-time interface not working under
   Microsoft Windows.
