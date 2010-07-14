@@ -1060,7 +1060,7 @@ class CmdContextManagerAdapter(ContextManager):
 			ret = self._getSuggestions(text)
 			if isinstance(ret, basestring):
 				# a single suggestion was returned. Complete with it.
-				return [ ret ]
+				return [ ret + ' ' ] # the trailing space enables the next completion attempt to focus on next token, not current token completion
 			elif isinstance(ret, list):
 				# multiple possibilities. Display them.
 				self.showCompletionSuggestions(ret)
@@ -1069,7 +1069,6 @@ class CmdContextManagerAdapter(ContextManager):
 			else:
 				# Error during completion. Do not complete anything.
 				return []
-		
 
 		def _getSuggestions(self, text, *ignored):
 			"""
