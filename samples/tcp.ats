@@ -168,6 +168,13 @@ conf = TestAdapterConfiguration('remote.nonotif')
 conf.bindByUri('client', 'probe:tcp01@localhost', 'tcp')
 conf.bindByUri('server', 'probe:tcp02@localhost', 'tcp', listening_port = int(get_variable('PX_SERVER_PORT')))
 
+conf = TestAdapterConfiguration('local.ssl')
+conf.bindByUri('client', 'probe:tcp01', 'tcp', enable_notifications = True, use_ssl = True)
+conf.bindByUri('server', 'probe:tcp02', 'tcp', enable_notifications = True, listening_port = int(get_variable('PX_SERVER_PORT')), use_ssl = True)
+
+conf = TestAdapterConfiguration('remote.ssl')
+conf.bindByUri('client', 'probe:tcp01@localhost', 'tcp', enable_notifications = True, use_ssl = True)
+conf.bindByUri('server', 'probe:tcp02@localhost', 'tcp', enable_notifications = True, listening_port = int(get_variable('PX_SERVER_PORT')), use_ssl = True)
 
 ##
 # Control definition
@@ -189,3 +196,10 @@ TESTCASE_TRANSPORT_TCP_NO_NOTIFICATIONS(id_suffix = 'LOCAL').execute(server_ip_p
 useTestAdapterConfiguration('remote.nonotif')
 TESTCASE_TRANSPORT_TCP_NO_NOTIFICATIONS(id_suffix = 'REMOTE').execute(server_ip_port = '%s:%s' % (get_variable('PX_SERVER_IP'), get_variable('PX_SERVER_PORT')))
 
+useTestAdapterConfiguration('local.ssl')
+TESTCASE_TRANSPORT_TCP(id_suffix = 'SSL_LOCAL').execute(server_ip_port = '%s:%s' % (get_variable('PX_SERVER_IP'), get_variable('PX_SERVER_PORT')))
+TESTCASE_TRANSPORT_TCP_NO_NOTIFICATIONS(id_suffix = 'SSL_LOCAL').execute(server_ip_port = '%s:%s' % (get_variable('PX_SERVER_IP'), get_variable('PX_SERVER_PORT')))
+
+useTestAdapterConfiguration('remote.ssl')
+TESTCASE_TRANSPORT_TCP(id_suffix = 'SSL_REMOTE').execute(server_ip_port = '%s:%s' % (get_variable('PX_SERVER_IP'), get_variable('PX_SERVER_PORT')))
+TESTCASE_TRANSPORT_TCP_NO_NOTIFICATIONS(id_suffix = 'SSL_REMOTE').execute(server_ip_port = '%s:%s' % (get_variable('PX_SERVER_IP'), get_variable('PX_SERVER_PORT')))

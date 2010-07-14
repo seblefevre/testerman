@@ -26,6 +26,49 @@ import socket
 import sys
 import threading
 import time
+import tempfile
+import os
+
+try:
+	# SSL support only available starting from Python 2.6
+	import ssl
+except ImportError:
+	pass
+
+# A default 1024-bit key
+DEFAULT_SSL_PRIVATE_KEY = """-----BEGIN RSA PRIVATE KEY-----
+MIICWwIBAAKBgQDixwQncELtZxYdgczRns7mtHPlbjbfU58qg4IVE6hX1BbOoaG+
+Skkg4tRWRX1IRz21kgJR0dGeZMxpzBEbvljJRXzCDjDUSpXIjKxFXJDJJc6vxjON
+nk0En3bifDeXCTumazYQYgECJOatR0RdgP3uqvNo5IRHcYxSZlZpLAUZ/QIDAQAB
+AoGAeHaZaU3D75IL+F6j61H9vCVtTxmNwnIMIaw75HBNw2HhP6AyZ//T+skjXDSL
+iWJ2kEXgP5BCVm5a+3QwPlmNlVTL7OoyxdM602NBYAkQM9Ws0Q72XXvO+t8BkUa4
+PIiIBamnuk3N2+ollMT4+ydwJ8ED8B8v38mbXNVqySTr4g0CQQD6fywj9Lk+UYlH
+5JVQnoCPM43qoTt2bS1mXh/MwhiwLh6QmiFj+VyKHQg/lgDO+IrQVN+J/mi7ezjN
+Lt0zNb2DAkEA58JxY4yL1kd6abJcNJDZdGKQK5jvlG6KCFyBxBMZ0aAWA//gVS0G
+9WUQJTypAfllHDVE5BJSzG2Lv9oO2l2yfwJAQ+fRqXWf+frUgj6/E3nEVA2fvSk0
+G2iBVCzT5gf/9VKrSnvd7WId6frwz3v0gCb0SoGXj6r97UT8IvM/V7CLzQJAOBmh
+SO+kieITh7JdD3xgpwOU0njaxZtcXlnGL6hP/6Y4rg8qRnP30z77gYgFgSzVhNaA
+LpUg5cs+oNov7jvwEQJAMcbZQFqgvEcDQZMZsni7LHWA/vrdve52E116c2k7D+ue
+0Y7pPAsMwmQyDRovHFuQhAVeoavWBy2Ktjua6qEHKA==
+-----END RSA PRIVATE KEY-----"""
+
+# With an associated self-signed certificate
+DEFAULT_SSL_CERTIFICATE = \
+"""-----BEGIN CERTIFICATE-----
+MIICPTCCAaYCCQDP2Zlsj6TqTDANBgkqhkiG9w0BAQUFADBjMQswCQYDVQQGEwJG
+UjERMA8GA1UECBMIR3Jlbm9ibGUxDzANBgNVBAcTBk1leWxhbjESMBAGA1UEChMJ
+VGVzdGVybWFuMRwwGgYDVQQDExNzYW1wbGUudGVzdGVybWFuLmZyMB4XDTEwMDcx
+MzE1NTMwNloXDTIwMDcxMDE1NTMwNlowYzELMAkGA1UEBhMCRlIxETAPBgNVBAgT
+CEdyZW5vYmxlMQ8wDQYDVQQHEwZNZXlsYW4xEjAQBgNVBAoTCVRlc3Rlcm1hbjEc
+MBoGA1UEAxMTc2FtcGxlLnRlc3Rlcm1hbi5mcjCBnzANBgkqhkiG9w0BAQEFAAOB
+jQAwgYkCgYEA4scEJ3BC7WcWHYHM0Z7O5rRz5W4231OfKoOCFROoV9QWzqGhvkpJ
+IOLUVkV9SEc9tZICUdHRnmTMacwRG75YyUV8wg4w1EqVyIysRVyQySXOr8YzjZ5N
+BJ924nw3lwk7pms2EGIBAiTmrUdEXYD97qrzaOSER3GMUmZWaSwFGf0CAwEAATAN
+BgkqhkiG9w0BAQUFAAOBgQDET13MT8ctRiuQkfCLO8D9iyKjT94FRe+ocPbUjOts
+gjkrh5miH91MhabQrqEcwOArF+2yuakvfgdPP3KbHgBXDwtYg/+wqAj4e/74D6Ai
+Ud0h6vHFVZreLZm7F1QNLpgUSrPxra2xkTiH7NxEMYlJheGCnJ4F6YP3IdKMUicZ
+Og==
+-----END CERTIFICATE-----"""
 
 class Connection:
 	def __init__(self):
@@ -53,12 +96,24 @@ class TcpProbe(ProbeImplementationManager.ProbeImplementation):
 	|| `default_sut_address` || string (ip:port) || `None` || If set, used as a default SUT address if none provided by the user ||
 	|| `default_decoder` || string || `None` || If set, must be a valid codec name (aliases are currently not supported). This codec is then used to decode all incoming packets, and only the probe only raises an incoming message when the codec successfully decoded something. This is particular convenient when used with an incremental codec (such as `'http.request'`) that will then be responsible for identifying the actual application PDU in the TCP stream. ||
 	|| `default_encoder` || string || `None` || If set, must be a valid codec name (aliases are currently not supported). This codec is then used to encode all outgoing packets, without a need to use it when sending the message through the port mapped to this probe. ||
+	|| `use_ssl` || boolean || `False` || If set, all outgoing and incoming traffic through is probe is transported over SSLv3. All TLS negotiations are performed by the probe. However, ... ||
+	|| `ssl_key` || string || `None` || The SSL key to use if `use_ssl`is set to `True`. Contains a private key associated to `ssl_certificate`, in base64 format. If not provided, a default sample private key is used. ||
+	|| `ssl_certificate` || string || `None` || The SSL certificate to use if `use_ssl`is set to `True`. Contains a certificate in PEM format that will be used when a certificate is needed by the probe connection(s). If not provided, a default one that matches the default private key, is used. ||
 
 	= Overview =
 	
+	This is a general purpose probe to transport anything over TCP, with basic control on connections/disconnections
+	(you can get optional incoming connection notifications or outgoing connection confirmations, or simply focus on payload exchanges),
+	and a basic support for SSL (v3).
+	
+	Such a probe may be used as a base to test any protocol transported over TCP.[[BR]]
+	Combined with the `http.request` and `http.response` codecs, this is enough to test anything based on HTTP/HTTPS. You may also use the `diameter` or `sua` codec, actually any codec that comes
+	with an incremental decoding implementation. You just have to define such a codec as the `default_decoder` property (used to decode incoming stream) or the `default_encoder` property (used to
+	encode outgoing messages).
+	
 	...
 	
-	== ADPU identification ==
+	== ADPU Identification ==
 	
 	The probe first waits for `size` bytes (if the `size` property is set) or (exclusively) for the `separator` character(s) (is the `separator` property is set).
 	If none of those properties are set, the probe only considers what it read in the stream (which is system-dependent).[[BR]]
@@ -68,9 +123,20 @@ class TcpProbe(ProbeImplementationManager.ProbeImplementation):
 
 	...	
 
+	== Basic SSL Support ==
+	
+	When the property `use_ssl` is set to True, the probe automatically performs SSL negotiations after a TCP connection (probe as a client) or when accepting a new incoming connection (as a server).[[BR]]
+	If `enable_notifications` is True, the `connectionConfirm` message will contain the server's certificate in DER format. The `connectionNotification` message is planned
+	to contain the client's certificate as well, but it is currently not possible to force the (server side) probe to request it.[[BR]]
+	In addition, received certificates are not validated.
+	
+	This probe offers very little control on these negotiations and is not meant to test SSL-level stuff (for instance, how a SUT implemented SSL itself).
+	This support is provided as a convenience to interact with a SUT through higher-level
+	protocols that have been ported over SSL (HTTP, SIP, ...).
+
 	== Availability ==
 
-	All platforms.
+	All platforms. However, SSL support depends on the Python SSL module, provided by default with Python 2.6 and later on Unix platforms.
 
 	== Dependencies ==
 
@@ -89,9 +155,9 @@ class TcpProbe(ProbeImplementationManager.ProbeImplementation):
 	{{{
 	type union NotificationType
 	{
-		record {} connectionNotification, // new incoming connection established
+		record { octetstring certificate optional } connectionNotification, // new incoming connection established
 		charstring disconnectionNotification, // contains a human readable reason to the disconnection
-		record {} connectionConfirm, // connection request OK
+		record { octetstring certificate optional } connectionConfirm, // connection request OK
 		charstring connectionError, // contains a human readable error after a connection request
 	}
 	
@@ -129,6 +195,9 @@ class TcpProbe(ProbeImplementationManager.ProbeImplementation):
 		self.setDefaultProperty('default_sut_address', None)
 		self.setDefaultProperty('default_decoder', None)
 		self.setDefaultProperty('default_encoder', None)
+		self.setDefaultProperty('use_ssl', None)
+		self.setDefaultProperty('ssl_key', DEFAULT_SSL_PRIVATE_KEY)
+		self.setDefaultProperty('ssl_certificate', DEFAULT_SSL_CERTIFICATE)
 
 	# ProbeImplementation reimplementation
 	def onTriMap(self):
@@ -215,6 +284,46 @@ class TcpProbe(ProbeImplementationManager.ProbeImplementation):
 	def _unlock(self):
 		self._mutex.release()
 	
+	def _toSsl(self, sock, serverSide):
+		try:
+			keyfile = None
+			certfile = None
+
+			ssl_key = self['ssl_key']
+			if ssl_key:
+				(tmpkey, keyfile) = tempfile.mkstemp()
+				tmpkey = os.fdopen(tmpkey, 'w')
+				if not ssl_key.startswith('--'):
+					tmpkey.write('-----BEGIN RSA PRIVATE KEY-----\n')
+					tmpkey.write(ssl_key + '\n')
+					tmpkey.write('-----END RSA PRIVATE KEY-----\n')
+				else:
+					tmpkey.write(ssl_key)
+				tmpkey.close()
+
+			ssl_certificate = self['ssl_certificate']
+			if ssl_certificate:
+				(tmpcert, certfile) = tempfile.mkstemp()
+				tmpcert = os.fdopen(tmpcert, 'w')
+				tmpcert.write(ssl_certificate)
+				tmpcert.close()
+
+			s = ssl.wrap_socket(sock, keyfile = keyfile, certfile = certfile, server_side = serverSide)
+			return s
+		except ssl.SSLError, e:
+			raise Exception("SSL Error: %s" % e)
+		finally:
+			if keyfile:
+				try:
+					os.remove(keyfile)
+				except:
+					pass
+			if certfile:
+				try:
+					os.remove(certfile)
+				except:
+					pass
+
 	def _connect(self, to):
 		"""
 		Creates an TCP connection to the to address (ip, port),
@@ -225,8 +334,12 @@ class TcpProbe(ProbeImplementationManager.ProbeImplementation):
 		try:
 			sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM, socket.IPPROTO_TCP)
 			sock.bind((self['local_ip'], self['local_port']))
-			# Blocking (for now)
+			# Blocking connection (for now)
+			# FIXME: make connection asynchronous so that userland timers can work
 			sock.connect(to)
+			if self['use_ssl']:
+				sock = self._toSsl(sock, serverSide = False)
+				self.getLogger().debug("SSL client socket initialized.")
 			conn = self._registerOutgoingConnection(sock, to)
 		except Exception, e:
 			self.getLogger().info("Connection to %s failed: %s" % (str(to), str(e)))
@@ -235,7 +348,10 @@ class TcpProbe(ProbeImplementationManager.ProbeImplementation):
 			else:
 				raise e
 		if conn and self['enable_notifications']:
-			self.triEnqueueMsg(('connectionConfirm', {}), "%s:%s" % to)
+			args = {}
+			if self['use_ssl']:
+				args = { 'certificate': sock.getpeercert(binary_form = True) }
+			self.triEnqueueMsg(('connectionConfirm', args), "%s:%s" % to)
 		if conn:
 			self.getLogger().info("Connected to %s" % str(to))
 		return conn
@@ -312,6 +428,12 @@ class TcpProbe(ProbeImplementationManager.ProbeImplementation):
 				self._disconnect(conn.peerAddress, reason = 'disconnected by local user')
 	
 	def _startListening(self):
+		if self['use_ssl']:
+			try:
+				ssl
+			except:
+				raise Exception("SSL Support is not available on this host. It requires Python 2.6+.")
+	
 		addr = (self['listening_ip'], self['listening_port'])
 		self.getLogger().info("Starting listening on %s" % (str(addr)))
 		
@@ -428,11 +550,15 @@ class TcpProbe(ProbeImplementationManager.ProbeImplementation):
 			self.logReceivedPayload("TCP data", msg, addr)
 			self.triEnqueueMsg(msg, addr)
 	
-
 	def _onIncomingConnection(self, sock, addr):
 		self._registerIncomingConnection(sock, addr)
 		if self['enable_notifications']:
-			self.triEnqueueMsg(('connectionNotification', {}), "%s:%s" % addr)
+			args = {}
+			if self['use_ssl']:
+				c = sock.getpeercert(binary_form = True)
+				if c:
+					args = { 'certificate': c }
+			self.triEnqueueMsg(('connectionNotification', args), "%s:%s" % addr)
 
 class PollingThread(threading.Thread):
 	"""
@@ -470,6 +596,8 @@ class PollingThread(threading.Thread):
 						if s in listening:
 							self._probe.getLogger().debug("Accepting a new connection")
 							(sock, addr) = s.accept()
+							if self._probe['use_ssl']:
+								sock = self._probe._toSsl(sock, serverSide = True)
 							self._probe._onIncomingConnection(sock, addr)
 							# Raise a new connection notification event - soon
 						else:
