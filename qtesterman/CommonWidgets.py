@@ -657,7 +657,11 @@ class WEnhancedTabWidget(QTabWidget):
 		self.closeButton.setDefaultAction(self.closeAction)
 		self.closeButton.setAutoRaise(1)
 		self.setCornerWidget(self.closeButton)
-		self.setTabsClosable(True)
+		try:
+			# Qt 4.6+
+			self.setTabsClosable(True)
+		except:
+			pass
 		self.connect(self.tabBar(), SIGNAL('tabExpandRequested(int)'), self.onTabExpandRequested)
 
 	def onTabExpandRequested(self, index):
