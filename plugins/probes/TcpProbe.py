@@ -244,9 +244,9 @@ class TcpProbe(ProbeImplementationManager.ProbeImplementation):
 		try:
 			# Split a ip:port to a (ip, port)
 			t = sutAddress.split(':')
-			addr = (t[0], int(t[1]))
+			addr = (socket.gethostbyname(t[0]), int(t[1]))
 		except:
-			raise Exception("Invalid or missing SUT Address when sending a message")
+			raise Exception("Invalid, unresolvable, or missing SUT Address when sending a message")
 
 
 		# First look for an existing connection
@@ -407,13 +407,15 @@ class TcpProbe(ProbeImplementationManager.ProbeImplementation):
 
 	def _disconnect(self, addr, reason):
 		self.getLogger().info("Disconnectiong from %s, reason: %s" % (addr, reason))
+		conn = None
 		self._lock()
 		if addr in self._connections:
 			conn = self._connections[addr]
 			del self._connections[addr]
 		self._unlock()
 
-		conn.socket.close()
+		if conn:
+			conn.socket.close()
 		# Disconnection notification
 		if self['enable_notifications']:
 			self.triEnqueueMsg(('disconnectionNotification', reason), "%s:%s" % addr)
@@ -539,7 +541,7 @@ class TcpProbe(ProbeImplementationManager.ProbeImplementation):
 				(status, consumedSize, decodedMessage, summary) = CodecManager.incrementalDecode(decoder, buf)
 				if status == CodecManager.IncrementalCodec.DECODING_NEED_MORE_DATA:
 					# Do nothing. Just wait for new raw segments.
-					self.getLogger().info("Waiting for more raw segment to complete incremental decoding (using codec %s)." % decoder)
+					self.getLogger().info("Waiting for more raw segments to complete incremental decoding (using codec %s)." % decoder)
 					break
 				elif status == CodecManager.IncrementalCodec.DECODING_OK:
 					if consumedSize == 0:
@@ -552,7 +554,7 @@ class TcpProbe(ProbeImplementationManager.ProbeImplementation):
 					# make sure we update the local loop buffer, too
 					buf = conn.decodingBuffer 
 				else: # status == CodecManager.IncrementalCodec.DECODING_ERROR:
-					self.getLogger().error("Unable to decode raw data with the default encoder (codec %s). Ignoring the segment." % decoder)
+					self.getLogger().error("Unable to decode raw data with the default decoder (codec %s). Ignoring the segment." % decoder)
 					break
 
 		else: # No default decoder
@@ -625,7 +627,7 @@ class PollingThread(threading.Thread):
 					
 			except Exception, e:
 				self._probe.getLogger().warning("exception while polling active/listening sockets: %s" % str(e))
-				# Avoid 100% CPU usage when select() raised an error
+				# Avoid 100% CPU usage when select() raises an error
 				time.sleep(0.01)	
 					
 
