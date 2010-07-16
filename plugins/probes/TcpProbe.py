@@ -309,10 +309,6 @@ class TcpProbe(ProbeImplementationManager.ProbeImplementation):
 				tmpcert.close()
 
 			s = ssl.wrap_socket(sock, keyfile = keyfile, certfile = certfile, server_side = serverSide)
-			return s
-		except ssl.SSLError, e:
-			raise Exception("SSL Error: %s" % e)
-		finally:
 			if keyfile:
 				try:
 					os.remove(keyfile)
@@ -323,6 +319,19 @@ class TcpProbe(ProbeImplementationManager.ProbeImplementation):
 					os.remove(certfile)
 				except:
 					pass
+			return s
+		except ssl.SSLError, e:
+			if keyfile:
+				try:
+					os.remove(keyfile)
+				except:
+					pass
+			if certfile:
+				try:
+					os.remove(certfile)
+				except:
+					pass
+			raise Exception("SSL Error: %s" % e)
 
 	def _connect(self, to):
 		"""
