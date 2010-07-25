@@ -35,6 +35,8 @@ import random
 import re
 import threading
 import time
+import os
+import select
 
 API_VERSION = "1.0"
 
@@ -522,6 +524,8 @@ class TestComponent:
 		Prepares the TC for discarding: purge all port queues.
 		"""
 		for port in self._ports.values():
+			logInternal("Finalizing port %s" % port)
+			port.stop()
 			port._finalize()
 	
 	def _makeMtc(self, testcase):
@@ -542,7 +546,9 @@ class TestComponent:
 		@returns: the port associated to portName.
 		"""
 		if not self._ports.has_key(name):
-			self._ports[name] = Port(self, name)
+			port = Port(self, name)
+			self._ports[name] = port
+			port.start()
 		return self._ports[name]
 
 	# Behaviour thread management
@@ -868,8 +874,8 @@ class Port:
 		# The internal port's message queue
 		self._messageQueue = []
 
-		# The port state. Initially started, so that no start() is required.		
-		self._started = True
+		# The port state. Automatically started() when accessed for the first type ( via tc[port])
+		self._started = False
 		# associated test component.
 		self._tc = tc
 
@@ -880,6 +886,10 @@ class Port:
 		# The test system interface we are mapped to, if any.
 		# In this case, _connectedPorts shall be empty.
 		self._mappedTsiPort = None
+		
+		# a pipe ((r, w) fds) to notify that the port has something new in it.
+		# Enables to implement a poll/select on multiple ports in alt()
+		self._notifier = None
 	
 	def _lock(self):
 		self._mutex.acquire()
@@ -904,12 +914,18 @@ class Port:
 		return port in self._connectedPorts
 	
 	def _enqueue(self, message, from_):
-		# logInternal("%s enqueuing message, started %s" % (str(self), str(self._started)))
+#		logInternal("%s enqueuing message (started=%s)" % (str(self), str(self._started)))
+		self._lock()
 		if self._started:
-			self._lock()
 			self._messageQueue.append((message, from_))
-			self._unlock()
+			try:
+				os.write(self._notifier[1], 'r')
+				logInternal("port %s: notifying a new message for reader on %s" % (self, self._notifier[0]))
+			except Exception, e:
+				logInternal("port %s: async notifier error %s" % (self, e))
+				pass
 		# else not started: not enqueueing anything.
+		self._unlock()
 
 	def _remove(self, message, from_):
 		"""
@@ -920,6 +936,10 @@ class Port:
 		self._lock()
 		try:
 			self._messageQueue.remove((message, from_))
+			try:
+				os.read(self._notifier[0], 1)
+			except:
+				pass
 		except ValueError:
 			# Not in queue
 			pass
@@ -980,9 +1000,15 @@ class Port:
 		Starts the port (after purging its queue)
 		"""
 		self._lock()
-		self._messageQueue = []
+		if not self._started:
+			self._messageQueue = []
+			self._started = True
+			try:
+				self._notifier = os.pipe()
+			except Exception, e:
+				self._unlock()
+				raise Exception("Unable to start port %s: %s" % (str(self), e))
 		self._unlock()
-		self._started = True
 		logInternal("%s started" % str(self))
 
 	def stop(self):
@@ -990,7 +1016,16 @@ class Port:
 		Stops the port, keeping it from receiving further messages.
 		Current enqueue messages are kept.
 		"""
-		self._started = False
+		self._lock()
+		if self._started:
+			self._started = False
+			try:
+				os.close(self._notifier[0])
+				os.close(self._notifier[1])
+			except:
+				pass
+			self._notifier = None
+		self._unlock()			
 		logInternal("%s stopped" % str(self))
 
 	def clear(self):
@@ -1140,6 +1175,8 @@ class TestCase:
 			ptc.stop()
 		for ptc in self._ptcs:
 			ptc.done()
+		
+		self._mtc._finalize()
 			
 		# Stop timers
 		_stopAllTimers()
@@ -1741,9 +1778,12 @@ def alt(alternatives):
 	
 #	logInternal("Entering alt():\n%s" % alternatives)
 	
-	# Step 1.
+	# Step 1. Preparation.
 	# Alternatives per port
 	portAlternatives = {}
+	# And prepare a list of watched fds (pipes) to be notified as soon as a
+	# port has something new in it.
+	watchedPortsFds = []
 	
 	for alternative in alternatives:
 		# Optional guard. Its presence is detected if the first element of the clause is callable.
@@ -1757,8 +1797,9 @@ def alt(alternatives):
 			condition = alternative[0]
 			actions = alternative[1:]
 		
- 		if not portAlternatives.has_key(condition.port):
+ 		if not portAlternatives.has_key(condition.port) and condition.port._started:
 			portAlternatives[condition.port] = []
+			watchedPortsFds.append(condition.port._notifier[0])
 		portAlternatives[condition.port].append((guard, condition, actions))
 
 	# Step 2.
@@ -1804,7 +1845,7 @@ def alt(alternatives):
 							if match:
 								matchedInfo = (guard, condition, actions, message, None) # None: decodedMessage
 								# Consume the message
-								port._messageQueue.remove((message, from_))
+								port._remove(message, from_)
 								# Exit the port alternative loop, with matchedInfo
 								break
 					
@@ -1871,6 +1912,12 @@ def alt(alternatives):
 					# We should really take a "snapshot" (ie freezing ports) and considering timestamped messages...
 					(message, from_) = port._messageQueue[0]
 					port._messageQueue = port._messageQueue[1:]
+					# FIXME - must be hidden in the port class
+					try:
+						os.read(port._notifier[0], 1)
+					except:
+						pass
+
 				port._unlock()
 				if message is not None: # And what is we want to send "None" ? should be considered as a non-message, ie a non-send ?
 					# 2.2: For each existing satisfied conditions for this port (x[0] is the guard)
@@ -1918,8 +1965,10 @@ def alt(alternatives):
 					# no message for this port: nothing to do
 					pass
 				
-		# Little delay between two loops, forcing sched yield
-		time.sleep(0.0001)
+		# Now wait until another message arrives on one of our watched ports (if we have to wait)
+		if (not matchedInfo) or repeat:
+			r, w, e = select.select(watchedPortsFds, [], [], 3)
+#			if r: logInternal("activity detected on port(s) %s" % r)
 
 # Control "Keywords" for alt().
 # May be used as is directly, in a lambda, or returned from an altstep or a function called
