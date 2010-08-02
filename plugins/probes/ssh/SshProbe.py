@@ -231,11 +231,17 @@ class SshProbe(ProbeImplementationManager.ProbeImplementation):
 		self._unlock()
 		self._sshThread.start()
 
-	def onSshThreadTerminated(self):
+	def onSshThreadTerminated(self, status, output):
 		self._lock()
 		self._sshThread = None
 		self._unlock()
-	
+
+		if status is not None:
+			# We stopped on command completion
+			if self['convert_eol']:
+				output = output.replace('\r\n', '\n')
+			self.triEnqueueMsg({ 'status': status, 'output': output })
+		# Otherwise, we stopped on cancel - nothing to raise.
 
 
 class SshThread(threading.Thread):
@@ -271,19 +277,12 @@ class SshThread(threading.Thread):
 		except Exception, e:
 			self._probe.triEnqueueMsg('Internal SSH error: %s' % str(e))
 			
-		if status is not None:
-			# We stopped on command completion
-			if self._probe['convert_eol']:
-				output = output.replace('\r\n', '\n')
-			self._probe.triEnqueueMsg({ 'status': status, 'output': output })
-		# Otherwise, we stopped on cancel - nothing to raise.
-
 		# Kill the ssh session, if still active for wathever reason
 		try:
 			self._ssh.terminate()
 		except:
 			pass
-		self._probe.onSshThreadTerminated()
+		self._probe.onSshThreadTerminated(status, output)
 			
 
 	def stop(self):
