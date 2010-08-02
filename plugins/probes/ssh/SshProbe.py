@@ -52,10 +52,16 @@ class SshProbe(ProbeImplementationManager.ProbeImplementation):
 	you should not expect a command response anymore.
 
 	No interaction is possible during the command execution.
+	
+	Like ProbeExec, this probe is not re-entrant and is only able to execute one command at a time. You can execute another one
+	(using the `ExecCommand` `execute` message template) only when the previous command
+	execution was either complete (i.e. you received a `ExecResponse` message) or cancelled via a `ExecCommand` `cancel` command
+	(no response in this case).[[BR]]
+	If you need to execute multiple commands in parallel, you should use multiple probes - consider that each one is as if you 
+	had one open ssh terminal connection to your SUT.
 
 	Notes:
-	 * when starting daemons from this probe, make sure that your daemon correctly closes standard output, otherwise
-	the probe never detects the command as being complete.
+	 * when starting daemons from this probe, make sure that your daemon correctly closes standard output, otherwise the probe never detects the command as being complete. For poorly written daemonized programs, adding a `>/dev/null 2>&1` in the `execute` command line is usually enough to make the probe return in such cases.
 
 	== Availability ==
 
@@ -67,8 +73,7 @@ class SshProbe(ProbeImplementationManager.ProbeImplementation):
 
 	== See Also ==
 
-	 * ProbeExec, implementing the same port type for local execution (convenient when you have no SSH access
-	to your machine, but you must deploy an agent on it)
+	 * ProbeExec, implementing the same port type for local execution (convenient when you have no SSH access to your machine, but you must deploy an agent on it)
 	 * ProbeExecInteractive, to run a command line program and interact with it (CLI testing, etc)
 
 
