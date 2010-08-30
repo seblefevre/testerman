@@ -49,9 +49,9 @@ class Visitor:
 		assert (self.indent_lev >= 0)
 	def register_assignment (self, ident, val, dependencies):
 		if self.assignments.has_key (ident):
-			raise "Duplicate assignment for " + ident
+			raise Exception("Duplicate assignment for %s " % ident)
 		if self.defined_dict.has_key (ident):
-			raise "cross-module duplicates for " + ident
+			raise Exception("cross-module duplicates for %s " % ident)
 		self.defined_dict [ident] = 1
 		self.assignments[ident] = val
 		self.dependencies [ident] = dependencies
