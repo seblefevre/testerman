@@ -31,7 +31,7 @@ Generating new BER codecs from ASN.1
 If you need to create new codecs from an ASN.1 file, you may follow this 
 procedure:
 
-1. run: ./py_output.py myfile.asn > myfile_asn.py
+1. run: ./py_output.py [--implicit | --explicit] myfile.asn > myfile_asn.py
 
 You may need to modify the ASN.1 file to comply with the tyrannioware parser
 limitations. In particular, module OIDs must always contains numbers:
