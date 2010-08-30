@@ -311,6 +311,11 @@ except Exception, e:
 
 for k, v in inputSession.items():
 	Testerman.set_variable(k, v)
+	# Make the PX_ parameters appear as module variables for convenience
+	if k.startswith('PX_'):
+		setattr(sys.modules[__name__], k, v)
+
+
 
 ##
 # Globals wrapping: a way to to export to the global scopes
