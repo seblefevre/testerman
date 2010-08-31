@@ -1,0 +1,39 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml">
+  
+<head>
+	<title>Repository: ${path}</title>
+	<link rel="stylesheet" type="text/css" href="/static/testerman.css" />
+</head>
+<body>
+	<div id="page">
+		<div id="banner">
+			<div id="header">
+				<a id="logo" href="/"><img src="/static/testerman-logo.png" alt="testerman" /></a>
+			</div>
+		</div>
+		<div id="main">
+			<div id="content" class="wiki">
+				<div class="wikipage">
+
+<h2>Available ATSes and Campaigns in ${path}:</h2>
+<p>
+#foreach ($entry in $entries)
+	#if ($entry.type == "directory")
+	<li><a class="wiki" href="/repository?${path}/${entry.name}">${entry.name}</a></li>
+	#else
+	#if ($entry.type == "ats")
+	<li>&lt;${entry.type}&gt; <a class="wiki" href="/ats?${path}/${entry.name}">${entry.name}</a></li>
+	#else
+	<li>&lt;${entry.type}&gt; ${entry.name}</li>
+	#end
+	#end
+#end
+</ul>	
+</p>
+				</div>
+			</div>
+		</div>
+	</div>
+</body>
+	 

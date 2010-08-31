@@ -74,7 +74,7 @@ ContentTypes = {
 # Template & static contents serving request handler
 ################################################################################
 
-class WebRequestHandlerMixIn:
+class BaseWebRequestHandlerMixIn:
 	"""
 	This mixin request handler provides a do_GET implementation only,
 	and is used to complete a XMLRPC request handler (providing a do_POST
@@ -83,6 +83,13 @@ class WebRequestHandlerMixIn:
 	It can server the usual static contents as well as
 	airspeed/velocity based templates.
 	"""
+	
+	def _getDocumentRoot(self):
+		return self.server.getDocumentRoot()
+	
+	def _getDebug(self):
+		return self.server.getDebug()
+	
 	def _isTemplate(self, path):
 		_, ext = os.path.splitext(path)
 		return ext in ['.vm', '.vcss']
@@ -115,7 +122,7 @@ class WebRequestHandlerMixIn:
 				getLogger().debug("Requested static file: %s" % path[1:])
 				self._serveFile(path)
 		except Exception:
-			if cm.get("ts.debug"):
+			if self._getDebug():
 				self.send_error(500, Tools.getBacktrace())
 			else:
 				self.send_error(500)
@@ -125,13 +132,12 @@ class WebRequestHandlerMixIn:
 		First checks that we have the right to serve the file,
 		then serves it.
 		"""
-		docroot = cm.get("testerman.web.document_root")
-		path = os.path.abspath("%s/%s" % (docroot, path))
+		path = os.path.abspath("%s/%s" % (self._getDocumentRoot(), path))
 		
 		getLogger().debug("Requested file: %s" % path)
 		
-		if not path.startswith(docroot):
-			# The query is outside the docroot. Forbidden.
+		if not path.startswith(self._getDocumentRoot()):
+			# The query is outside the web docroot. Forbidden.
 			self._sendError(403)
 			return
 
@@ -187,32 +193,44 @@ class WebRequestHandlerMixIn:
 		else:
 			return None
 
-	def _sendPlainText(self, txt):
+	def _sendContent(self, txt, contentType = "text/plain", asFilename = None):
 		"""
 		Convenience function.
 		"""
 		self.send_response(200)
-		self.send_header('Content-Type', "text/plain")
+		self.send_header('Content-Type', contentType)
+		if asFilename:
+			self.send_header('Content-Disposition', 'attachment; filename="%s"' % asFilename)
 		self.end_headers()
 		self.wfile.write(txt)
 
 	##
 	# Templates (airspeed based)
 	##
-	def _serveTemplate(self, path):
-		docroot = cm.get("testerman.web.document_root")
-		path = os.path.abspath("%s/%s" % (docroot, path))
+	def _serveTemplate(self, path, context = None):
+		path = os.path.abspath("%s/%s" % (self._getDocumentRoot(), path))
 		
 		getLogger().debug("Requested template: %s" % path)
 		
-		if not path.startswith(docroot):
-			# The query is outside the docroot. Forbidden.
+		if not path.startswith(self._getDocumentRoot()):
+			# The query is outside the web docroot. Forbidden.
 			self._sendError(403)
 			return
 		
-		self._rawServeTemplate(path)
+		self._rawServeTemplate(path, context)
 	
-	def _rawServeTemplate(self, path):
+	def _rawServeTemplate(self, path, context = None):
+		"""
+		Serves a template, applying the context or
+		a default context if none is provided.
+		This DOES NOT check that the template is in the
+		web document root.
+		
+		@param path: absolute path to the template to serve
+		@type  path: string
+		@param context: the context to apply to the template.
+		@type  context: dict
+		"""
 		try:
 			f = open(path)
 			contents = f.read()
@@ -229,7 +247,8 @@ class WebRequestHandlerMixIn:
 		
 		# Apply the template
 		template = airspeed.Template(contents)
-		context = self._getDefaultTemplateContext()
+		if context is None:
+			context = self._getDefaultTemplateContext()
 		output = template.merge(context)
 		self.send_response(200)
 		self.send_header('Content-Type', contentType)
@@ -254,12 +273,18 @@ class WebRequestHandlerMixIn:
 		try:
 			ret['components'] = um.getComponentsList()
 		except:
-			if cm.get('ts.debug'):
+			if self._getDebug():
 				getLogger().error(Tools.getBacktrace())
 
 		# More to come
 		return ret
 
+
+class WebRequestHandlerMixIn(BaseWebRequestHandlerMixIn):
+	"""
+	This handler completes the base one with dynamic resources
+	handlers implementations.
+	"""
 	##
 	# Dynamic resources handlers
 	##
@@ -316,13 +341,12 @@ class WebRequestHandlerMixIn:
 		Download a file from the testerman (not web) docroot
 		"""
 
-		docroot = cm.get("testerman.document_root")
-		path = os.path.abspath("%s/%s" % (docroot, path))
+		path = os.path.abspath("%s/%s" % (cm.get('testerman.document_root'), path))
 		
 		getLogger().debug("Requested file: %s" % path)
 		
-		if not path.startswith(docroot):
-			# The query is outside the docroot. Forbidden.
+		if not path.startswith(cm.get('testerman.document_root')):
+			# The query is outside the testerman docroot. Forbidden.
 			self._sendError(403)
 			return
 

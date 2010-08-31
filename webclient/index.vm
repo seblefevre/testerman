@@ -1,0 +1,49 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml">
+  
+<head>
+	<title>Testerman WebClient</title>
+	<link rel="stylesheet" type="text/css" href="/static/testerman.css" />
+</head>
+<body>
+	<div id="page">
+		<div id="banner">
+			<div id="header">
+				<a id="logo" href="/"><img src="/static/testerman-logo.png" alt="testerman" /></a>
+			</div>
+		</div>
+		<div id="main">
+			<div id="content" class="wiki">
+				<div class="wikipage">
+
+<h1>Welcome to Testerman WebClient</h1>
+<p>
+You are on the web front-end that enables to browse and execute Abstract Test Suites (ATSes) that
+are located on a Testerman repository.<br />
+Once executed, you have the possibility to visualize the execution logs or to download them
+for a graphical analysis with rich client tools such as QTesterman.<br />
+</p>
+<h2>Start Now !</h2>
+<p>
+<a class="wiki" href="repository">Browse the repository</a>
+</p>
+
+<h2>Contact</h2>
+<p>
+If you have any problem when executing ATSes, please contact <a href="mailto:${config.testerman_administrator_email}">${config.testerman_administrator_name}</a>.<br />
+</p>
+
+<h2>About Testerman</h2>
+<p>
+Testerman is an open-source test automation system inspired by the TTCN-3 standard.<br />
+For more information about it, please visit <a class="ext-link" href="http://www.testerman.fr">the official Testerman web site</a>.
+</p>
+
+
+
+				</div>
+			</div>
+		</div>
+	</div>
+</body>
+	 

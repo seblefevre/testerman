@@ -63,9 +63,8 @@ class RequestHandler(WebServer.WebRequestHandlerMixIn, SimpleXMLRPCServer.Simple
 	"""
 	This custom handler is able to manage XML-RPC requests (POST)
 	but also supports file serving via GET.
-	The do_GET implementation is provided by WebServer.MixedWebRequestHandler
+	The do_GET implementation is provided by WebServer.WebRequestHandlerMixIn
 	"""
-	pass
 
 class XmlRpcServer(SimpleXMLRPCServer.SimpleXMLRPCServer):
 #class XmlRpcServer(SocketServer.ThreadingMixIn, SimpleXMLRPCServer.SimpleXMLRPCServer):
@@ -79,12 +78,26 @@ class XmlRpcServer(SimpleXMLRPCServer.SimpleXMLRPCServer):
 		if r:
 			self.handle_request()
 
+	def setDocumentRoot(self, docroot):
+		self._docroot = docroot
+	
+	def getDocumentRoot(self):
+		return self._docroot
+
+	def setDebug(self, debug):
+		self._debug = debug
+	
+	def getDebug(self):
+		return self._debug
+
 class XmlRpcServerThread(threading.Thread):
 	def __init__(self):
 		threading.Thread.__init__(self)
 		self._stopEvent = threading.Event()
 		address = (cm.get("interface.ws.ip"), cm.get("interface.ws.port"))
 		self._server = XmlRpcServer(address, RequestHandler)
+		self._server.setDocumentRoot(cm.get("testerman.web.document_root"))
+		self._server.setDebug(cm.get("ts.debug"))
 		# We should be more selective...
 		self._server.register_instance(WebServices)
 		self._server.logRequests = False
@@ -270,7 +283,7 @@ def main():
 	if not pidfile and cm.get("testerman.var_root"):
 		# Set an actual value
 		pidfile = cm.get("testerman.var_root") + "/ts.pid"
-		cm.set_actual(pidfile)
+		cm.set_actual("ts.pid_filename", pidfile)
 
 #	print Tools.formatTable([ ('key', 'Name'), ('format', 'Type'), ('dynamic', 'Dynamic'), ('default', 'Default value'), ('user', 'User value'), ('actual', 'Actual value')], cm.getVariables(), order = "key")
 

@@ -1,0 +1,47 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml">
+  
+<head>
+	<title>ATS: ${path}</title>
+	<link rel="stylesheet" type="text/css" href="/static/testerman.css" />
+</head>
+<body>
+	<div id="page">
+		<div id="banner">
+			<div id="header">
+				<a id="logo" href="/"><img src="/static/testerman-logo.png" alt="testerman" /></a>
+			</div>
+		</div>
+		<div id="main">
+			<div id="content" class="wiki">
+				<div class="wikipage">
+
+<h2>Available Actions</h2>
+<p>
+<a class="wiki" href="/run_ats?${path}">Run this ATS (default session variables values)</a>
+</p>
+<h2>Latest Runs Results</h2>
+<p>
+#if ($logs)
+	<table>
+	<tr><td>Run date</td><td>User</td><td></td><td></td></tr>
+	#foreach ($entry in $logs)
+		<tr>
+		<td>${entry.date}</td><td>${entry.username}</td>
+		<td><a class="wiki" href="view_log?${entry.filename}">view</a></td>
+		<td><a class="wiki" href="download_log?${entry.filename}">download</a></td>
+		</tr>
+	#end
+	</table>
+#else
+There are no available execution logs for this ATS.
+#end
+</p>
+
+				</div>
+			</div>
+		</div>
+	</div>
+</body>
+	 
+</html>
