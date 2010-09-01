@@ -256,7 +256,7 @@ def getJobInfo(jobId = None):
 	@rtype: a list of dict
 	       {'id': integer, 'parent-id': integer, 'name': string,
 	        'state': string in ['waiting', 'running', 'stopped', 'cancelled', 'killed', 'paused'],
-	        'duration': float or None, 'result': integer or None, 'username': string, 
+	        'running-time': float or None, 'result': integer or None, 'username': string, 
 					'start-time': float or None, 'stop-time': float or None, 'scheduled-at': float,
 	        'type': string in ['ats', 'campaign'],
 					'path': string (docroot-based path for jobs whose source is in docroot) or None (client-based source)

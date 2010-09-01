@@ -1,0 +1,49 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml">
+  
+<head>
+	<title>Monitoring Job ID ${jobId}</title>
+	<link rel="stylesheet" type="text/css" href="/static/testerman.css" />
+</head>
+<body>
+	<div id="page">
+		<div id="banner">
+			<div id="header">
+				<a id="logo" href="/"><img src="/static/testerman-logo.png" alt="testerman" /></a>
+			</div>
+		</div>
+		<div id="main">
+			<div id="content" class="wiki">
+				<div class="wikipage">
+
+<h2>Monitoring Job ID ${jobId}</h2>
+#if ($error)
+<p>
+Unable to retrieve a status for this job. The ATS may not have been started/scheduled due to an error.
+</p>
+#else
+<ul>
+<li>ATS name: <a class="wiki" href="ats?/repository/${name}">${name}</a></li>
+<li>Current job state: ${state}</li>
+<li>Started by: ${username}</li>
+#if ($runningtime)
+	<li>Running time: ${runningtime}s</li>
+#end
+</ul>
+#end
+
+#if ($logFilename)
+<h2>Execution Logs</h2>
+<ul>
+	<li><a class="wiki" href="view_log?${logFilename}">view</a></li>
+	<li><a class="wiki" href="download_log?${logFilename}">download</a></li>
+</ul>
+#end
+
+				</div>
+			</div>
+		</div>
+	</div>
+</body>
+	 
+</html>

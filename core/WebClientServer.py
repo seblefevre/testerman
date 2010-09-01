@@ -140,6 +140,72 @@ class WebClientRequestHandlerMixIn(WebServer.BaseWebRequestHandlerMixIn):
 		
 		self._serveTemplate("ats.vm", context = context)
 
+	def handle_run_ats(self, path):
+		"""
+		Execute an ATS whose testerman-docroot-path is provided in argument.
+		Once run, redirect the user to a monitoring page.
+		"""
+		if not path.startswith('/repository'):
+			path = '/repository/' + path
+
+		# Reconstruct the server path the file is located into
+		dirpath = '/'.join(path.split('/')[:-1])
+
+		jobId = None
+		try:
+			source = self._getClient().getFile(path).decode('utf-8')
+			if not source:
+				raise Exception("ATS not found")
+
+			# FIXME on server side: the "label" is actually used to locate
+			# the archive folder where log files will be created. This is thus much more
+			# than a 'label'...
+			label = path[len('/repository/'):]
+			session = {}
+			at = None
+			username = 'webclient@%s' % self.client_address[0]
+
+			ret = self._getClient().scheduleAts(source, label, username, session, at, path = dirpath)
+			jobId = ret['job-id']
+		except Exception, e:
+			print "DEBUG: run_ats: %s" % e
+			raise e
+
+		if jobId:
+			# ATS started - let's monitor it
+			self.send_response(302)
+			self.send_header('Location', '/monitor_ats?%s' % jobId)
+			self.end_headers()
+		else:
+			self.send_response(302)
+			self.send_header('Location', '/ats?%s' % path)
+			self.end_headers()
+
+	def handle_monitor_ats(self, jobId):
+		context = dict(jobId = jobId)
+		error = False
+		jobInfo = {}
+		jobLogFilename = None
+		try:
+			jobInfo = self._getClient().getJobInfo(int(jobId))
+			jobLogFilename = self._getClient().getJobLogFilename(int(jobId))
+		except Exception, e:
+			print "DEBUG: handle_monitor_ats: %s" % s
+			error = True
+
+		print jobInfo		
+		context = dict(jobId = jobId, error = error)
+		if not error:
+			for (k, v) in jobInfo.items():
+				context[k.replace('-', '')] = v
+		if context.has_key('runningtime'):
+			context['runningtime'] = '%2.2f' % context['runningtime']
+
+		if jobLogFilename:
+			context['logFilename'] = jobLogFilename
+
+		self._serveTemplate("monitor-ats.vm", context = context)
+
 	def handle_view_log(self, path):
 		"""
 		View the logs
