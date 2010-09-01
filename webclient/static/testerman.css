@@ -218,3 +218,41 @@ td {
  border-color: #eeeeee; 
 }
 
+table.testcase {
+	border-width: 0px;
+	border-spacing: 0px;
+	border-style: outset;
+	border-color: gray;
+	border-collapse: collapse;
+	background-color: \#eeeeee;
+	width: 600px;
+}
+table.testcase th {
+	border-width: 1px 1px 1px 1px;
+	padding: 3px;
+	border-style: inset;
+	border-color: gray;
+}
+table.summary .pass {
+	color: \#0DCE07;
+}
+table.summary .fail {
+	color: \#bb0000;
+	font-weight: bold;
+}
+table.testcase td {
+	border-width: 1px 1px 1px 1px;
+	padding: 3px;
+	border-style: inset;
+	border-color: gray;
+}
+
+table.testcase {
+	background-color: \#eeeeee;
+}
+table.postamble {
+	background-color: \#ffffff;
+}
+table.preamble {
+	background-color: \#ffffff;
+}

@@ -2,7 +2,7 @@
 # -*- coding: utf-8 -*-
 ##
 # This file is part of Testerman, a test automation system.
-# Copyright (c) 2008,2009,2010 Sebastien Lefevre and other contributors
+# Copyright (c) 2010 Sebastien Lefevre and other contributors
 #
 # This program is free software; you can redistribute it and/or modify it under
 # the terms of the GNU General Public License as published by the Free Software
@@ -45,7 +45,9 @@ import sys
 import time
 import optparse
 import re
-
+import xml.dom.minidom
+import StringIO
+import codecs
 
 VERSION = '0.1.0'
 
@@ -206,9 +208,100 @@ class WebClientRequestHandlerMixIn(WebServer.BaseWebRequestHandlerMixIn):
 
 		self._serveTemplate("monitor-ats.vm", context = context)
 
+	def rawLogToStructuredLog(self, rawlog, xslt = None):
+		"""
+		Turns a raw log into a valid XML file structuring the test cases.
+		"""
+		# Structured log: 
+		# <ats>
+		#  <testcase id= verdict=>
+		#   <default elements, from testcase-created to testcase-stopped, as is>
+		#  </testcase>
+		# </ats>
+
+		getLogger().debug("DEBUG: preparing XML for re-structuration...")
+		# Turns the raw log into a valid XML file for parsing
+		rlog = '<?xml version="1.0" encoding="utf-8" ?>\n'
+		rlog += '<ats>\n'
+		rlog += rawlog
+		rlog += '</ats>\n'
+
+		getLogger().debug("DEBUG: parsing XML...")
+		# Now, let's parse it and move the 'root' elements below new testcase elements
+ 		rdoc = xml.dom.minidom.parseString(rlog)
+		getLogger().debug("DEBUG: re-structuring XML...")
+		currentTestCaseNode = None
+		atsNode = rdoc.firstChild
+		for node in atsNode.childNodes:
+			if not node.nodeType == node.ELEMENT_NODE:
+				continue
+			
+			else:
+				# element nodes
+
+				# starting a new test case
+				if node.tagName == 'testcase-created':
+					currentTestCaseNode = rdoc.createElement('testcase')
+					currentTestCaseNode.setAttribute('id', node.getAttribute('id'))
+					atsNode.insertBefore(currentTestCaseNode, node)
+
+				# partipating to an open/started test case
+				if currentTestCaseNode:
+					currentTestCaseNode.appendChild(node)
+					if node.tagName == 'testcase-stopped':
+						currentTestCaseNode.setAttribute('verdict', node.getAttribute('verdict'))
+						currentTestCaseNode = None
+
+				# Not within a testcase - part of the "ats" root
+				else:
+					if node.tagName == 'ats-started':
+						atsNode.setAttribute('id', node.getAttribute('id'))
+						atsNode.setAttribute('start-timestamp', node.getAttribute('timestamp'))
+					elif node.tagName == 'ats-stopped':
+						atsNode.setAttribute('result', node.getAttribute('result'))
+						atsNode.setAttribute('stop-timestamp', node.getAttribute('timestamp'))
+
+		# Cleanup: remove useless nodes (usually '\n' text nodes)
+		toRemove = [] # register child nodes to remove once the child traversal is over
+		for node in atsNode.childNodes:
+			if not node.nodeType == node.ELEMENT_NODE:
+				# remove text/garbage nodes (usually \n)
+				# Don't do it inline otherwise the current child nodes traversal is affected
+				toRemove.append(node)
+
+		getLogger().debug("DEBUG: cleaning up structured XML...")
+		for node in toRemove:
+			atsNode.removeChild(node)
+		getLogger().debug("DEBUG: cleanup OK, writing to XML...")
+		
+		# OK, we're done with the DOM tree.
+		# Let's format it back to XML.
+
+		# We need to override the standard doc.toxml() to support xslt association injection...
+		def writexml(doc, prolog = True, xslt = None, encoding = None, indent = "", addindent = "", newl = ""):
+			writer = StringIO.StringIO()
+			if encoding is not None:
+				writer = codecs.lookup(encoding)[3](writer)
+			if prolog:
+				if encoding is None:
+					writer.write('<?xml version="1.0" ?>%s' % newl)
+				else:
+					writer.write('<?xml version="1.0" encoding="%s"?>%s' % (encoding, newl))
+			if xslt:
+				writer.write('<?xml-stylesheet type="text/xsl" href="%s"?>%s' % (xslt, newl))
+			for node in doc.childNodes:
+				node.writexml(writer, indent, addindent, newl)
+			return writer.getvalue()
+
+		ret = writexml(rdoc, encoding = 'utf-8', xslt = xslt, newl = "\n", addindent = "    ")
+		getLogger().debug("DEBUG: OK, structured XML finalized.")
+		
+		return ret
+
+
 	def handle_view_log(self, path):
 		"""
-		View the logs
+		Display an ATS log file as something human-readable (html).
 		"""
 		if not path:
 			path = '/archives'
@@ -216,15 +309,20 @@ class WebClientRequestHandlerMixIn(WebServer.BaseWebRequestHandlerMixIn):
 		if not path.startswith('/archives'):
 			path = '/archives/' + path
 
+		# A raw log file, as extracted from the server, 
+		# is a collection of top-level xml elements; the whole file
+		# is not a valid XML document.
+		# We programmatically transform this to a valid XML document
+		# that also structures the test cases to be more manageable
+		# via XSL Tranformations.
 		try:
-			log = '<?xml version="1.0" encoding="utf-8" ?>\n'
-			log += '<?xml-stylesheet type="text/xsl" href="log-simple.xsl"?>\n'
-			log += '<ats>\n'
-			log += self._getClient().getFile(path)
-			log += '</ats>'
+			log = self._getClient().getFile(path)
 		except Exception, e:
 			self._sendError(404)
 			return
+		
+		stylesheet = "ats-log-textual.xsl"
+		log = self.rawLogToStructuredLog(log, stylesheet)
 
 		self._sendContent(log, contentType = "application/xml")
 	
