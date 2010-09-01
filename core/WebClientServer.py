@@ -198,7 +198,7 @@ class WebClientRequestHandlerMixIn(WebServer.BaseWebRequestHandlerMixIn):
 		if not error:
 			for (k, v) in jobInfo.items():
 				context[k.replace('-', '')] = v
-		if context.has_key('runningtime'):
+		if context.has_key('runningtime') and context['runningtime']:
 			context['runningtime'] = '%2.2f' % context['runningtime']
 
 		if jobLogFilename:
