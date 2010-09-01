@@ -32,6 +32,10 @@ Unable to retrieve a status for this job. The ATS may not have been started/sche
 </ul>
 #end
 
+<p>
+<a class="wiki" href="monitor_ats?${jobId}">Refresh this page</a>
+</p>
+
 #if ($logFilename)
 <h2>Execution Logs</h2>
 <ul>
