@@ -48,6 +48,7 @@ import re
 import xml.dom.minidom
 import StringIO
 import codecs
+import libxml2
 
 VERSION = '0.1.0'
 
@@ -62,6 +63,9 @@ cm = ConfigManager.instance()
 
 def getLogger():
 	return logging.getLogger('WebClient')
+
+def formatTimestamp(timestamp):
+  return time.strftime("%Y%m%d %H:%M:%S", time.localtime(timestamp))  + ".%3.3d" % int((timestamp * 1000) % 1000)
 
 class WebClientRequestHandlerMixIn(WebServer.BaseWebRequestHandlerMixIn):
 	
@@ -218,7 +222,7 @@ class WebClientRequestHandlerMixIn(WebServer.BaseWebRequestHandlerMixIn):
 		#   <default elements, from testcase-created to testcase-stopped, as is>
 		#  </testcase>
 		# </ats>
-
+		
 		getLogger().debug("DEBUG: preparing XML for re-structuration...")
 		# Turns the raw log into a valid XML file for parsing
 		rlog = '<?xml version="1.0" encoding="utf-8" ?>\n'
@@ -228,76 +232,57 @@ class WebClientRequestHandlerMixIn(WebServer.BaseWebRequestHandlerMixIn):
 
 		getLogger().debug("DEBUG: parsing XML...")
 		# Now, let's parse it and move the 'root' elements below new testcase elements
- 		rdoc = xml.dom.minidom.parseString(rlog)
+ 		rdoc = libxml2.parseDoc(rlog)
 		getLogger().debug("DEBUG: re-structuring XML...")
 		currentTestCaseNode = None
-		atsNode = rdoc.firstChild
-		for node in atsNode.childNodes:
-			if not node.nodeType == node.ELEMENT_NODE:
-				continue
-			
+		atsNode = libxml2.newNode('ats')
+		
+		node = rdoc.getRootElement().firstElementChild()
+		while node:
+			nextnode = node.next
+			if not node.type == 'element': # libxml2 constant ?
+				pass
+
 			else:
 				# element nodes
+				if node.hasProp('timestamp'):
+					node.setProp('timestamp', formatTimestamp(float(node.prop('timestamp'))))
 
 				# starting a new test case
-				if node.tagName == 'testcase-created':
-					currentTestCaseNode = rdoc.createElement('testcase')
-					currentTestCaseNode.setAttribute('id', node.getAttribute('id'))
-					atsNode.insertBefore(currentTestCaseNode, node)
+				if node.name == 'testcase-created':
+					currentTestCaseNode = libxml2.newNode('testcase')
+					currentTestCaseNode.setProp('id', node.prop('id'))
+					atsNode.addChild(currentTestCaseNode)
 
 				# partipating to an open/started test case
 				if currentTestCaseNode:
-					currentTestCaseNode.appendChild(node)
-					if node.tagName == 'testcase-stopped':
-						currentTestCaseNode.setAttribute('verdict', node.getAttribute('verdict'))
+					node.unlinkNode()
+					currentTestCaseNode.addChild(node)
+					if node.name == 'testcase-stopped':
+						currentTestCaseNode.setProp('verdict', node.prop('verdict'))
 						currentTestCaseNode = None
 
 				# Not within a testcase - part of the "ats" root
 				else:
-					if node.tagName == 'ats-started':
-						atsNode.setAttribute('id', node.getAttribute('id'))
-						atsNode.setAttribute('start-timestamp', node.getAttribute('timestamp'))
-					elif node.tagName == 'ats-stopped':
-						atsNode.setAttribute('result', node.getAttribute('result'))
-						atsNode.setAttribute('stop-timestamp', node.getAttribute('timestamp'))
+					if node.name == 'ats-started':
+						atsNode.setProp('id', node.prop('id'))
+						atsNode.setProp('start-timestamp', node.prop('timestamp'))
+					elif node.name == 'ats-stopped':
+						atsNode.setProp('result', node.prop('result'))
+						atsNode.setProp('stop-timestamp', node.prop('timestamp'))
 
-		# Cleanup: remove useless nodes (usually '\n' text nodes)
-		toRemove = [] # register child nodes to remove once the child traversal is over
-		for node in atsNode.childNodes:
-			if not node.nodeType == node.ELEMENT_NODE:
-				# remove text/garbage nodes (usually \n)
-				# Don't do it inline otherwise the current child nodes traversal is affected
-				toRemove.append(node)
+			node = nextnode
 
-		getLogger().debug("DEBUG: cleaning up structured XML...")
-		for node in toRemove:
-			atsNode.removeChild(node)
-		getLogger().debug("DEBUG: cleanup OK, writing to XML...")
-		
 		# OK, we're done with the DOM tree.
 		# Let's format it back to XML.
 
-		# We need to override the standard doc.toxml() to support xslt association injection...
-		def writexml(doc, prolog = True, xslt = None, encoding = None, indent = "", addindent = "", newl = ""):
-			writer = StringIO.StringIO()
-			if encoding is not None:
-				writer = codecs.lookup(encoding)[3](writer)
-			if prolog:
-				if encoding is None:
-					writer.write('<?xml version="1.0" ?>%s' % newl)
-				else:
-					writer.write('<?xml version="1.0" encoding="%s"?>%s' % (encoding, newl))
-			if xslt:
-				writer.write('<?xml-stylesheet type="text/xsl" href="%s"?>%s' % (xslt, newl))
-			for node in doc.childNodes:
-				node.writexml(writer, indent, addindent, newl)
-			return writer.getvalue()
-
-		ret = writexml(rdoc, encoding = 'utf-8', xslt = xslt, newl = "\n", addindent = "    ")
+		ret = '<?xml version="1.0" encoding="%s"?>' % 'utf-8'
+		if xslt:
+			ret += '<?xml-stylesheet type="text/xsl" href="%s"?>' % xslt
+		ret += atsNode.serialize()
 		getLogger().debug("DEBUG: OK, structured XML finalized.")
 		
 		return ret
-
 
 	def handle_view_log(self, path):
 		"""

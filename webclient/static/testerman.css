@@ -218,6 +218,9 @@ td {
  border-color: #eeeeee; 
 }
 
+
+/* Test case main presentation (ats results view) */
+
 table.testcase {
 	border-width: 0px;
 	border-spacing: 0px;
@@ -233,13 +236,7 @@ table.testcase th {
 	border-style: inset;
 	border-color: gray;
 }
-table.summary .pass {
-	color: \#0DCE07;
-}
-table.summary .fail {
-	color: \#bb0000;
-	font-weight: bold;
-}
+
 table.testcase td {
 	border-width: 1px 1px 1px 1px;
 	padding: 3px;
@@ -255,4 +252,54 @@ table.postamble {
 }
 table.preamble {
 	background-color: \#ffffff;
+}
+
+/* Test case summary (ats results view) */
+
+table.summary .pass {
+	color: \#0DCE07;
+}
+table.summary .fail {
+	color: \#bb0000;
+	font-weight: bold;
+}
+
+/* Test case: user logs */
+
+table.testcase-userlog-table {
+	border-width: 0px;
+	border-spacing: 0px;
+	border-style: outset;
+	border-color: gray;
+	border-collapse: collapse;
+	background-color: \#eeeeee;
+}
+
+table.testcase-userlog-table td {
+	padding: 1px;
+	padding-right: 10px;
+	border-width: 0px;
+	vertical-align: top;
+}
+
+/* Test case: analysis */
+
+table.testcase-analysis-table {
+	border-width: 0px;
+	border-spacing: 0px;
+	border-style: outset;
+	border-color: gray;
+	border-collapse: collapse;
+	background-color: \#eeeeee;
+}
+
+table.testcase-analysis-table td {
+	padding: 1px;
+	border-width: 0px;
+	padding-right: 10px;
+	vertical-align: top;
+}
+
+table td.time {
+	white-space: nowrap;
 }

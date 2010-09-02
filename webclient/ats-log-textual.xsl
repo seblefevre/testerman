@@ -49,34 +49,92 @@ Test Execution Results for ATS: <xsl:value-of select="/ats//@id" />.
 		<td>Description: <xsl:value-of select="testcase-stopped" /></td>
 	</tr>
 	<tr><td colspan="2">Execution summary (User logs): <br />
-	<p>
+	<table class="testcase-userlog-table">
 	<xsl:for-each select="user">
-		<xsl:value-of select="@timestamp" /> <xsl:value-of select="." /><br />
+		<tr><td class="time"><xsl:value-of select="@timestamp" /></td><td><xsl:value-of select="." /></td></tr>
 	</xsl:for-each>
-	</p>
+	</table>
+
 	</td></tr>
 	<tr><td colspan="2">Analysis (Details): <br />
-	<p>
+	
+	<!-- analysis textual view -->
+	<!-- choice according to the event/element -->
+	<table class="testcase-analysis-table">
 	<xsl:for-each select="*[not(name()='internal')]">
+	
+		<tr>
+		<td class="time">
 		<xsl:value-of select="@timestamp" /> 
-		<!-- choice according to the event/element -->
+		</td>
+		<td>
+		<xsl:value-of select="@class" /> 
+		</td>
+		<td>
 		<xsl:choose>
 			<xsl:when test="name()='testcase-started'">
-				Testcase Started.
+				TestCase <xsl:value-of select="@id" />(<xsl:value-of select="." />) started
 			</xsl:when>
 			<xsl:when test="name()='testcase-stopped'">
-				Testcase Stopped.
+				TestCase <xsl:value-of select="@id" /> stopped, final verdict is <xsl:value-of select="@verdict" />
 			</xsl:when>
 			<xsl:when test="name()='verdict-updated'">
-				Verdict set to '<xsl:value-of select="@verdict" />'.
+				Verdict updated to <xsl:value-of select="@verdict" /> on TC <xsl:value-of select="@tc" />
 			</xsl:when>
 			<xsl:when test="name()='user'">
 				<i><xsl:value-of select="." /></i>
 			</xsl:when>
+
+			<xsl:when test="name()='tc-created'">
+				Test Component <xsl:value-of select="@id" /> created
+			</xsl:when>
+
+			<xsl:when test="name()='timer-started'">
+				Timer <xsl:value-of select="@id" /> started (<xsl:value-of select="@duration" />) on TC <xsl:value-of select="@tc" />
+			</xsl:when>
+			<xsl:when test="name()='timer-stopped'">
+				Timer <xsl:value-of select="@id" /> stopped on TC <xsl:value-of select="@tc" />
+			</xsl:when>
+			<xsl:when test="name()='timer-expiry'">
+				Timer <xsl:value-of select="@id" /> timeout on TC <xsl:value-of select="@tc" />
+			</xsl:when>
+
+			<xsl:when test="name()='timeout-branch'">
+				Timeout match for Timer <xsl:value-of select="@id" />
+			</xsl:when>
+			<xsl:when test="name()='done-branch'">
+				Done match for TC <xsl:value-of select="@id" />
+			</xsl:when>
+
+			<xsl:when test="name()='message-sent'">
+				<xsl:value-of select="@from-tc" />.<xsl:value-of select="@from-port" /> --&gt; <xsl:value-of select="@to-tc" />.<xsl:value-of select="@to-port" />
+				<!-- insert here a way to expand to the message -->
+			</xsl:when>
+
+			<xsl:when test="name()='template-match'">
+				Template match on port <xsl:value-of select="@tc" />.<xsl:value-of select="@port" />
+				<!-- insert here a way to expand the message and the template -->
+			</xsl:when>
+			<xsl:when test="name()='template-mismatch'">
+				Template mismatch on port <xsl:value-of select="@tc" />.<xsl:value-of select="@port" />
+				<!-- insert here a way to expand the message and the template -->
+			</xsl:when>
+
+			<xsl:when test="name()='tc-started'">
+				PTC <xsl:value-of select="@id" /> started with Behaviour <xsl:value-of select="@behaviour" />
+			</xsl:when>
+			<xsl:when test="name()='tc-stopped'">
+				PTC <xsl:value-of select="@id" /> stopped, local verdict is <xsl:value-of select="@verdict" />
+			</xsl:when>
+
 		</xsl:choose>
-		<br />
+		</td>
+		</tr>
+		
 	</xsl:for-each>
-	</p>
+	</table>
+	<!-- analysis textual view - end -->
+
 	</td></tr>
 	</table>
 </xsl:for-each>
