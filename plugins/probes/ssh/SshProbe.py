@@ -32,12 +32,13 @@ class SshProbe(ProbeImplementationManager.ProbeImplementation):
 	Probe Type ID: `ssh`
 
 	Properties:
-	|| '''Name''' || '''Type''' || '''Default value''' || '''Description''' ||
-	|| `host` || string || `'localhost'` || to host to connect onto to execute the commands
-	|| `username` || string || (none) || the username to use to log onto `host`to execute the commands
-	|| `password` || string || (none) || the `username`'s password on `host`
-	|| `timeout` || float || `5.0` || the maximum amount of time, in s, allowed to __start__ executing the command on `host`. Includes the SSH login sequence.
-	|| `convert_eol`|| boolean || `True` || if set to True, convert `\\r\\n` in output to `\\n`. This way, the templates are compatible with ProbeExec.
+	|| '''Name''' || '''Type''' || '''Default value''' || '''Description'''. ||
+	|| `host` || string || `'localhost'` || to host to connect onto to execute the commands. ||
+	|| `username` || string || (none) || the username to use to log onto `host`to execute the commands. ||
+	|| `password` || string || (none) || the `username`'s password on `host`. ||
+	|| `timeout` || float || `5.0` || the maximum amount of time, in s, allowed to __start__ executing the command on `host`. Includes the SSH login sequence. ||
+	|| `convert_eol`|| boolean || `True` || if set to True, convert `\\r\\n` in output to `\\n`. This way, the templates are compatible with ProbeExec. ||
+	|| `working_dir`|| string || (none) || the direction to go to before executing the command line. By default, the working dir is the login directory (usually the home dir). ||
 
 
 	= Overview =
@@ -61,7 +62,7 @@ class SshProbe(ProbeImplementationManager.ProbeImplementation):
 	had one open ssh terminal connection to your SUT.
 
 	Notes:
-	 * when starting daemons from this probe, make sure that your daemon correctly closes standard output, otherwise the probe never detects the command as being complete. For poorly written daemonized programs, adding a `>/dev/null 2>&1` in the `execute` command line is usually enough to make the probe return in such cases.
+	 * When starting daemons from this probe, make sure that your daemon correctly closes standard output, otherwise the probe never detects the command as being complete. For poorly written daemonized programs, adding a `>/dev/null 2>&1` in the `execute` command line is usually enough to make the probe return in such cases.
 
 	== Availability ==
 
@@ -112,6 +113,7 @@ class SshProbe(ProbeImplementationManager.ProbeImplementation):
 		self.setDefaultProperty('password', None)
 		self.setDefaultProperty('host', 'localhost')
 		self.setDefaultProperty('convert_eol', True)
+		self.setDefaultProperty('working_dir', None)
 
 	# ProbeImplementation reimplementation
 
@@ -147,7 +149,7 @@ class SshProbe(ProbeImplementationManager.ProbeImplementation):
 		
 		cmd, value = message
 		if cmd == 'execute':
-			m = { 'cmd': 'execute', 'command': value, 'host': self['host'], 'username': self['username'], 'password': self['password'] }
+			m = { 'cmd': 'execute', 'command': value, 'host': self['host'], 'username': self['username'], 'password': self['password'], 'workingdir': self['working_dir'] }
 		elif cmd == 'cancel':
 			m = { 'cmd': 'cancel' }
 		else:
@@ -160,15 +162,16 @@ class SshProbe(ProbeImplementationManager.ProbeImplementation):
 			if cmd == 'cancel':
 				return self.cancelCommand()
 			elif cmd == 'execute':
-				self._checkArgs(m, [ ('command', None), ('host', None), ('username', None), ('password', None), ('timeout', 5.0) ])
+				self._checkArgs(m, [ ('command', None), ('host', None), ('username', None), ('password', None), ('timeout', 5.0), ('workingdir', None) ])
 				command = m['command']
 				host = m['host']
 				username = m['username']
 				password = m['password']
 				timeout = m['timeout']
+				workingdir = m['workingdir']
 
 				try:
-					self.executeCommand(command, username, host, password, timeout)
+					self.executeCommand(command, username, host, password, timeout, workingdir)
 				except Exception, e:
 					self.triEnqueueMsg(str(e))
 
@@ -202,7 +205,7 @@ class SshProbe(ProbeImplementationManager.ProbeImplementation):
 				self.getLogger().error('Error while cancelling the pending SSH thread: %s' % str(e))
 		# Nothing to do if no pending thread.
 
-	def executeCommand(self, command, username, host, password, timeout):
+	def executeCommand(self, command, username, host, password, timeout, workingdir):
 		"""
 		Executes a command.
 		Only returns when the command has been started, or raises an exception on error.
@@ -222,6 +225,17 @@ class SshProbe(ProbeImplementationManager.ProbeImplementation):
 				raise Exception("Unable to login: incorrect password, unreachable host, timeout during negotiation")
 
 			# OK, we're logged in.
+			# Move to working dir, if any
+			if workingdir:
+				ssh.sendline('cd "%s"' % workingdir)
+				ssh.prompt()
+				ssh.sendline('echo $?')
+				ssh.prompt()
+				# 'before' contains: line 0: echo $? , line 1: the echo output
+				status = int(ssh.before.split('\n')[1].strip())
+				if status:
+					raise Exception('Unable to change to working dir "%s"' % workingdir)
+				
 			# Now start our dedicated thread.
 			self._sshThread = SshThread(self, ssh, command)
 		except Exception, e:
