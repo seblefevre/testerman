@@ -25,6 +25,15 @@ import os
 import pexpect.pxssh
 import threading
 
+# Some terminal / pseudo terminal does not seem to support
+# more than a relatively small number of characters in a line.
+# We split large command lines into multiple lines (reconstructed by
+# the shell via \ ) for them.
+# This value is empirical
+# seems to be a length size that is accepted by most terminal
+MAX_TERMINAL_LINE_LENGTH = 150
+
+
 class SshProbe(ProbeImplementationManager.ProbeImplementation):
 	"""
 	= Identification and Properties =
@@ -275,13 +284,21 @@ class SshThread(threading.Thread):
 		output = None
 		status = None
 		try:
-			self._ssh.sendline(self._command)
+			# Split the command on multiple lines - the pseudo terminal may limit it ??
+			i = 0
+			size = MAX_TERMINAL_LINE_LENGTH
+			splitcmd = []
+			while i < len(self._command):
+				splitcmd.append(self._command[i:i+size])
+				i += size
+	
+			self._ssh.sendline('\\\n'.join(splitcmd))
 			# Wait for a command completion
 			while not self._stopEvent.isSet():
 				if self._ssh.prompt(0.1):
-					# We got a completion - skip the command line that have been
+					# We got a completion - skip the command line (that could be multiline) that have been
 					# echoed.
-					output = '\n'.join(self._ssh.before.split('\n')[1:])
+					output = '\n'.join(self._ssh.before.split('\n')[len(splitcmd):])
 					self._ssh.sendline('echo $?')
 					self._ssh.prompt()
 					# 'before' contains: line 0: echo $? , line 1: the echo output
