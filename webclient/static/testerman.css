@@ -222,19 +222,20 @@ td {
 /* Test case main presentation (ats results view) */
 
 table.testcase {
-	border-width: 0px;
+	border-width: 1px;
 	border-spacing: 0px;
 	border-style: outset;
 	border-color: gray;
 	border-collapse: collapse;
 	background-color: \#eeeeee;
-	width: 600px;
+/*	width: 600px; */
 }
 table.testcase th {
 	border-width: 1px 1px 1px 1px;
 	padding: 3px;
 	border-style: inset;
 	border-color: gray;
+	font-weight: bold;
 }
 
 table.testcase td {
@@ -262,6 +263,30 @@ table.summary .pass {
 table.summary .fail {
 	color: \#bb0000;
 	font-weight: bold;
+}
+
+table.summary th {
+	border-width: 1px 1px 1px 1px;
+	border-style: inset;
+	border-color: gray;
+	padding: 3px;
+	font-weight: bold;
+}
+
+table.summary {
+	border-width: 1px;
+	border-spacing: 0px;
+	border-style: outset;
+	border-color: gray;
+	border-collapse: collapse;
+	background-color: \#eeeeee;
+}
+
+table.summary td {
+	border-width: 1px 1px 1px 1px;
+	padding: 3px;
+	border-style: inset;
+	border-color: gray;
 }
 
 /* Test case: user logs */
@@ -302,4 +327,29 @@ table.testcase-analysis-table td {
 
 table td.time {
 	white-space: nowrap;
+}
+
+div.system-payload {
+  font: normal 10px courier;
+  display: none; /* switched to block via javascript, collapsed by default */
+}
+
+/* Detailled log view - the different types of entries */
+
+table.testcase-analysis-table td.user {
+	font-style: italic;
+}
+
+table.testcase-analysis-table td.testcase-started {
+	font-weight: bold;
+}
+table.testcase-analysis-table td.testcase-stopped {
+	font-weight: bold;
+}
+table.testcase-analysis-table td.template-match {
+	color: lawngreen;
+}
+
+table.testcase-analysis-table td.template-mismatch {
+	color: red;
 }

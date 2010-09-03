@@ -6,7 +6,13 @@
 
 <!-- header -->
 <html xmlns="http://www.w3.org/1999/xhtml">
-  
+ 
+<script type="text/javascript">
+function expandCollapse(id) {
+var element = document.getElementById(id);
+element.style.display = (element.style.display != "block" ? "block" : "none"); 
+}
+</script>
 <head>
 	<title><xsl:value-of select="/ats//@id" /></title>
 	<link rel="stylesheet" type="text/css" href="/static/testerman.css" />
@@ -28,7 +34,8 @@ Test Execution Results for ATS: <xsl:value-of select="/ats//@id" />.
 </p>
 <h1>Test Cases Summary</h1>
 
-<table>
+<table class="summary">
+	<tr><th>Test Case ID</th><th>Verdict</th></tr>
 	<xsl:for-each select="testcase">
 	<tr>
 		<td><xsl:value-of select="@id" /></td>
@@ -63,6 +70,7 @@ Test Execution Results for ATS: <xsl:value-of select="/ats//@id" />.
 	<table class="testcase-analysis-table">
 	<xsl:for-each select="*[not(name()='internal')]">
 	
+		<xsl:variable name='logEntryId' select='concat(@class, @timestamp)' />
 		<tr>
 		<td class="time">
 		<xsl:value-of select="@timestamp" /> 
@@ -71,6 +79,7 @@ Test Execution Results for ATS: <xsl:value-of select="/ats//@id" />.
 		<xsl:value-of select="@class" /> 
 		</td>
 		<td>
+		<xsl:attribute name="class"><xsl:value-of select="name()" /></xsl:attribute>
 		<xsl:choose>
 			<xsl:when test="name()='testcase-started'">
 				TestCase <xsl:value-of select="@id" />(<xsl:value-of select="." />) started
@@ -82,7 +91,7 @@ Test Execution Results for ATS: <xsl:value-of select="/ats//@id" />.
 				Verdict updated to <xsl:value-of select="@verdict" /> on TC <xsl:value-of select="@tc" />
 			</xsl:when>
 			<xsl:when test="name()='user'">
-				<i><xsl:value-of select="." /></i>
+				<xsl:value-of select="." />
 			</xsl:when>
 
 			<xsl:when test="name()='tc-created'">
@@ -126,6 +135,39 @@ Test Execution Results for ATS: <xsl:value-of select="/ats//@id" />.
 			<xsl:when test="name()='tc-stopped'">
 				PTC <xsl:value-of select="@id" /> stopped, local verdict is <xsl:value-of select="@verdict" />
 			</xsl:when>
+
+			<xsl:when test="name()='system-sent'">
+				<xsl:value-of select="@tsi-port" /> &gt;&gt; :
+					<a>
+					<xsl:attribute name="href">
+					<xsl:value-of select="concat('javascript:expandCollapse(&quot;system-sent-message-', $logEntryId, '&quot;)')" />
+					</xsl:attribute>
+					<xsl:value-of select="label" />
+					</a>
+				<!-- insert here a way to expand to the payload -->
+				<div class='system-payload'>
+					<xsl:attribute name="id"> <xsl:value-of select="concat('system-sent-message-', $logEntryId)" /> </xsl:attribute>
+					<xsl:value-of select="payload" />
+<!--					<xsl:value-of select="replace(payload, '#0A;', '&lt;br /&gt;')" /> -->
+				</div>
+			</xsl:when>
+
+			<xsl:when test="name()='system-received'">
+				<xsl:value-of select="@tsi-port" /> &lt;&lt; : 
+					<a>
+					<xsl:attribute name="href">
+					<xsl:value-of select="concat('javascript:expandCollapse(&quot;system-received-message-', $logEntryId, '&quot;)')" />
+					</xsl:attribute>
+					<xsl:value-of select="label" />
+					</a>
+				<!-- insert here a way to expand to the payload -->
+				<div class='system-payload'>
+					<xsl:attribute name="id"> <xsl:value-of select="concat('system-received-message-', $logEntryId)" /> </xsl:attribute>
+					<xsl:value-of select="payload" />
+<!--					<xsl:value-of select="replace(payload, '#0A;', '&lt;br /&gt;')" /> -->
+				</div>
+			</xsl:when>
+
 
 		</xsl:choose>
 		</td>
