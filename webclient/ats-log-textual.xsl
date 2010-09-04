@@ -303,12 +303,17 @@ Test Execution Results for ATS:
   </xsl:choose>
 </xsl:template>
 
+<!-- recursive template to format structured messages/templates -->
 <xsl:template name="message">
 	<xsl:param name="msg" />
 
 	<!-- terminal values, i.e. a node without children -->
 	<xsl:for-each select="$msg[not(*)]">
-		<span class="value"><xsl:value-of select="$msg" /></span>
+		<span class="value">
+			<xsl:call-template name="break">
+				<xsl:with-param name="text" select="$msg" />
+			</xsl:call-template>
+		</span>
 	</xsl:for-each>
 
 	<!-- records -->

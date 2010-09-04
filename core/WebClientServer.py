@@ -114,7 +114,14 @@ class WebClientRequestHandlerMixIn(WebServer.BaseWebRequestHandlerMixIn):
 
 		getLogger().debug('repository result: %s' % l)
 		
-		self._serveTemplate("browser.vm", context = dict(path = path, entries = l))
+		webpaths = []
+		prev = ''
+		for x in [ x for x in path.split('/') if x ]:
+			current = "%s/%s" % (prev, x)
+			webpaths.append(dict(label = x, path = current))
+			prev = current
+		
+		self._serveTemplate("browser.vm", context = dict(path = path, entries = l, webpaths = webpaths))
 	
 	def _browse_ats(self, path):
 		"""
@@ -146,7 +153,15 @@ class WebClientRequestHandlerMixIn(WebServer.BaseWebRequestHandlerMixIn):
 					logs.append(log)
 		
 		logs.reverse()
-		context = dict(path = path, logs = logs)
+
+		webpaths = []
+		prev = ''
+		for x in [ x for x in path.split('/') if x ]:
+			current = "%s/%s" % (prev, x)
+			webpaths.append(dict(label = x, path = current))
+			prev = current
+
+		context = dict(path = path, logs = logs, webpaths = webpaths)
 		
 		self._serveTemplate("ats.vm", context = context)
 

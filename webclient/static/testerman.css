@@ -269,7 +269,7 @@ table.summary {
 	border-style: outset;
 	border-color: gray;
 	border-collapse: collapse;
-	background-color: \#eeeeee;
+	background-color: #ffffff;
 }
 
 table.summary td {
@@ -287,7 +287,7 @@ table.testcase {
 	border-style: outset;
 	border-color: gray;
 	border-collapse: collapse;
-	background-color: \#eeeeee;
+	background-color: #ffffff;
 /*	width: 600px; */
 }
 table.testcase th {
@@ -306,13 +306,13 @@ table.testcase td {
 }
 
 table.testcase {
-	background-color: \#eeeeee;
+	background-color: #ffffff;
 }
 table.postamble {
-	background-color: \#ffffff;
+	background-color: #ffffff;
 }
 table.preamble {
-	background-color: \#ffffff;
+	background-color: #ffffff;
 }
 
 /* Test case: user logs */
@@ -323,7 +323,6 @@ table.testcase-userlog-table {
 	border-style: outset;
 	border-color: gray;
 	border-collapse: collapse;
-	background-color: #ffffff;
 }
 
 table.testcase-userlog-table td {

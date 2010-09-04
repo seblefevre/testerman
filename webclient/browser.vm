@@ -16,6 +16,12 @@
 			<div id="content" class="wiki">
 				<div class="wikipage">
 
+<!-- quick navigation -->
+<a href="/">home</a>
+#foreach ($webpath in $webpaths)
+&gt; <a href="/browser?${webpath.path}">${webpath.label}</a>
+#end
+
 <h2>Browsing ${path}:</h2>
 <p>
 <ul class="browser">

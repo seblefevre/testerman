@@ -16,6 +16,12 @@
 			<div id="content" class="wiki">
 				<div class="wikipage">
 
+<!-- quick navigation -->
+<a href="/">home</a>
+#foreach ($webpath in $webpaths)
+&gt; <a href="/browser?${webpath.path}">${webpath.label}</a>
+#end
+
 <h2>Available Actions</h2>
 <p>
 <a class="wiki" href="/run_ats?${path}">Run this ATS (default session variables values)</a>
