@@ -45,9 +45,6 @@ import sys
 import time
 import optparse
 import re
-import xml.dom.minidom
-import StringIO
-import codecs
 import libxml2
 
 VERSION = '0.1.0'
@@ -78,10 +75,14 @@ class WebClientRequestHandlerMixIn(WebServer.BaseWebRequestHandlerMixIn):
 	def handle_docroot(self, path):
 		self._sendError(403)
 	
-	def handle_repository(self, path):
+	def handle_browser(self, path):
 		"""
-		Browse a particular folder.
+		Browses a particular folder or a file.
+		
+		Depending on the path extension, displays a page
+		dedicated to ATS, campaign, or folder browsing.
 		"""
+		getLogger().info("Attempt to browse %s" % path)
 		if not path:
 			path = '/repository'
 
@@ -90,34 +91,37 @@ class WebClientRequestHandlerMixIn(WebServer.BaseWebRequestHandlerMixIn):
 		if not path.startswith('/repository'):
 			path = '/repository/' + path
 
-		print "DEBUG: repository: %s" % path
+		getLogger().info("Actually browsing %s" % path)
+		
+		if path.endswith('.ats'):
+			self._browse_ats(path)
+		else:
+			self._browse_directory(path)
+	
+	def _browse_directory(self, path):
+		"""
+		Displays the contents of a directory.
+		@path: testerman-docroot-path of the directory.
+		"""
 		try:
 			l = self._getClient().getDirectoryListing(path)
 		except Exception, e:
-			print "DEBUG: repository: %s" % e
+			getLogger().error("Unable to browse directory %s: %s" % (path, str(e)))
 			l = []
 
 		if path > '/repository/':
 			l = [ dict(name = '..', type = 'directory') ] + l
 
-		print "DEBUG: repository result: %s" % l
-
+		getLogger().debug('repository result: %s' % l)
 		
-		self._serveTemplate("repository.vm", context = dict(path = path, entries = l))
+		self._serveTemplate("browser.vm", context = dict(path = path, entries = l))
 	
-
-	def handle_ats(self, path):
+	def _browse_ats(self, path):
 		"""
-		Display a page to view latest ATS execution and to execute the ATS.
+		Displays a page to view latest ATS execution and to execute the ATS.
 		
-		path is a testerman-document-root path to an ats.
+		@path: a testerman-docroot path to an ats.
 		"""
-		
-		if not path:
-			path = '/repository'
-		path = os.path.normpath(path)
-		if not path.startswith('/repository'):
-			path = '/repository/' + path
 
 		# Fetch available archived execution logs
 		logs = []
@@ -125,7 +129,7 @@ class WebClientRequestHandlerMixIn(WebServer.BaseWebRequestHandlerMixIn):
 		try:
 			l = self._getClient().getDirectoryListing(archivePath)
 		except Exception, e:
-			print "DEBUG: repository: %s" % e
+			getLogger().error("Unable to fetch logs for %s: %s" % (path, str(e)))
 			l = []
 
 		for entry in l:
@@ -196,7 +200,7 @@ class WebClientRequestHandlerMixIn(WebServer.BaseWebRequestHandlerMixIn):
 			jobInfo = self._getClient().getJobInfo(int(jobId))
 			jobLogFilename = self._getClient().getJobLogFilename(int(jobId))
 		except Exception, e:
-			print "DEBUG: handle_monitor_ats: %s" % s
+			getLogger().error("handle_monitor_ats: %s" % str(e))
 			error = True
 
 		print jobInfo		

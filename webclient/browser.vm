@@ -2,7 +2,7 @@
 <html xmlns="http://www.w3.org/1999/xhtml">
   
 <head>
-	<title>Repository: ${path}</title>
+	<title>Testerman: browsing ${path}</title>
 	<link rel="stylesheet" type="text/css" href="/static/testerman.css" />
 </head>
 <body>
@@ -16,16 +16,17 @@
 			<div id="content" class="wiki">
 				<div class="wikipage">
 
-<h2>Available ATSes and Campaigns in ${path}:</h2>
+<h2>Browsing ${path}:</h2>
 <p>
+<ul class="browser">
 #foreach ($entry in $entries)
 	#if ($entry.type == "directory")
-	<li><a class="wiki" href="/repository?${path}/${entry.name}">${entry.name}</a></li>
+	<li class="${entry.type}"><a class="wiki" href="/browser?${path}/${entry.name}">${entry.name}</a></li>
 	#else
 	#if ($entry.type == "ats")
-	<li>&lt;${entry.type}&gt; <a class="wiki" href="/ats?${path}/${entry.name}">${entry.name}</a></li>
+	<li class="${entry.type}"><a class="wiki" href="/browser?${path}/${entry.name}">${entry.name}</a></li>
 	#else
-	<li>&lt;${entry.type}&gt; ${entry.name}</li>
+	<li class="${entry.type}">${entry.name}</li>
 	#end
 	#end
 #end

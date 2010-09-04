@@ -2,11 +2,12 @@
 
 <xsl:stylesheet version="1.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform">
 
+<xsl:output method="html" standalone="yes" version="1.0" encoding="UTF-8" indent="yes"/>
+
 <xsl:template match="ats">
 
 <!-- header -->
 <html xmlns="http://www.w3.org/1999/xhtml">
- 
 <script type="text/javascript">
 function expandCollapse(id) {
 var element = document.getElementById(id);
@@ -30,7 +31,14 @@ element.style.display = (element.style.display != "block" ? "block" : "none");
 
 <!-- the interesting part -->
 <p>
-Test Execution Results for ATS: <xsl:value-of select="/ats//@id" />.
+Test Execution Results for ATS:
+<a>
+	<xsl:attribute name="href">
+		/browser?/repository/<xsl:value-of select="/ats//@id" />
+	</xsl:attribute>
+	<xsl:value-of select="/ats//@id" />
+</a>
+
 </p>
 <h1>Test Cases Summary</h1>
 
@@ -38,7 +46,7 @@ Test Execution Results for ATS: <xsl:value-of select="/ats//@id" />.
 	<tr><th>Test Case ID</th><th>Verdict</th></tr>
 	<xsl:for-each select="testcase">
 	<tr>
-		<td><xsl:value-of select="@id" /></td>
+		<td><a><xsl:attribute name="href">#<xsl:value-of select="@id" /></xsl:attribute><xsl:value-of select="@id" /></a></td>
 		<td><xsl:value-of select="@verdict" /></td>
 	</tr>
 	</xsl:for-each>
@@ -49,11 +57,16 @@ Test Execution Results for ATS: <xsl:value-of select="/ats//@id" />.
 
 <xsl:for-each select="testcase">
 <!--	<xsl:call-template name="testcase" /> -->
+	<a><xsl:attribute name="name"><xsl:value-of select="@id" /></xsl:attribute></a>
 	<h2><xsl:value-of select="@id" /></h2>
 	<table class="testcase">
 	<tr>
 		<td>Result: <xsl:value-of select="@verdict" /></td>
-		<td>Description: <xsl:value-of select="testcase-stopped" /></td>
+		<td>Description:
+			<xsl:call-template name="break">
+				<xsl:with-param name="text" select="testcase-stopped" />
+			</xsl:call-template>
+		</td>
 	</tr>
 	<tr><td colspan="2">Execution summary (User logs): <br />
 	<table class="testcase-userlog-table">
@@ -70,7 +83,7 @@ Test Execution Results for ATS: <xsl:value-of select="/ats//@id" />.
 	<table class="testcase-analysis-table">
 	<xsl:for-each select="*[not(name()='internal')]">
 	
-		<xsl:variable name='logEntryId' select='concat(@class, @timestamp)' />
+		<xsl:variable name="logElementId" select="generate-id(.)" />
 		<tr>
 		<td class="time">
 		<xsl:value-of select="@timestamp" /> 
@@ -79,92 +92,165 @@ Test Execution Results for ATS: <xsl:value-of select="/ats//@id" />.
 		<xsl:value-of select="@class" /> 
 		</td>
 		<td>
-		<xsl:attribute name="class"><xsl:value-of select="name()" /></xsl:attribute>
 		<xsl:choose>
 			<xsl:when test="name()='testcase-started'">
-				TestCase <xsl:value-of select="@id" />(<xsl:value-of select="." />) started
+				<span class="testcase-started">TestCase <xsl:value-of select="@id" />(<xsl:value-of select="." />) started</span>
 			</xsl:when>
 			<xsl:when test="name()='testcase-stopped'">
-				TestCase <xsl:value-of select="@id" /> stopped, final verdict is <xsl:value-of select="@verdict" />
+				<span class="testcase-stopped">TestCase <xsl:value-of select="@id" /> stopped, final verdict is <xsl:value-of select="@verdict" /></span>
 			</xsl:when>
 			<xsl:when test="name()='verdict-updated'">
-				Verdict updated to <xsl:value-of select="@verdict" /> on TC <xsl:value-of select="@tc" />
+				<span class="verdict-updated">Verdict updated to <xsl:value-of select="@verdict" /> on TC <xsl:value-of select="@tc" /></span>
 			</xsl:when>
 			<xsl:when test="name()='user'">
-				<xsl:value-of select="." />
+				<span class="user"><xsl:value-of select="." /></span>
 			</xsl:when>
 
 			<xsl:when test="name()='tc-created'">
-				Test Component <xsl:value-of select="@id" /> created
+				<span class="tc-created">Test Component <xsl:value-of select="@id" /> created</span>
 			</xsl:when>
 
 			<xsl:when test="name()='timer-started'">
-				Timer <xsl:value-of select="@id" /> started (<xsl:value-of select="@duration" />) on TC <xsl:value-of select="@tc" />
+				<span class="timer-started">Timer <xsl:value-of select="@id" /> started (<xsl:value-of select="@duration" />) on TC <xsl:value-of select="@tc" /></span>
 			</xsl:when>
 			<xsl:when test="name()='timer-stopped'">
-				Timer <xsl:value-of select="@id" /> stopped on TC <xsl:value-of select="@tc" />
+				<span class="timer-stopped">Timer <xsl:value-of select="@id" /> stopped on TC <xsl:value-of select="@tc" /></span>
 			</xsl:when>
 			<xsl:when test="name()='timer-expiry'">
-				Timer <xsl:value-of select="@id" /> timeout on TC <xsl:value-of select="@tc" />
+				<span class="timer-expiry">Timer <xsl:value-of select="@id" /> timeout on TC <xsl:value-of select="@tc" /></span>
 			</xsl:when>
 
 			<xsl:when test="name()='timeout-branch'">
-				Timeout match for Timer <xsl:value-of select="@id" />
+				<span class="timeout-branch">Timeout match for Timer <xsl:value-of select="@id" /></span>
 			</xsl:when>
 			<xsl:when test="name()='done-branch'">
-				Done match for TC <xsl:value-of select="@id" />
+				<span class="done-branch">Done match for TC <xsl:value-of select="@id" /></span>
 			</xsl:when>
 
 			<xsl:when test="name()='message-sent'">
-				<xsl:value-of select="@from-tc" />.<xsl:value-of select="@from-port" /> --&gt; <xsl:value-of select="@to-tc" />.<xsl:value-of select="@to-port" />
-				<!-- insert here a way to expand to the message -->
+				<a>
+					<xsl:attribute name="href">
+					<xsl:value-of select="concat('javascript:expandCollapse(&quot;message-', $logElementId, '&quot;)')" />
+					</xsl:attribute>
+					<span class="message-sent"><xsl:value-of select="@from-tc" />.<xsl:value-of select="@from-port" /> --&gt; <xsl:value-of select="@to-tc" />.<xsl:value-of select="@to-port" /></span>
+				</a>
+				<!-- insert here a way to expand to the payload -->
+				<div class='message'>
+					<xsl:attribute name="id"> <xsl:value-of select="concat('message-', $logElementId)" /> </xsl:attribute>
+					<xsl:call-template name="message">
+						<xsl:with-param name="msg" select="message" />
+					</xsl:call-template>
+				</div>
+
 			</xsl:when>
 
 			<xsl:when test="name()='template-match'">
-				Template match on port <xsl:value-of select="@tc" />.<xsl:value-of select="@port" />
+				<span class="template-match">Template match on port <xsl:value-of select="@tc" />.<xsl:value-of select="@port" /></span>
 				<!-- insert here a way to expand the message and the template -->
+				( <a>
+					<xsl:attribute name="href">
+					<xsl:value-of select="concat('javascript:expandCollapse(&quot;message-', $logElementId, '&quot;)')" />
+					</xsl:attribute>
+					message
+				</a>
+				 | 
+				<a>
+					<xsl:attribute name="href">
+					<xsl:value-of select="concat('javascript:expandCollapse(&quot;template-', $logElementId, '&quot;)')" />
+					</xsl:attribute>
+					template
+				</a>
+				 )
+
+				<div class='message'>
+					<xsl:attribute name="id"> <xsl:value-of select="concat('message-', $logElementId)" /> </xsl:attribute>
+					message: <xsl:call-template name="message">
+						<xsl:with-param name="msg" select="message" />
+					</xsl:call-template>
+				</div>
+				<div class='message'>
+					<xsl:attribute name="id"> <xsl:value-of select="concat('template-', $logElementId)" /> </xsl:attribute>
+					template: <xsl:call-template name="message">
+						<xsl:with-param name="msg" select="template" />
+					</xsl:call-template>
+				</div>
+
 			</xsl:when>
 			<xsl:when test="name()='template-mismatch'">
-				Template mismatch on port <xsl:value-of select="@tc" />.<xsl:value-of select="@port" />
+				<span class="template-mismatch">Template mismatch on port <xsl:value-of select="@tc" />.<xsl:value-of select="@port" /></span>
 				<!-- insert here a way to expand the message and the template -->
+				( <a>
+					<xsl:attribute name="href">
+					<xsl:value-of select="concat('javascript:expandCollapse(&quot;message-', $logElementId, '&quot;)')" />
+					</xsl:attribute>
+					message
+				</a>
+				 | 
+				<a>
+					<xsl:attribute name="href">
+					<xsl:value-of select="concat('javascript:expandCollapse(&quot;template-', $logElementId, '&quot;)')" />
+					</xsl:attribute>
+					template
+				</a>
+				 )
+
+				<div class='message'>
+					<xsl:attribute name="id"> <xsl:value-of select="concat('message-', $logElementId)" /> </xsl:attribute>
+					message: <xsl:call-template name="message">
+						<xsl:with-param name="msg" select="message" />
+					</xsl:call-template>
+				</div>
+				<div class='message'>
+					<xsl:attribute name="id"> <xsl:value-of select="concat('template-', $logElementId)" /> </xsl:attribute>
+					template: <xsl:call-template name="message">
+						<xsl:with-param name="msg" select="template" />
+					</xsl:call-template>
+				</div>
+
 			</xsl:when>
 
 			<xsl:when test="name()='tc-started'">
-				PTC <xsl:value-of select="@id" /> started with Behaviour <xsl:value-of select="@behaviour" />
+				<span class="tc-started">PTC <xsl:value-of select="@id" /> started with Behaviour <xsl:value-of select="@behaviour" /></span>
 			</xsl:when>
 			<xsl:when test="name()='tc-stopped'">
-				PTC <xsl:value-of select="@id" /> stopped, local verdict is <xsl:value-of select="@verdict" />
+				<span class="tc-stopped">PTC <xsl:value-of select="@id" /> stopped, local verdict is <xsl:value-of select="@verdict" /></span>
 			</xsl:when>
 
 			<xsl:when test="name()='system-sent'">
+				<span class="system-sent">
 				<xsl:value-of select="@tsi-port" /> &gt;&gt; :
 					<a>
 					<xsl:attribute name="href">
-					<xsl:value-of select="concat('javascript:expandCollapse(&quot;system-sent-message-', $logEntryId, '&quot;)')" />
+					<xsl:value-of select="concat('javascript:expandCollapse(&quot;system-sent-message-', $logElementId, '&quot;)')" />
 					</xsl:attribute>
 					<xsl:value-of select="label" />
 					</a>
+				</span>
 				<!-- insert here a way to expand to the payload -->
 				<div class='system-payload'>
-					<xsl:attribute name="id"> <xsl:value-of select="concat('system-sent-message-', $logEntryId)" /> </xsl:attribute>
-					<xsl:value-of select="payload" />
-<!--					<xsl:value-of select="replace(payload, '#0A;', '&lt;br /&gt;')" /> -->
+					<xsl:attribute name="id"> <xsl:value-of select="concat('system-sent-message-', $logElementId)" /> </xsl:attribute>
+					<xsl:call-template name="break">
+						<xsl:with-param name="text" select="payload" />
+					</xsl:call-template>
 				</div>
 			</xsl:when>
 
 			<xsl:when test="name()='system-received'">
+				<span class="system-received">
 				<xsl:value-of select="@tsi-port" /> &lt;&lt; : 
 					<a>
 					<xsl:attribute name="href">
-					<xsl:value-of select="concat('javascript:expandCollapse(&quot;system-received-message-', $logEntryId, '&quot;)')" />
+					<xsl:value-of select="concat('javascript:expandCollapse(&quot;system-received-message-', $logElementId, '&quot;)')" />
 					</xsl:attribute>
 					<xsl:value-of select="label" />
 					</a>
+				</span>
 				<!-- insert here a way to expand to the payload -->
 				<div class='system-payload'>
-					<xsl:attribute name="id"> <xsl:value-of select="concat('system-received-message-', $logEntryId)" /> </xsl:attribute>
-					<xsl:value-of select="payload" />
-<!--					<xsl:value-of select="replace(payload, '#0A;', '&lt;br /&gt;')" /> -->
+					<xsl:attribute name="id"> <xsl:value-of select="concat('system-received-message-', $logElementId)" /> </xsl:attribute>
+					<xsl:call-template name="break">
+						<xsl:with-param name="text" select="payload" />
+					</xsl:call-template>
 				</div>
 			</xsl:when>
 
@@ -193,13 +279,73 @@ Test Execution Results for ATS: <xsl:value-of select="/ats//@id" />.
 
 </xsl:template>
 
-<xsl:template name="testcase">
-	<h2><xsl:value-of select="@id" /></h2>
-	<p>Result: <xsl:value-of select="@verdict" /></p>
-	<p>User Logs: </p>
-	<xsl:for-each select="user">
-		<xsl:value-of select="@timestamp" /> <xsl:value-of select="." /><br />
+
+<xsl:template match="text()">
+	<xsl:call-template name="break">
+		<xsl:with-param name="text" select="." />
+	</xsl:call-template>
+</xsl:template>
+
+<!-- replace line breaks with <br > -->
+<xsl:template name="break">
+   <xsl:param name="text" />
+   <xsl:choose>
+   <xsl:when test="contains($text, '&#xa;')">
+      <xsl:value-of select="substring-before($text, '&#xa;')"/>
+      <br xmlns="" />
+      <xsl:call-template name="break">
+          <xsl:with-param name="text" select="substring-after($text,'&#xa;')"/>
+      </xsl:call-template>
+   </xsl:when>
+   <xsl:otherwise>
+		<xsl:value-of select="$text"/>
+   </xsl:otherwise>
+  </xsl:choose>
+</xsl:template>
+
+<xsl:template name="message">
+	<xsl:param name="msg" />
+
+	<!-- terminal values, i.e. a node without children -->
+	<xsl:for-each select="$msg[not(*)]">
+		<span class="value"><xsl:value-of select="$msg" /></span>
 	</xsl:for-each>
+
+	<!-- records -->
+	<xsl:for-each select="$msg/r">
+		record:<ul class="record">
+			<xsl:for-each select="f">
+				<li><xsl:value-of select="@n" />: 
+					<xsl:call-template name="message">
+						<xsl:with-param name="msg" select="."/>
+					</xsl:call-template>
+				</li>
+			</xsl:for-each>
+		</ul>
+	</xsl:for-each>
+
+	<!-- lists -->
+	<xsl:for-each select="$msg/l">
+		list:<ol class="list">
+			<xsl:for-each select="i">
+				<li> 
+					<xsl:call-template name="message">
+						<xsl:with-param name="msg" select="."/>
+					</xsl:call-template>
+				</li>
+			</xsl:for-each>
+		</ol>
+	</xsl:for-each>
+
+	<!-- choice -->
+	<xsl:for-each select="$msg/c">
+		choice <xsl:value-of select="@n" />: 
+					<xsl:call-template name="message">
+						<xsl:with-param name="msg" select="."/>
+					</xsl:call-template>
+	</xsl:for-each>
+
+
 </xsl:template>
 
 </xsl:stylesheet>

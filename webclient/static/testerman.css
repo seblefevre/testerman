@@ -3,6 +3,10 @@
 /* PNG transparency fix for IE 5.5, IE 6.0 - behavior is IE-specific attribute, non-standard */
 img { behavior: url(/trac/chrome/site/iepngfix.htc); }
 
+/******************************************************************************
+ * General
+ ******************************************************************************/
+
 body, th, td {
  font: normal 13px 'trebuchet ms', arial, verdana,'Bitstream Vera Sans',helvetica,sans-serif; /* Modified */
 }
@@ -219,6 +223,62 @@ td {
 }
 
 
+/******************************************************************************
+ * Browser
+ ******************************************************************************/
+
+ul.browser li {
+	list-style-image: url('/static/icon-unknown.png');
+}
+ul.browser li.ats {
+	list-style-image: url('/static/icon-ats.png');
+}
+ul.browser li.campaign {
+	list-style-image: url('/static/icon-campaign.png');
+}
+ul.browser li.directory {
+	list-style-image: url('/static/icon-folder.png');
+}
+
+
+/******************************************************************************
+ * ATS Logs
+ ******************************************************************************/
+
+/* Test case summary (ats results view) */
+
+table.summary .pass {
+	color: \#0DCE07;
+}
+table.summary .fail {
+	color: \#bb0000;
+	font-weight: bold;
+}
+
+table.summary th {
+	border-width: 1px 1px 1px 1px;
+	border-style: inset;
+	border-color: gray;
+	padding: 3px;
+	font-weight: bold;
+}
+
+table.summary {
+	border-width: 1px;
+	border-spacing: 0px;
+	border-style: outset;
+	border-color: gray;
+	border-collapse: collapse;
+	background-color: \#eeeeee;
+}
+
+table.summary td {
+	border-width: 1px 1px 1px 1px;
+	padding: 3px;
+	border-style: inset;
+	border-color: gray;
+}
+
 /* Test case main presentation (ats results view) */
 
 table.testcase {
@@ -255,40 +315,6 @@ table.preamble {
 	background-color: \#ffffff;
 }
 
-/* Test case summary (ats results view) */
-
-table.summary .pass {
-	color: \#0DCE07;
-}
-table.summary .fail {
-	color: \#bb0000;
-	font-weight: bold;
-}
-
-table.summary th {
-	border-width: 1px 1px 1px 1px;
-	border-style: inset;
-	border-color: gray;
-	padding: 3px;
-	font-weight: bold;
-}
-
-table.summary {
-	border-width: 1px;
-	border-spacing: 0px;
-	border-style: outset;
-	border-color: gray;
-	border-collapse: collapse;
-	background-color: \#eeeeee;
-}
-
-table.summary td {
-	border-width: 1px 1px 1px 1px;
-	padding: 3px;
-	border-style: inset;
-	border-color: gray;
-}
-
 /* Test case: user logs */
 
 table.testcase-userlog-table {
@@ -297,7 +323,7 @@ table.testcase-userlog-table {
 	border-style: outset;
 	border-color: gray;
 	border-collapse: collapse;
-	background-color: \#eeeeee;
+	background-color: #ffffff;
 }
 
 table.testcase-userlog-table td {
@@ -315,7 +341,6 @@ table.testcase-analysis-table {
 	border-style: outset;
 	border-color: gray;
 	border-collapse: collapse;
-	background-color: \#eeeeee;
 }
 
 table.testcase-analysis-table td {
@@ -329,27 +354,52 @@ table td.time {
 	white-space: nowrap;
 }
 
-div.system-payload {
-  font: normal 10px courier;
-  display: none; /* switched to block via javascript, collapsed by default */
-}
+/* Detailed log view - the different types of entries */
 
-/* Detailled log view - the different types of entries */
-
-table.testcase-analysis-table td.user {
+table.testcase-analysis-table .user {
 	font-style: italic;
 }
 
-table.testcase-analysis-table td.testcase-started {
+table.testcase-analysis-table .testcase-started {
 	font-weight: bold;
 }
-table.testcase-analysis-table td.testcase-stopped {
+table.testcase-analysis-table .testcase-stopped {
 	font-weight: bold;
 }
-table.testcase-analysis-table td.template-match {
+table.testcase-analysis-table .template-match {
 	color: lawngreen;
 }
-
-table.testcase-analysis-table td.template-mismatch {
+table.testcase-analysis-table .template-mismatch {
 	color: red;
 }
+
+/* payloads and message display in the detailed log view */
+
+div.system-payload {
+	padding: 2px;
+  border: solid 0px;
+	background: #eeeeee;
+	font: normal 11px courier;
+  display: none; /* switched to block via javascript, collapsed by default */
+}
+
+div.message {
+  display: none; /* switched to block via javascript, collapsed by default */
+}
+
+div.message .value {
+	padding: 2px;
+  border: solid 0px;
+	background: #eeeeee;
+	font: normal 11px courier;
+}
+
+div.message .record {
+	list-style-type: square;
+	margin: 1px;
+}
+
+div.message .list {
+	margin: 1px;
+}
+
