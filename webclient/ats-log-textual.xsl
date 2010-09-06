@@ -8,15 +8,15 @@
 
 <!-- header -->
 <html xmlns="http://www.w3.org/1999/xhtml">
-<script type="text/javascript">
+<head>
+	<title><xsl:value-of select="/ats//@id" /></title>
+	<link rel="stylesheet" type="text/css" href="/static/testerman.css" />
+	<script type="text/javascript">
 function expandCollapse(id) {
 var element = document.getElementById(id);
 element.style.display = (element.style.display != "block" ? "block" : "none"); 
 }
-</script>
-<head>
-	<title><xsl:value-of select="/ats//@id" /></title>
-	<link rel="stylesheet" type="text/css" href="/static/testerman.css" />
+	</script>
 </head>
 <body>
 	<div id="page">

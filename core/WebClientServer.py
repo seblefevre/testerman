@@ -55,7 +55,7 @@ DEFAULT_PAGE = "/index.vm"
 cm = ConfigManager.instance()
 
 ################################################################################
-# Logging
+# Logging & Tooling
 ################################################################################
 
 def getLogger():
@@ -64,8 +64,23 @@ def getLogger():
 def formatTimestamp(timestamp):
   return time.strftime("%Y%m%d %H:%M:%S", time.localtime(timestamp))  + ".%3.3d" % int((timestamp * 1000) % 1000)
 
+
+################################################################################
+# Request Handler to provide WebClient services
+################################################################################
+
 class WebClientRequestHandlerMixIn(WebServer.BaseWebRequestHandlerMixIn):
-	
+	_authenticationRealm = 'Testerman WebClient'
+
+	def authenticate(self, username, password):
+		self._repositoryHome = None
+		if cm.get('wcs.users.%s.password' % username) == password:
+			self._repositoryHome = os.path.normpath('/repository/%s' % (cm.get('wcs.users.%s.repository_home' % username) or '/'))
+			return True
+		else:
+			getLogger().warning("Invalid password for user %s" % username)
+			return False
+
 	def _getClient(self):
 		return self.server.getClient()
 
@@ -75,6 +90,19 @@ class WebClientRequestHandlerMixIn(WebServer.BaseWebRequestHandlerMixIn):
 	def handle_docroot(self, path):
 		self._sendError(403)
 	
+	def _adjustRepositoryPath(self, path):
+		"""
+		Makes sure that the repository path in within the restricted area
+		the user has an access to (its "home")
+		If not, simply replaces the path with the home.
+		"""
+		if not path: path = '/'
+		path = os.path.normpath(path)
+		home = self._repositoryHome
+		if not path.startswith(home):
+			path = home
+		return path
+	
 	def handle_browser(self, path):
 		"""
 		Browses a particular folder or a file.
@@ -83,14 +111,7 @@ class WebClientRequestHandlerMixIn(WebServer.BaseWebRequestHandlerMixIn):
 		dedicated to ATS, campaign, or folder browsing.
 		"""
 		getLogger().info("Attempt to browse %s" % path)
-		if not path:
-			path = '/repository'
-
-		path = os.path.normpath(path)
-		
-		if not path.startswith('/repository'):
-			path = '/repository/' + path
-
+		path = self._adjustRepositoryPath(path)
 		getLogger().info("Actually browsing %s" % path)
 		
 		if path.endswith('.ats'):
@@ -109,7 +130,7 @@ class WebClientRequestHandlerMixIn(WebServer.BaseWebRequestHandlerMixIn):
 			getLogger().error("Unable to browse directory %s: %s" % (path, str(e)))
 			l = []
 
-		if path > '/repository/':
+		if path > self._repositoryHome:
 			l = [ dict(name = '..', type = 'directory') ] + l
 
 		getLogger().debug('repository result: %s' % l)
@@ -170,8 +191,9 @@ class WebClientRequestHandlerMixIn(WebServer.BaseWebRequestHandlerMixIn):
 		Execute an ATS whose testerman-docroot-path is provided in argument.
 		Once run, redirect the user to a monitoring page.
 		"""
-		if not path.startswith('/repository'):
-			path = '/repository/' + path
+		getLogger().info("Attempt to run %s" % path)
+		path = self._adjustRepositoryPath(path)
+		getLogger().info("Actually running %s" % path)
 
 		# Reconstruct the server path the file is located into
 		dirpath = '/'.join(path.split('/')[:-1])
@@ -465,6 +487,7 @@ def main():
 	group = optparse.OptionGroup(parser, "Advanced Options")
 	group.add_option("-V", dest = "varDir", metavar = "PATH", help = "use PATH to persist Testerman Server runtime variables, such as the job queue. If not provided, no persistence occurs between restarts.")
 	group.add_option("-C", "--conf-file", dest = "configurationFile", metavar = "FILENAME", help = "path to a configuration file. You may still use the command line options to override the values it contains.")
+	group.add_option("-U", "--users-file", dest = "usersFile", metavar = "FILENAME", help = "path to the configuration file that contains authorized webclient users.")
 	group.add_option("--var", dest = "variables", metavar = "VARS", help = "set additional variables as VARS (format: key=value[,key=value]*)")
 	parser.add_option_group(group)
 
@@ -484,12 +507,23 @@ def main():
 	
 	cm.set_transient("wcs.configuration_filename", configFile)
 
-	if configFile:
-		try:
-			cm.read(configFile)
-		except Exception, e:
-			print str(e)
-			return 1
+	# Read the settings from the saved configuration, if any
+	usersFile = None
+	# Provided on the command line ?
+	if options.usersFile is not None:
+		usersFile = options.configurationFile
+	# No config file provided - fallback to $TESTERMAN_HOME/conf/webclient-users.conf if set and exists
+	elif Tools.fileExists("%s/conf/webclient-users.conf" % testerman_home):
+		usersFile = "%s/conf/webclient-users.conf" % testerman_home
+	
+	cm.set_transient("wcs.users_filename", usersFile)
+
+	try:
+		if configFile: cm.read(configFile)
+		if usersFile: cm.read(usersFile, autoRegister = True)
+	except Exception, e:
+		print str(e)
+		return 1
 
 
 	# Now, override read settings with those set on explicit command line flags

@@ -28,6 +28,7 @@ import logging
 import BaseHTTPServer
 import os.path
 import socket
+import base64
 
 DEFAULT_PAGE = "/index.vm"
 
@@ -70,6 +71,9 @@ ContentTypes = {
 }
 
 
+class AuthenticationError(Exception):
+	pass
+
 ################################################################################
 # Template & static contents serving request handler
 ################################################################################
@@ -77,13 +81,41 @@ ContentTypes = {
 class BaseWebRequestHandlerMixIn:
 	"""
 	This mixin request handler provides a do_GET implementation only,
-	and is used to complete a XMLRPC request handler (providing a do_POST
-	implementation).
+	and is used to:
+	- complete the XMLRPC request handler (providing a do_POST implementation)
+	  to handle basic component distribution system to a testerman server (on Ws interface)
+	- to implement the Wc interface, providing Testerman clients features via
+	  the web (called the WebClient).
 	
 	It can server the usual static contents as well as
-	airspeed/velocity based templates.
+	airspeed/velocity based templates, and is able to manage a basic authentication.
 	"""
+
+	# If you want to authenticate your users, provide a realm
+	#	and reimplement the authenticate() method.
+	_authenticationRealm = None
+
+	def authenticate(self, username, password):
+		return True
 	
+	def _authenticate(self):
+		self.username = None
+		if not self._authenticationRealm:
+			return
+
+		authorization = self.headers.get('authorization')
+		if not authorization:
+			raise AuthenticationError('Authentication required')
+		kind, data = authorization.split(' ')
+		if not kind == 'Basic':
+			raise AuthenticationError('Unsupported authentication type')
+		username, _, password = base64.decodestring(data).partition(':')
+		if not self.authenticate(username, password):
+			raise AuthenticationError('Authentication failure')
+
+		getLogger().info("Authenticated as user %s" % (username))	
+		self.username = username
+
 	def _getDocumentRoot(self):
 		return self.server.getDocumentRoot()
 	
@@ -95,6 +127,15 @@ class BaseWebRequestHandlerMixIn:
 		return ext in ['.vm', '.vcss']
 	
 	def do_GET(self):
+		try:
+			self._authenticate()
+		except AuthenticationError, e:
+			self.send_response(401)
+			self.send_header('WWW-Authenticate', 'Basic realm="%s"' % self._authenticationRealm)
+			self.end_headers()
+			self.wfile.write('Authentication failure')
+			return
+
 		if not self.path.startswith('/'):
 			self.path = '/' + self.path
 
@@ -268,13 +309,14 @@ class BaseWebRequestHandlerMixIn:
 			ret['internal'][v['key'].replace('.', '_')] = v['value']
 
 		# Published components
-		updateFile = '%s/updates.xml' % cm.get('testerman.document_root')
-		um = UpdateMetadataWrapper(updateFile)
-		try:
-			ret['components'] = um.getComponentsList()
-		except:
-			if self._getDebug():
-				getLogger().error(Tools.getBacktrace())
+		if cm.get('testerman.document_root'):
+			updateFile = '%s/updates.xml' % cm.get('testerman.document_root')
+			um = UpdateMetadataWrapper(updateFile)
+			try:
+				ret['components'] = um.getComponentsList()
+			except:
+				if self._getDebug():
+					getLogger().error(Tools.getBacktrace())
 
 		# More to come
 		return ret
@@ -284,6 +326,10 @@ class WebRequestHandlerMixIn(BaseWebRequestHandlerMixIn):
 	"""
 	This handler completes the base one with dynamic resources
 	handlers implementations.
+	
+	Uses to serve GET requests over the Ws interface, to
+	download installers, component, and offer other
+	server-oriented services.
 	"""
 	##
 	# Dynamic resources handlers

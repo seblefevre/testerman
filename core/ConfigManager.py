@@ -119,7 +119,7 @@ class ConfigManager:
 		self._persistent[key] = dict(default = default, user_xform = user_xform, actual_xform = xform, dynamic = dynamic, format = format)
 		self._mutex.release()
 		
-	def set_user(self, key, value, autoCommit = False):
+	def set_user(self, key, value, autoCommit = False, autoRegister = False):
 		"""
 		Updates a persistent variable.
 		
@@ -135,12 +135,17 @@ class ConfigManager:
 		
 		When autoCommit is set, the user-provided value is committed (thus transformed to
 		an actual value) only if there is not an existing actual value.
+		
+		If autoRegister is set, allows a new key to be registered if it does not exist
+		yet.
 		"""
 		if value is None:
 			return
 		ex = None
 		self._mutex.acquire()
 		try:
+			if not self._persistent.has_key(key) and autoRegister:
+				self.register(key, value)
 			v = self._persistent[key]
 			# transform the value into the correct type
 			v["user"] = v["user_xform"](value)
@@ -240,8 +245,8 @@ class ConfigManager:
 				else:
 					ret = v['default']
 		except Exception, e:
-			print ("Errorwhile accessing key %s: %s" % (key, str(e)))
-			getLogger().error("Errorwhile accessing key %s: %s" % (key, str(e)))
+			print ("Error while accessing key %s: %s" % (key, str(e)))
+			getLogger().error("Error while accessing key %s: %s" % (key, str(e)))
 		self._mutex.release()
 		return ret
 
@@ -273,7 +278,7 @@ class ConfigManager:
 		self._mutex.release()
 		return ret
 	
-	def read(self, filename):
+	def read(self, filename, autoRegister = False):
 		"""
 		Loads persistent variables from a file.
 		"""
@@ -283,7 +288,7 @@ class ConfigManager:
 				m = re.match(r'\s*(?P<key>[^#].*)=(?P<value>.*)', l.strip())
 				if m:
 					try:
-						self.set_user(m.group('key').strip(), m.group('value').strip())
+						self.set_user(m.group('key').strip(), m.group('value').strip(), autoRegister = autoRegister)
 					except KeyException:
 						pass
 			f.close()
