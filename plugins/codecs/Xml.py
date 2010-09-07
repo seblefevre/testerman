@@ -19,113 +19,146 @@
 
 import CodecManager
 
-import StringIO
-import codecs
-import xml.dom.minidom
+import libxml2
 
-# "overriden" Document.toxml and toprettyxml to optionaly write the prolog.
-
-def writexml(doc, prolog = True, encoding = None, indent = "", addindent = "", newl = ""):
-	writer = StringIO.StringIO()
-	if encoding is not None:
-		writer = codecs.lookup(encoding)[3](writer)
-	if prolog:
-		if encoding is None:
-			writer.write('<?xml version="1.0" ?>%s' % newl)
-		else:
-			writer.write('<?xml version="1.0" encoding="%s"?>%s' % (encoding, newl))
-	for node in doc.childNodes:
-		node.writexml(writer, indent, addindent, newl)
-	return writer.getvalue()
 
 class XmlCodec(CodecManager.Codec):
 	"""
-	('element', { 'attributes': { ... }, 'children': [ ... ])
+	('element', { 'attributes': { ... }, 'children': [ ... ], 'ns': ...)
 	if no child:
-	('element', { 'attributes': { ... }, 'value': <unicode>, 'cdata': bool)
+	('element', { 'attributes': { ... }, 'value': <unicode>, 'cdata': bool, 'ns': ...)
 	
+	ns is optional.
 	
 	This codec is NOT SUITABLE to parse XHTML, since it won't create dedicated nodes
 	for text-node (as a consequence: <h1>hello <b>dolly</b></h1> 
-	will only return ('h1', { 'value': hello }) - the first text node renders the
-	element 'text only'.
-	
+	will only return ('h1', { 'value': 'hello dolly'}).
 	
 	Valid properties:
 	
-	prettyprint  || boolean || False || encoding: pretty xml print
-	encoding     || string  || utf-8 || encoding: encoding format. decoding: decoding format if no prolog present.
-	write_prolog || boolean || True || encoding: write the <?xml version="1.0" ?> prolog or not
+	prettyprint  || boolean || `False` || encoding: pretty xml print ||
+	encoding     || string  || `'utf-8'` || encoding: encoding format. decoding: decoding format if no prolog is present ||
+	write_prolog || boolean || `True` || encoding: write the <?xml version="1.0" encoding="..." ?> prolog or not ||
 	"""
+
 	def encode(self, template):
-		(rootTag, rootAttr) = template
-		dom = xml.dom.minidom.getDOMImplementation().createDocument(None, rootTag, None)
-		root_element = dom.documentElement
-		self._encode(dom, root_element, rootAttr)
-		if self.getProperty('prettyprint', False):
-			ret = writexml(dom, prolog = self.getProperty('write_prolog', True), encoding = self.getProperty('encoding', 'utf-8'), addindent = "\t", newl = "\n")
-		else:
-			ret = writexml(dom, prolog = self.getProperty('write_prolog', True), encoding = self.getProperty('encoding', 'utf-8'))
+		(tag, attr) = template
+		doc = libxml2.newDoc("1.0")
+		root = self._encode(doc, tag, attr.get('children'), attr.get('attributes', {}), attr.get('value', ''), attr.get('cdata', False), attr.get('ns'))
+		doc.setRootElement(root)
+		encoding = self.getProperty('encoding', 'utf-8')
+		ret = ''
+		if self.getProperty('write_prolog', True):
+			ret = '<?xml version="1.0" encoding="%s"?>\n' % encoding
+		ret += root.serialize(encoding = encoding, format = (self.getProperty('prettyprint', False) and 1 or 0))
 		return (ret, "XML data")
-	
-	def _encode(self, doc, element, attr):
-		"""
-		@type  doc: Document
-		@type  element: Element
-		@type  attr: dict{'attributes' (optional), 'value' (optional), 'children' (optional), 'cdata' (optional)}
-		"""
-		attributes = attr.get('attributes', {})
+
+	def _encode(self, doc, tag, children, attributes, value, cdata, ns, nsMap = {}):
+		node = libxml2.newNode(tag)
+		if ns:
+			# create a prefix for the ns
+			if not ns in nsMap:
+				nsMap[ns] = 'ns%d' % (len(nsMap) + 1)
+			prefix = nsMap[ns]
+			node.setNs(node.newNs(ns, prefix))
 		for k, v in attributes.items():
-			element.setAttribute(k, unicode(v))
-		children = attr.get('children', [])
+			node.setProp(k, v)
+		
 		if children:
-			# OK, children present. Ignoring value/cdata
-			for (tag, a) in children:
-				e = doc.createElement(tag)
-				self._encode(doc, e, a)
-				element.appendChild(e)
+			for (tag, attr) in children:
+				node.addChild(self._encode(doc, tag, attr.get('children'), attr.get('attributes', {}), attr.get('value'), attr.get('cdata'), attr.get('ns'), nsMap))
 		else:
-			cdata = attr.get('cdata', False)
-			value = attr.get('value', '')
 			if cdata:
-				e = doc.createCDATASection(value)
+				node.addChild(doc.newCDataBlock(value, len(value)))
 			else:
-				e = doc.createTextNode(value)
-			element.appendChild(e)
+				node.addChild(libxml2.newText(value))
+		return node
 			
 	def decode(self, data):
 		ret = None
-		dom = xml.dom.minidom.parseString(data)
-		element = dom.documentElement
-		ret = self._decode(element)
+		doc = libxml2.parseDoc(data)
+		root = doc.getRootElement()
+		ret = self._decode(root)
+		doc.freeDoc()
 		return (ret, "XML data")
-	
+
 	def _decode(self, element):
 		"""
-		Recursive decoding.
-		@type  element: Element
-		
-		@rtype: tuple (tag, { attributes, children (if any), text (if any), cdata (if applicable) }
+		libxml2 based.
 		"""
-		tag = element.tagName
-		attributes = {}
-		# Retrieve attributes
-		for a, v in element.attributes.items():
-			attributes[a] = v
+		tag = element.name
+		ns = element.ns()
+		if ns: ns = ns.content
+		else:
+			ns = None
+
+		attributes = {} # attributes are not namespaced...		
+		a = element.properties
+		while a:
+			attributes[a.name] = a.content
+			a = a.next
+
+		# If the node has (non-strippable) text nodes and element nodes as children,
+		# for instance: "something <i>else</i>, etc"
+		# we consider the whole thing as its value.
 		
-		# Now retrieve children, if any
+		# If the node has only element nodes as children,
+		# the node won't have a value, but only children.
+		
 		children = []
-		for node in element.childNodes:
-			if node.nodeType == node.ELEMENT_NODE:
-				children.append(self._decode(node))
-			# We should return only if these nodes are the first one.. ?
-			elif node.nodeType == node.TEXT_NODE and node.nodeValue.strip():
-				return (tag, { 'attributes': attributes, 'cdata': False, 'value': node.nodeValue.strip() })
-			elif node.nodeType == node.CDATA_SECTION_NODE:
-				return (tag, { 'attributes': attributes, 'cdata': True, 'value': node.nodeValue })
-			# Ignore other final node types (comments, ...)
-		
-		return (tag, { 'attributes': attributes, 'children': children }) 
+		hasElementChild = False
+		hasTextChild = False
+		isMixed = False
+		value = ''
+		cdata = False
+
+		node = element.children
+		while node:
+			if node.type == 'cdata':
+				if hasElementChild:
+					# element contains a mix of text and child elements: retrieves the element content only
+					isMixed = True
+					break
+				else:
+					hasTextChild = True
+					cdata = True
+					value = node.content
+
+			elif node.isText() and node.content.strip():
+				if hasElementChild:
+					# element contains a mix of text and child elements: retrieves the element content only
+					isMixed = True
+					break
+				else:
+					hasTextChild = True
+					value = node.content.strip()
+			elif node.type == 'element':
+				if hasTextChild:
+					isMixed = True
+					break
+				else:
+					# let's register the element in the children list
+					children.append(self._decode(node))
+					hasElementChild = True
+			
+			node = node.next
+
+		if isMixed:
+			d = { 'attributes': attributes, 'cdata': False, 'value': element.content }
+			if ns: d['ns'] = ns
+			return (tag, d)
+
+		if hasElementChild:
+			# only element children
+			d = { 'attributes': attributes, 'children': children }
+			if ns: d['ns'] = ns
+			return (tag, d)
+
+		# no child, or a single text child
+		d = { 'attributes': attributes, 'cdata': cdata, 'value': value }
+		if ns: d['ns'] = ns
+		return (tag, d)
+	
 
 CodecManager.registerCodecClass('xml', XmlCodec)
 
@@ -135,31 +168,45 @@ if __name__ == '__main__':
 	CodecManager.alias('xml.iso', 'xml', encoding = "iso-8859-1", write_prolog = True)
 	CodecManager.alias('xml.pretty', 'xml', prettyprint = True)
 	
-	sample = """<?xml version="1.0"?>
-<library owner="John Smith" administrator="Héléna Utf8">
+	sampleNoNs = """<?xml version="1.0" encoding="utf-8" ?>
+<library owner="John Smith" administrator="Héléna Utf8 and Mickaël Orangina">
 	<book isbn="88888-7777788">
 		<author>Mickaël Orangina</author>
 		<title locale="fr">Tonnerre sous les tropiques</title>
 		<title locale="us">Tropic thunder</title>
+		<title locale="es">No <i>habla</i> espagnol</title>
 		<summary><![CDATA[This is a CDATA section <-> <-- this is a tie fighter]]></summary>
+	</book>
+</library>
+"""
+
+	sampleNs = """<?xml version="1.0" encoding="utf-8" ?>
+<library owner="John Smith" administrator="Héléna Utf8 and Mickaël Orangina" xmlns="http://default" xmlns:b="http://base">
+	<book isbn="88888-7777788">
+		<b:author>Mickaël Orangina</b:author>
+		<title locale="fr">Tonnerre sous les tropiques</title>
+		<title locale="us">Tropic thunder</title>
+		<title locale="es">No <i>habla</i> espagnol</title>
+		<b:summary><![CDATA[This is a CDATA section <-> <-- this is a tie fighter]]></b:summary>
 	</book>
 </library>
 """
 	
 	for codec in [ 'xml', 'xml.noprolog', 'xml.iso', 'xml.pretty' ]:
-		print "%s %s %s" % (40*'=', codec, 40*'=')
-		print "decoded with %s:" % codec
-		(decoded, _) = CodecManager.decode(codec, sample)
-		print decoded
-		print
-		print "re-encoded with %s:" % codec
-		(reencoded, _) = CodecManager.encode(codec, decoded)
-		print
-		print reencoded
-		print "re-decoded with %s:" % codec
-		(redecoded, _) = CodecManager.decode(codec,reencoded)
-		print redecoded
-		assert(decoded == redecoded)
-		print
+		for sample in [ sampleNoNs, sampleNs ]:
+			print "%s %s %s" % (40*'=', codec, 40*'=')
+			print "decoded with %s:" % codec
+			(decoded, _) = CodecManager.decode(codec, sample)
+			print decoded
+			print
+			print "re-encoded with %s:" % codec
+			(reencoded, _) = CodecManager.encode(codec, decoded)
+			print
+			print reencoded
+			print "re-decoded with %s:" % codec
+			(redecoded, _) = CodecManager.decode(codec,reencoded)
+			print redecoded
+			assert(decoded == redecoded)
+			print
 	
 	
