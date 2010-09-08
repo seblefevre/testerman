@@ -109,7 +109,8 @@ class BaseWebRequestHandlerMixIn:
 		kind, data = authorization.split(' ')
 		if not kind == 'Basic':
 			raise AuthenticationError('Unsupported authentication type')
-		username, _, password = base64.decodestring(data).partition(':')
+		
+		username, password = base64.decodestring(data).split(':', 1)
 		if not self.authenticate(username, password):
 			raise AuthenticationError('Authentication failure')
 
