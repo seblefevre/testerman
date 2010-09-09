@@ -1,6 +1,7 @@
 -- $Id$
 -- SLE: numeric notation is mandatory for tyrannioware parser
--- Compile to Python using py_output.py tcap.asn > tcap_asn.py
+-- Compile to Python using py_output.py - - implicit tcap.asn > tcap_asn.py
+-- Freely adapted from the ASN.1 used in WireShark.
 
 TCAPMessages {itu-t (0) recommendation (0) q (17) 773 modules(2) messages(1) version3(3)}
 
@@ -117,7 +118,7 @@ Component ::=	CHOICE {
 Invoke ::=		SEQUENCE {
 				invokeID				InvokeIdType,
 				linkedID				[0] IMPLICIT InvokeIdType OPTIONAL,
-				opCode			OPERATION,
+				operationCode			OPERATION,
 				parameter	 Parameter OPTIONAL }
 
 Parameter ::= ANY
@@ -128,7 +129,7 @@ Parameter ::= ANY
 ReturnResult ::=	SEQUENCE {
 	invokeID				InvokeIdType,
 	resultretres			SEQUENCE {
-		opCode			OPERATION,
+		operationCode			OPERATION,
 		parameter		Parameter OPTIONAL
 		} OPTIONAL
 	}
@@ -138,14 +139,14 @@ ReturnResult ::=	SEQUENCE {
 
 ReturnError ::=	SEQUENCE {
 				invokeID				InvokeIdType,
-				errorCode				ErrorCode,
+				errorCode				ERROR,
 				parameter				Parameter  OPTIONAL }
  
 -- ANY is filled by the single ASN.1 data type following the keyword PARAMETER in the type definition
 -- of a particular error.
 
 Reject ::=		SEQUENCE {
-				invokeIDRej CHOICE {
+				invokeID CHOICE {
 					derivable			InvokeIdType,
 					not-derivable		NULL },
 				problem CHOICE {
@@ -242,11 +243,5 @@ ReturnErrorProblem	::=	INTEGER {		unrecognizedInvokeID (0),
 								unexpectedError (3),
 								mistypedParameter (4) }
 
-
-ErrorCode ::= CHOICE
-			{
-				nationaler 		[PRIVATE 19] IMPLICIT INTEGER (-32768..32767),
-				privateer 		[PRIVATE 20] IMPLICIT INTEGER
-			}
 
 END -- end of the TCAP Package Module 
