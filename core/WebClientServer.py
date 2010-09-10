@@ -278,7 +278,7 @@ class WebClientRequestHandlerMixIn(WebServer.BaseWebRequestHandlerMixIn):
 		currentTestCaseNode = None
 		atsNode = libxml2.newNode('ats')
 		
-		node = rdoc.getRootElement().firstElementChild()
+		node = rdoc.getRootElement().children
 		while node:
 			nextnode = node.next
 			if not node.type == 'element': # libxml2 constant ?
