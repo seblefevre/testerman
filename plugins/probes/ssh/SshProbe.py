@@ -171,7 +171,7 @@ class SshProbe(ProbeImplementationManager.ProbeImplementation):
 			if cmd == 'cancel':
 				return self.cancelCommand()
 			elif cmd == 'execute':
-				self._checkArgs(m, [ ('command', None), ('host', None), ('username', None), ('password', None), ('timeout', 5.0), ('workingdir', None) ])
+				self._checkArgs(m, [ ('command', None), ('host', None), ('username', None), ('password', None), ('timeout', self['timeout']), ('workingdir', None) ])
 				command = m['command']
 				host = m['host']
 				username = m['username']
