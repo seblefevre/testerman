@@ -99,6 +99,7 @@ class TcpProbe(ProbeImplementationManager.ProbeImplementation):
 	|| `use_ssl` || boolean || `False` || If set, all outgoing and incoming traffic through is probe is transported over SSLv3. All TLS negotiations are performed by the probe. However, ... ||
 	|| `ssl_key` || string || `None` || The SSL key to use if `use_ssl`is set to `True`. Contains a private key associated to `ssl_certificate`, in base64 format. If not provided, a default sample private key is used. ||
 	|| `ssl_certificate` || string || `None` || The SSL certificate to use if `use_ssl`is set to `True`. Contains a certificate in PEM format that will be used when a certificate is needed by the probe connection(s). If not provided, a default one that matches the default private key, is used. ||
+	|| `connection_timeout` || float || `5.0` || The connection timeout, in s, when trying to connect to a remote party. ||
 
 	= Overview =
 	
@@ -198,6 +199,7 @@ class TcpProbe(ProbeImplementationManager.ProbeImplementation):
 		self.setDefaultProperty('use_ssl', None)
 		self.setDefaultProperty('ssl_key', DEFAULT_SSL_PRIVATE_KEY)
 		self.setDefaultProperty('ssl_certificate', DEFAULT_SSL_CERTIFICATE)
+		self.setDefaultProperty('connection_timeout', 5.0)
 
 	# ProbeImplementation reimplementation
 	def onTriMap(self):
@@ -343,6 +345,7 @@ class TcpProbe(ProbeImplementationManager.ProbeImplementation):
 		try:
 			sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM, socket.IPPROTO_TCP)
 			sock.bind((self['local_ip'], self['local_port']))
+			sock.settimeout(float(self['connection_timeout']))
 			# Blocking connection (for now)
 			# FIXME: make connection asynchronous so that userland timers can work
 			sock.connect(to)
