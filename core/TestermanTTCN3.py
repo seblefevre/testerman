@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 ##
 # This file is part of Testerman, a test automation system.
-# Copyright (c) 2008-2009 Sebastien Lefevre and other contributors
+# Copyright (c) 2008,2009,2010 Sebastien Lefevre and other contributors
 #
 # This program is free software; you can redistribute it and/or modify it under
 # the terms of the GNU General Public License as published by the Free Software
@@ -38,7 +38,8 @@ import time
 import os
 import select
 
-API_VERSION = "1.0"
+# 1.1: added control:bind()
+API_VERSION = "1.1"
 
 ################################################################################
 # Some general functions
@@ -1251,6 +1252,11 @@ class TestCase:
 		
 			logTestcaseStarted(str(self), title = self._title)
 
+			# Install a default Test Adapter configuration if none is already set
+			if not _getCurrentTestAdapterConfiguration():
+				TestermanTCI.logInternal("Using default test adapter configuration")
+				with_test_adapter_configuration(DEFAULT_TEST_ADAPTER_CONFIGURATION_NAME)
+
 			# Initialize static connections
 			# (and testerman bindings according to the system configuration)
 			if _getCurrentTestAdapterConfiguration():
@@ -2077,7 +2083,16 @@ def _registerAvailableTestAdapterConfiguration(name, tac):
 
 def _getCurrentTestAdapterConfiguration():
 	return _CurrentTestAdapterConfiguration	
-	
+
+# Support for a default, built-in test adapter configuration.
+# Simply use 'bind' in the control part, no need to create a configuration explicitely,
+# or use the with_test_adapter_configuration() anymore.	
+DEFAULT_TEST_ADAPTER_CONFIGURATION_NAME = '__default__'
+_DefaultTestAdapterConfiguration = TestAdapterConfiguration(DEFAULT_TEST_ADAPTER_CONFIGURATION_NAME)
+
+def bind(tsiPort, uri, type_, **kwargs):
+	log("TSI port '%s' bound to %s [%s]" % (tsiPort, uri, type_))
+	return _DefaultTestAdapterConfiguration.bind(tsiPort, uri, type_, **kwargs)
 	
 ################################################################################
 # Template Conditions, i.e. Matching Mechanisms
