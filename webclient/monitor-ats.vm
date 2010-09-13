@@ -23,7 +23,7 @@ Unable to retrieve a status for this job. The ATS may not have been started/sche
 </p>
 #else
 <ul>
-<li>ATS name: <a class="wiki" href="ats?/repository/${name}">${name}</a></li>
+<li>ATS name: <a class="wiki" href="browser?/repository/${name}">${name}</a></li>
 <li>Current job state: ${state}</li>
 <li>Started by: ${username}</li>
 #if ($runningtime)

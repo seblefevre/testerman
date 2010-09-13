@@ -71,7 +71,11 @@ Test Execution Results for ATS:
 	<tr><td colspan="2">Execution summary (User logs): <br />
 	<table class="testcase-userlog-table">
 	<xsl:for-each select="user">
-		<tr><td class="time"><xsl:value-of select="@timestamp" /></td><td><xsl:value-of select="." /></td></tr>
+		<tr><td class="time"><xsl:value-of select="@timestamp" /></td><td>
+		<xsl:call-template name="break">
+			<xsl:with-param name="text" select="." />
+		</xsl:call-template>
+		</td></tr>
 	</xsl:for-each>
 	</table>
 
@@ -103,7 +107,11 @@ Test Execution Results for ATS:
 				<span class="verdict-updated">Verdict updated to <xsl:value-of select="@verdict" /> on TC <xsl:value-of select="@tc" /></span>
 			</xsl:when>
 			<xsl:when test="name()='user'">
-				<span class="user"><xsl:value-of select="." /></span>
+				<span class="user">
+				<xsl:call-template name="break">
+					<xsl:with-param name="text" select="." />
+				</xsl:call-template>
+				</span>
 			</xsl:when>
 
 			<xsl:when test="name()='tc-created'">
