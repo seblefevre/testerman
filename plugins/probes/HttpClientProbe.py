@@ -28,6 +28,44 @@ import select
 
 class HttpClientProbe(ProbeImplementationManager.ProbeImplementation):
 	"""
+	= Identification and Properties =
+
+	Probe Type ID: `tcp`
+
+	Properties:
+	|| '''Name''' || '''Type''' || '''Default value''' || '''Description''' ||
+	|| `local_ip` || string || (empty - system assigned) || Local IP address to use when sending HTTP requests. ||
+	|| `local_port` || integer || `0` (system assigned) || Local port to use when sending HTTP requests. ||
+	|| `host` || string || `localhost` || The HTTP server's hostname or IP address. ||
+	|| `port` || integer || `80` || The HTTP server's port. ||
+	|| `version` || string || `HTTP/1.0` || The HTTP version to use in requests. ||
+	|| `protocol` || string || `http` || The HTTP variant:`http` or `https`. For now, only `http` is supported. ||
+	|| `maintain_connection` || boolean || `False` || If set to True and HTTP version is 1.1, the probe keeps the tcp connection opened once a response has been received, until the server closes it. ||
+	|| `connection_timeout` || float || `5.0` || The connection timeout, in s, when trying to connect to a remote party. ||
+
+	= Overview =
+	
+	...
+
+	== Availability ==
+
+	All platforms.
+
+	== Dependencies ==
+
+	None.
+	
+	== See Also ==
+	
+	Other transport-oriented probes:
+	 * ProbeSctp
+	 * ProbeUdp
+
+	
+	= TTCN-3 Types Equivalence =
+
+	The test system interface port bound to such a probe complies with the `HttpClientPortType` port type as specified below:
+	{{{
 	type record HttpRequest
 	{
 		charstring method optional, // default: 'GET'
@@ -50,6 +88,7 @@ class HttpClientProbe(ProbeImplementationManager.ProbeImplementation):
 		in HttpRequest;
 		out HttpResponse;
 	}
+	}}}
 	"""
 	def __init__(self):
 		ProbeImplementationManager.ProbeImplementation.__init__(self)
@@ -64,6 +103,7 @@ class HttpClientProbe(ProbeImplementationManager.ProbeImplementation):
 		self.setDefaultProperty('host', 'localhost')
 		self.setDefaultProperty('port', 80)
 		self.setDefaultProperty('local_ip', '')
+		self.setDefaultProperty('connection_timeout', 5.0)
 
 	# LocalProbe reimplementation)
 	def onTriMap(self):
@@ -121,6 +161,7 @@ class HttpClientProbe(ProbeImplementationManager.ProbeImplementation):
 		sock.bind((self['local_ip'], 0))
 		sock.setsockopt(socket.SOL_TCP, socket.TCP_NODELAY, 1)
 		# Blocking or not ?
+		sock.settimeout(float(self['connection_timeout']))
 		sock.connect((self['host'], self['port']))
 		self._httpConnection = sock
 	
