@@ -3,13 +3,13 @@
   
 <head>
 	<title>Testerman: browsing ${path}</title>
-	<link rel="stylesheet" type="text/css" href="/static/testerman.css" />
+	<link rel="stylesheet" type="text/css" href="static/testerman.css" />
 </head>
 <body>
 	<div id="page">
 		<div id="banner">
 			<div id="header">
-				<a id="logo" href="/"><img src="/static/testerman-logo.png" alt="testerman" /></a>
+				<a id="logo" href="/"><img src="static/testerman-logo.png" alt="testerman" /></a>
 			</div>
 		</div>
 		<div id="main">
@@ -19,7 +19,7 @@
 <!-- quick navigation -->
 <a href="/">home</a>
 #foreach ($webpath in $webpaths)
-&gt; <a href="/browser?${webpath.path}">${webpath.label}</a>
+&gt; <a href="browser?${webpath.path}">${webpath.label}</a>
 #end
 
 <h2>Browsing ${path}:</h2>
@@ -27,10 +27,10 @@
 <ul class="browser">
 #foreach ($entry in $entries)
 	#if ($entry.type == "directory")
-	<li class="${entry.type}"><a class="wiki" href="/browser?${path}/${entry.name}">${entry.name}</a></li>
+	<li class="${entry.type}"><a class="wiki" href="browser?${path}/${entry.name}">${entry.name}</a></li>
 	#else
 	#if ($entry.type == "ats")
-	<li class="${entry.type}"><a class="wiki" href="/browser?${path}/${entry.name}">${entry.name}</a></li>
+	<li class="${entry.type}"><a class="wiki" href="browser?${path}/${entry.name}">${entry.name}</a></li>
 	#else
 	<li class="${entry.type}">${entry.name}</li>
 	#end

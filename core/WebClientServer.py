@@ -69,8 +69,12 @@ def formatTimestamp(timestamp):
 # Request Handler to provide WebClient services
 ################################################################################
 
-class WebClientRequestHandlerMixIn(WebServer.BaseWebRequestHandlerMixIn):
+class WebClientApplication(WebServer.WebApplication):
 	_authenticationRealm = 'Testerman WebClient'
+
+	def __init__(self, testermanClient, **kwargs):
+		WebServer.WebApplication.__init__(self, **kwargs)
+		self._client = testermanClient
 
 	def authenticate(self, username, password):
 		self._repositoryHome = None
@@ -82,13 +86,10 @@ class WebClientRequestHandlerMixIn(WebServer.BaseWebRequestHandlerMixIn):
 			return False
 
 	def _getClient(self):
-		return self.server.getClient()
+		return self._client
 
-	def _getDebug(self):
-		return self.server.getDebug()
-	
 	def handle_docroot(self, path):
-		self._sendError(403)
+		self.request.sendError(403)
 	
 	def _adjustRepositoryPath(self, path):
 		"""
@@ -125,6 +126,7 @@ class WebClientRequestHandlerMixIn(WebServer.BaseWebRequestHandlerMixIn):
 		@path: testerman-docroot-path of the directory.
 		"""
 		try:
+			print "trying a getDirectory (%s) via %s..." % (path, self._getClient())
 			l = self._getClient().getDirectoryListing(path)
 		except Exception, e:
 			getLogger().error("Unable to browse directory %s: %s" % (path, str(e)))
@@ -210,7 +212,7 @@ class WebClientRequestHandlerMixIn(WebServer.BaseWebRequestHandlerMixIn):
 			label = path[len('/repository/'):]
 			session = {}
 			at = None
-			username = 'webclient@%s' % self.client_address[0]
+			username = '%s@%s' % (self.username, self.request.getClientAddress()[0])
 
 			ret = self._getClient().scheduleAts(source, label, username, session, at, path = dirpath)
 			jobId = ret['job-id']
@@ -220,13 +222,13 @@ class WebClientRequestHandlerMixIn(WebServer.BaseWebRequestHandlerMixIn):
 
 		if jobId:
 			# ATS started - let's monitor it
-			self.send_response(302)
-			self.send_header('Location', '/monitor_ats?%s' % jobId)
-			self.end_headers()
+			self.request.sendResponse(302)
+			self.request.sendHeader('Location', '/monitor_ats?%s' % jobId)
+			self.request.endHeaders()
 		else:
-			self.send_response(302)
-			self.send_header('Location', '/ats?%s' % path)
-			self.end_headers()
+			self.request.sendResponse(302)
+			self.request.sendHeader('Location', '/ats?%s' % path)
+			self.request.endHeaders()
 
 	def handle_monitor_ats(self, jobId):
 		context = dict(jobId = jobId)
@@ -344,7 +346,7 @@ class WebClientRequestHandlerMixIn(WebServer.BaseWebRequestHandlerMixIn):
 		try:
 			log = self._getClient().getFile(path)
 		except Exception, e:
-			self._sendError(404)
+			self.request.sendError(404)
 			return
 		
 		stylesheet = "ats-log-textual.xsl"
@@ -364,7 +366,7 @@ class WebClientRequestHandlerMixIn(WebServer.BaseWebRequestHandlerMixIn):
 			log += self._getClient().getFile(path)
 			log += '</ats>'
 		except Exception, e:
-			self._sendError(404)
+			self.request.sendError(404)
 			return
 		
 		filename = os.path.split(path)[1] + '.xml'
@@ -375,7 +377,7 @@ class WebClientRequestHandlerMixIn(WebServer.BaseWebRequestHandlerMixIn):
 # The HTTP Server
 ############################################################
 
-class RequestHandler(WebClientRequestHandlerMixIn, BaseHTTPServer.BaseHTTPRequestHandler):
+class RequestHandler(WebServer.WebApplicationDispatcherMixIn, BaseHTTPServer.BaseHTTPRequestHandler):
 	pass
 
 class HttpServer(BaseHTTPServer.HTTPServer):
@@ -388,35 +390,16 @@ class HttpServer(BaseHTTPServer.HTTPServer):
 		r, w, e = select.select([self.socket], [], [], timeout)
 		if r:
 			self.handle_request()
-	def setDocumentRoot(self, docroot):
-		self._docroot = docroot
-	
-	def getDocumentRoot(self):
-		return self._docroot
-	
-	def getClient(self):
-		return self._client
-	
-	def setClient(self, client):
-		self._client = client
-	
-	def setDebug(self, debug):
-		self._debug = debug
-	
-	def getDebug(self):
-		return self._debug
 
 class HttpServerThread(threading.Thread):
 	def __init__(self):
 		threading.Thread.__init__(self)
 		self._stopEvent = threading.Event()
 		address = (cm.get("interface.wc.ip"), cm.get("interface.wc.port"))
-		self._server = HttpServer(address, RequestHandler)
-		self._server.setDocumentRoot(cm.get("testerman.webclient.document_root"))
 		serverUrl = "http://%s:%s" % (cm.get("ts.ip"), cm.get("ts.port"))
 		client = TestermanClient.Client(name = "Testerman WebClient", userAgent = "WebClient/%s" % VERSION, serverUrl = serverUrl)
-		self._server.setClient(client)
-		self._server.setDebug(cm.get("wcs.debug"))
+		RequestHandler.registerApplication('/', WebClientApplication, documentRoot = cm.get("testerman.webclient.document_root"), testermanClient = client, debug = cm.get("wcs.debug"))
+		self._server = HttpServer(address, RequestHandler)
 
 	def run(self):
 		getLogger().info("HTTP server started")
@@ -462,7 +445,7 @@ def main():
 	cm.register("wcs.log_filename", "")
 	cm.register("wcs.pid_filename", "")
 	cm.register("testerman.var_root", "", xform = expandPath)
-	cm.register("testerman.webclient.document_root", "%s/webclient" % testerman_home, xform = expandPath, dynamic = True)
+	cm.register("testerman.webclient.document_root", "%s/webclient" % testerman_home, xform = expandPath, dynamic = False)
 	cm.register("testerman.administrator.name", "administrator", dynamic = True)
 	cm.register("testerman.administrator.email", "testerman-admin@localhost", dynamic = True)
 

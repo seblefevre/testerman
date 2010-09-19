@@ -1,8 +1,5 @@
 /* Theme: wide/almost full page, inspired by www.portablepython.com (thanks to their designers !) */
 
-/* PNG transparency fix for IE 5.5, IE 6.0 - behavior is IE-specific attribute, non-standard */
-img { behavior: url(/trac/chrome/site/iepngfix.htc); }
-
 /******************************************************************************
  * General
  ******************************************************************************/
@@ -44,7 +41,7 @@ h1 {
 }
 
 body {
- background: #fff url(/static/grey-stripes.png) repeat-x;
+ background: #fff url(grey-stripes.png) repeat-x;
  color: #000;
  margin-top: 0px; 
  margin-bottom: 0px;
@@ -228,16 +225,16 @@ td {
  ******************************************************************************/
 
 ul.browser li {
-	list-style-image: url('/static/icon-unknown.png');
+	list-style-image: url('icon-unknown.png');
 }
 ul.browser li.ats {
-	list-style-image: url('/static/icon-ats.png');
+	list-style-image: url('icon-ats.png');
 }
 ul.browser li.campaign {
-	list-style-image: url('/static/icon-campaign.png');
+	list-style-image: url('icon-campaign.png');
 }
 ul.browser li.directory {
-	list-style-image: url('/static/icon-folder.png');
+	list-style-image: url('icon-folder.png');
 }
 
 

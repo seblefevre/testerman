@@ -74,19 +74,136 @@ ContentTypes = {
 class AuthenticationError(Exception):
 	pass
 
+
+
+################################################################################
+# Main request handler: Application Dispatcher
+################################################################################
+
+class WebRequest:
+	"""
+	This is the object a WebApplication can interact with a client.
+	It abstracts all the low-level stuff.
+	"""
+	def __init__(self, handler, path, contextRoot):
+		self.__handler = handler
+		# Normalize the path, making sure a path always start with a /.
+		if not path.startswith('/'):
+			path = '/' + path
+		self.__path = path
+		self.__contextRoot = contextRoot
+
+	def getPath(self):
+		"""
+		Returns the path of the request, relative to the application context root.
+		"""
+		return self.__path
+
+	def __str__(self):
+		return "[%s] cr=%s local path=%s" % (self.getCommand(), self.getContextRoot(), self.getPath())
+
+	def getRequestVersion(self):
+		return self.__handler.request_version
+
+	def getRawRequestLine(self):
+		return self.__handler.requestline
+
+	def getCommand(self):
+		return self.__handler.command
+
+	def getHeaders(self):
+		return self.__handler.headers
+
+	def getServerPath(self):
+		"""
+		Returns the path of the request as served by the server (incudes the context root)
+		"""
+		return self.__handler.path
+
+	def getContextRoot(self):
+		"""
+		Returns the context root the request has been served in.
+		"""
+		return self.__contextRoot
+
+	def getClientAddress(self):
+		return self.__handler.client_address
+
+	def write(self, t):
+		return self.__handler.wfile.write(t)
+
+	def sendError(self, code, message = None):
+		return self.__handler.send_error(code, message)
+
+	def sendResponse(self, code, message = None):
+		return self.__handler.send_response(code, message)
+
+	def sendHeader(self, keyword, value):
+		return self.__handler.send_header(keyword, value)
+
+	def endHeaders(self):
+		return self.__handler.end_headers()
+
+
+class WebApplicationDispatcherMixIn:
+	"""
+	This mixin request handler provides a do_GET implementation only,
+	and is used to:
+	- complete the XMLRPC request handler (that provides a do_POST implementation)
+	  to handle basic component distribution system to a testerman server (on Ws interface)
+	- to implement the Wc interface, providing Testerman clients features via
+	  the web (called the WebClient).
+	"""
+
+	# Register applications in this map: context-root: WebApplicationClass
+	# for instance: '/webclient': { 'class': WebClientApplication, 'parameters': { ... } }
+	_applications = {}
+
+	@classmethod
+	def registerApplication(cls, contextRoot, applicationClass, **kwargs):
+		"""
+		Use this function to register a new web application.
+		kwargs will be passed to your WebApplication subclass initializer.
+		"""
+		cls._applications[contextRoot] = dict(appclass = applicationClass, parameters = kwargs)
+
+	def do_GET(self):
+		"""
+		Dispatches the request to a registered application.
+		"""
+		# Locate the application based on the initial request path.
+		# This is a best matching on registered context roots.
+		path = self.path
+		if not path.startswith('/'):
+			path = '/' + path
+		
+		# Matches the context root only on the "directory part" of the path
+		p = os.path.split(self.path)[0]
+		contextRoot = ''
+		for cr in self._applications.keys():
+			if p.startswith(cr) and len(cr) > len(contextRoot):
+				contextRoot = cr
+
+		application = self._applications.get(contextRoot)
+		if application:
+			webRequest = WebRequest(self, path = self.path[len(contextRoot):], contextRoot = contextRoot)
+			app = application['appclass'](**application['parameters'])
+			app.request = webRequest
+			getLogger().debug("Forwarding request %s to %s" % (webRequest, app))
+			return app.do_GET()
+		else:
+			self.send_error(404)
+	
+
 ################################################################################
 # Template & static contents serving request handler
 ################################################################################
 
-class BaseWebRequestHandlerMixIn:
+class WebApplication:
 	"""
-	This mixin request handler provides a do_GET implementation only,
-	and is used to:
-	- complete the XMLRPC request handler (providing a do_POST implementation)
-	  to handle basic component distribution system to a testerman server (on Ws interface)
-	- to implement the Wc interface, providing Testerman clients features via
-	  the web (called the WebClient).
-	
+	Base class to create a "Web Application" that can register into the
+	WebApplicationDispatcherMixIn handler.
+
 	It can server the usual static contents as well as
 	airspeed/velocity based templates, and is able to manage a basic authentication.
 	"""
@@ -94,6 +211,11 @@ class BaseWebRequestHandlerMixIn:
 	# If you want to authenticate your users, provide a realm
 	#	and reimplement the authenticate() method.
 	_authenticationRealm = None
+	
+	def __init__(self, documentRoot = '', debug = False):
+		self.request = None
+		self._documentRoot = documentRoot
+		self._debug = debug
 
 	def authenticate(self, username, password):
 		return True
@@ -103,7 +225,7 @@ class BaseWebRequestHandlerMixIn:
 		if not self._authenticationRealm:
 			return
 
-		authorization = self.headers.get('authorization')
+		authorization = self.request.getHeaders().get('authorization')
 		if not authorization:
 			raise AuthenticationError('Authentication required')
 		kind, data = authorization.split(' ')
@@ -118,11 +240,14 @@ class BaseWebRequestHandlerMixIn:
 		self.username = username
 
 	def _getDocumentRoot(self):
-		return self.server.getDocumentRoot()
+		return self._documentRoot
 	
 	def _getDebug(self):
-		return self.server.getDebug()
+		return self._debug
 	
+	def _getClient(self):
+		return self.request.getClient()
+
 	def _isTemplate(self, path):
 		_, ext = os.path.splitext(path)
 		return ext in ['.vm', '.vcss']
@@ -131,23 +256,22 @@ class BaseWebRequestHandlerMixIn:
 		try:
 			self._authenticate()
 		except AuthenticationError, e:
-			self.send_response(401)
-			self.send_header('WWW-Authenticate', 'Basic realm="%s"' % self._authenticationRealm)
-			self.end_headers()
-			self.wfile.write('Authentication failure')
+			self.request.sendResponse(401)
+			self.request.sendHeader('WWW-Authenticate', 'Basic realm="%s"' % self._authenticationRealm)
+			self.request.endHeaders()
+			self.request.write('Authentication failure')
 			return
 
-		if not self.path.startswith('/'):
-			self.path = '/' + self.path
-
-		if self.path == '/':
-			self.path = DEFAULT_PAGE
+		path = self.request.getPath()
 		
-		parsed = self.path.split('?', 1)
+		if path == '/':
+			path = DEFAULT_PAGE
+		
+		parsed = path.split('?', 1)
 		if len(parsed) == 2:
 			path, args = parsed[0], parsed[1]
 		else:
-			path, args = self.path, None
+			path, args = path, None
 
 		try:
 			handler = 'handle_%s' % path[1:]
@@ -165,9 +289,9 @@ class BaseWebRequestHandlerMixIn:
 				self._serveFile(path)
 		except Exception:
 			if self._getDebug():
-				self.send_error(500, Tools.getBacktrace())
+				self.request.sendError(500, Tools.getBacktrace())
 			else:
-				self.send_error(500)
+				self.request.sendError(500)
 
 	def _serveFile(self, path):
 		"""
@@ -180,7 +304,7 @@ class BaseWebRequestHandlerMixIn:
 		
 		if not path.startswith(self._getDocumentRoot()):
 			# The query is outside the web docroot. Forbidden.
-			self._sendError(403)
+			self.request.sendError(403)
 			return
 
 		self._rawServeFile(path)
@@ -196,33 +320,27 @@ class BaseWebRequestHandlerMixIn:
 			contents = f.read()
 			f.close()
 		except:
-			self.send_error(404)
+			self.request.sendError(404)
 		else:
 			try:
 				if xform:
 					contents = xform(contents)
 			except:
 				# Internal transformation error
-				self.send_error(500)
+				self.request.sendError(500)
 			else:
 				contentType = self._getContentType(path)
 				if not contentType:
 					# Unsupported media type
-					self.send_error(415)
+					self.request.sendError(415)
 					return
 
-				self.send_response(200)
-				self.send_header('Content-Type', contentType)
+				self.request.sendResponse(200)
+				self.request.sendHeader('Content-Type', contentType)
 				if asFilename:
-					self.send_header('Content-Disposition', 'attachment; filename="%s"' % asFilename)
-				self.end_headers()
-				self.wfile.write(contents)
-
-	def _sendError(self, code):
-		"""
-		Convenience function.
-		"""
-		self.send_error(code)
+					self.request.sendHeader('Content-Disposition', 'attachment; filename="%s"' % asFilename)
+				self.request.endHeaders()
+				self.request.write(contents)
 
 	def _getContentType(self, path):
 		"""
@@ -239,12 +357,12 @@ class BaseWebRequestHandlerMixIn:
 		"""
 		Convenience function.
 		"""
-		self.send_response(200)
-		self.send_header('Content-Type', contentType)
+		self.request.sendResponse(200)
+		self.request.sendHeader('Content-Type', contentType)
 		if asFilename:
-			self.send_header('Content-Disposition', 'attachment; filename="%s"' % asFilename)
-		self.end_headers()
-		self.wfile.write(txt)
+			self.request.sendHeader('Content-Disposition', 'attachment; filename="%s"' % asFilename)
+		self.request.endHeaders()
+		self.request.write(txt)
 
 	##
 	# Templates (airspeed based)
@@ -256,7 +374,7 @@ class BaseWebRequestHandlerMixIn:
 		
 		if not path.startswith(self._getDocumentRoot()):
 			# The query is outside the web docroot. Forbidden.
-			self._sendError(403)
+			self.request.sendError(403)
 			return
 		
 		self._rawServeTemplate(path, context)
@@ -278,24 +396,27 @@ class BaseWebRequestHandlerMixIn:
 			contents = f.read()
 			f.close()
 		except:
-			self.send_error(404)
+			self.request.sendError(404)
 			return
 
 		contentType = self._getContentType(path)
 		if not contentType:
 			# Unsupported media type
-			self._sendError(415)
+			self.request.sendError(415)
 			return
 		
 		# Apply the template
 		template = airspeed.Template(contents)
 		if context is None:
 			context = self._getDefaultTemplateContext()
+		
+		context['contextroot'] = self.request.getContextRoot()
+		
 		output = template.merge(context)
-		self.send_response(200)
-		self.send_header('Content-Type', contentType)
-		self.end_headers()
-		self.wfile.write(output)
+		self.request.sendResponse(200)
+		self.request.sendHeader('Content-Type', contentType)
+		self.request.endHeaders()
+		self.request.write(output)
 	
 	def _getDefaultTemplateContext(self):
 		"""
@@ -303,7 +424,7 @@ class BaseWebRequestHandlerMixIn:
 		all templates.
 		"""
 		# All configuration and internal (transient) values
-		ret = { 'config': {}, 'internal': {}}
+		ret = { 'context-root': self.request.getContextRoot(), 'config': {}, 'internal': {}}
 		for v in cm.getVariables():
 			ret['config'][v['key'].replace('.', '_')] = v['actual']
 		for v in cm.getTransientVariables():
@@ -323,12 +444,12 @@ class BaseWebRequestHandlerMixIn:
 		return ret
 
 
-class WebRequestHandlerMixIn(BaseWebRequestHandlerMixIn):
+class TestermanWebApplication(WebApplication):
 	"""
-	This handler completes the base one with dynamic resources
+	This application completes the base one with dynamic resources
 	handlers implementations.
 	
-	Uses to serve GET requests over the Ws interface, to
+	Used to serve GET requests over the Ws interface, to
 	download installers, component, and offer other
 	server-oriented services.
 	"""
@@ -340,7 +461,7 @@ class WebRequestHandlerMixIn(BaseWebRequestHandlerMixIn):
 		"""
 		Test function.
 		"""
-		self.send_error(418)
+		self.request.sendError(418)
 	
 	def handle_qtestermaninstaller(self, args):
 		"""
@@ -360,8 +481,8 @@ class WebRequestHandlerMixIn(BaseWebRequestHandlerMixIn):
 			#   (more user friendly, and the chances that the hostname cannot be resolved or
 			#   resolved to an incorrect IP/interfaces are low - let me know if you have the need
 			#   for the second option instead).
-			if "host" in self.headers:
-				url = 'http://%s' % self.headers["host"]
+			if "host" in self.request.getHeaders():
+				url = 'http://%s' % self.request.getHeaders()["host"]
 			else:
 				url = 'http://%s:%s' % (socket.gethostname(), cm.get("interface.ws.port"))
 			return source.replace('DEFAULT_SERVER_URL = "http://localhost:8080"', 'DEFAULT_SERVER_URL = %s' % repr(url))
@@ -394,7 +515,7 @@ class WebRequestHandlerMixIn(BaseWebRequestHandlerMixIn):
 		
 		if not path.startswith(cm.get('testerman.document_root')):
 			# The query is outside the testerman docroot. Forbidden.
-			self._sendError(403)
+			self.request.sendError(403)
 			return
 
 		self._rawServeFile(path, asFilename = os.path.basename(path))

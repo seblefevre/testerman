@@ -10,7 +10,7 @@
 <html xmlns="http://www.w3.org/1999/xhtml">
 <head>
 	<title><xsl:value-of select="/ats//@id" /></title>
-	<link rel="stylesheet" type="text/css" href="/static/testerman.css" />
+	<link rel="stylesheet" type="text/css" href="static/testerman.css" />
 	<script type="text/javascript">
 function expandCollapse(id) {
 var element = document.getElementById(id);
@@ -22,7 +22,7 @@ element.style.display = (element.style.display != "block" ? "block" : "none");
 	<div id="page">
 		<div id="banner">
 			<div id="header">
-				<a id="logo" href="/"><img src="/static/testerman-logo.png" alt="testerman" /></a>
+				<a id="logo" href="/"><img src="static/testerman-logo.png" alt="testerman" /></a>
 			</div>
 		</div>
 		<div id="main">
@@ -34,7 +34,7 @@ element.style.display = (element.style.display != "block" ? "block" : "none");
 Test Execution Results for ATS:
 <a>
 	<xsl:attribute name="href">
-		/browser?/repository/<xsl:value-of select="/ats//@id" />
+		browser?/repository/<xsl:value-of select="/ats//@id" />
 	</xsl:attribute>
 	<xsl:value-of select="/ats//@id" />
 </a>

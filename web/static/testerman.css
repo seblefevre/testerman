@@ -1,8 +1,5 @@
 /* Theme: wide/almost full page, inspired by www.portablepython.com (thanks to their designers !) */
 
-/* PNG transparency fix for IE 5.5, IE 6.0 - behavior is IE-specific attribute, non-standard */
-img { behavior: url(/trac/chrome/site/iepngfix.htc); }
-
 body, th, td {
  font: normal 13px 'trebuchet ms', arial, verdana,'Bitstream Vera Sans',helvetica,sans-serif; /* Modified */
 }
@@ -40,7 +37,7 @@ h1 {
 }
 
 body {
- background: #fff url(/static/grey-stripes.png) repeat-x;
+ background: #fff url(grey-stripes.png) repeat-x;
  color: #000;
  margin-top: 0px; 
  margin-bottom: 0px;

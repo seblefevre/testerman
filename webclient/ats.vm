@@ -3,13 +3,13 @@
   
 <head>
 	<title>ATS: ${path}</title>
-	<link rel="stylesheet" type="text/css" href="/static/testerman.css" />
+	<link rel="stylesheet" type="text/css" href="static/testerman.css" />
 </head>
 <body>
 	<div id="page">
 		<div id="banner">
 			<div id="header">
-				<a id="logo" href="/"><img src="/static/testerman-logo.png" alt="testerman" /></a>
+				<a id="logo" href="/"><img src="static/testerman-logo.png" alt="testerman" /></a>
 			</div>
 		</div>
 		<div id="main">
@@ -19,12 +19,12 @@
 <!-- quick navigation -->
 <a href="/">home</a>
 #foreach ($webpath in $webpaths)
-&gt; <a href="/browser?${webpath.path}">${webpath.label}</a>
+&gt; <a href="browser?${webpath.path}">${webpath.label}</a>
 #end
 
 <h2>Available Actions</h2>
 <p>
-<a class="wiki" href="/run_ats?${path}">Run this ATS (default session variables values)</a>
+<a class="wiki" href="run_ats?${path}">Run this ATS (default session variables values)</a>
 </p>
 <h2>Latest Runs Results</h2>
 <p>

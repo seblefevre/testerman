@@ -3,13 +3,13 @@
   
 <head>
 	<title>${config.ts_name} - Testerman server</title>
-	<link rel="stylesheet" type="text/css" href="/static/testerman.css" />
+	<link rel="stylesheet" type="text/css" href="static/testerman.css" />
 </head>
 <body>
 	<div id="page">
 		<div id="banner">
 			<div id="header">
-				<a id="logo" href="/"><img src="/static/testerman-logo.png" alt="testerman" /></a>
+				<a id="logo" href="/"><img src="static/testerman-logo.png" alt="testerman" /></a>
 			</div>
 		</div>
 		<div id="main">
@@ -22,7 +22,7 @@
 This server has published the following components:
 <ul>
 #foreach ($component in $components)
-	<li><a class="wiki" href="/docroot?${component.archive}">${component.component} ${component.version}</a> (${component.branch})</li>
+	<li><a class="wiki" href="docroot?${component.archive}">${component.component} ${component.version}</a> (${component.branch})</li>
 #end
 </ul>	
 Right-click and save as to download the corresponding archive.

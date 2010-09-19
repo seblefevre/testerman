@@ -28,6 +28,8 @@ import Tools
 import Versions
 import WebServices
 import WebServer
+import WebClientServer
+import TestermanClient
 
 import logging
 import optparse
@@ -59,14 +61,14 @@ def getLogger():
 # XML-RPC: Ws Interface implementation
 ################################################################################
 
-class RequestHandler(WebServer.WebRequestHandlerMixIn, SimpleXMLRPCServer.SimpleXMLRPCRequestHandler):
+class RequestHandler(WebServer.WebApplicationDispatcherMixIn, SimpleXMLRPCServer.SimpleXMLRPCRequestHandler):
 	"""
 	This custom handler is able to manage XML-RPC requests (POST)
 	but also supports file serving via GET.
-	The do_GET implementation is provided by WebServer.WebRequestHandlerMixIn
+	The do_GET implementation is provided by WebServer.WebApplicationDispatcherMixIn
 	"""
 
-class XmlRpcServer(SimpleXMLRPCServer.SimpleXMLRPCServer):
+class XmlRpcServer(SocketServer.ThreadingMixIn, SimpleXMLRPCServer.SimpleXMLRPCServer):
 #class XmlRpcServer(SocketServer.ThreadingMixIn, SimpleXMLRPCServer.SimpleXMLRPCServer):
 	allow_reuse_address = True
 	def handle_request_with_timeout(self, timeout):
@@ -78,26 +80,18 @@ class XmlRpcServer(SimpleXMLRPCServer.SimpleXMLRPCServer):
 		if r:
 			self.handle_request()
 
-	def setDocumentRoot(self, docroot):
-		self._docroot = docroot
-	
-	def getDocumentRoot(self):
-		return self._docroot
-
-	def setDebug(self, debug):
-		self._debug = debug
-	
-	def getDebug(self):
-		return self._debug
-
 class XmlRpcServerThread(threading.Thread):
 	def __init__(self):
 		threading.Thread.__init__(self)
 		self._stopEvent = threading.Event()
 		address = (cm.get("interface.ws.ip"), cm.get("interface.ws.port"))
 		self._server = XmlRpcServer(address, RequestHandler)
-		self._server.setDocumentRoot(cm.get("testerman.web.document_root"))
-		self._server.setDebug(cm.get("ts.debug"))
+		WebServer.WebApplicationDispatcherMixIn.registerApplication("/", WebServer.TestermanWebApplication, documentRoot = cm.get("testerman.web.document_root"), debug = cm.get("ts.debug"))
+		serverUrl = "http://%s:%s" % ((cm.get("interface.ws.ip") in ['', "0.0.0.0"] and "localhost") or cm.get("interface.ws.ip") , cm.get("interface.ws.port"))
+		client = TestermanClient.Client(name = "Embedded Testerman WebClient", userAgent = "WebClient/%s" % WebClientServer.VERSION, serverUrl = serverUrl)
+		getLogger().debug("Embedded WCS using serverUrl: %s" % serverUrl)
+		WebServer.WebApplicationDispatcherMixIn.registerApplication("/webclient", WebClientServer.WebClientApplication, documentRoot = cm.get("testerman.webclient.document_root"), testermanClient = client, debug = cm.get("ts.debug"))
+
 		# We should be more selective...
 		self._server.register_instance(WebServices)
 		self._server.logRequests = False
@@ -165,7 +159,8 @@ def main():
 	cm.register("ts.jobscheduler.interval", 1000, dynamic = True)
 	cm.register("testerman.document_root", "/tmp", xform = expandPath, dynamic = True)
 	cm.register("testerman.var_root", "", xform = expandPath)
-	cm.register("testerman.web.document_root", "%s/web" % testerman_home, xform = expandPath, dynamic = True)
+	cm.register("testerman.web.document_root", "%s/web" % testerman_home, xform = expandPath, dynamic = False)
+	cm.register("testerman.webclient.document_root", "%s/webclient" % testerman_home, xform = expandPath, dynamic = False)
 	cm.register("testerman.administrator.name", "administrator", dynamic = True)
 	cm.register("testerman.administrator.email", "testerman-admin@localhost", dynamic = True)
 	# testerman.te.*: test executable-related variables
@@ -202,6 +197,7 @@ def main():
 	group = optparse.OptionGroup(parser, "Advanced Options")
 	group.add_option("-V", dest = "varDir", metavar = "PATH", help = "use PATH to persist Testerman Server runtime variables, such as the job queue. If not provided, no persistence occurs between restarts.")
 	group.add_option("-C", "--conf-file", dest = "configurationFile", metavar = "FILENAME", help = "path to a configuration file. You may still use the command line options to override the values it contains.")
+	group.add_option("-U", "--users-file", dest = "usersFile", metavar = "FILENAME", help = "path to the configuration file that contains authorized webclient users.")
 	group.add_option("--codec-path", dest = "codecPaths", metavar = "PATHS", help = "search for codec modules in PATHS, which is a comma-separated list of paths")
 	group.add_option("--probe-path", dest = "probePaths", metavar = "PATHS", help = "search for probe modules in PATHS, which is a comma-separated list of paths")
 	group.add_option("--var", dest = "variables", metavar = "VARS", help = "set additional variables as VARS (format: key=value[,key=value]*)")
@@ -223,12 +219,23 @@ def main():
 	
 	cm.set_transient("ts.configuration_filename", configFile)
 
-	if configFile:
-		try:
-			cm.read(configFile)
-		except Exception, e:
-			print str(e)
-			return 1
+	# Read the settings from the saved configuration, if any
+	usersFile = None
+	# Provided on the command line ?
+	if options.usersFile is not None:
+		usersFile = options.configurationFile
+	# No config file provided - fallback to $TESTERMAN_HOME/conf/webclient-users.conf if set and exists
+	elif Tools.fileExists("%s/conf/webclient-users.conf" % testerman_home):
+		usersFile = "%s/conf/webclient-users.conf" % testerman_home
+	
+	cm.set_transient("wcs.users_filename", usersFile)
+
+	try:
+		if configFile: cm.read(configFile)
+		if usersFile: cm.read(usersFile, autoRegister = True)
+	except Exception, e:
+		print str(e)
+		return 1
 
 
 	# Now, override read settings with those set on explicit command line flags

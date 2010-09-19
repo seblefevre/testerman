@@ -3,13 +3,13 @@
   
 <head>
 	<title>Testerman WebClient</title>
-	<link rel="stylesheet" type="text/css" href="/static/testerman.css" />
+	<link rel="stylesheet" type="text/css" href="static/testerman.css" />
 </head>
 <body>
 	<div id="page">
 		<div id="banner">
 			<div id="header">
-				<a id="logo" href="/"><img src="/static/testerman-logo.png" alt="testerman" /></a>
+				<a id="logo" href="/"><img src="static/testerman-logo.png" alt="testerman" /></a>
 			</div>
 		</div>
 		<div id="main">
@@ -47,3 +47,4 @@ For more information about it, please visit <a class="ext-link" href="http://www
 	</div>
 </body>
 	 
+</html>
