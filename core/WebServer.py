@@ -210,12 +210,12 @@ class WebApplication:
 
 	# If you want to authenticate your users, provide a realm
 	#	and reimplement the authenticate() method.
-	_authenticationRealm = None
 	
-	def __init__(self, documentRoot = '', debug = False):
+	def __init__(self, documentRoot = '', debug = False, authenticationRealm = None):
 		self.request = None
 		self._documentRoot = documentRoot
 		self._debug = debug
+		self._authenticationRealm = authenticationRealm
 
 	def authenticate(self, username, password):
 		return True

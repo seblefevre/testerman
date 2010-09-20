@@ -86,11 +86,18 @@ class XmlRpcServerThread(threading.Thread):
 		self._stopEvent = threading.Event()
 		address = (cm.get("interface.ws.ip"), cm.get("interface.ws.port"))
 		self._server = XmlRpcServer(address, RequestHandler)
-		WebServer.WebApplicationDispatcherMixIn.registerApplication("/", WebServer.TestermanWebApplication, documentRoot = cm.get("testerman.web.document_root"), debug = cm.get("ts.debug"))
 		serverUrl = "http://%s:%s" % ((cm.get("interface.ws.ip") in ['', "0.0.0.0"] and "localhost") or cm.get("interface.ws.ip") , cm.get("interface.ws.port"))
 		client = TestermanClient.Client(name = "Embedded Testerman WebClient", userAgent = "WebClient/%s" % WebClientServer.VERSION, serverUrl = serverUrl)
-		getLogger().debug("Embedded WCS using serverUrl: %s" % serverUrl)
-		WebServer.WebApplicationDispatcherMixIn.registerApplication("/webclient", WebClientServer.WebClientApplication, documentRoot = cm.get("testerman.webclient.document_root"), testermanClient = client, debug = cm.get("ts.debug"))
+		getLogger().info("Embedded WCS using serverUrl: %s" % serverUrl)
+		# Register applications in this server
+		WebServer.WebApplicationDispatcherMixIn.registerApplication("/", WebServer.TestermanWebApplication, 
+			documentRoot = cm.get("testerman.web.document_root"), 
+			debug = cm.get("ts.debug"))
+		WebServer.WebApplicationDispatcherMixIn.registerApplication("/webclient", WebClientServer.WebClientApplication, 
+			documentRoot = cm.get("testerman.webclient.document_root"), 
+			testermanClient = client, 
+			debug = cm.get("ts.debug"),
+			authenticationRealm = 'Testerman WebClient')
 
 		# We should be more selective...
 		self._server.register_instance(WebServices)

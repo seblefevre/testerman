@@ -70,11 +70,10 @@ def formatTimestamp(timestamp):
 ################################################################################
 
 class WebClientApplication(WebServer.WebApplication):
-	_authenticationRealm = 'Testerman WebClient'
-
 	def __init__(self, testermanClient, **kwargs):
 		WebServer.WebApplication.__init__(self, **kwargs)
 		self._client = testermanClient
+		self._repositoryHome = None
 
 	def authenticate(self, username, password):
 		self._repositoryHome = None
@@ -398,7 +397,11 @@ class HttpServerThread(threading.Thread):
 		address = (cm.get("interface.wc.ip"), cm.get("interface.wc.port"))
 		serverUrl = "http://%s:%s" % (cm.get("ts.ip"), cm.get("ts.port"))
 		client = TestermanClient.Client(name = "Testerman WebClient", userAgent = "WebClient/%s" % VERSION, serverUrl = serverUrl)
-		RequestHandler.registerApplication('/', WebClientApplication, documentRoot = cm.get("testerman.webclient.document_root"), testermanClient = client, debug = cm.get("wcs.debug"))
+		RequestHandler.registerApplication('/', WebClientApplication, 
+			documentRoot = cm.get("testerman.webclient.document_root"), 
+			testermanClient = client,
+			debug = cm.get("wcs.debug"),
+			authenticationRealm = 'Testerman WebClient')
 		self._server = HttpServer(address, RequestHandler)
 
 	def run(self):
