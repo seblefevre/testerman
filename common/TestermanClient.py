@@ -497,7 +497,10 @@ class Client(Nodes.ConnectingNode):
 		"""
 		self.getLogger().debug("getDirectoryListing (%s)..." % directory)
 		res = self.__proxy.getDirectoryListing(directory)
-		self.getLogger().debug("getDirectoryListing: %d entries returned" % len(res))
+		if res is not None:
+			self.getLogger().debug("getDirectoryListing: %d entries returned" % len(res))
+		else:
+			self.getLogger().debug("getDirectoryListing: invalid directory (%s)" % directory)
 		return res
 
 	def fileExists(self, filename):

@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 ##
 # This file is part of Testerman, a test automation system.
-# Copyright (c) 2008-2009 Sebastien Lefevre and other contributors
+# Copyright (c) 2008,2009,2010 Sebastien Lefevre and other contributors
 #
 # This program is free software; you can redistribute it and/or modify it under
 # the terms of the GNU General Public License as published by the Free Software
@@ -30,6 +30,7 @@ import FileSystemBackendManager
 
 import logging
 import os
+import shutil
 
 ################################################################################
 # Logging
@@ -107,7 +108,7 @@ class LocalBackend(FileSystemBackend.FileSystemBackend):
 		except Exception, e:
 			getLogger().warning("Unable to read file %s: %s" % (filename, str(e)))
 			return None
-	
+
 	def write(self, filename, content, baseRevision = None, reason = None):
 		"""
 		Makes sure that we can overwrite the file, if already exists:
@@ -147,6 +148,13 @@ class LocalBackend(FileSystemBackend.FileSystemBackend):
 		filename = self._realpath(filename)
 		if not filename: 
 			return False
+		
+		# Remove associated profiles, if any
+		profilesdir = "%s.profiles" % filename
+		try:
+			shutil.rmtree(profilesdir, ignore_errors = True)
+		except:
+			getLogger().warning("Unable to remove profiles associated to %s: %s" % (filename, str(e)))
 
 		try:
 			os.remove(filename)
@@ -166,7 +174,7 @@ class LocalBackend(FileSystemBackend.FileSystemBackend):
 			for entry in entries:
 				if os.path.isfile("%s/%s" % (path, entry)):
 					ret.append({'name': entry, 'type': 'file'})
-				elif os.path.isdir("%s/%s" % (path, entry)) and not entry in self._excludedPatterns:
+				elif os.path.isdir("%s/%s" % (path, entry)) and not entry in self._excludedPatterns and not entry.endswith('.profiles'):
 					ret.append({'name': entry, 'type': 'directory'})
 			return ret
 		except Exception, e:
@@ -177,7 +185,7 @@ class LocalBackend(FileSystemBackend.FileSystemBackend):
 		path = self._realpath(path)
 		if not path: 
 			return False
-		
+
 		if fileExists(path):
 			return False
 
@@ -217,7 +225,7 @@ class LocalBackend(FileSystemBackend.FileSystemBackend):
 		except Exception, e:
 			getLogger().warning("Unable to get file attributes for %s: %s" % (filename, str(e)))			
 		return None
-	
+
 	def revisions(self, filename, baseRevision, scope):
 		filename = self._realpath(filename)
 		if not filename: 
@@ -237,7 +245,109 @@ class LocalBackend(FileSystemBackend.FileSystemBackend):
 		if not path:
 			return False
 		return os.path.isfile(path)
-			
+
+	# Profiles Management			
+
+	def getprofiles(self, filename):
+		filename = self._realpath(filename)
+		if not filename:
+			return None
 		
+		profilesdir = "%s.profiles" % filename
+		
+		try:
+			entries = os.listdir(profilesdir)
+			ret = []
+			for entry in entries:
+				if os.path.isfile("%s/%s" % (profilesdir, entry)):
+					ret.append({'name': entry, 'type': 'file'})
+				elif os.path.isdir("%s/%s" % (profilesdir, entry)) and not entry in self._excludedPatterns:
+					ret.append({'name': entry, 'type': 'directory'})
+			return ret
+		except Exception, e:
+			getLogger().warning("Unable to list profiles directory %s: %s" % (profilesdir, str(e)))
+		return None
+
+	def readprofile(self, filename, profilename):
+		filename = self._realpath(filename)
+		if not filename:
+			return None
+		
+		profilefilename = "%s.profiles/%s" % (filename, profilename)
+		try:
+			f = open(profilefilename)
+			content = f.read()
+			f.close()
+			return content
+		except Exception, e:
+			getLogger().warning("Unable to read file %s: %s" % (filename, str(e)))
+			return None
+		
+	def writeprofile(self, filename, profilename, content):
+		filename = self._realpath(filename)
+		if not filename: 
+			raise Exception('Invalid file: not in base path')
+
+		# Automatically creates this backend-specific dir
+		profilesdir = "%s.profiles" % filename
+
+		try:
+			os.makedirs(profilesdir, 0755)
+		except:
+			pass
+
+		profilefilename = "%s.profiles/%s" % (filename, profilename)
+		backupFile = None
+		try:
+			if fileExists(profilefilename):
+				b = '%s.backup' % profilefilename
+				os.rename(profilefilename, b)
+				backupFile = b
+			f = open(profilefilename, 'w')
+			f.write(content)
+			f.close()
+			if backupFile:
+				try:
+					os.remove(backupFile)
+				except:
+					pass
+			return None # No new revision created.
+		except Exception, e:
+			if backupFile:
+				os.rename(backupFile, profilefilename)
+			getLogger().warning("Unable to write content to %s: %s" % (profilefilename, str(e)))
+			raise(e)
+
+	def unlinkprofile(self, filename, profilename):
+		filename = self._realpath(filename)
+		if not filename:
+			return None
+		
+		profilefilename = "%s.profiles/%s" % (filename, profilename)
+		try:
+			os.remove(profilefilename)
+			return True
+		except Exception, e:
+			getLogger().warning("Unable to unlink %s: %s" % (profilefilename, str(e)))
+		return False
+		
+
+	def profileattributes(self, filename, profilename):
+		filename = self._realpath(filename)
+		if not filename: 
+			return None
+
+		profilefilename = "%s.profiles/%s" % (filename, profilename)
+
+		try:
+			s = os.stat(profilefilename)
+			a = FileSystemBackend.Attributes()
+			a.mtime = s.st_ctime
+			a.size = s.st_size
+			return a
+		except Exception, e:
+			getLogger().warning("Unable to get file attributes for %s: %s" % (profilefilename, str(e)))			
+		return None
+	
 
 FileSystemBackendManager.registerFileSystemBackendClass("local", LocalBackend)

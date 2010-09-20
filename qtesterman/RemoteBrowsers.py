@@ -29,6 +29,7 @@
 import Resources
 import CommonWidgets
 import LogViewer
+import DocumentModels
 
 import os.path
 import re
@@ -63,7 +64,7 @@ def icon(resource):
 # Name validation functions
 ################################################################################
 
-RESTRICTED_NAME_CHARACTERS = "/\\' \"@|?*"
+RESTRICTED_NAME_CHARACTERS = "/\\' \"@|?*.-"
 
 def validateFileName(name):
 	"""
@@ -550,6 +551,9 @@ class BaseWidgetItem(QTreeWidgetItem):
 
 	def isProfile(self):
 		return isinstance(self, ProfileWidgetItem)
+
+	def isProfilesDir(self):
+		return isinstance(self, ProfilesDirWidgetItem)
 	
 	def isPackageDescription(self):
 		return isinstance(self, PackageDescriptionWidgetItem)
@@ -864,7 +868,10 @@ class AtsWidgetItem(ExpandableWidgetItem):
 
 	def addFetchedChildItems(self, data):
 		if not self.isInPackageTree():
-			self.addChild(RevisionsWidgetItem(self._path))
+			self.addChild(ProfilesDirWidgetItem(self._path + '/profiles'))
+		# TODO: rea revisions support
+#		if not self.isInPackageTree():
+#			self.addChild(RevisionsWidgetItem(self._path))
 		self.addChild(ExecutionLogsWidgetItem(self._path))
 
 
@@ -997,6 +1004,37 @@ class LogWidgetItem(BaseWidgetItem):
 	def updateFlags(self):
 		self.setFlags(Qt.ItemIsEnabled | Qt.ItemIsSelectable)
 
+class ProfilesDirWidgetItem(ExpandableWidgetItem):
+	"""
+	Virtual folder containing the profiles associated to
+	an executable script.
+	"""
+	def __init__(self, path, parent = None):
+		ExpandableWidgetItem.__init__(self, path, parent)
+		self.setIcon(0, icon(':/icons/item-types/folder-package-profiles'))
+		self.setText(0, 'Profiles')
+
+	def fetchChildItems(self):
+		ret = []
+		try:
+			l = self.getClient().getDirectoryListing(self._path)
+			for entry in l:
+				if entry['type'] == 'profile':
+					ret.append('%s/%s' % (self._path, entry['name']))
+		except Exception, e:
+			print "DEBUG: " + str(e)
+		return ret
+
+	def addFetchedChildItems(self, data):
+		print "DEBUG: adding profiles"
+		for name in data:
+			print "DEBUG: adding profile %s" % name
+			item = ProfileWidgetItem(name)
+			self.addChild(item)
+
+	def getUrl(self):
+		return None
+
 class ProfileWidgetItem(BaseWidgetItem):
 	"""
 	Execution profile
@@ -1008,9 +1046,6 @@ class ProfileWidgetItem(BaseWidgetItem):
 	def updateFlags(self):
 		self.setFlags(Qt.ItemIsEnabled | Qt.ItemIsSelectable | Qt.ItemIsDragEnabled | Qt.ItemIsEditable)
 
-	def addFetchedChildItems(self, data):
-		if not self.isInPackageTree():
-			self.addChild(RevisionsWidgetItem(self._path))
 
 ##
 # Package-specific items
@@ -1268,10 +1303,14 @@ class WServerFileSystemTreeWidget(QTreeWidget):
 				menu.addAction("New folder...", lambda: self._createDirectory(item))
 			elif item.isPackageSrcDir():
 				menu.addAction("New folder...", lambda: self._createDirectory(item))
+			elif item.isProfilesDir():
+				menu.addAction("New profile...", lambda: self._createProfile(item))
 			elif item.isProfile():
 				menu.addAction("Edit", lambda: self._open(item))
 				if item.isInPackageProfilesTree():
 					menu.addAction("Run package with this profile", lambda: self._notYetImplemented())
+				else:
+					menu.addAction("Run script with this profile", lambda: self._notYetImplemented())
 				menu.addAction("Delete", lambda: self._notYetImplemented())
 			elif item.isPackageDescription():
 				menu.addAction("Edit", lambda: self._open(item))
@@ -1479,13 +1518,31 @@ class WServerFileSystemTreeWidget(QTreeWidget):
 		while status and not validateDirectoryName(name):
 			# Display some error message
 			CommonWidgets.userError(self, "The following characters are forbidden in a package name:\n%s" % ', '.join([x for x in RESTRICTED_NAME_CHARACTERS]))
-			(name, status) = QInputDialog.getText(self, "New folder", "Package name:")
+			(name, status) = QInputDialog.getText(self, "New package", "Package name:")
 
 		if status and not name.isEmpty():
 			try:
 				self._client.createPackage("%s/%s" % (path, name))
 			except Exception, e:
 				CommonWidgets.systemError(self, 'Unable to create this package here: %s' % str(e))
+
+	def _createProfile(self, item):
+		associatedScriptPath = item.parent().getUrl().path()
+		print "DEBUG: creating a new profile associated to %s..." % associatedScriptPath
+		(name, status) = QInputDialog.getText(self, "New profile", "Profile name:")
+		while status and not validateDirectoryName(name):
+			# Display some error message
+			CommonWidgets.userError(self, "The following characters are forbidden in a profile name:\n%s" % ', '.join([x for x in RESTRICTED_NAME_CHARACTERS]))
+			(name, status) = QInputDialog.getText(self, "New profile", "Profile name:")
+
+		# TODO: check for existing profiles
+
+		if status and not name.isEmpty():
+			# Now, open a blank profile document, unsaved
+			model = DocumentModels.ProfileModel()
+			model.setSavedAttributes(url = QUrl('testerman://testerman%s/profiles/%s.profile' % (associatedScriptPath, name)), timestamp = time.time())
+			model.setDocumentSource('<?xml version="1.0"?><profile></profile>')
+			QApplication.instance().get('gui.documentmanager').openTab(model)
 
 	def _copyItems(self, sources, destination):
 		"""

@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 ##
 # This file is part of Testerman, a test automation system.
-# Copyright (c) 2008-2009 Sebastien Lefevre and other contributors
+# Copyright (c) 2008,2009,2010 Sebastien Lefevre and other contributors
 #
 # This program is free software; you can redistribute it and/or modify it under
 # the terms of the GNU General Public License as published by the Free Software
@@ -163,7 +163,7 @@ class FileSystemBackend:
 		"""
 		Reads the contents of a directory.
 		
-		Notice directories are not versioned.
+		Notice that directories are not versioned.
 		
 		@type  path: the path of the dir
 		@param path: the path to the dir, relative to the mountpoint
@@ -172,6 +172,47 @@ class FileSystemBackend:
 		@returns: None in case of an error (or non existing directory)
 		"""
 		return None
+	
+	def getprofiles(self, filename):
+		"""
+		Returns the list of profiles associated to an ats or campaign identified
+		by filename.
+		
+		@type  filename: string
+		@param filename: the complete path to the file relative to the FSB mountpoint
+
+		@rtype: list of dict{'name': string, 'type': string in ['file'] }
+		@returns: None in case of an error (or non existing directory)
+		"""
+		return None
+	
+	def readprofile(self, filename, profilename):
+		"""
+		Returns the content of a profile associated to filename.
+		
+		Notice that profiles are not versioned.
+		
+		@type  filename: string
+		@param filename: the complete path to the file the profile associated to
+		must be fetched, relative to the FSB mountpoint
+		@type  profilename: string
+		@param profilename: the name of the profile to fetch (complete path as a profile)
+		
+		@rtype: string/buffer
+		@return: the content of the (optionally versioned) file if found,
+		         or None if not found.
+		"""
+		return None
+
+	def writeprofile(self, filename, profilename, content):
+		"""
+		Writes a profile associated to filename as profilename,
+		replacing an existing one, if any.
+		TODO: document this.
+		
+		@rtype: None
+		"""
+		raise Exception('Not implemented')
 	
 	def mkdir(self, path):
 		"""
@@ -199,6 +240,16 @@ class FileSystemBackend:
 	def attributes(self, filename, revision = None):
 		"""
 		Returns file attributes.
+		
+		@rtype: FileSystemBacked.Attributes
+		@returns: a filled FileSystemBackend.Attributes instance
+		          (at least with mtime), or None if the file was not found.
+		"""
+		return None
+
+	def profileattributes(self, filename, profilename):
+		"""
+		Returns a profile attributes.
 		
 		@rtype: FileSystemBacked.Attributes
 		@returns: a filled FileSystemBackend.Attributes instance

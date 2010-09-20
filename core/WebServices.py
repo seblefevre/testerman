@@ -393,6 +393,34 @@ def sendSignal(jobId, signal):
 # service: file (File management)
 ################################################################################
 
+"""
+Testerman identifies a resource (ats, log, campaign, revision, ...)
+via a virtual path (vpath) for short.
+A vpath looks like a typical /-separated path, but uses some conventions:
+
+/repository/*: test objects (ats, campaign, logs, ...)
+/repository/*/something.ats: an ats
+/repository/*/something.campaign: a campaign
+/repository/*/something.py: a module
+
+/repository/*/something.ats/profiles: the (virtual) folder that contains shared
+profiles for the ATS something.ats
+/repository/*/something.ats/runs: the (virtual) folder that contains logs
+
+Files that are not in /repository are not part of a virtualized file system,
+but directory looked up in the $document_root/ folder, for instance:
+
+/updates/*: contains the component packages that can be served via the server
+for autoupdate (pyagent, qtesterman)
+/updates.xml: the file that references the components that have been published
+/archives: used to store execution logs for the various atses.
+
+Actually, when looking for /repository/*/something.ats/runs,
+the server looks at /archives/*/something.ats.
+The vpath location, however, is preferred to maintain a stable abstraction
+about where (and how) logs are stored.
+"""
+
 def getFile(path, useCompression = False):
 	"""
 	Retrieves a file according to the path.
@@ -412,6 +440,9 @@ def getFile(path, useCompression = False):
 	          or the file contents in base64 encoding, optionally compressed
 	"""
 	getLogger().info(">> getFile(%s, %s)" % (path, useCompression))
+	if not path.startswith('/'):
+		path = '/' + path
+
 	ret = None
 	try:
 		contents = FileSystemManager.instance().read(path)
@@ -450,6 +481,8 @@ def putFile(content, path, useCompression = False):
 	@returns: True if OK, False otherwise
 	"""
 	getLogger().info(">> putFile(%s, %s)" % (path, useCompression))
+	if not path.startswith('/'):
+		path = '/' + path
 
 	res = False
 	try:
@@ -486,6 +519,9 @@ def getDirectoryListing(path):
 	          Returns None if the directory was not accessible or in case of an error.
 	"""
 	getLogger().info(">> getDirectoryListing(%s)" % path)
+	if not path.startswith('/'):
+		path = '/' + path
+
 	res = []
 	try:
 		res = FileSystemManager.instance().getdir(path)
@@ -523,6 +559,8 @@ def getFileInfo(path):
 	@returns: None on error, or the dict of attributes.
 	"""
 	getLogger().info(">> getFileInfo(%s)" % path)
+	if not path.startswith('/'):
+		path = '/' + path
 
 	res = None
 	try:
@@ -554,6 +592,9 @@ def removeFile(path):
 	@returns: True if OK, False if nothing deleted. (? to check)
 	"""
 	getLogger().info(">> removeFile(%s)" % path)
+	if not path.startswith('/'):
+		path = '/' + path
+
 	res = False
 	try:
 		res = FileSystemManager.instance().unlink(path)
@@ -580,6 +621,8 @@ def removeDirectory(path, recursive = False):
 	@returns: True if OK, False if nothing deleted. (? to check)
 	"""
 	getLogger().info(">> removeDirectory(%s)" % path)
+	if not path.startswith('/'): path = '/' + path
+
 	res = False
 	try:
 		res = FileSystemManager.instance().rmdir(path, recursive)
@@ -625,6 +668,9 @@ def move(source, destination):
 	@returns: True if the move was OK, False otherwise.
 	"""
 	getLogger().info(">> move(%s, %s)" % (source, destination))
+	if not source.startswith('/'): source = '/' + source
+	if not destination.startswith('/'): destination = '/' + destination
+
 	res = False
 	try:
 		res = FileSystemManager.instance().move(source, destination)
@@ -666,6 +712,9 @@ def copy(source, destination):
 	@returns: True if the move was OK, False otherwise.
 	"""
 	getLogger().info(">> copy(%s, %s)" % (source, destination))
+	if not source.startswith('/'): source = '/' + source
+	if not destination.startswith('/'): destination = '/' + destination
+
 	res = False
 	try:
 		res = FileSystemManager.instance().copy(source, destination)
@@ -693,6 +742,8 @@ def rename(path, newName):
 	@returns: False if newName already exists. True otherwise.
 	"""
 	getLogger().info(">> rename(%s, %s)" % (path, newName))
+	if not path.startswith('/'): path = '/' + path
+
 	res = False
 	try:
 		res = FileSystemManager.instance().rename(path, newName)
@@ -717,6 +768,8 @@ def makeDirectory(path):
 	@returns: True if the directory was created, False otherwise.
 	"""
 	getLogger().info(">> makeDirectory(%s)" % (path))
+	if not path.startswith('/'): path = '/' + path
+
 	res = False
 	try:
 		res = FileSystemManager.instance().mkdir(path)
@@ -754,6 +807,8 @@ def getDependencies(path, recursive = False):
 	A dependency is only listed once (no duplicate).
 	"""
 	getLogger().info(">> getDependencies(%s, %s)" % (path, recursive))
+	if not path.startswith('/'): path = '/' + path
+
 	res = []
 	try:
 		source = FileSystemManager.instance().read(path)
@@ -803,6 +858,8 @@ def exportPackage(path, useCompression = False):
 	          or the tpk file contents in base64 encoding, optionally compressed
 	"""
 	getLogger().info(">> createPackageFile(%s, %s)" % (path, useCompression))
+	if not path.startswith('/'): path = '/' + path
+
 	ret = None
 	try:
 		# We have to get all files in the package folder (recursively) then create an archive
@@ -874,6 +931,7 @@ def createPackage(path):
 	@returns: True if OK, False otherwise
 	"""
 	getLogger().info(">> createPackage(%s)" % (path))
+	if not path.startswith('/'): path = '/' + path
 
 	res = False
 	try:
@@ -896,6 +954,7 @@ def schedulePackage(path, username, session, at, script = None, profileName = No
 	@since: 1.3
 	"""
 	getLogger().info(">> schedulePackage(%s, script = %s)" % (path, script))
+	if not path.startswith('/'): path = '/' + path
 
 	try:
 		metadata = Package.getPackageMetadata(path)

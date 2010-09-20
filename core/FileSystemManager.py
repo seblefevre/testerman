@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 ##
 # This file is part of Testerman, a test automation system.
-# Copyright (c) 2008-2009 Sebastien Lefevre and other contributors
+# Copyright (c) 2008,2009,2010 Sebastien Lefevre and other contributors
 #
 # This program is free software; you can redistribute it and/or modify it under
 # the terms of the GNU General Public License as published by the Free Software
@@ -50,6 +50,50 @@ APPTYPE_DIR = 'directory'
 def getLogger():
 	return logging.getLogger('TS.FS')
 
+
+################################################################################
+# Virtual Path analyzer
+################################################################################
+
+class VirtualPath:
+	def __init__(self, vpath):
+		self._vtype = None
+		self._vvalue = None
+		self._basevalue = vpath
+	
+		velements = vpath.split('/')
+
+		# non-repository paths cannot be virtual		
+		if len(velements) > 1 and velements[1] != 'repository':
+			return
+		
+		i = 0
+		for element in velements:
+			if element.endswith('.ats') or element.endswith('.campaign'):
+				if velements[i+1:]:
+					# remaining elements after the script name -> pure virtual path
+					vobject = velements[i+1]
+					if vobject in ['executions', 'profiles', 'revisions']:
+						self._vtype = vobject
+						self._vvalue = '/'.join(velements[i+2:])
+						self._basevalue = '/'.join(velements[:i+1])
+						return
+					else:
+						raise Exception('Invalid virtual path %s, unsupported virtual object %s' % (vpath, vobject))
+
+			i += 1
+
+	def isProfileRelated(self):
+		return self._vtype == 'profiles'		
+	
+	def getVirtualValue(self):
+		return self._vvalue
+
+	def getBaseValue(self):
+		return self._basevalue
+
+	def isVirtual(self):
+		return (self._vtype is not None)
 
 ################################################################################
 # The manager
@@ -169,15 +213,37 @@ class FileSystemManager:
 		return applicationType
 	
 	def read(self, filename):
-		(adjusted, backend) = FileSystemBackendManager.getBackend(filename)
+		# Analyse the vpath: could be a virtual folder such as
+		# associated profiles or associated executions
+		vpath = VirtualPath(filename)
+		baseObject = vpath.getBaseValue()
+
+		(adjusted, backend) = FileSystemBackendManager.getBackend(baseObject)
 		if not backend:
-			raise Exception('No backend available to manipulate %s' % filename)
-		return backend.read(adjusted, revision = None)
+			raise Exception('No backend available to manipulate %s' % baseObject)
+		
+		if vpath.isProfileRelated():
+			return backend.readprofile(adjusted, vpath.getVirtualValue())
+		else:			
+			return backend.read(adjusted, revision = None)
 	
 	def write(self, filename, content, reason = None, notify = True):
 		"""
 		Automatically creates the missing directories up to the file, if needed.
 		"""
+		# Analyse the vpath: could be a virtual folder such as
+		# associated profiles or associated executions
+		vpath = VirtualPath(filename)
+
+		if not vpath.isVirtual():
+			return self._writeFile(filename, content, reason, notify)
+		
+		elif vpath.isProfileRelated():
+			return self._writeProfile(vpath.getBaseValue(), vpath.getVirtualValue(), content, notify)
+		else:
+			raise Exception("Cannot write this resource (%s)" % filename)
+
+	def _writeFile(self, filename, content, reason, notify):
 		path = os.path.split(filename)[0]
 		res = self.mkdir(path, notify = notify)
 		if not res:
@@ -192,11 +258,29 @@ class FileSystemManager:
 			newfile = True
 
 		ret = backend.write(adjusted, content, baseRevision = None, reason = reason)
-		if notify:
+		if ret and notify:
 			if newfile:
 				self._notifyFileCreated(filename)
 			else:
 				self._notifyFileChanged(filename) # Well, could be a new revision, too.
+		return ret
+
+	def _writeProfile(self, filename, profilename, content, notify):
+		resourcepath = '%s/profiles/%s' % (filename, profilename)
+		(adjusted, backend) = FileSystemBackendManager.getBackend(filename)
+		if not backend:
+			raise Exception('No backend available to manipulate %s' % filename)
+
+		newfile = False
+		if not self.isfile(filename):
+			newfile = True
+
+		ret = backend.writeprofile(adjusted, profilename, content)
+		if ret and notify:
+			if newfile:
+				self._notifyFileCreated(resourcepath)
+			else:
+				self._notifyFileChanged(resourcepath)
 		return ret
 	
 	def unlink(self, filename, reason = None, notify = True):
@@ -209,10 +293,20 @@ class FileSystemManager:
 		return ret
 
 	def getdir(self, path):
-		(adjusted, backend) = FileSystemBackendManager.getBackend(path)
+		# Analyse the vpath: could be a virtual folder such as
+		# associated profiles or associated executions
+		vpath = VirtualPath(path)
+		baseObject = vpath.getBaseValue()
+
+		(adjusted, backend) = FileSystemBackendManager.getBackend(baseObject)
 		if not backend:
-			raise Exception('No backend available to manipulate %s' % path)
-		dircontents = backend.getdir(adjusted)
+			raise Exception('No backend available to manipulate %s' % baseObject)
+		
+		if vpath.isProfileRelated():
+			dircontents = backend.getprofiles(adjusted)
+		else:			
+			dircontents = backend.getdir(adjusted)
+
 		if dircontents is None:
 			return None
 		
@@ -315,10 +409,17 @@ class FileSystemManager:
 		return ret
 
 	def attributes(self, filename):
-		(adjusted, backend) = FileSystemBackendManager.getBackend(filename)
+		vpath = VirtualPath(filename)
+		baseObject = vpath.getBaseValue()
+
+		(adjusted, backend) = FileSystemBackendManager.getBackend(baseObject)
 		if not backend:
-			raise Exception('No backend available to manipulate %s' % filename)
-		return backend.attributes(adjusted, revision = None)
+			raise Exception('No backend available to manipulate %s' % baseObject)
+		
+		if vpath.isProfileRelated():
+			return backend.profileattributes(adjusted, vpath.getVirtualValue())
+		else:			
+			return backend.attributes(adjusted, revision = None)
 
 	def revisions(self, filename):
 		(adjusted, backend) = FileSystemBackendManager.getBackend(filename)

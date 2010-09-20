@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 ##
 # This file is part of Testerman, a test automation system.
-# Copyright (c) 2009 QTesterman contributors
+# Copyright (c) 2009,2010 QTesterman contributors
 #
 # This program is free software; you can redistribute it and/or modify it under
 # the terms of the GNU General Public License as published by the Free Software
@@ -914,4 +914,195 @@ registerDocumentModelClass(r'package\.xml', PackageDescriptionModel)
 
 
 	
+###############################################################################
+# Profile Model
+###############################################################################
+
+class VirtualPath:
+	"""
+	A Testerman Virtual Path parser.
+	Should be moved to a shared modules between servers and clients.
+	"""
+	def __init__(self, vpath):
+		self._vtype = None
+		self._vvalue = None
+		self._basevalue = vpath
+	
+		velements = vpath.split('/')
+
+		# non-repository paths cannot be virtual		
+		if len(velements) > 1 and velements[1] != 'repository':
+			return
+		
+		i = 0
+		for element in velements:
+			if element.endswith('.ats') or element.endswith('.campaign'):
+				if velements[i+1:]:
+					# remaining elements after the script name -> pure virtual path
+					vobject = velements[i+1]
+					if vobject in ['executions', 'profiles', 'revisions']:
+						self._vtype = vobject
+						self._vvalue = '/'.join(velements[i+2:])
+						self._basevalue = '/'.join(velements[:i+1])
+						return
+					else:
+						raise Exception('Invalid virtual path %s, unsupported virtual object %s' % (vpath, vobject))
+
+			i += 1
+
+	def isProfileRelated(self):
+		return self._vtype == 'profiles'		
+	
+	def getVirtualValue(self):
+		return self._vvalue
+
+	def getBaseValue(self):
+		return self._basevalue
+
+	def isVirtual(self):
+		return (self._vtype is not None)
+
+
+class ProfileModel(DocumentModel):
+	"""
+	Profile model.
+	
+	No metadata aspect model.
+	
+	The body model is QDomDocument.
+	
+	This model is persisted/stored as a utf-8 encoded XML file.
+	-> or should we stick to a key=value configuration file ?
+	
+	"""
+	def __init__(self):
+		DocumentModel.__init__(self)
+		self.setFileExtension("profile")
+		self.setDocumentType(TYPE_PROFILE)
+		
+	def _split(self, documentSource):
+		"""
+		Reimplemented.
+		
+		Splits the source document to extract the metadataSource (as buffer string),
+		and a body model.
+		For this PackageDescriptionModel, the body model is a QDomDocument.
+		There is no metadata in this kind of document.
+		
+		@rtype: (buffer string, QDomDocument)
+		@returns: (metadataSource, body model)
+		"""
+		if not documentSource:
+			documentSource = u'<?xml version="1.0" encoding="utf-8"?><profile></profile>'
+		
+		metadataSource = None
+		bodyModel = QDomDocument()
+		(res, errorMessage, errorLine, errorColumn) = bodyModel.setContent(documentSource, 0)
+		
+		if not res:
+			raise Exception("Invalid profile file: %s (line %d, column %d)" % (unicode(errorMessage), errorLine, errorColumn)) 
+		
+		return (metadataSource, bodyModel)
+
+	def _join(self, metadataSource, bodyModel):
+		"""
+		Reimplemented.
+		
+		Constructs the document source from the elements as returned by _split().
+
+		Ignores the metadata (which should be None, anyway).
+		
+		@rtype: buffer string
+		@returns: the document source, ready for storage. For information, stored as  utf-8 encoded XML string.
+		"""
+		# We just have to serialize our memory model to an utf-8 encoded string.
+		
+		return unicode(bodyModel.toString()).encode('utf-8')
+
+	##
+	# ProfileModel specific functions
+	##
+
+	def getAssociatedScriptUrl(self):
+		try:
+			vpath = VirtualPath(unicode(self.getUrl().path()))
+		except:
+			return None
+		scriptUrl = QUrl()
+		scriptUrl.setPath(vpath.getBaseValue())
+		scriptUrl.setScheme(self.getUrl().scheme())
+		scriptUrl.setHost(self.getUrl().host())
+		scriptUrl.setPort(self.getUrl().port())
+		return scriptUrl
+	
+	def getAssociatedScriptLabel(self):
+		url = self.getAssociatedScriptUrl()
+		if not url:
+			return None
+		return url.path()
+
+	# Accessors
+
+	def getDescription(self):
+		root = self.getBodyModel().documentElement()
+		return unicode(root.firstChildElement('description').text())
+
+	def setDescription(self, description):
+		self._updateModelElement('description', description)
+
+	def getParameters(self):
+		localModel = {}
+		root = self.getBodyModel().documentElement()
+		parameters = root.firstChildElement('parameters')
+		if not parameters.isNull():
+			parameter = parameters.firstChildElement('parameter')
+			while not parameter.isNull():
+				name = unicode(parameter.attribute('name'))
+				value = unicode(parameter.text())
+				localModel[name] = value
+				parameter = parameter.nextSiblingElement()
+		return localModel
+
+	def setParameters(self, p):
+		doc = self.getBodyModel()
+		root = doc.documentElement()
+		root.removeChild(root.firstChildElement('parameters'))
+		parameters = doc.createElement('parameters')
+		for k, v in p.items():
+			parameter = doc.createElement('parameter')
+			parameter.setAttribute('name', k)
+			parameter.appendChild(doc.createTextNode(v))
+			parameters.appendChild(parameter)
+		root.appendChild(parameters)
+	
+	def getParameter(self, key):
+		pass
+	
+	def setParameter(self, key, value):
+		pass
+
+	def _updateModelElement(self, name, value):
+		# Can't update a text value directly with QtXml.... (??)
+		# We have to create a new child and replace the previous one
+		doc = self.getBodyModel()
+		root = doc.documentElement()
+		oldChild = root.firstChildElement(name)
+		newChild = doc.createElement(name)
+		newChild.appendChild(doc.createTextNode(value))
+		if oldChild.isNull():
+			root.appendChild(newChild)
+		else:
+			root.replaceChild(newChild, oldChild)
+
+
+	def toSession(self):
+		"""
+		Returns the profile contents as a dict of key: value, suitable
+		for a script execution.
+		"""
+		return self.getParameters()
+	
+
+registerDocumentModelClass(r'.*\.profile', ProfileModel)
+
 

@@ -676,6 +676,7 @@ class WMainWindow(QMainWindow):
 			QApplication.instance().notifyInitializationProgress("Initializing document manager...")
 			self.documentManager = DocumentManager.WDocumentManager(self)
 			self.setCentralWidget(self.documentManager)
+			QApplication.instance().set('gui.documentmanager', self.documentManager)
 
 			# Acceptable docks
 			QApplication.instance().notifyInitializationProgress("Initializing remote browsers...")
@@ -683,8 +684,8 @@ class WMainWindow(QMainWindow):
 			self.repositoryBrowserDock.setObjectName("repositoryBrowserDock")
 			self.addDockWidget(Qt.LeftDockWidgetArea, self.repositoryBrowserDock)
 
-			QApplication.instance().notifyInitializationProgress("Initializing property editor...")
-			self.documentPropertyEditorDock = DocumentPropertyEditor.WDocumentPropertyEditorDock(self.documentManager.tab, self)
+			QApplication.instance().notifyInitializationProgress("Initializing script properties editor...")
+			self.documentPropertyEditorDock = DocumentPropertyEditor.WScriptPropertiesEditorDock(self.documentManager.tab, self)
 			self.documentPropertyEditorDock.setObjectName("scriptPropertyEditorDock") # this scriptPropertyEditorDock name is kept for settings compatibility
 			self.addDockWidget(Qt.LeftDockWidgetArea, self.documentPropertyEditorDock)
 

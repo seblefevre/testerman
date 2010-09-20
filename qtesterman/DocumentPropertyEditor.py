@@ -308,7 +308,7 @@ class WParameterEditor(QTreeWidget):
 			self.pasteItemsAction.setEnabled(False)
 
 
-class WDocumentPropertyEditor(QWidget):
+class WScriptPropertiesEditor(QWidget):
 	"""
 	This composite widget manages the whole script metadata management.
 	It contains a WParameterEditor for the parameter part,
@@ -391,7 +391,7 @@ class WDocumentPropertyEditor(QWidget):
 			self.metadataModel.setPrerequisites(unicode(prerequisites))
 
 
-class WDocumentPropertyEditorDock(QDockWidget):
+class WScriptPropertiesEditorDock(QDockWidget):
 	"""
 	Observes the main documentTabWidget. When the tab is switched, trigger an update on the embedded WParameterEditor (for now).
 	"""
@@ -401,11 +401,11 @@ class WDocumentPropertyEditorDock(QDockWidget):
 		self.__createWidgets()
 
 	def __createWidgets(self):
-		self.setWindowTitle("Document properties")
-		self.propertyEditor = WDocumentPropertyEditor(self)
-		self.setWidget(self.propertyEditor)
+		self.setWindowTitle("Script parameters")
+		self.propertiesEditor = WScriptPropertiesEditor(self)
+		self.setWidget(self.propertiesEditor)
 		self.connect(self.documentTabWidget, SIGNAL("currentChanged(int)"), self.onDocumentTabWidgetChanged)
 
 	def onDocumentTabWidgetChanged(self, index):
 		documentModel = self.documentTabWidget.currentWidget().model
-		self.propertyEditor.setModel(documentModel)
+		self.propertiesEditor.setModel(documentModel)

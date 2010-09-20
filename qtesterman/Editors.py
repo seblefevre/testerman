@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 ##
 # This file is part of Testerman, a test automation system.
-# Copyright (c) 2009 QTesterman contributors
+# Copyright (c) 2009,2010 QTesterman contributors
 #
 # This program is free software; you can redistribute it and/or modify it under
 # the terms of the GNU General Public License as published by the Free Software
@@ -464,6 +464,45 @@ DocumentManager.registerDocumentEditorClass(DocumentModels.TYPE_MODULE, WModuleD
 # ATS Edition
 ###############################################################################
 
+
+class WProfileSelector(QComboBox):
+
+	def __init__(self, documentModel, parent = None):
+		QComboBox.__init__(self, parent)
+		self.addItem('(default profile)')
+		self._documentModel = documentModel
+	
+	def showPopup(self):
+		"""
+		Reimplemented.
+		"""
+		current = unicode(self.currentText())
+		self.clear()
+		self.addItem('(default profile)')
+		selIndex = 0
+
+		if self._documentModel.isRemote():
+			try:
+				l = getProxy().getDirectoryListing(unicode(self._documentModel.getUrl().path()) + '/profiles')
+			except Exception, e:
+				log('Cannot get profiles for this script: %s' % e)
+				l = []
+			index = 1 # Skip the default profile
+			for name in [ x['name'][:-len('.profile')] for x in l if x['type'] == 'profile']:
+				if current == name:
+					selIndex = index
+				self.addItem(name) # skip the .profile when display the profile extension
+				index += 1
+		self.setCurrentIndex(selIndex)
+		
+		return QComboBox.showPopup(self)
+	
+	def getProfileUrl(self):
+		if self.currentIndex() > 0:
+			return QUrl(self._documentModel.getUrl().toString() + '/profiles/%s.profile' % unicode(self.currentText()))
+		return None
+		
+
 class WAtsDocumentEditor(WDocumentEditor):
 	"""
 	Enable to edit and manipulate the script (execute as, associate an id, etc).
@@ -523,6 +562,9 @@ class WAtsDocumentEditor(WDocumentEditor):
 		self.documentationButton.setMenu(self.documentationPluginsMenu)
 		self.documentationButton.setPopupMode(QToolButton.InstantPopup)
 
+		# Profile selector
+		self.profileSelector = WProfileSelector(self.model)
+
 		# Run actions
 		self.runAction = CommonWidgets.TestermanAction(self, "&Run", self.run, "Run now")
 		self.runAction.setIcon(icon(':/icons/run.png'))
@@ -546,6 +588,7 @@ class WAtsDocumentEditor(WDocumentEditor):
 		actionLayout.addWidget(self.documentationButton)
 		actionLayout.addWidget(self.syntaxCheckButton)
 		actionLayout.addWidget(self.runButton)
+		actionLayout.addWidget(self.profileSelector)
 		actionLayout.addWidget(self.launchLog)
 		actionLayout.setMargin(2)
 		layout.addLayout(actionLayout)
@@ -608,7 +651,20 @@ class WAtsDocumentEditor(WDocumentEditor):
 		if not self.verify(0):
 			return
 		
-		jobId = self._schedule(session = None)
+		session = None
+		profileUrl = self.profileSelector.getProfileUrl()
+		if profileUrl:
+			profile = getProxy().getFile(unicode(profileUrl.path()))
+			if profile:
+				pm = DocumentModels.ProfileModel()
+				pm.setDocumentSource(profile)
+				session = pm.toSession()
+				print "Running with profile %s" % unicode(profileUrl.path())
+			else:
+				print "WARNING: unable to fetch profile %s" % unicode(profileUrl.path())
+
+		
+		jobId = self._schedule(session)
 		if jobId is None:
 			return
 
@@ -1906,3 +1962,282 @@ class WPackageDescriptionDocumentEditor(WDocumentEditor):
 		return icon(':/icons/item-types/package-metadata')
 
 DocumentManager.registerDocumentEditorClass(DocumentModels.TYPE_PACKAGE_METADATA, WPackageDescriptionDocumentEditor)
+
+
+###############################################################################
+# Profile
+###############################################################################
+
+class WParameterTreeWidgetItem(QTreeWidgetItem):
+	def __init__(self, parent, parameter):
+		"""
+		parameter is a dict[unicode] of unicode containing "name", "description", "default", "value"
+		
+		The initial name is used as a key for the model, so we save it in a safe place as soon as the item is created.
+		"""
+		QTreeWidgetItem.__init__(self, parent)
+		self.parameter = parameter
+		self.key = parameter['name']
+		self.columns = [ 'name', 'description', 'default', 'value' ]
+		self.setFlags(Qt.ItemIsEnabled | Qt.ItemIsEditable | Qt.ItemIsSelectable)
+		if self.parameter['extra']:
+			self.setBackground(0, QBrush(Qt.lightGray))
+			self.setToolTip(0, "This parameter is not defined in the script properties. You may remove it.")
+		
+	def data(self, column, role):
+		name = self.columns[column]
+		if role == Qt.DisplayRole:
+			return QVariant(self.parameter[name])
+		if role == Qt.EditRole:
+			return QVariant(self.parameter[name])
+		return QVariant()
+
+	def setData(self, column, role, value):
+		val = unicode(value.toString())
+		name = self.columns[column]
+		if role == Qt.EditRole:
+			if name == 'value':
+				self.parameter[name] = val
+				# It doesn't seem normal to send this signal explicitly... It should be done by the
+				# treeWidget by itself, AFAIK.
+				self.treeWidget().emit(SIGNAL('itemChanged(QTreeWidgetItem*, int)'), self, column)
+
+class WParametersEditor(QTreeWidget):
+	"""
+	An editor to edit the script parameters values for the profile.
+	Displays multiple columns: name, description, default value, and profile value.
+	Only the profile value is editable.
+	The user cannot add or delete new parameters. Instead, he/she may "reapply"
+	the script parameters to the profile (to create/delete missing parameters)
+	and/or reassign default values.
+	"""
+	def __init__(self, parent = None):
+		QTreeWidget.__init__(self, parent)
+		self.__createWidgets()
+
+	def __createWidgets(self):
+		self.setRootIsDecorated(0)
+		self.labels = [ 'Name', 'Description', 'Default value', 'Profile value' ]
+		self.setSortingEnabled(1)
+		# Default sort - should be read from the QSettings.
+		self.sortItems(0, Qt.AscendingOrder)
+#		self.setSelectionMode(QAbstractItemView.ExtendedSelection)
+		labels = QStringList()
+		for l in self.labels:
+			labels.append(l)
+		self.setHeaderLabels(labels)
+#		self.setContextMenuPolicy(Qt.CustomContextMenu)
+#		self.connect(self, SIGNAL("customContextMenuRequested(const QPoint&)"), self.onPopupMenu)
+
+#		self.setAcceptDrops(True)
+		
+		self.setAlternatingRowColors(True)
+
+	def setModel(self, profileModel, scriptMetadataModel = None, applyMetadataModel = False):
+		"""
+		The scriptParametersModel is optional and provided to fill the description and default values
+		for entries that exist in profileModel too.
+		"""
+		self._model = profileModel
+
+		self.clear()
+		
+		localModel = profileModel.getParameters()
+		templateModel = scriptMetadataModel and scriptMetadataModel.getParameters() or {}
+
+		if applyMetadataModel:
+			displayed = []		
+			# Now, construct the tree, merging the info from the metadata model and the current profile
+			if templateModel:
+				# Construct the tree based on the "template", ie the script expected parameters
+				for k, v in templateModel.items():
+					d = {}
+					if k in localModel:
+						d = dict(name = k, value = localModel[k], description = v['description'], default = v['default'], extra = False)
+					else:
+						# in the template, not in the profile, initialize it to the defaut value
+						d = dict(name = k, value = v['default'], description = v['description'], default = v['default'], extra = False)
+					displayed.append(k)
+					WParameterTreeWidgetItem(self, d)
+
+			# Now complete with what was not displayed, but available in the profile model (extra parameters)
+			for k, v in localModel.items():
+				if not k in displayed:
+					d = dict(name = k, value = v, description = '(unknown)', default = '', extra = True)
+					WParameterTreeWidgetItem(self, d)
+
+		else:
+			# We don't have a merge strategy. Just display the elements of the local model,
+			# with the description and default value from the scriptMetadataModel, if any
+			for k, v in localModel.items():
+				if k in templateModel:
+					d = dict(name = k, value = v, description = templateModel[k]['description'], default = templateModel[k]['default'], extra = False)
+				else:
+					d = dict(name = k, value = v, description = '', default = '', extra = True)
+				WParameterTreeWidgetItem(self, d)
+				
+		# We re-sort the items according to the current sorting parameters
+		self.sortItems(self.sortColumn(), self.header().sortIndicatorOrder())
+	
+	def getParameters(self):
+		"""
+		Returns a dict of the currently set values.
+		"""
+		parameters = {}
+		# Browse the top level items
+		for i in range(self.topLevelItemCount()):
+			item = self.topLevelItem(i)
+			# Granted, this is dirty coding. To refactor one day.
+			key = item.text(0)
+			value = item.text(3)
+			parameters[key] = value
+		return parameters
+		
+
+class WProfileDocumentEditor(WDocumentEditor):
+	"""
+	Enable to edit and manipulate a profile.
+	
+	This is a view over a ProfileModel.
+	
+	Directly interfaces interesting fields in this description:
+	description,
+	parameters
+	"""
+	def __init__(self, documentModel, parent = None):
+		WDocumentEditor.__init__(self, documentModel, parent)
+		self.__createWidgets()
+		self.filenameTemplate = "Testerman Execution Profile (*.profile)"
+		self.connect(self.model, SIGNAL('modificationChanged(bool)'), self.onModelModificationChanged)
+		self.connect(self.model, SIGNAL('documentReplaced()'), self.onModelUpdated)
+		self.onModelUpdated() # Refresh the displayed values
+
+	def __createWidgets(self):
+		"""
+		Basically a QTextEdit for the description, 
+		and a table to edit parameters.
+		"""
+		layout = QVBoxLayout()
+		layout.setMargin(3)
+		
+		self._descriptionTextEdit = QTextEdit()
+		self._parametersEditor = WParametersEditor()
+		
+		# Let's reference the different isModified() functions
+		self._editorModifiedFunctions = [ 
+			lambda: self._descriptionTextEdit.document().isModified()
+		]
+		self.connect(self._descriptionTextEdit, SIGNAL('textChanged()'), self.maybeModified)
+
+		layout.addWidget(QLabel("This profile is attached to: %s" % unicode(self.model.getAssociatedScriptLabel())))
+		layout.addWidget(QLabel("Profile description:"))
+		layout.addWidget(self._descriptionTextEdit)
+		layout.addWidget(QLabel("Parameters:"))
+		layout.addWidget(self._parametersEditor)
+
+		# The action bar below
+		actionLayout = QHBoxLayout()
+
+		# Actions associated with profile edition:
+		# TODO: reapply script default values fill from templates, etc
+		# TODO: run the ATS with these parameters
+		# By default, icon sizes are 24x24. We resize them to 16x16 to avoid too large buttons.
+		self.documentationButton = QToolButton()
+		self.documentationButton.setIcon(icon(':/icons/documentation'))
+		self.documentationButton.setIconSize(QSize(16, 16))
+		self.documentationPluginsMenu = QMenu('Documentation', self)
+		self.connect(self.documentationPluginsMenu, SIGNAL("aboutToShow()"), self.prepareDocumentationPluginsMenu)
+		self.documentationButton.setMenu(self.documentationPluginsMenu)
+		self.documentationButton.setPopupMode(QToolButton.InstantPopup)
+
+		self.resetButton = QPushButton("Reset to defaults")
+		self.connect(self.resetButton, SIGNAL("clicked()"), self.resetToDefaults)
+
+		self.reapplyTemplateButton = QPushButton("Load parameters from script")
+		self.connect(self.reapplyTemplateButton, SIGNAL("clicked()"), self.reapplyTemplate)
+
+		actionLayout.addStretch()
+#		actionLayout.addWidget(self.documentationButton)
+#		actionLayout.addWidget(self.resetButton)
+		actionLayout.addWidget(self.reapplyTemplateButton)
+
+		actionLayout.setMargin(2)
+		layout.addLayout(actionLayout)
+		layout.setMargin(0)
+		self.setLayout(layout)
+
+	def maybeModified(self):
+		"""
+		Scan for a change in the multiple local editors so that 
+		we can fire a modification status change, if needed.
+		"""
+		for isModified in self._editorModifiedFunctions:
+			if isModified():
+				# Something has been modified.
+				self.model.onBodyModificationChanged(True)
+				return
+		
+		# Back to unmodified flag
+		self.model.onBodyModificationChanged(False)
+
+	def onModelUpdated(self):
+		self._descriptionTextEdit.setText(self.model.getDescription())
+		self._parametersEditor.setModel(self.model, self.getAssociatedScriptMetadataModel())
+		self.model.onBodyModificationChanged(False)
+
+	def aboutToSave(self):
+		return True
+
+	def updateModel(self):
+		"""
+		Commit the changes to the model.
+		"""
+		description = self._descriptionTextEdit.toPlainText()
+		self.model.setDescription(unicode(description))
+		self.model.setParameters(self._parametersEditor.getParameters())
+
+	def prepareDocumentationPluginsMenu(self):
+		self.documentationPluginsMenu.clear()
+		for action in getDocumentationPluginActions(self.model, self.model.getDocumentType(), self):
+			print "DEBUG: adding action in plugin contextual menu..." + unicode(action.text())
+			self.documentationPluginsMenu.addAction(action)
+
+	def aboutToDocument(self):
+		# Nothing to do
+		return True
+
+	def getIcon(self):
+		"""
+		Returns an icon representing the edited object.
+		"""
+		return icon(':/icons/item-types/profile')
+	
+	## Specific to this widget
+	def getAssociatedScriptMetadataModel(self):
+		# Load the script from the server
+		scriptUrl = self.model.getAssociatedScriptUrl()
+		if scriptUrl:
+			path = scriptUrl.path()
+			script = getProxy().getFile(unicode(path))
+			if script:
+				# Use the document model class registry to find the correct DocumentModel class to use
+				filename = os.path.split(unicode(path))[1]
+				documentModelClass = DocumentModels.getDocumentModelClass(filename)
+				if not documentModelClass:
+					return None
+				scriptModel = documentModelClass()
+				scriptModel.setDocumentSource(script)
+				return scriptModel.getMetadataModel()
+		return None
+	
+	def reapplyTemplate(self):
+		"""
+		Loads the script parameters from the associated script, 
+		then adds the missing entries to the model, with a default value.
+		"""
+		self._parametersEditor.setModel(self.model, self.getAssociatedScriptMetadataModel(), True)
+	
+	def resetToDefaults(self):
+		pass
+
+DocumentManager.registerDocumentEditorClass(DocumentModels.TYPE_PROFILE, WProfileDocumentEditor)
