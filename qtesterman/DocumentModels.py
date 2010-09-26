@@ -103,6 +103,8 @@ class MetadataModel(QObject):
 		self.prerequisites = None
 		#: unicode string
 		self.description = None
+		# : unicode string
+		self.languageApi = None
 		#: document parameters (ATS variables). Indexed by a unicode name, contain dicts[unicode] of unicode
 		self.parameters = {}
 
@@ -160,6 +162,7 @@ class MetadataModel(QObject):
 		# First we clear the model
 		self.prerequisites = u''
 		self.description = u''
+		self.languageApi = '1' # this is the default value when not provided.
 		self.parameters = {}
 		
 		# Parse into a DOM document
@@ -182,6 +185,9 @@ class MetadataModel(QObject):
 		element = metadataDoc.documentElement().firstChildElement('description')
 		if not element.isNull():
 			self.description = unicode(element.text())
+		element = metadataDoc.documentElement().firstChildElement('api')
+		if not element.isNull():
+			self.languageApi = unicode(element.text())
 
 		# Parameters
 		parameters = metadataDoc.documentElement().firstChildElement('parameters')
@@ -192,6 +198,7 @@ class MetadataModel(QObject):
 					'default': unicode(parameter.attribute('default')),
 					'type': unicode(parameter.attribute('type')),
 					'description': unicode(parameter.text()),
+					'name': unicode(parameter.attribute('name'))
 				}
 
 				parameter = parameter.nextSiblingElement()
@@ -215,6 +222,7 @@ class MetadataModel(QObject):
 		<metadata version="1.0">
 			<description><![CDATA[description]]></description>
 			<prerequisites><![CDATA[prerequisites]]></prerequisites>
+			<language-mode></language-mode>
 			<parameters>
 				<parameter name="PX_PARAM1" default="defaultValue01" type="string"><![CDATA[description]]></parameter>
 			</parameters>
@@ -228,31 +236,32 @@ class MetadataModel(QObject):
 		res += u'<metadata version="1.0">\n'
 		res += u'<description>%s</description>\n' % Qt.escape(self.description) # This replacement enables to correcly read \n from the XML (when reloaded)
 		res += u'<prerequisites>%s</prerequisites>\n' % Qt.escape(self.prerequisites)
+		res += u'<api>%s</api>\n' % Qt.escape(self.languageApi)
 		res += u'<parameters>\n'
 		for (name, p) in self.parameters.items():
 			# We must escape the values (to avoid ", etc)
 			# TODO: use pure Qt facilities
-			res += u'<parameter name="%s" default="%s" type="string"><![CDATA[%s]]></parameter>\n' % (Qt.escape(name), Qt.escape(p['default']), p['description'].replace('\n', '&cr;'))
+			res += u'<parameter name="%s" default="%s" type="%s"><![CDATA[%s]]></parameter>\n' % (Qt.escape(name), Qt.escape(p['default']), Qt.escape(p['type']), p['description'].replace('\n', '&cr;'))
 		res += u'</parameters>\n'
 		res += u'</metadata>\n'
 		return res.encode('utf-8')
 
 	def getParameter(self, name):
 		"""
-		Gets a parameter attributes.
+		Gets a parameter's attributes.
 
 		@type  name: unicode string
 		@param name: the name of the parameter
 
 		@rtype: dict[unicode] of unicode
-		@returns: { 'default', 'type', 'description' } None if the parameter does not exist.
+		@returns: { 'default', 'type', 'description', 'name' } or None if the parameter does not exist.
 		"""
 		ret = {}
 		if self.parameters.has_key(name):
-			for k, v in self.parameters[name]:
+			# returns a copy
+			for k, v in self.parameters[name].items():
 				ret[k] = v
-			# FIXME: Kept for compatibility
-			ret['previous-value'] = ret['default']
+			return ret
 		return None
 
 	def setParameter(self, name, default = None, description = None, newName = None):
@@ -263,20 +272,100 @@ class MetadataModel(QObject):
 
 		Keeps attributes that are set to None. For new parameters with None attributes, uses an empty default value.
 		"""
-		if not self.parameters.has_key(name):
-			self.parameters[name] = { 'type': 'string', 'default': '', 'description': '' }
-		p = self.parameters[name]
+		# "batch parameter modification" - do not send a metadataUpdate() signal for each field
+		modified = self._addParameter(name)
+		modified = modified or self._updateParameterAttribute(name, "default", default)
+		modified = modified or self._updateParameterAttribute(name, "description", description)
+		modified = modified or self._updateParameterAttribute(name, "name", newName)
+		self.setModified(modified)
 
-		if default is not None:
-			p['default'] = default
-		if description is not None:
-			p['description'] = description
+	def addParameter(self, name, default = None, description = None, type_ = None):
+		"""
+		Adds a new parameter.
+		Automatically adjusts its name to match the convention and avoid collisions.
+		Returns the name of the added parameter.
+		"""
+		name = name.upper().replace(' ', '_')
+		if not name.startswith('PX_'):
+			name = 'PX_' + name
+		name = self.getNewParameterName(name)
 		
-		if newName and newName != name:
-			self.parameters[newName] = p
-			del self.parameters[name]
-
+		if not self._addParameter(name):
+			return None
+		
+		self._updateParameterAttribute(name, "default", default)
+		self._updateParameterAttribute(name, "description", description)
+		self._updateParameterAttribute(name, "type", type_)
 		self.setModified(True)
+		return name
+
+	def _addParameter(self, name):
+		"""
+		Registers a new parameter. Returns True if the model was modified.
+		"""
+		name = name.upper().replace(' ', '_')
+		if not name.startswith('PX_'):
+			name = 'PX_' + name
+		if not self.parameters.has_key(name):
+			self.parameters[name] = { 'name': name, 'type': 'string', 'default': '', 'description': '' }
+			return True
+		return False
+
+	def _updateParameterAttribute(self, name, attribute, value):
+		"""
+		Updates a single field/attribute for a particular parameter.
+		"""
+		modified = False
+		if not self.parameters.has_key(name):
+			return False
+		
+		if value is None:
+			return False
+
+		# We are renaming the parameter
+		if attribute == 'name':
+			# Adjust the name to something valid
+			value = value.upper().replace(' ', '_')
+			if not value.startswith('PX_'):
+				value = 'PX_' + value
+			if name != value:
+				# we are renaming the parameter
+				# Check if we are not renaming to another existing parameter
+				value = self.getNewParameterName(value)
+				# OK, we can rename to a new (possibly adjusted) name
+				parameter = self.parameters[name]
+				parameter['name'] = value
+				del self.parameters[name]
+				self.parameters[value] = parameter
+				modified = True
+			else:
+				# This is a no-op. We did not changed the name
+				pass
+
+		elif self.parameters[name][attribute] != value:
+			self.parameters[name][attribute] = value
+			modified = True
+		
+		return modified
+		
+	def updateParameterAttribute(self, name, attribute, value):
+		"""
+		Updates a single field/attribute for a particular parameter.
+		"""
+		modified = self._updateParameterAttribute(name, attribute, value)
+		self.setModified(modified)
+
+	def deleteParameters(self, names):
+		"""
+		Deletes a list of parameters, emit an updated signal at the end
+		if at least one parameter was actually removed.
+		"""
+		modified = False
+		for name in names:
+			if name in self.parameters:
+				del self.parameters[name]
+				modified = True
+		self.setModified(modified)
 
 	def getParameters(self):
 		# Warning: be sure that the caller copy this if it wants to modify it.
@@ -339,6 +428,13 @@ class MetadataModel(QObject):
 		# Make sure this is unicode.
 		self.description = unicode(description)
 		self.setModified(True)
+
+	def setLanguageApi(self, l):
+		self.languageApi = unicode(l)
+		self.setModified(True)
+
+	def getLanguageApi(self):
+		return self.languageApi
 
 	def getDescription(self):
 		"""

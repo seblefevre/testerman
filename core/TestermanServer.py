@@ -205,6 +205,7 @@ def main():
 	group.add_option("-V", dest = "varDir", metavar = "PATH", help = "use PATH to persist Testerman Server runtime variables, such as the job queue. If not provided, no persistence occurs between restarts.")
 	group.add_option("-C", "--conf-file", dest = "configurationFile", metavar = "FILENAME", help = "path to a configuration file. You may still use the command line options to override the values it contains.")
 	group.add_option("-U", "--users-file", dest = "usersFile", metavar = "FILENAME", help = "path to the configuration file that contains authorized webclient users.")
+	group.add_option("-A", "--apis-file", dest = "apisFile", metavar = "FILENAME", help = "path to the configuration file that contains supported language apis.")
 	group.add_option("--codec-path", dest = "codecPaths", metavar = "PATHS", help = "search for codec modules in PATHS, which is a comma-separated list of paths")
 	group.add_option("--probe-path", dest = "probePaths", metavar = "PATHS", help = "search for probe modules in PATHS, which is a comma-separated list of paths")
 	group.add_option("--var", dest = "variables", metavar = "VARS", help = "set additional variables as VARS (format: key=value[,key=value]*)")
@@ -223,23 +224,30 @@ def main():
 	# No config file provided - fallback to $TESTERMAN_HOME/conf/testerman.conf if set and exists
 	elif Tools.fileExists("%s/conf/testerman.conf" % testerman_home):
 		configFile = "%s/conf/testerman.conf" % testerman_home
-	
 	cm.set_transient("ts.configuration_filename", configFile)
 
-	# Read the settings from the saved configuration, if any
 	usersFile = None
 	# Provided on the command line ?
 	if options.usersFile is not None:
-		usersFile = options.configurationFile
+		usersFile = options.usersFile
 	# No config file provided - fallback to $TESTERMAN_HOME/conf/webclient-users.conf if set and exists
 	elif Tools.fileExists("%s/conf/webclient-users.conf" % testerman_home):
 		usersFile = "%s/conf/webclient-users.conf" % testerman_home
-	
 	cm.set_transient("wcs.users_filename", usersFile)
+
+	apisFile = None
+	# Provided on the command line ?
+	if options.apisFile is not None:
+		apisFile = options.apisFile
+	# No config file provided - fallback to $TESTERMAN_HOME/conf/language-apis.conf if set and exists
+	elif Tools.fileExists("%s/conf/language-apis.conf" % testerman_home):
+		apisFile = "%s/conf/language-apis.conf" % testerman_home
+	cm.set_transient("ts.apis_filename", apisFile)
 
 	try:
 		if configFile: cm.read(configFile)
 		if usersFile: cm.read(usersFile, autoRegister = True)
+		if apisFile: cm.read(apisFile, autoRegister = True)
 	except Exception, e:
 		print str(e)
 		return 1

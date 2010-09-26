@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 ##
 # This file is part of Testerman, a test automation system.
-# Copyright (c) 2008-2009 Sebastien Lefevre and other contributors
+# Copyright (c) 2008,2009,2010 Sebastien Lefevre and other contributors
 #
 # This program is free software; you can redistribute it and/or modify it under
 # the terms of the GNU General Public License as published by the Free Software
@@ -104,10 +104,14 @@ def extractMetadata(document, commentsPrefix = '#'):
 	getLogger().debug("extracted metadata:\n%s" % metadata)
 	return metadata
 
+# FIXME/TODO: refactor this.
+# A mere dict-based struct (like Metadata.toDict()) should be enough instead of an actual class.
+
 class Metadata:
 	def __init__(self):
 		self.description = ''
 		self.prerequisites = ''
+		self.api = '1' # default language API
 		self.parameters = {}
 	
 	def getDefaultSessionDict(self):
@@ -121,16 +125,33 @@ class Metadata:
 			ret[k] = v.defaultValue
 		return ret
 
+	def getSignature(self):
+		"""
+		Returns the script signature as a dict[parameter] = dict(name, defaultValue, type, description)
+		"""
+		ret = {}
+		for k, v in self.parameters.items():
+			ret[k] = dict(name = v.name, defaultValue = v.defaultValue, type = v.type_, description = v.description)
+		return ret
+	
+	def toDict(self):
+		"""
+		Turns this object into a dict-based representation.
+		"""
+		ret = dict(description = self.description, api = self.api, parameters = self.getSignature())
+		return ret
+		
+
 class Parameter:
-	def __init__(self, name, defaultValue = ''):
+	def __init__(self, name, defaultValue = '', type_ = 'string', description = ''):
 		#: unicode
 		self.name = name
 		#: unicode
 		self.defaultValue = defaultValue
 		#: unicode
-		self.type_ = u'string'
+		self.type_ = type_
 		#: unicode
-		self.description = ''
+		self.description = description
 
 def parseMetadata(xmlMetadata):
 	"""
@@ -151,12 +172,19 @@ def parseMetadata(xmlMetadata):
 		# We don't need them for now (not used in TE)
 		# metadata.description = ...
 		# metadata.prerequisites = ...
+
+		e = doc.getElementsByTagName('description')
+		if e:	metadata.description = e[0].childNodes[0].data
+		
+		e = doc.getElementsByTagName('api')
+		if e:	metadata.api = e[0].childNodes[0].data
 		
 		for parameter in doc.getElementsByTagName('parameter'):
 			try:
 				name = parameter.attributes['name'].value
 				defaultValue = parameter.attributes['default'].value
-				p = Parameter(name, defaultValue)
+				type_ = parameter.attributes['type'].value
+				p = Parameter(name, defaultValue, type_)
 				# description is ignored for now (not used in TE)
 				metadata.parameters[name] = p
 			except Exception, e:
@@ -175,6 +203,7 @@ if __name__ == '__main__':
 # <metadata version="1.0">
 # <description>Testerman auto test to pass before any release.</description>
 # <prerequisites></prerequisites>
+# <api>1</api>
 # <parameters>
 # <parameter name="PX_UNICODE_STRING" type="string" default="ça marche"><![CDATA[unicode test string. Do not modify it.]]></parameter>
 # </parameters>
@@ -191,5 +220,8 @@ if __name__ == '__main__':
 			print "Parsed:\n%s" % m.parameters
 			for p in m.getDefaultSessionDict().items():
 				print "%s: %s" % p
+			print m.getSignature()
+			print
+			print m.toDict()
 		
 		

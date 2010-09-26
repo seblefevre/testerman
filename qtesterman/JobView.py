@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 ##
 # This file is part of Testerman, a test automation system.
-# Copyright (c) 2008-2009 Sebastien Lefevre and other contributors
+# Copyright (c) 2008,2009,2010 Sebastien Lefevre and other contributors
 #
 # This program is free software; you can redistribute it and/or modify it under
 # the terms of the GNU General Public License as published by the Free Software
@@ -240,7 +240,13 @@ class WJobTreeWidget(QTreeWidget):
 				print "DEBUG: missing parent %s to create job node for job id %s" % (parentId, id_)
 				return
 			# We create a new item
-			item = JobItem(jobInfo, parent)
+			item = JobItem(jobInfo)
+			if parentId == 0:
+				# Latest jobs are shown on top
+				parent.insertTopLevelItem(0, item)
+			else:
+				# Sub-jobs are displayed "last on bottom"
+				parent.addChild(item)
 			self._items[id_] = item
 		else:
 			item = self._items[id_]

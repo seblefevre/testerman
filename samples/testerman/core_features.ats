@@ -3,8 +3,12 @@
 # <metadata version="1.0">
 # <description>Testerman auto test to pass before any release.</description>
 # <prerequisites></prerequisites>
+# <api>1</api>
 # <parameters>
 # <parameter name="PX_UNICODE_STRING" default="ça marche" type="string"><![CDATA[Unicode session variable test. Do not change its value.]]></parameter>
+# <parameter name="PX_BOOLEAN" default="true" type="boolean"><![CDATA[Boolean parameter test. Leave it to true.]]></parameter>
+# <parameter name="PX_INTEGER" default="10" type="integer"><![CDATA[Integer parameter. Leave it to 10.]]></parameter>
+# <parameter name="PX_FLOAT" default="19.99" type="float"><![CDATA[Float parameter. Leave it to 19.9 for the test to work.]]></parameter>
 # </parameters>
 # </metadata>
 # __METADATA__END__
@@ -1030,9 +1034,9 @@ class TC_UNICODE_SESSION_PARAMETERS(TestCase):
 		
 		connect(p01, p02)
 		
-		log("User log: sending %s" % get_variable('PX_UNICODE_STRING'))
+		log("User log: sending %s" % PX_UNICODE_STRING)
 		
-		element1 = { 'name': get_variable('PX_UNICODE_STRING') }
+		element1 = { 'name': PX_UNICODE_STRING }
 
 		# Complete matching
 		p01.send(element1)
@@ -1538,6 +1542,29 @@ class TC_ANY_COMPONENT_DONE(TestCase):
 		# Stops all running PTC.
 		stop()
 
+
+class TC_SCRIPT_PARAMETERS(TestCase):
+	"""
+	Verifies that script parameters are correctly availabel and casted in the ATS.
+	"""
+	def body(self):
+		# This is very low level Python code for this test.
+		# You should not have to use this kind of Python built-in functions in
+		# normal ATSes.
+		log("Checking that PX_BOOLEAN is a boolean...")
+		if not (isinstance(PX_BOOLEAN, bool) and PX_BOOLEAN):
+			log("Boolean script parameters are not working")
+			setverdict(FAIL)
+		log("Checking that PX_FLOAT is a float...")
+		if not (isinstance(PX_FLOAT, float) and PX_FLOAT == 19.99):
+			log("Float script parameters are not working")
+			setverdict(FAIL)
+		log("Checking that PX_INTEGER is an integer...")
+		if not (isinstance(PX_INTEGER, int) and PX_INTEGER == 10):
+			log("Integer script parameters are not working")
+			setverdict(FAIL)
+		setverdict(PASS)
+
 ##
 # Control definition
 ##
@@ -1565,6 +1592,10 @@ TC_UNICODE_SESSION_PARAMETERS("Testerman autotest: unicode support in session pa
 TC_BINARY_LOGGING("Testerman autotest: binary support in messages (+ logs)").execute()
 
 TC_STOP_PTC_DONE_EVENT().execute()
+
+
+
+
 TC_STOP_PTC_DONE().execute()
 TC_STOP_PTC_STOP().execute()
 TC_STOP_PTC_STOP_TESTCASE().execute()
@@ -1584,3 +1615,5 @@ TC_ALL_COMPONENT_STOP().execute()
 
 TC_ANY_COMPONENT_DONE_EVENT().execute()
 TC_ANY_COMPONENT_DONE().execute()
+
+TC_SCRIPT_PARAMETERS().execute()

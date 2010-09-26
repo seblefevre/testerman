@@ -23,87 +23,156 @@ from PyQt4.Qt import *
 from Base import *
 from CommonWidgets import *
 
-class WParameterTreeWidgetItem(QTreeWidgetItem):
-	def __init__(self, parent, parameter):
-		"""
-		parameter is a dict[unicode] of unicode containing "name", "description", "type", "default"
-		
-		The initial name is used as a key for the model, so we save it in a safe place as soon as the item is created.
-		"""
-		QTreeWidgetItem.__init__(self, parent)
-		self.parameter = parameter
-		self.key = parameter['name']
-		self.columns = [ 'name', 'default', 'description', 'type' ]
-		self.setFlags(Qt.ItemIsEnabled | Qt.ItemIsEditable | Qt.ItemIsSelectable)
-		
-	def data(self, column, role):
-		name = self.columns[column]
-		if role == Qt.DisplayRole:
-			return QVariant(self.parameter[name])
-		if role == Qt.EditRole:
-			return QVariant(self.parameter[name])
+import operator
+
+################################################################################
+# A Parameters editor based on Qt Tree View/Model
+################################################################################
+
+class ParametersItemModel(QAbstractItemModel):
+	"""
+	This class wraps a MetadataModel into a Qt-model to be used
+	in a QTreeView.
+	"""
+	def __init__(self, metadataModel, parent = None):
+		QAbstractItemModel.__init__(self, parent)
+		self._metadataModel = None
+		self._columns = [ 'name', 'type', 'default', 'description' ]
+		self._cache = []
+		self._sortInfo = ('name', Qt.AscendingOrder)
+		self.setModel(metadataModel)
+	
+	def headerData(self, section, orientation, role):
+		if role == Qt.DisplayRole and orientation == Qt.Horizontal:
+			return QString(self._columns[section].title())
+
+	def flags(self, modelIndex):
+		return QAbstractItemModel.flags(self, modelIndex) | Qt.ItemIsEditable
+	
+	def index(self, row, column, parentModelIndex):
+		if not parentModelIndex.isValid():
+			return self.createIndex(row, column, 0)
+		return QModelIndex()
+	
+	def parent(self, childModelIndex):
+		return QModelIndex()
+	
+	def rowCount(self, parentModelIndex):
+		if not parentModelIndex.isValid():
+			return len(self._cache)
+		else:
+			return 0
+	
+	def columnCount(self, parentModelIndex):
+		return len(self._columns)
+	
+	def data(self, index, role):
+		if role == Qt.DisplayRole or role == Qt.EditRole:
+			return QString(self._cache[index.row()][self._columns[index.column()]])
 		return QVariant()
 
-	def setData(self, column, role, value):
-		val = unicode(value.toString())
-		name = self.columns[column]
-		if role == Qt.EditRole:
-			if name == 'name':
-				# Special constraint for the name
-				val = val.upper()
-				if not val.startswith('PX_'):
-					val = 'PX_' + val
-			self.parameter[name] = val
-			# It doesn't seem normal to send this signal explicitly... It should be done by the
-			# treeWidget by itself, AFAIK.
-			self.treeWidget().emit(SIGNAL('itemChanged(QTreeWidgetItem*, int)'), self, column)
+	def setData(self, index, value, role):
+		if not role == Qt.EditRole:
+			return False
+	
+		key = self._cache[index.row()]['name']
+		# Updates the wrapper domain model.
+		# Will raise an update notification, connected to 
+		self._metadataModel.updateParameterAttribute(key, attribute = self._columns[index.column()], value = unicode(value.toString()))
+		return True
+	
+	def setModel(self, metadataModel):
+		"""
+		Sets the inner, wrapped domain model.
+		This is a MetadataModel object.
+		"""
+		if self._metadataModel:
+			self.disconnect(self._metadataModel, SIGNAL('metadataUpdated()'), self.onModelUpdated)
+		self._metadataModel = metadataModel
+		self.onModelUpdated()
+		self.connect(self._metadataModel, SIGNAL('metadataUpdated()'), self.onModelUpdated)
+	
+	def onModelUpdated(self):
+		self._cache = self._metadataModel.getParameters().values()
+		self._sort()
+		self.emit(SIGNAL('modelReset()'))
+	
+	def sort(self, column, order):
+		self._sortInfo = (self._columns[column], order)
+		self._sort()
+		self.emit(SIGNAL('layoutChanged()'))
 
+	def _sort(self):
+		self._cache.sort(key = operator.itemgetter(self._sortInfo[0]))
+		if self._sortInfo[1] == Qt.DescendingOrder:
+			self._cache.reverse()
+	
+	def _addParameter(self, parameter = None):
+		if not parameter:
+			return self._metadataModel.addParameter('parameter')
+		else:
+			return self._metadataModel.addParameter(name = parameter['name'], description = parameter['description'], type_ = parameter['type'], default = parameter['default'])
 
-class WParameterEditor(QTreeWidget):
-	"""
-	An editor of script metadata.parameters.
+	def _deleteParameters(self, names):
+		self._metadataModel.deleteParameters(names)
+	
+	def mimeTypes(self):
+		return [ QString("application/x-qtesterman-parameters") ]
 
-	A WParameterEditor is a subelement of WPropertyEditor which is a view over a DocumentModel model (aspect: metadata only).
+class ParameterItemDelegate(QStyledItemDelegate):
+	def __init__(self, parent = None):
+		QStyledItemDelegate.__init__(self, parent)
+	
+	def createEditor(self, parent, option, index):
+		if index.column() == 1:
+			cb = QComboBox(parent)
+			cb.addItem('string')
+			cb.addItem('boolean')
+			cb.addItem('integer')
+			cb.addItem('float')
+			return cb
+		else:
+			return QStyledItemDelegate.createEditor(self, parent, option, index)
+	
+	def updateEditorGeometry(self, editor, option, index):
+		editor.setGeometry(option.rect)
+	
+	def setModelData(self, editor, model, index):
+		if index.column() == 1:
+			model.setData(index, QVariant(editor.currentText()), Qt.EditRole)
+		else:
+			QStyledItemDelegate.setModelData(self, editor, model, index)
 
-	This widget enables the edition of meta parameters, i.e. their type, meaning, name, default values.
-	This is not suitable for a session parameter instanciation.
-	"""
-	def __init__(self, propertyEditor, parent = None):
-		QTreeWidget.__init__(self, parent)
-		# The metadataModel from which we display parameters
-		# Immediately updated on updated/deleted/add items.
-		# As a consequence the view is updated with the updated model, and we redisplay it this way.
-		# (i.e. no local cache)
-		self.metadataModel = None
-		self.propertyEditor = propertyEditor
+class WParametersEditor(QTreeView):
+	def __init__(self, parent = None):
+		QTreeView.__init__(self, parent)
 		self.PARAMETERS_MIME = "application/x-qtesterman-parameters"
+		self._metadataModel = None
 		self.__createWidgets()
 		self.__createActions()
 		# Initialize clipboard-related actions
 		self.onClipboardUpdated()
+	
+	def setModel(self, metadataModel):
+		if self.model():
+			self.model().setModel(metadataModel)
+		else:
+			QTreeView.setModel(self, ParametersItemModel(metadataModel))
+		self._metadataModel = metadataModel
 
 	def __createWidgets(self):
-		self.setRootIsDecorated(0)
-		# Type is not yet managed.
-		self.labels = [ 'Name', 'Default value', 'Description' ]
-		self.setSortingEnabled(1)
-		# Default sort - should be read from the QSettings.
-		self.sortItems(0, Qt.AscendingOrder)
+		self.setRootIsDecorated(False)
+		self.setItemDelegate(ParameterItemDelegate())
+		self.setSortingEnabled(True)
+		self.sortByColumn(0, Qt.AscendingOrder)
 		self.setSelectionMode(QAbstractItemView.ExtendedSelection)
-		labels = QStringList()
-		for l in self.labels:
-			labels.append(l)
-		self.setHeaderLabels(labels)
+		self.setAlternatingRowColors(True)
 		self.setContextMenuPolicy(Qt.CustomContextMenu)
 		self.connect(self, SIGNAL("customContextMenuRequested(const QPoint&)"), self.onPopupMenu)
-
 		self.setAcceptDrops(True)
-		
-		self.setAlternatingRowColors(True)
-
 		# Check if we can paste a parameter
 		self.connect(QApplication.clipboard(), SIGNAL('dataChanged()'), self.onClipboardUpdated)
-
+		
 	def __createActions(self):
 		self.deleteCurrentItemsAction = TestermanAction(self, "Delete selected", self.deleteCurrentItems)
 		self.deleteCurrentItemsAction.setShortcut(QKeySequence.Delete)
@@ -121,77 +190,12 @@ class WParameterEditor(QTreeWidget):
 		self.addAction(self.copyItemsAction)
 		self.addAction(self.pasteItemsAction)
 
-	def mouseMoveEvent(self, e):
-		"""
-		Reimplementation from QWidget. Drag and drop preparation.
-		"""
-		items = self.selectedItems()
-		if not items:
-			return QTreeWidget.mouseMoveEvent(self, e)
-		if not ( (e.buttons() & Qt.LeftButton) ):#and (e.modifiers() & Qt.ControlModifier) ):
-			return QTreeWidget.mouseMoveEvent(self, e)
-
-		#log("mouseEvent - dragging")
-		parameters = []
-		for item in items:
-			parameters.append(item.parameter)
-		drag = QDrag(self)
-		drag.setMimeData(objectsToMimeData(self.PARAMETERS_MIME, parameters))
-		dropAction = drag.start(Qt.CopyAction)
-		return QTreeWidget.mouseMoveEvent(self, e)
-
-	def setModel(self, metadataModel):
-		"""
-		parameters is a domElement extracted from the XML metadata.
-		"""
-		# We disconnect before calling self.clear(), which emits an itemChanged... (sounds strange... buggy ?)
-		self.disconnect(self, SIGNAL('itemChanged(QTreeWidgetItem*, int)'), self.onItemChanged)
-		self.clear()
-
-		# Synchronize the local parameters struct with the metadataModel.
-		self.metadataModel = metadataModel
-
-		for (name, p) in self.metadataModel.getParameters().items():
-			# Local copy
-			data = p.copy()
-			p['name'] = name
-			WParameterTreeWidgetItem(self, p)
-
-		# We re-sort the items according to the current sorting parameters
-		self.sortItems(self.sortColumn(), self.header().sortIndicatorOrder())
-
-		self.connect(self, SIGNAL('itemChanged(QTreeWidgetItem*, int)'), self.onItemChanged)
-
-	def onItemChanged(self, item, col):
-		"""
-		Update the model, and reselect the item.
-		"""
-		# Update the model
-		p = item.parameter
-		key = item.key
-		if key != p['name']:
-			# The parameter has been renamed.
-			# If the new name (p['name']) already exists: 2 solutions: overwrite the existing param, or automatically adjust
-			# the name.
-			# For now, we adjust it, always.
-			newName = self.metadataModel.getNewParameterName(p['name'])
-			self.metadataModel.setParameter(key, default = p['default'], description = p['description'], newName = newName)
-			newKey = newName
-		else:
-			# Not renamed
-			self.metadataModel.setParameter(key, default = p['default'], description = p['description'])
-			newKey = key
-
-		# We reselect the item.
-		self.selectParameterByName(newKey)
-
 	def createContextMenu(self):
 		contextMenu = QMenu("Parameters", self)
 		# The add Item if the first entry to avoid accidental param deletion
 		# (we have to explicitly down the mouse cursor to select the delete op)
 		contextMenu.addAction(self.addItemAction)
-		item = self.currentItem()
-		if item:
+		if self.selectedIndexes():
 			contextMenu.addAction(self.deleteCurrentItemsAction)
 			contextMenu.addAction(self.copyItemsAction)
 
@@ -203,15 +207,28 @@ class WParameterEditor(QTreeWidget):
 	def onPopupMenu(self, pos):
 		self.createContextMenu().popup(QCursor.pos())
 
-	def deleteCurrentItems(self):
-		# We update the model only.
-		# The view will be updated on (final) model update notification.
+	def selectParameterByName(self, name, edition = False):
+		"""
+		Selects a particular row, and optionally opens the editor to edit the name.
+		"""
+		if name:
+			indexes = self.model().match(self.model().createIndex(0, 0, 0), Qt.DisplayRole, name)
+			if indexes:
+				index = indexes[0]
+				self.setCurrentIndex(index)
+				if edition:
+					self.edit(index)
+	
+	def pasteItems(self):
+		"""
+		Retrieve the copied items from the clipboard, and paste them.
+		Also select them once copied.
+		"""
+		parameters = mimeDataToObjects(self.PARAMETERS_MIME, QApplication.clipboard().mimeData())
+		self.addItems(parameters)
 
-		self.metadataModel.disableUpdateNotifications()
-		for item in self.selectedItems():
-			self.metadataModel.removeParameter(item.parameter['name'])
-		self.metadataModel.enableUpdateNotifications()
-		self.metadataModel.notifyUpdate()
+	def deleteCurrentItems(self):
+		self.model()._deleteParameters(self.getSelectedParametersNames())
 
 	def addItem(self, parameter = None):
 		"""
@@ -221,24 +238,12 @@ class WParameterEditor(QTreeWidget):
 		@rtype: unicode
 		@returns: the actual name of the added parameter, after possible adjustments (collision resolution)
 		"""
-		# If p is None, create a default parameter, and select it for name edition
-		if not parameter:
-			parameter = { 'name': 'PX_PARAM_01', 'default': '', 'description': '' }
-			name = self.metadataModel.getNewParameterName(parameter['name'])
-			self.metadataModel.setParameter(name, default = parameter['default'], description = parameter['description'])
-			# Select it in edition
-			# The name is unique, so no amgiguity to select it by name.
-			self.selectParameterByName(name, edition = True)
-			return
-
-		# OK, now we can add it.
-		# First, we make sure to get a non-existing name.
-		name = self.metadataModel.getNewParameterName(parameter['name'])
-		# OK, now we can add it - the previous-value is not kept (on will)
-		self.metadataModel.setParameter(name, default = parameter['default'], description = parameter['description'])
-
-		# Select it. name is unique within the list, so no ambiguity is possible to look it by its name.
-		self.selectParameterByName(name)
+		name = self.model()._addParameter(parameter)
+		if name:
+			if not parameter:
+				self.selectParameterByName(name, edition = True)
+			else:
+				self.selectParameterByName(name)
 		return name
 
 	def addItems(self, parameters):
@@ -248,57 +253,34 @@ class WParameterEditor(QTreeWidget):
 		If only one item was created, select it in edition.
 		"""
 		if parameters:
-			# Minimal optimizations: we won't wait for a notification for each parameter, but only at the end.
-			self.metadataModel.disableUpdateNotifications()
+			name = None
 			for parameter in parameters:
 				name = self.addItem(parameter)
-			self.metadataModel.enableUpdateNotifications()
-			self.metadataModel.notifyUpdate()
-			# We select the last parameter - we can only select it after the model notification, eitherwise the parameter is not created yet.
+			# We select the last parameter
 			# We suggest to edit the parameter only if there only one to be pasted.
 			self.selectParameterByName(name, len(parameters) == 1)
-
-	def selectParameterByName(self, name, edition = False):
-		"""
-		Find and select an item.
-		If edition is True, select it in name edition.
-
-		The name is unique, so no ambiguity possible.
-		"""
-		items = self.findItems(name, Qt.MatchExactly)
-		if len(items) > 0:
-			item = items[-1]
-			self.setCurrentItem(item)
-			if edition:
-				self.editItem(item)
-
-#	def extendSelectedParameterByName(self, name):
-#		"""
-#		Find and select an item without cancelling the current selection.
-#
-#		The name is unique, so no ambiguity possible.
-#		"""
-#		items = self.findItems(name, Qt.MatchExactly)
-#		if len(items) > 0:
-#			item = items[-1]
-#			self.setCurrentItem(item)
-
-	def pasteItems(self):
-		"""
-		Retrieve the copied items from the clipboard, and paste them.
-		Also select them once copied.
-		"""
-		parameters = mimeDataToObjects(self.PARAMETERS_MIME, QApplication.clipboard().mimeData())
-		self.addItems(parameters)
 
 	def copyItems(self):
 		"""
 		Copy the current items to the clipboard
 		"""
-		parameters = []
-		for item in self.selectedItems():
-			parameters.append(item.parameter)
-		QApplication.clipboard().setMimeData(objectsToMimeData(self.PARAMETERS_MIME, parameters))
+		QApplication.clipboard().setMimeData(objectsToMimeData(self.PARAMETERS_MIME, self.getSelectedParameters()))
+
+	def getSelectedParametersNames(self):
+		selectedParametersNames = []
+		for index in self.selectedIndexes():
+			if index.column() == 0:
+				selectedParametersNames.append(unicode(self.model().data(index, Qt.DisplayRole)))
+#		print "selected:\n%s" % "\n".join(selectedParametersNames)
+		return selectedParametersNames
+
+	def getSelectedParameters(self):
+		ret = []
+		names = self.getSelectedParametersNames()
+		for name in names:
+			# FIXME: let the TreeView model manage this - or the domain model itself
+			ret.append(self._metadataModel.getParameter(name))
+		return ret
 
 	def onClipboardUpdated(self):
 		c = QApplication.clipboard()
@@ -310,16 +292,16 @@ class WParameterEditor(QTreeWidget):
 
 class WScriptPropertiesEditor(QWidget):
 	"""
-	This composite widget manages the whole script metadata management.
-	It contains a WParameterEditor for the parameter part,
-	and some other ways to edit the top level meta elements (prerequisites, description)
+	This composite widget interfaces all the script metadata/properties.
+	It contains a WParametersEditor for the parameters part,
+	and some other options to edit the other metadata elements
+	(script type/variant, ...)
 
-	This is a view over a DocumentModel.
+	This is a view over a MetadataModel.
 	"""
 	def __init__(self, parent = None):
 		QWidget.__init__(self, parent)
-		self.model = None # Document model
-		self.metadataModel = None # Metadata sub-model. Should be enough for this view, which should not manage other model's aspects.
+		self.metadataModel = None # Metadata model
 		self.__createWidgets()
 
 	def __createWidgets(self):
@@ -337,44 +319,56 @@ class WScriptPropertiesEditor(QWidget):
 
 #		layout.addLayout(buttonLayout)
 
-		self.parameterEditor = WParameterEditor(self, self)
+		self.parameterEditor = WParametersEditor()
 		layout.addWidget(self.parameterEditor)
 		
-		self.noMetadataLabel = QLabel()
-		layout.addWidget(self.noMetadataLabel)
-		self.noMetadataLabel.hide()
-
+		l = QHBoxLayout()
+		self.languageApiLabel = QLabel("Language API:")
+		l.addWidget(self.languageApiLabel)
+		self.languageApiEditor = QLineEdit()
+		l.addWidget(self.languageApiEditor)
+		l.setMargin(2)
+		layout.addLayout(l)
+		
 		layout.setMargin(0)
 		self.setLayout(layout)
+	
+	def onLanguageApiUpdated(self, api):
+		self.metadataModel.setLanguageApi(unicode(api))
 
-	def setModel(self, documentModel):
+	def setModel(self, metadataModel):
 		# Disconnect signals on previous documentModel, if any
-		if self.model:
-			self.disconnect(self.model, SIGNAL('metadataUpdated()'), self.onModelUpdated)
+		if self.metadataModel:
+			self.disconnect(self.metadataModel, SIGNAL('metadataUpdated()'), self.onModelUpdated)
 
-		self.model = documentModel
+		self.metadataModel = metadataModel
 		self.onModelUpdated()
 		# As a real view, we subscribe for the model update notifications (aspect: metadata)
 		# since we are not the single view to be able to edit it.
 		# (a SessionParameterEditor updates it, too)
-		self.connect(self.model, SIGNAL('metadataUpdated()'), self.onModelUpdated)
-
+		if self.metadataModel:
+			self.connect(self.metadataModel, SIGNAL('metadataUpdated()'), self.onModelUpdated)
+	
 	def onModelUpdated(self):
-		self.metadataModel = self.model.getMetadataModel()
 		# General properties
 		# Description, prerequisites: using an additional dialog box, hence updated
 		# when displaying the dialog box.
 		# Possible TODO: other generic properties (author, etc)
+		self.disconnect(self.languageApiEditor, SIGNAL("textChanged(const QString&)"), self.onLanguageApiUpdated)
 		
 		if self.metadataModel:
 			# Parameters: delegation to the parameterEditor.
 			self.parameterEditor.setModel(self.metadataModel)
 			self.parameterEditor.show()
-			self.noMetadataLabel.hide()
+			self.languageApiEditor.setText(self.metadataModel.getLanguageApi())
+			self.languageApiEditor.show()
+			self.languageApiLabel.show()
+			self.connect(self.languageApiEditor, SIGNAL("textChanged(const QString&)"), self.onLanguageApiUpdated)
 		else:
 			# No metadata available for the current document.
 			self.parameterEditor.hide()
-			self.noMetadataLabel.show()
+			self.languageApiEditor.hide()
+			self.languageApiLabel.hide()
 
 	def onDescriptionButtonTriggered(self):
 		desc = self.metadataModel.getDescription()
@@ -401,11 +395,43 @@ class WScriptPropertiesEditorDock(QDockWidget):
 		self.__createWidgets()
 
 	def __createWidgets(self):
-		self.setWindowTitle("Script parameters")
+		self.setWindowTitle("Script properties")
 		self.propertiesEditor = WScriptPropertiesEditor(self)
 		self.setWidget(self.propertiesEditor)
 		self.connect(self.documentTabWidget, SIGNAL("currentChanged(int)"), self.onDocumentTabWidgetChanged)
 
 	def onDocumentTabWidgetChanged(self, index):
 		documentModel = self.documentTabWidget.currentWidget().model
-		self.propertiesEditor.setModel(documentModel)
+		self.propertiesEditor.setModel(documentModel.getMetadataModel())
+
+
+
+# Some 'unit' tests
+if __name__ == '__main__':
+	import sys
+	import DocumentModels
+	sampleMetadataSource = """<?xml version="1.0" encoding="utf-8" ?>
+<metadata version="1.0">
+<description>description</description>
+<prerequisites>prerequisites</prerequisites>
+<parameters>
+<parameter name="PX_NEW_PARAM" default="" type="string"><![CDATA[this is a descript]]></parameter>
+<parameter name="PX_PROBE_01" default="probe:tcp01@localhost" type="string"><![CDATA[fdsfdsfsd]]></parameter>
+<parameter name="PX_SERVER_IP" default="127.0.0.1" type="string"><![CDATA[]]></parameter>
+<parameter name="PX_PROBE_02" default="probe:tcp02@localhost" type="string"><![CDATA[]]></parameter>
+<parameter name="PX_SERVER_PORT" default="2905" type="integer"><![CDATA[]]></parameter>
+</parameters>
+</metadata>"""
+	
+	
+	a = QApplication(sys.argv)
+	
+	m = DocumentModels.MetadataModel(sampleMetadataSource)
+
+	w = WScriptPropertiesEditor()
+	w.setModel(m)
+
+	w.show()
+
+	a.exec_()
+	

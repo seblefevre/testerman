@@ -150,7 +150,7 @@ class LogSaver:
 							dirname = prefix
 							name = url.split('/')[-1]
 							filename = "%s/%s" % (dirname, name)
-							f.write('<include %surl="%s/%s" %s\n' % (m.group('prefix'), filename, m.group('suffix')))
+							f.write('<include %surl="%s" %s\n' % (m.group('prefix'), filename, m.group('suffix')))
 							# Create the file
 							try:
 								os.makedirs(dirname)
@@ -971,9 +971,12 @@ class WLogViewer(QWidget):
 			return True
 		return False
 	
+	def _isCompleted(self, state):
+		return state in [ 'complete', 'completed', 'killed', 'cancelled', 'error' ]
+	
 	def isJobCompleted(self):
 		if self.isRealtimeMode():
-			return self.jobState in [ 'complete', 'completed', 'killed', 'cancelled', 'error' ]
+			return self._isCompleted(self.jobState)
 		else:
 			return True
 
@@ -1030,21 +1033,45 @@ class WLogViewer(QWidget):
 
 		self.summary.clear()
 		self._logModel.clear()
-		state = 'n/a'
+		state = None
 		logfile = ""
-		try:
-			if self.isRealtimeMode():
+
+		if self.isRealtimeMode():
+			try:
 				log("Updating from server: hot log from job %d..." % self.jobId)
 				logfile = getProxy().getJobLog(self.jobId)
+			except Exception, e:
+				logfile = None
+			
+			try:
 				jobInfo = getProxy().getJobInfo(self.jobId)
 				if jobInfo and jobInfo.has_key('state'):
 					state = jobInfo['state']
-			else:
-				logfile = loadLog(self._url)
+			except Exception, e:
+				pass
+			
+			if state is None:
+				QMessageBox.information(self, getClientName(), "This job is no longer available on this server.")
+				self.close()
+				return
 
-		except Exception, e:
-			QMessageBox.information(self, getClientName(), "The log file for this job has been deleted.")
-			return
+			if logfile is None:
+				# check if the job was completed
+				if self._isCompleted(state):
+					QMessageBox.information(self, getClientName(), "The log file for this job has been deleted.")
+					self.close()
+					return
+				else:
+					# Just wait a little more, the job was not started yet
+					pass
+
+		else:
+			try:
+				logfile = loadLog(self._url)
+				state = 'n/a'
+			except Exception, e:
+				QMessageBox.information(self, getClientName(), "Unable to load this log file.")
+				return
 
 		self.setJobState(state)
 
@@ -1053,6 +1080,7 @@ class WLogViewer(QWidget):
 		self.setTracking(False)
 		self.setLog(logfile)
 		self.setTracking(tracking)
+
 
 	def onTestCaseItemChanged(self, newItem, previousItem):
 		"""

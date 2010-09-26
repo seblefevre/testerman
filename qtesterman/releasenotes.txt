@@ -1,16 +1,31 @@
-This is QTesterman, a PyQt4-based GUI for Testerman.
-====================================================
+This is QTesterman, a PyQt4-based Ritch Client for Testerman.
+=============================================================
 
 KNOWN BUGS:
 - Root files in the repository are not monitored correctly, i.e. if
   an item is created (for instance) in the root repository folder, you won't
   see it before refreshing the whole browser view. However, files should not
   be created/deleted/renamed at root level frequently.
+- Profiles management is minimal for now: no way to delete/rename one,
+  and it is not possible to remove parameters in a profile.
+- The script properties editor does not reselect the parameter you just
+  updated.
+- Saving a campaign log with the "expand" option does not work as expected.
 
 
 1.3.0-svn:
 - Added: ability to close tabs with the middle mouse button.
+- Added: preliminary support for script-associated profiles
+- Added: "save local copy" option
+- Added: support for script parameter's types (boolean, integer, float, string)
+- Added: support for script "language API" to enable the use of alternative
+  TTCN-3 librairies.
 - Modified: finally a dedicated Testerman icon !
+- Modified: the job manager now displays more recent jobs on the top.
+  For a campaign, however, older child jobs are displayed at the bottom.
+- Fixed: inverted zoom in editor when using the mouse wheel
+- Fixed: when opening a deleted log from the job manager, the log window
+  does not show up anymore.
 
 
 1.2.1:

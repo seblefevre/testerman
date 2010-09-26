@@ -97,7 +97,7 @@ def smartReindent(code, indentCharacter = '\t', reindentCount = 1):
 
 def createTestExecutable(name, ats):
 	"""
-	Creates a complete, command-line parametrized TE from a source ATS.
+	Creates a complete, command-line parameterized TE from a source ATS.
 
 	@type  name: string
 	@param name: the ATS friendly name / identifier	
@@ -113,10 +113,21 @@ def createTestExecutable(name, ats):
 	ilPort = cm.get("interface.il.port")
 	ilIp = cm.get("interface.il.ip")
 	maxLogPayloadSize = cm.get("testerman.te.log.max_payload_size")
-	adapterModuleName = cm.get("testerman.te.python.ttcn3module")
 	
 	codecPaths = cm.get("testerman.te.codec_paths")
 	probePaths = cm.get("testerman.te.probe_paths")
+	
+	metadata = getMetadata(ats)
+	
+	getLogger().info("%s: using language API %s" % (name, metadata.api))
+	if metadata.api:
+		adapterModuleName = cm.get("testerman.te.python.module.api.%s" % metadata.api)
+		if not adapterModuleName:
+			raise Exception("Unsupported language API '%s'" % metadata.api)
+	else:
+		adapterModuleName = cm.get("testerman.te.python.ttcn3module")
+
+	getLogger().info("%s: language API %s - selected adapter module: %s" % (name, metadata.api, adapterModuleName))
 
 	# We construct the te as a list to ''.join() for better performance (better than str += operator)
 	te = []
@@ -236,6 +247,25 @@ def finalizeTe():
 	TestermanSA.finalize()
 	TestermanTCI.logInternal("finalized.")
 
+def convert_value(value, format = 'string'):
+	def to_bool(v):
+		if isinstance(v, (bool, int)):
+			return bool(v)
+		if isinstance(v, basestring):
+			return v.lower() in [ '1', 'true', 't', 'on' ]
+		return False	
+
+	if format == "string":
+		return unicode(value)
+	if format == "boolean":
+		return to_bool(value)
+	if format == "integer":
+		return int(value)
+	if format == "float":
+		return float(value)
+	return value
+
+ 
 """)
 
 	# TE Initialization
@@ -248,6 +278,8 @@ def finalizeTe():
 # WARNING/FIXME: make sure that the ATS won't override such a variable (oh well.. what if it does ? nothing impacting...)
 ReturnCode = RETURN_CODE_OK
 ReturnMessage = ''
+
+ScriptMetadata = %(metadata)s
 
 ##
 # Logger initialization
@@ -277,7 +309,7 @@ except Exception, e:
 	TestermanTCI.logUser("Unable to initialize Code TE librairies: %%s" %% TestermanTCI.getBacktrace())
 	TestermanTCI.logAtsStopped(id_ = ATS_ID, result = ReturnCode)
 	sys.exit(ReturnCode)
-""" % dict(adapterModuleName = adapterModuleName))
+""" % dict(adapterModuleName = adapterModuleName, metadata = repr(metadata.toDict())))
 
 	# Main try/catch containing the (almost) untouched ATS code
 	te.append("""
@@ -309,14 +341,6 @@ try:
 except Exception, e:
 	TestermanTCI.logInternal("Unable to load input session: %s" % str(e))
 
-for k, v in inputSession.items():
-	Testerman.set_variable(k, v)
-	# Make the PX_ parameters appear as module variables for convenience
-	if k.startswith('PX_'):
-		setattr(sys.modules[__name__], k, v)
-
-
-
 ##
 # Globals wrapping: a way to to export to the global scopes
 # variables that will change along the time
@@ -339,11 +363,30 @@ for k, v in inputSession.items():
 # ATS code reinjection
 ##
 try:
-	# TODO: Normally we should load input session variables here.
-	# Note: an empty ATS would lead to an error, since the try/except block
-	# won't be filled with any instruction.
-	pass
+	# Set the session and ATS parameters
+	for k, v in inputSession.items():
+		# Make the PX_ parameters appear as module variables for convenience
+		# Convert them to the type indicated in the script signature if one is available.
+		if k.startswith('PX_'):
+			# If the parameter is defined in the script signature, convert
+			# it to the correct type.
+			if k in ScriptMetadata['parameters']:
+				format = ScriptMetadata['parameters'][k]['type']
+				try:
+					v = convert_value(v, format)
+				except Exception, e:
+					raise Exception("Invalid value for parameter %s: '%s' is not a valid %s value" % (k, v, format))
 
+			Testerman.set_variable(k, v)
+			TestermanTCI.logUser("Using %s=%s" % (k, v))
+			setattr(sys.modules[__name__], k, v)
+		else:
+			Testerman.set_variable(k, v)
+
+	##
+	# The following code has been imported "as is" from the source ATS
+	##
+		
 """)
 	te.append(smartReindent(ats))
 	te.append("""
@@ -450,22 +493,30 @@ def loadSession(dump):
 	"""
 	return pickle.loads(dump)
 	
-def getDefaultSession(ats):
+def getDefaultSession(script):
 	"""
 	Extracts the default parameters & values from an ats.
 	
-	@type  ats: string (utf-8)
-	@param ats: the ats code, should includes metadata
+	@type  script: string (utf-8)
+	@param script: the ats/campaign code, should includes metadata
 	
-	@rtype: a dict[unicode] of unicode
+	@rtype: a dict[unicode] of dict(type: string, default: unicode)
 	@returns: the default session dictionary (parameter_name: default_value)
 	"""
-	xmlMetadata = JobTools.extractMetadata(ats, '#')
+	xmlMetadata = JobTools.extractMetadata(script, '#')
 	if xmlMetadata:
 		m = JobTools.parseMetadata(xmlMetadata)
 		if m:
 			return m.getDefaultSessionDict()
 	return None
+
+def getMetadata(script):
+	"""
+	Extracts the metadata from a script and returns it as a structured object.
+	"""
+	xmlMetadata = JobTools.extractMetadata(script, '#')
+	if xmlMetadata:
+		return JobTools.parseMetadata(xmlMetadata)
 
 def getDependencyFilenames(ats, atsPath = None):
 	"""
@@ -571,7 +622,7 @@ def _getDirectDependencies(source):
 	
 	return directdeps
 
-def createDependency(dependencyContent):
+def createDependency(dependencyContent, adapterModuleName = None):
 	"""
 	From a dependency content, modify it so that it can be
 	used by the TE.
@@ -585,7 +636,8 @@ def createDependency(dependencyContent):
 	@rtype: utf-8 string
 	@returns: the modified dependency content, ready to be dumped and used by the TE
 	"""
-	adapterModuleName = cm.get("testerman.te.python.ttcn3module")
+	if adapterModuleName is None:
+		adapterModuleName = cm.get("testerman.te.python.ttcn3module")
 
 	ret = ''
 	ret += """# -*- coding: utf-8 -*-

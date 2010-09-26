@@ -110,30 +110,36 @@ class WDocumentEditor(QWidget):
 		"""
 		self.tabWidget = tabWidget
 
-	def _saveLocally(self, filename):
+	def _saveLocally(self, filename, copy = False):
 		"""
 		@type  filename: QString
 		@param filename: the filename to use to save the current document (absolute path)
+		@type  copy: bool
+		@param copy: True f this is a local copy; in this case, the current saved attributes remains
+		unchanged.
 		
 		@rtype: bool
 		@returns: True if successfully saved, False otherwise
 		"""
 		self.updateModel()
-		log(u"Saving locally to filename %s" % filename)
+		log(u"Saving locally to filename %s (copy=%s)" % (filename, copy))
 		try:
 			f = open(unicode(filename), 'w')
 			# Store files as utf8
 			f.write(self.model.getDocumentSource())
 			f.close()
-			QApplication.instance().get('gui.statusbar').showMessage("Successfully saved as %s" % (filename))
-			self.model.setSavedAttributes(url = QUrl.fromLocalFile(filename), timestamp = time.time())
-			self.model.resetModificationFlag()
-			QApplication.instance().get('gui.statusbar').setFileLocation(self.model.getUrl())
+			if not copy:
+				QApplication.instance().get('gui.statusbar').showMessage("Successfully saved as %s" % (filename))
+				self.model.setSavedAttributes(url = QUrl.fromLocalFile(filename), timestamp = time.time())
+				self.model.resetModificationFlag()
+				QApplication.instance().get('gui.statusbar').setFileLocation(self.model.getUrl())
+			else:
+				QApplication.instance().get('gui.statusbar').showMessage("Local copy saved as %s successfully" % (filename))
 			return True
 		except Exception, e:
 			log(getBacktrace())
 			CommonWidgets.systemError(self, "Unable to save file as %s: %s" % (filename, str(e)))
-			QApplication.instance().get('gui.statusbar').showMessage("Unable to save file as %s: %s" % (filename, str(e)))
+			QApplication.instance().get('gui.statusbar').showMessage("Unable to save file %s: %s" % (filename, str(e)))
 			return False
 
 	def _saveRemotely(self, filename):
@@ -198,10 +204,14 @@ class WDocumentEditor(QWidget):
 			# Never saved for now.
 			return self.saveAs()
 
-	def saveAs(self):
+	def saveAs(self, copy = False):
 		"""
 		Opens a local browser to browse for a filename to save,
 		then saves the file.
+		
+		@type  copy: bool
+		@param copy: set to True if this is a local copy. In this case, the
+		current document's URI won't be modified.
 
 		@rtype: bool
 		@returns: True if successufully saved, False otherwise
@@ -219,7 +229,7 @@ class WDocumentEditor(QWidget):
 		settings.setValue('lastVisitedDirectory', QVariant(directory))
 
 		# Save the file
-		return self._saveLocally(filename)
+		return self._saveLocally(filename, copy)
 
 	def saveToRepositoryAs(self):
 		"""
@@ -466,7 +476,10 @@ DocumentManager.registerDocumentEditorClass(DocumentModels.TYPE_MODULE, WModuleD
 
 
 class WProfileSelector(QComboBox):
-
+	"""
+	Fetches the available profiles associated with the script, and displays
+	them.
+	"""
 	def __init__(self, documentModel, parent = None):
 		QComboBox.__init__(self, parent)
 		self.addItem('(default profile)')
@@ -484,6 +497,8 @@ class WProfileSelector(QComboBox):
 		if self._documentModel.isRemote():
 			try:
 				l = getProxy().getDirectoryListing(unicode(self._documentModel.getUrl().path()) + '/profiles')
+				if l is None:
+					l = []
 			except Exception, e:
 				log('Cannot get profiles for this script: %s' % e)
 				l = []
@@ -533,6 +548,16 @@ class WAtsDocumentEditor(WDocumentEditor):
 		# QsciScintilla directly manage the signal
 		self.connect(self.editor, SIGNAL('modificationChanged(bool)'), self.model.onBodyModificationChanged)
 		layout.addWidget(self.editor)
+		
+		# Split view test
+		"""
+		e = WPythonCodeEditor(None, self, self.editor.document())
+		e.setWindowTitle("Second view")
+		e.setParent(self)
+		e.setWindowFlags(Qt.Window)
+		e.show()
+		"""
+		
 
 		# The action bar below
 		actionLayout = QHBoxLayout()
@@ -1298,7 +1323,7 @@ class WPythonCodeEditor(sci.QsciScintilla):
 			return sci.QsciScintilla.wheelEvent(self, wheelEvent)
 		delta = wheelEvent.delta()
 #		print "DEBUG: delta: " + str(delta)
-		if delta > 0:
+		if delta < 0:
 			self.zoomOut(1) # does nothing when the text was already set with a currentFont ???!
 		else:
 			self.zoomIn(1)
@@ -1978,7 +2003,7 @@ class WParameterTreeWidgetItem(QTreeWidgetItem):
 		QTreeWidgetItem.__init__(self, parent)
 		self.parameter = parameter
 		self.key = parameter['name']
-		self.columns = [ 'name', 'description', 'default', 'value' ]
+		self.columns = [ 'name', 'type', 'description', 'default', 'value' ]
 		self.setFlags(Qt.ItemIsEnabled | Qt.ItemIsEditable | Qt.ItemIsSelectable)
 		if self.parameter['extra']:
 			self.setBackground(0, QBrush(Qt.lightGray))
@@ -2017,7 +2042,7 @@ class WParametersEditor(QTreeWidget):
 
 	def __createWidgets(self):
 		self.setRootIsDecorated(0)
-		self.labels = [ 'Name', 'Description', 'Default value', 'Profile value' ]
+		self.labels = [ 'Name', 'Type', 'Description', 'Default value', 'Profile value' ]
 		self.setSortingEnabled(1)
 		# Default sort - should be read from the QSettings.
 		self.sortItems(0, Qt.AscendingOrder)
@@ -2053,17 +2078,17 @@ class WParametersEditor(QTreeWidget):
 				for k, v in templateModel.items():
 					d = {}
 					if k in localModel:
-						d = dict(name = k, value = localModel[k], description = v['description'], default = v['default'], extra = False)
+						d = dict(name = k, value = localModel[k], description = v['description'], default = v['default'], type = v['type'], extra = False)
 					else:
 						# in the template, not in the profile, initialize it to the defaut value
-						d = dict(name = k, value = v['default'], description = v['description'], default = v['default'], extra = False)
+						d = dict(name = k, value = v['default'], description = v['description'], default = v['default'], type = v['type'], extra = False)
 					displayed.append(k)
 					WParameterTreeWidgetItem(self, d)
 
 			# Now complete with what was not displayed, but available in the profile model (extra parameters)
 			for k, v in localModel.items():
 				if not k in displayed:
-					d = dict(name = k, value = v, description = '(unknown)', default = '', extra = True)
+					d = dict(name = k, value = v, description = '(unknown)', default = '', type = 'string', extra = True)
 					WParameterTreeWidgetItem(self, d)
 
 		else:
@@ -2071,9 +2096,9 @@ class WParametersEditor(QTreeWidget):
 			# with the description and default value from the scriptMetadataModel, if any
 			for k, v in localModel.items():
 				if k in templateModel:
-					d = dict(name = k, value = v, description = templateModel[k]['description'], default = templateModel[k]['default'], extra = False)
+					d = dict(name = k, value = v, description = templateModel[k]['description'], default = templateModel[k]['default'], type = templateModel[k]['type'], extra = False)
 				else:
-					d = dict(name = k, value = v, description = '', default = '', extra = True)
+					d = dict(name = k, value = v, description = '', default = '', type = 'string', extra = True)
 				WParameterTreeWidgetItem(self, d)
 				
 		# We re-sort the items according to the current sorting parameters
@@ -2089,7 +2114,7 @@ class WParametersEditor(QTreeWidget):
 			item = self.topLevelItem(i)
 			# Granted, this is dirty coding. To refactor one day.
 			key = item.text(0)
-			value = item.text(3)
+			value = item.text(4)
 			parameters[key] = value
 		return parameters
 		

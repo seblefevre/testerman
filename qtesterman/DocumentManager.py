@@ -56,7 +56,7 @@ def getDocumentEditorClass(documentModel):
 # Main Document Manager: a notebook widget opening/closing documents.
 ###############################################################################
 
-class WDocumentManager(QWidget):
+class WDocumentManager(CommonWidgets.WEnhancedTabWidget):
 	"""
 	This is a notebook managing multiple WDocument (Module, Campaign, Ats).
 	Provides additional methods to open new scripts/modules from outside the widget.
@@ -65,16 +65,14 @@ class WDocumentManager(QWidget):
 	documentUrlsUpdated() whenever a doc url was changed.
 	"""
 	def __init__(self, parent = None):
-		QWidget.__init__(self, parent)
+		CommonWidgets.WEnhancedTabWidget.__init__(self, parent)
 		self.__createWidgets()
 		QApplication.instance().set('gui.documentmanager', self)
 
 	def __createWidgets(self):
-		layout = QVBoxLayout()
-		layout.setMargin(0)
-		self.tab = CommonWidgets.WEnhancedTabWidget()
-		layout.addWidget(self.tab)
-		self.setLayout(layout)
+		# Additional indirection - maybe one day this won't we a tab anymore
+		self.tab = self
+		self.setDocumentMode(True)
 		self.connect(self.tab, SIGNAL('currentChanged(int)'), self.onCurrentDocumentChanged)
 		self.connect(self.tab, SIGNAL('tabCloseRequested(int)'), self.closeTab)
 
@@ -339,6 +337,13 @@ class WDocumentManager(QWidget):
 		If asFilename is None, save using the existing filename.
 		"""
 		self.tab.currentWidget().saveAs()
+
+	def saveCurrentLocalCopyAs(self):
+		"""
+		Retrieve the current tabbed WScript, and forward the save event
+		If asFilename is None, save using the existing filename.
+		"""
+		self.tab.currentWidget().saveAs(copy = True)
 
 	def closeTab(self, index):
 		"""

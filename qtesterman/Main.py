@@ -736,9 +736,9 @@ class WMainWindow(QMainWindow):
 		self.openAction = TestermanAction(self, "&Open...", self.open, "Open an existing document", "Ctrl+O")
 		self.openAction.setIcon(icon(':/icons/file-open.png'))
 		self.reloadAction = TestermanAction(self, "&Reload", self.reload, "Reload the current document", "F5")
-		self.saveAction = TestermanAction(self, "&Save", self.save, "Save the current document", "Ctrl+S")
+		self.saveAction = TestermanAction(self, "&Save", self.save, "Save the current document to its current location", "Ctrl+S")
 		self.saveAction.setIcon(icon(':/icons/file-save.png'))
-		self.saveAsAction = TestermanAction(self, "Save &as...", self.saveAs, "Save the current document as", "Ctrl+Shift+S")
+		self.saveAsAction = TestermanAction(self, "Save &as...", self.saveAs, "Save the current document as on the local computer", "Ctrl+Shift+S")
 		self.saveAsAction.setIcon(icon(':/icons/file-save-as.png'))
 		self.closeAction = TestermanAction(self, "&Close", self.close, "Close the current tab", "Ctrl+W")
 		self.closeAction.setIcon(icon(':/icons/file-close.png'))
@@ -746,6 +746,8 @@ class WMainWindow(QMainWindow):
 		self.quitAction.setIcon(icon(':/icons/exit.png'))
 		self.saveToRepositoryAsAction = TestermanAction(self, "&Save to repository as...", self.saveToRepositoryAs, "Save the current document to the Testerman repository as", "Ctrl+Shift+R")
 		self.saveToRepositoryAsAction.setIcon(icon(':/icons/save-to-repository.png'))
+		self.saveLocalCopyAsAction = TestermanAction(self, "Save a &local copy...", self.saveLocalCopyAs, "Save a copy of the current document on the local computer")
+		self.saveLocalCopyAsAction.setIcon(icon(':/icons/file-save-copy.png'))
 
 		# Edit
 		self.replaceAction = TestermanAction(self, "Searc&h/Replace", self.replace, "Search and/or replace text in the document", "Ctrl+R")
@@ -825,6 +827,7 @@ class WMainWindow(QMainWindow):
 		self.fileMenu.addAction(self.reloadAction)
 		self.fileMenu.addAction(self.saveAction)
 		self.fileMenu.addAction(self.saveAsAction)
+		self.fileMenu.addAction(self.saveLocalCopyAsAction)
 		self.fileMenu.addSeparator()
 		self.fileMenu.addAction(self.saveToRepositoryAsAction)
 		self.fileMenu.addSeparator()
@@ -949,6 +952,9 @@ class WMainWindow(QMainWindow):
 
 	def saveAs(self):
 		self.documentManager.saveCurrentAs()
+
+	def saveLocalCopyAs(self):
+		self.documentManager.saveCurrentLocalCopyAs()
 
 	def close(self):
 		self.documentManager.closeCurrent()

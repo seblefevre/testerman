@@ -46,6 +46,7 @@ pyrcc4 resources.qrc -o Resources.py
 	<file alias="exit.png">resources/application-exit.png</file>
 	<file alias="file-new.png">resources/document-new.png</file>
 	<file alias="file-save-as.png">resources/document-save-as.png</file>
+	<file alias="file-save-copy.png">resources/document-save-all.png</file>
 	<file alias="file-save.png">resources/document-save.png</file>
 	<file alias="file-open.png">resources/document-open.png</file>
 	<file alias="file-close.png">resources/tab-close.png</file>

@@ -143,11 +143,11 @@ def parseParameters(parameters):
 	
 	return values 
 
-def mergeSessionParameters(initial, default, mapping, mode = "loose"):
+def mergeSessionParameters(initial, signature, mapping, mode = "loose"):
 	"""
 	Computes the session parameter values to pass to a job from multiple sources:
 	- initial: the user's or parent job's suggested, initial parameters.
-	- default: the job's default parameters (extracted from its metadata)
+	- signature: the job's signature (extracted from its metadata)
 	- mapping: the contextual parameters mapping to apply, assigning some
 	  parameter values (or a constant) to a parameter. Parameters values
 	  are expressed as a ${my_variable} token. 
@@ -161,12 +161,12 @@ def mergeSessionParameters(initial, default, mapping, mode = "loose"):
 	returned.
 	
 	@type  initial: dict[unicode] of objects
-	@type  default: dict[unicode] of unicode
+	@type  signature: dict[unicode] of (name: unicode, defaultValue: unicode, type: unicode)
 	@type  mapping: dict[unicode] of unicode (may contain ${references})
 	
 	@rtype: dict[unicode] of objects
 	@returns: the merged parameters with their values to pass for a
-	particular run.
+	particular run, but left uncasted (not in the signature target's format/type)
 	"""
 	
 	def substituteVariables(s, values):
@@ -183,11 +183,12 @@ def mergeSessionParameters(initial, default, mapping, mode = "loose"):
 
 	if mode == "strict":
 		# The initial parameters override the default ones
-		for name, value in default.items():
+		for name, value in signature.items():
+			format = value['type']
 			if initial.has_key(name):
 				merged[name] = initial[name]
 			else:
-				merged[name] = value
+				merged[name] = value['defaultValue']
 		
 		# Now apply the mapping on existing parameters
 		for name, value in merged.items():
@@ -199,9 +200,9 @@ def mergeSessionParameters(initial, default, mapping, mode = "loose"):
 		for name, value in initial.items():
 			merged[name] = value
 		# And we complete with default parameters
-		for name, value in default.items():
+		for name, value in signature.items():
 			if not name in merged:
-				merged[name] = value
+				merged[name] =value['defaultValue']
 
 		# Now apply the mapping, creating new parameters if needed
 		for name, value in mapping.items():
@@ -865,18 +866,18 @@ class AtsJob(Job):
 		# in ATS signature ?
 		# default session
 		try:
-			defaultSession = TEFactory.getDefaultSession(self._source)
-			if defaultSession is None:
-				getLogger().warning('%s: unable to extract default session from ATS. Missing metadata ?' % (str(self)))
-				defaultSession = {}
+			scriptSignature = TEFactory.getMetadata(self._source).getSignature()
+			if scriptSignature is None:
+				getLogger().warning('%s: unable to extract script signature from ATS. Missing metadata ?' % (str(self)))
+				scriptSignature = {}
 		except Exception, e:
-			getLogger().error('%s: unable to extract ATS parameters from metadata: %s' % (str(self), str(e)))
+			getLogger().error('%s: unable to extract ATS signature from metadata: %s' % (str(self), str(e)))
 			self.setResult(23)
 			self.setState(self.STATE_ERROR)
 			return self.getResult()
 		
 		# The merged input session
-		mergedInputSession = mergeSessionParameters(inputSession, defaultSession, self._sessionParametersMapping)
+		mergedInputSession = mergeSessionParameters(inputSession, scriptSignature, self._sessionParametersMapping)
 		
 		getLogger().info('%s: using merged input session parameters:\n%s' % (str(self), '\n'.join([ '%s = %s (%s)' % (x, y, repr(y)) for x, y in mergedInputSession.items()])))
 		
@@ -916,7 +917,9 @@ class AtsJob(Job):
 				self._tePid = pid
 				self.setState(self.STATE_RUNNING)
 				# actual retcode (< 256), killing signal, if any
-				(retcode, sig) = divmod(os.waitpid(pid, 0)[1], 256)
+				getLogger().info("%s: Waiting for TE to complete (pid %s)..." % (str(self), pid))
+				res = os.waitpid(pid, 0)
+				(retcode, sig) = divmod(res[1], 256)
 				self._tePid = None
 			else:
 				# forked child: exec with the TE once moved to the correct dir
@@ -936,6 +939,7 @@ class AtsJob(Job):
 			return self.getResult()
 
 		# Normal continuation, once the child has returned.
+		getLogger().info("%s: TE completed" % str(self))
 		if sig > 0:
 			getLogger().info("%s: TE terminated with signal %d" % (str(self), sig))
 			# In case of a kill, make sure we never return a "OK" retcode
@@ -1189,17 +1193,17 @@ class CampaignJob(Job):
 			return
 		
 		try:
-			defaultSession = TEFactory.getDefaultSession(self._source)
-			if defaultSession is None:
-				getLogger().warning('%s: unable to extract default session from Campaign. Missing metadata ?' % (str(self)))
-				defaultSession = {}
+			scriptSignature = TEFactory.getMetadata(self._source).getSignature()
+			if scriptSignature is None:
+				getLogger().warning('%s: unable to extract script signature from Campaign. Missing metadata ?' % (str(self)))
+				scriptSignature = {}
 		except Exception, e:
-			getLogger().error('%s: unable to extract Campaign parameters from metadata: %s' % (str(self), str(e)))
+			getLogger().error('%s: unable to extract Campaign signature from metadata: %s' % (str(self), str(e)))
 			self.setResult(23)
 			self.setState(self.STATE_ERROR)
 			return self.getResult()
 
-		mergedInputSession = mergeSessionParameters(inputSession, defaultSession, self._sessionParametersMapping)
+		mergedInputSession = mergeSessionParameters(inputSession, scriptSignature, self._sessionParametersMapping)
 		getLogger().info('%s: using merged input session parameters:\n%s' % (str(self), '\n'.join([ '%s = %s (%s)' % (x, y, repr(y)) for x, y in mergedInputSession.items()])))
 
 		# Now, the child jobs according to the branch
