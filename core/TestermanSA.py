@@ -36,7 +36,6 @@
 ##
 
 
-import TestermanTTCN3 as Testerman 
 import TestermanTCI
 import TestermanAgentControllerClient as TACC
 import TestermanMessages as Messages
@@ -69,7 +68,29 @@ class TliLogger:
 
 
 ################################################################################
-# The TRI interface
+# The TRI interface - TE Provided
+################################################################################
+
+TE_triEnqueueMsg = None
+
+# Provide a way to register the TE-provided functions
+def registerTriEnqueueMsgFunction(func):
+	"""
+	func must accept the following parameters:
+	triEnqueueMsg(tsiPortId, sutAddress = None, componentId = None, message = None)
+	"""
+	global TE_triEnqueueMsg
+	TE_triEnqueueMsg = func
+
+
+################################################################################
+# Exceptions
+################################################################################
+
+class TestermanSAException(Exception): pass
+
+################################################################################
+# The TRI interface - SA Provided
 ################################################################################
 
 # Maintain the bindings between tsiPorts and probes
@@ -117,7 +138,7 @@ def triExecuteTestCase(testCaseId, tsiPortList):
 			if probe.isRemote():
 				locked = TACC.instance().lockProbe(probe.getUri())
 				if not locked:
-					raise Testerman.TestermanException("Unable to reserve all probes for this test: %s is already in use" % (probe.getUri()))
+					raise TestermanSAException("Unable to reserve all probes for this test: %s is already in use" % (probe.getUri()))
 				registerWatchedProbe(probe)
 			try:
 				probe.onTriExecuteTestCase()
@@ -127,7 +148,7 @@ def triExecuteTestCase(testCaseId, tsiPortList):
 			# No implementation available
 			# TODO: provides a default impl ?
 			# Maybe we should - but not yet
-			raise Testerman.TestermanException("Missing binding for test system port '%s'. Please check your current Test Adapter Configuration." % tsiPortId)
+			raise TestermanSAException("Missing binding for test system port '%s'. Please check your current Test Adapter Configuration." % tsiPortId)
 			
 	return TR_OK
 
@@ -149,14 +170,14 @@ def triSend(componentId, tsiPortId, sutAddress, message):
 	"""
 	# Look for a test adapter bound to this system port
 	if not ProbeBindings.has_key(tsiPortId):
-		raise Testerman.TestermanException("Internal error: trying to send a message through unbound test system port %s" % tsiPortId)
+		raise TestermanSAException("Internal error: trying to send a message through unbound test system port %s" % tsiPortId)
 
 	# Test adapter found. Send the message through it.
 	probe = ProbeBindings[tsiPortId]
 	try:
 		probe.onTriSend(message, sutAddress)
 	except Exception:
-		raise Testerman.TestermanException("Unable to send message through TSI port '%s': %s " % (tsiPortId, TestermanTCI.getBacktrace()))
+		raise TestermanSAException("Unable to send message through TSI port '%s': %s " % (tsiPortId, TestermanTCI.getBacktrace()))
 
 	return TR_OK
 
@@ -192,7 +213,7 @@ def triMap(compPortId, tsiPortId):
 		# First mapping.
 		# Check that a test adapter implementation exists for this tsiPort
 		if not ProbeBindings.has_key(tsiPortId):
-			raise Testerman.TestermanException("triMap: test system interface port %s is not bound no any implementation, and was likely not declared on your system/test adapter configuration." % tsiPortId)
+			raise TestermanSAException("triMap: test system interface port %s is not bound no any implementation, and was likely not declared on your system/test adapter configuration." % tsiPortId)
 		probe = ProbeBindings[tsiPortId]
 		# Establish dynamic connections, if needed
 		probe.onTriMap()
@@ -335,7 +356,7 @@ class TestAdapterConfiguration(object):
 
 	def _declareBinding(self, tsiPort, uri, type_, **kwargs):
 		if self._declaredBindings.has_key(tsiPort):
-			raise Testerman.TestermanException("Test system interface port %s is already bound to a Test Adapter." % tsiPort)
+			raise TestermanSAException("Test system interface port %s is already bound to a Test Adapter." % tsiPort)
 		log("Declaring binding: test adapter %s for tsiPort %s..." % (uri, tsiPort))
 		transient = False
 		u = Messages.Uri(uri)
@@ -387,7 +408,7 @@ def bind(tsiPortId, probe):
 	if ProbeBindings.has_key(tsiPortId):
 		# Actually overring is not very important. But we keep the user from doing so 
 		# to avoid "non-standard" cases that may be harder to troubleshoot
-		raise Testerman.TestermanException("This system port (%s) is already bound to another probe. Please check your binding declarations." % tsiPortId)
+		raise TestermanSAException("This system port (%s) is already bound to another probe. Please check your binding declarations." % tsiPortId)
 	ProbeBindings[tsiPortId] = probe
 	probe.bind(tsiPortId)
 		
@@ -469,7 +490,7 @@ class ProbeAdapter(ProbeImplementationManager.IProbeImplementationAdapter):
 		return self._properties.get(name, defaultValue)
 
 	def triEnqueueMsg(self, message, sutAddress = None):
-		Testerman.triEnqueueMsg(tsiPortId = self._tsiPortId, sutAddress = sutAddress, componentId = None, message = message)
+		TE_triEnqueueMsg(tsiPortId = self._tsiPortId, sutAddress = sutAddress, componentId = None, message = message)
 
 	def getLogger(self):
 		return TliLogger()
@@ -532,7 +553,7 @@ class RemoteStubAdapter(LocalProbeAdapter):
 		if info:
 			# Check type
 			if type_ and info['type'] != type_:
-				raise Testerman.TestermanException("Unable to use probe %s as %s: such a probe is deployed, but its type is %s" % (uri, type_, info['type']))
+				raise TestermanSAException("Unable to use probe %s as %s: such a probe is deployed, but its type is %s" % (uri, type_, info['type']))
 			# OK (discarded type or valid type)
 			self._uri = uri
 			self._type = type_
@@ -540,12 +561,12 @@ class RemoteStubAdapter(LocalProbeAdapter):
 			# Autodeployment attempt
 			ret = TACC.instance().deployProbe(uri, type_)
 			if not ret:
-				raise Testerman.TestermanException("Unable to autodeploy %s as %s." % (uri, self._type))
+				raise TestermanSAException("Unable to autodeploy %s as %s." % (uri, self._type))
 			# Autodeployment OK.
 			self._uri = uri
 			self._type = type_
 		else:
-			raise Testerman.TestermanException("Unable to use probe %s: not deployed, no type given, no autodeployment possible." % (uri))
+			raise TestermanSAException("Unable to use probe %s: not deployed, no type given, no autodeployment possible." % (uri))
 
 	def unbind(self):
 		if self._transient:
@@ -572,7 +593,7 @@ class RemoteProbeAdapter(ProbeAdapter):
 		if info:
 			# Check type
 			if type_ and info['type'] != type_:
-				raise Testerman.TestermanException("Unable to use probe %s as %s: such a probe is deployed, but its type is %s" % (uri, type_, info['type']))
+				raise TestermanSAException("Unable to use probe %s as %s: such a probe is deployed, but its type is %s" % (uri, type_, info['type']))
 			# OK (discarded type or valid type)
 			self._uri = uri
 			self._type = type_
@@ -580,12 +601,12 @@ class RemoteProbeAdapter(ProbeAdapter):
 			# Autodeployment attempt
 			ret = TACC.instance().deployProbe(uri, type_)
 			if not ret:
-				raise Testerman.TestermanException("Unable to autodeploy %s as %s." % (uri, self._type))
+				raise TestermanSAException("Unable to autodeploy %s as %s." % (uri, self._type))
 			# Autodeployment OK.
 			self._uri = uri
 			self._type = type_
 		else:
-			raise Testerman.TestermanException("Unable to use probe %s: not deployed, no type given, no autodeployment possible." % (uri))
+			raise TestermanSAException("Unable to use probe %s: not deployed, no type given, no autodeployment possible." % (uri))
 
 	def unbind(self):
 		if self._transient:
@@ -655,7 +676,7 @@ def createProbe(uri, type_, transient = False):
 		return adapter
 	# Otherwise, nothing to do.
 	else:
-		raise Testerman.TestermanException("No registered factory for test adapter/probe type %s" % type_)
+		raise TestermanSAException("No registered factory for test adapter/probe type %s" % type_)
 	
 	return None
 

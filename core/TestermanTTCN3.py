@@ -2891,6 +2891,7 @@ def triEnqueueMsg(tsiPortId, sutAddress = None, componentId = None, message = No
 		# Late message ? just discard it.
 		logInternal("triEnqueueMsg: received a message for unmapped tsiPortId %s. Not delivering to userland, discarding." % str(tsiPortId))
 
+TestermanSA.registerTriEnqueueMsgFunction(triEnqueueMsg)
 
 ################################################################################
 # ATS Cancellation management
