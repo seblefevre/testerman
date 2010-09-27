@@ -155,6 +155,8 @@ class ExecProbe(ProbeImplementationManager.ProbeImplementation):
 
 	Properties:
 	|| '''Name''' || '''Type''' || '''Default value''' || '''Description''' ||
+	|| `shell` || string || `None` || The shell to use when executing the command line. On Unixes, this is defaulted to `/bin/sh`, on Windows, this is the shell as specified via the COMSPEC environment variable. ||
+	
 	
 	(no properties)
 
@@ -223,6 +225,7 @@ class ExecProbe(ProbeImplementationManager.ProbeImplementation):
 		ProbeImplementationManager.ProbeImplementation.__init__(self)
 		self._mutex = threading.RLock()
 		self._execThread = None
+		self.setDefaultProperty("shell", None)
 
 	# ProbeImplementation reimplementation
 
@@ -358,7 +361,7 @@ class ExecThread(threading.Thread):
 		output = None
 		status = None
 		try:
-			self._process = subprocess.Popen(self._command, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, shell=True)
+			self._process = subprocess.Popen(self._command, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, shell=True, executable=self._probe["shell"])
 			output, _ = self._process.communicate()
 			status = self._process.returncode
 		except Exception, e:
