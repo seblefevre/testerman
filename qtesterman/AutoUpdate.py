@@ -70,7 +70,7 @@ class Restarter:
 # Auto update management
 ################################################################################
 
-def updateComponent(proxy, destinationPath, component, currentVersion = None, branches = [ "stable" ]):
+def checkAndUpdateComponent(proxy, destinationPath, component, currentVersion = None, branches = [ "stable" ]):
 	"""
 	Checks for updates, and proposes the user to update if a newer version is available.
 
@@ -104,11 +104,10 @@ def updateComponent(proxy, destinationPath, component, currentVersion = None, br
 		url = updates[0]['url']
 		branch = updates[0]['branch']
 		print "Newer version available: %s" % newerVersion
-
+		
 		ret = QMessageBox.question(None, "Update manager", "A new QTesterman Client version is available on the server:\n%s (%s)\nDo you want to update now ?" % (newerVersion, branch), QMessageBox.Yes, QMessageBox.No)
 		if ret == QMessageBox.Yes:
 			# Download and unpack the archive
-
 			try:
 				proxy.installComponent(url, destinationPath)
 			except Exception, e:
@@ -118,4 +117,55 @@ def updateComponent(proxy, destinationPath, component, currentVersion = None, br
 			QMessageBox.information(None, "Update manager", "Update succesfully installed.")
 			# Let the caller propose a restart
 			return True
+		else:
+			return False
 
+def getNewVersionInfo(proxy, component, currentVersion = None, branches = [ "stable" ]):
+	"""
+	Checks for updates, and returns (version, branch, url) of the latest version
+	if one is available.
+
+	@type  basepath: unicode string 
+	@param basepath: the application basepath were we should unpack the update archive
+
+	@throws exceptions
+	
+	@rtype: (version, branch, url) or None
+	@returns: None if no update is available.
+	"""
+	updates = proxy.getComponentVersions(component, branches)
+
+	if not updates:
+		# No updates available - nothing to do
+		print "No updates available on this server."
+		return None
+
+	print "Available updates:"
+	print "\n".join([ "%s (%s)" % (x['version'], x['branch']) for x in updates])
+
+	# Versions rules
+	# A.B.C < A+n.b.c
+	# A.B.C < A.B+n.c
+	# A.B.C < A.B.C+n
+	# (ie when comparing A.B.C and a.b.c, lexicographic order is ok)
+	
+	# Let's check if we have a better version than the current one
+	if not currentVersion or (currentVersion < updates[0]['version']):
+		newerVersion = updates[0]['version']
+		url = updates[0]['url']
+		branch = updates[0]['branch']
+		print "Newer version available: %s" % newerVersion
+		return (newerVersion, branch, url)
+
+	return None
+
+def updateComponent(proxy, url, destinationPath):
+	try:
+		proxy.installComponent(url, destinationPath)
+	except Exception, e:
+		QMessageBox.warning(None, "Update manager", "Unable to install the update:\n%s\nContinuing with the current version." % str(e))
+		return False
+
+	QMessageBox.information(None, "Update manager", "Update succesfully installed.")
+	# Let the caller propose a restart
+	return True

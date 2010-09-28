@@ -448,10 +448,18 @@ class WAutoUpdateSettings(WSettings):
 		if self.acceptExperimentalUpdatesCheckBox.isChecked():
 			branches.append('testing')
 			branches.append('experimental')
-		if AutoUpdate.updateComponent(proxy = QApplication.instance().client(), basepath = QApplication.instance().get('basepath'), component = "qtesterman", currentVersion = getClientVersion(), branches = branches):
-			ret = QMessageBox.question(self, getClientName(), "Do you want to restart now ? (Unsaved file modifications will be discarded)", QMessageBox.Yes | QMessageBox.No)
+
+		versionInfo = AutoUpdate.getNewVersionInfo(proxy = QApplication.instance().client(), component = "qtesterman", currentVersion = getClientVersion(), branches = branches)
+		if versionInfo:
+			(newerVersion, branch, url) = versionInfo
+			ret = QMessageBox.question(None, getClientName(), "A new QTesterman Client version is available on the server:\n%s (%s)\nDo you want to update now ?" % (newerVersion, branch), QMessageBox.Yes, QMessageBox.No)
 			if ret == QMessageBox.Yes:
-				AutoUpdate.Restarter.restart()
+				if AutoUpdate.updateComponent(proxy = QApplication.instance().client(), destinationPath = QApplication.instance().get('basepath'), url = url):
+					ret = QMessageBox.question(None, getClientName(), "Do you want to restart now ? (Unsaved file modifications will be discarded)", QMessageBox.Yes | QMessageBox.No)
+					if ret == QMessageBox.Yes:
+						AutoUpdate.Restarter.restart()
+		else:
+			QMessageBox.information(None, getClientName(), "No new version is available on this server.")
 
 	def updateModel(self):
 		"""
