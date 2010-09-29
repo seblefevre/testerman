@@ -10,13 +10,8 @@
 <html xmlns="http://www.w3.org/1999/xhtml">
 <head>
 	<title><xsl:value-of select="/ats//@id" /></title>
-	<link rel="stylesheet" type="text/css" href="static/testerman.css" />
-	<script type="text/javascript">
-function expandCollapse(id) {
-var element = document.getElementById(id);
-element.style.display = (element.style.display != "block" ? "block" : "none"); 
-}
-	</script>
+	<link rel="stylesheet" type="text/css" href="static/testerman.css"></link>
+	<script type="text/javascript" src="static/testerman.js"></script>
 </head>
 <body>
 	<div id="page">
@@ -54,6 +49,11 @@ Test Execution Results for ATS:
 
 <p></p>
 <h1>Test Cases Details</h1>
+
+<p>
+<a href="javascript:expandCollapseAll('system-sent-message-')">Show/hide all sent payloads</a> |
+<a href="javascript:expandCollapseAll('system-received-message-')">Show/hide all received payloads</a>
+</p>
 
 <xsl:for-each select="testcase">
 <!--	<xsl:call-template name="testcase" /> -->
@@ -233,8 +233,15 @@ Test Execution Results for ATS:
 					</xsl:attribute>
 					<xsl:value-of select="label" />
 					</a>
+					<xsl:if test="payload/@encoding='base64'">
+						- <a>
+						<xsl:attribute name="href">
+						<xsl:value-of select="concat('javascript:base64DecodeById(&quot;system-sent-message-', $logElementId, '&quot;, true)')" />
+						</xsl:attribute>
+						 (decode)
+						</a>
+					</xsl:if>
 				</span>
-				<!-- insert here a way to expand to the payload -->
 				<div class='system-payload'>
 					<xsl:attribute name="id"> <xsl:value-of select="concat('system-sent-message-', $logElementId)" /> </xsl:attribute>
 					<xsl:call-template name="break">
