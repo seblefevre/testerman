@@ -376,6 +376,7 @@ div.system-payload {
   border: solid 0px;
 	background: #eeeeee;
 	font: normal 11px courier;
+  word-wrap: break-word;
   display: none; /* switched to block via javascript, collapsed by default */
 }
 
