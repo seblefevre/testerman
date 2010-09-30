@@ -64,7 +64,7 @@ def icon(resource):
 # Name validation functions
 ################################################################################
 
-RESTRICTED_NAME_CHARACTERS = "/\\' \"@|?*.-"
+RESTRICTED_NAME_CHARACTERS = "/\\' \"@|?*-"
 
 def validateFileName(name):
 	"""
