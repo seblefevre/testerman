@@ -259,6 +259,14 @@ Test Execution Results for ATS:
 					</xsl:attribute>
 					<xsl:value-of select="label" />
 					</a>
+					<xsl:if test="payload/@encoding='base64'">
+						- <a>
+						<xsl:attribute name="href">
+						<xsl:value-of select="concat('javascript:base64DecodeById(&quot;system-received-message-', $logElementId, '&quot;, true)')" />
+						</xsl:attribute>
+						 (decode)
+						</a>
+					</xsl:if>
 				</span>
 				<!-- insert here a way to expand to the payload -->
 				<div class='system-payload'>
