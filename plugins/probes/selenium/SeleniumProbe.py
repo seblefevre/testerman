@@ -27,7 +27,8 @@ class SeleniumProbe(ProbeImplementationManager.ProbeImplementation):
 	|| `rc_port` || integer || `4444` || Selenium-RC port ||
 	|| `browser` || string || `firefox` || The browser Selenium should use on the Selenium host ||
 	|| `server_url` || string || `None` || The server URL to browse when opening the browser. Providing it is mandatory. ||
-
+	|| `auto_shutdown` || boolean || `True` || When set, Selenium closes the browser window when the test case is over. It may be convenient to set it to False to leave this window open to debug a test case on error. ||
+	 
 	= Overview =
 
 	This probe enables to perform Selenium-based test through the Selenium Remote Control (RC) / Server.
@@ -222,6 +223,7 @@ class SeleniumProbe(ProbeImplementationManager.ProbeImplementation):
 		self.setDefaultProperty('rc_port', 4444)
 		self.setDefaultProperty('browser', 'firefox')
 		self.setDefaultProperty('server_url', None)
+		self.setDefaultProperty('auto_shutdown', True)
 		
 		self._selenium = None
 		self._sessionId = None
@@ -248,7 +250,8 @@ class SeleniumProbe(ProbeImplementationManager.ProbeImplementation):
 	# Specific implementation
 	def _reset(self):	
 		if self._selenium:
-			self._selenium.stop()
+			if self['auto_shutdown']:
+				self._selenium.stop()
 			self._selenium = None
 
 	def onTriSend(self, message, sutAddress):
