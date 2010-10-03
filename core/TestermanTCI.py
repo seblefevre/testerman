@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 ##
 # This file is part of Testerman, a test automation system.
-# Copyright (c) 2008-2009 Sebastien Lefevre and other contributors
+# Copyright (c) 2008,2009,2010 Sebastien Lefevre and other contributors
 #
 # This program is free software; you can redistribute it and/or modify it under
 # the terms of the GNU General Public License as published by the Free Software
@@ -51,6 +51,7 @@ import base64
 import cgi
 import sys
 import time
+import threading
 
 # These global variables are set during the TE initialization,
 # through initialize()
@@ -108,17 +109,50 @@ class IlClient(Nodes.ConnectingNode):
 			# Logging fallback to stderr
 			print >> sys.stdout, "WARNING: unable to send LOG notification: " + getBacktrace()
 
-def initialize(ilServerAddress, jobId, logFilename, maxPayloadSize = 65535):
+##################################################################################
+# A fake Il Client that write logs locally instead of sending log notifications
+# to a Il Server
+##################################################################################
+
+class LocalIlClient:
+	def __init__(self, logFilename = None):
+		self.logFilename = logFilename
+		self.mutex = threading.RLock()
+	
+	def sendLogNotification(self, logClass, xml):
+		"""
+		Locally logs the notification.
+		"""
+		if not self.logFilename:
+			return
+			
+		self.mutex.acquire()
+		if self.logFilename == '-':
+			print xml
+		else:
+			try:
+				f = open(self.logFilename, 'a')
+				f.write('%s\n' % xml.encode('utf-8'))
+				f.close()
+			except:
+				pass
+		self.mutex.release()
+
+def initialize(logFilename, ilServerAddress = None, jobId = None, maxPayloadSize = 65535):
 	"""
-	Sets module variables, starts connecting the IlClient to the TL subsystem.
+	Sets module variables, starts connecting the IlClient to the TL subsystem
+	or initializes the logger for local logging only
 	"""
 	global TheIlClient
 	global MaxLogPayloadSize
 
 	MaxLogPayloadSize = maxPayloadSize
 
-	TheIlClient = IlClient(jobId, serverAddress = ilServerAddress, logFilename = logFilename)
-	TheIlClient.start()
+	if ilServerAddress and jobId:
+		TheIlClient = IlClient(jobId, serverAddress = ilServerAddress, logFilename = logFilename)
+		TheIlClient.start()
+	else:
+		TheIlClient = LocalIlClient(logFilename)
 
 def finalize():
 	"""

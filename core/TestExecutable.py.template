@@ -1,0 +1,496 @@
+# -*- coding: utf-8 -*-
+################################################################################
+#
+# This Test Executable (TE) was automatically created
+# by Testerman Server ${ts_version}.
+# Created on: ${gen_time}
+# Source ATS: ${ats_id}.
+#
+################################################################################
+
+import os
+import pickle
+import random
+import signal
+import sys
+import time
+
+################################################################################
+# Some constants
+################################################################################
+
+RETURN_CODE_LOGGER_FAILURE = 10
+RETURN_CODE_INIT_FAILURE = 11
+RETURN_CODE_CANCELLED = 1
+RETURN_CODE_TTCN3_ERROR = 12
+RETURN_CODE_TE_ERROR = 13
+RETURN_CODE_OK = 0
+
+PASS = "pass"
+FAIL = "fail"
+ERROR = "error"
+NONE = "none"
+INCONC = "inconc"
+
+################################################################################
+# TE Global variables
+################################################################################
+
+# Global variables
+IlServerIp = None
+IlServerPort = None
+TacsIp = None
+TacsPort = None
+
+# Set from command line: job dependent
+JobId = None
+LogFilename = None
+InputSessionFilename = None
+OutputSessionFilename = None
+
+MaxLogPayloadSize = ${max_log_payload_size_repr}
+
+ProbePaths = ${probe_paths_repr}
+CodecPaths = ${codec_paths_repr}
+
+#: Main return result from the execution
+# WARNING/FIXME: make sure that the ATS won't override such a variable (oh well.. what if it does ? nothing impacting...)
+__Return_Code = RETURN_CODE_OK
+__Return_Message = ''
+
+
+################################################################################
+# Constants injected during TE generation
+################################################################################
+
+__TS_VERSION = ${ts_version_repr}
+__ATS_ID = ${ats_id_repr}
+__TE_GENERATION_TIMESTAMP = ${gen_timestamp_repr}
+__TS_NAME = ${ts_name_repr}
+
+__SCRIPT_METADATA = ${metadata_repr}
+
+# Default values
+DefaultIlServerPort = ${il_port_repr}
+DefaultTacsPort = ${tacs_port_repr}
+
+
+################################################################################
+# TE command line options management
+################################################################################
+
+import optparse
+
+def __getVersion():
+	ret = "Testerman Executable for ATS %s\nGenerated on %s by Testerman Server %s (%s)" % (__ATS_ID, time.strftime("%D %H:%M:%S", time.localtime(__TE_GENERATION_TIMESTAMP)), __TS_NAME, __TS_VERSION)
+	return ret
+
+def __parseArgs():
+	global IlServerIp, IlServerPort, TacsIp, TacsPort
+	global LogFilename, JobId, InputSessionFilename, OutputSessionFilename
+	parser = optparse.OptionParser(version = __getVersion())
+
+	group = optparse.OptionGroup(parser, "General Options")
+	group.add_option("--input-session-filename", dest = "inputSessionFilename", metavar = "FILE", help = "the file that contains serialized input session parameters. If provided, --session-filename and --session-parameters are ignored.", default = None)
+	group.add_option("--output-session-filename", dest = "outputSessionFilename", metavar = "FILE", help = "the file that will contain serialized output session parameters on completion. By default, this file is not created.", default = None)
+	group.add_option("--tacs-ip", dest = "tacsIp", metavar = "ADDRESS", help = "set TACS Ia target IP address to ADDRESS. By defaut, no TACS is used.", default = None)
+	group.add_option("--tacs-port", dest = "tacsPort", metavar = "PORT", help = "set TACS Ia target port address to PORT (default: %default)", default = DefaultTacsPort, type = "int")
+	parser.add_option_group(group)
+	
+	group = optparse.OptionGroup(parser, "Standalone Execution Options")
+	group.add_option("--session-filename", dest = "sessionParametersFilename", metavar = "FILE", help = "initial session parameters file", default = None)
+	group.add_option("--session-parameters", dest = "sessionParameters", metavar = "PARAMETERS", help = "initial session parameters, overriding those from session-filename, if any", default = "")
+	group.add_option("--log-filename", dest = "logFilename", metavar = "FILE", help = "generate output logs to FILE. Set to to - for stdout.", default = None)
+	group.add_option("--info", dest = "showInfo", action = "store_true", help = "display various information about this test executable and exit", default = False)
+	parser.add_option_group(group)
+	
+	group = optparse.OptionGroup(parser, "Server-backed Execution Options (For information only, you shall not use these options)")
+	group.add_option("--server-controlled", dest = "standalone", action = "store_false", help = "server-controlled execution. This TE is run and controlled by a Testerman Server. You should not have to use this option, it is reserved for server-side execution only.", default = True)
+	group.add_option("--job-id", dest = "jobId", metavar = "ID", help = "job id for this TE, as allocated by the server", default = None, type = "int")
+	group.add_option("--remote-log-filename", dest = "remoteLogFilename", metavar = "FILE", help = "log filename to use, as allocated by the server", default = None)
+	group.add_option("--il-ip", dest = "ilServerIp", metavar = "ADDRESS", help = "set Testerman Server Il (log) target IP address to ADDRESS", default = None)
+	group.add_option("--il-port", dest = "ilServerPort", metavar = "PORT", help = "set Testerman Server Il (log)  target port address to PORT (default: %default)", default = DefaultIlServerPort, type = "int")
+	parser.add_option_group(group)
+	
+	(options, args) = parser.parse_args()
+	
+	if options.standalone:
+		# Optional TACS
+		TacsIp = options.tacsIp
+		TacsPort = options.tacsPort
+		# Remote logging is disabled
+		IlServerIp = None
+		IlServerPort = None
+		# Optional (local) log filename
+		LogFilename = options.logFilename
+		# Optional session parameter management
+		InputSessionFilename = options.inputSessionFilename
+		OutputSessionFilename = options.outputSessionFilename
+		if not InputSessionFilename:
+			# Human-provided session parameters
+			# TODO
+			pass
+		
+		if options.showInfo:
+			__showInfo()
+			sys.exit(0)
+	
+	else:
+		IlServerIp = options.ilServerIp
+		IlServerPort = options.ilServerPort
+		TacsIp = options.tacsIp
+		TacsPort = options.tacsPort
+		LogFilename = options.remoteLogFilename
+		JobId = options.jobId
+		InputSessionFilename = options.inputSessionFilename
+		OutputSessionFilename = options.outputSessionFilename
+		
+		if not JobId:
+			sys.stderr.write("A job ID is mandatory when running in server-controlled mode.\n")
+			sys.exit(RETURN_CODE_TE_ERROR)
+		if not LogFilename:
+			sys.stderr.write("A remote log filename is mandatory when running in server-controlled mode.\n")
+			sys.exit(RETURN_CODE_TE_ERROR)
+		if not TacsIp:
+			sys.stderr.write("A valid TACS IP address is mandatory when running in server-controlled mode.\n")
+			sys.exit(RETURN_CODE_TE_ERROR)
+		if not IlServerIp:
+			sys.stderr.write("A valid Il Server IP address is mandatory when running in server-controlled mode.\n")
+			sys.exit(RETURN_CODE_TE_ERROR)
+
+def __showInfo():
+	"""
+	Displays several info related to the ATS.
+	"""
+	print "Test Executable (TE) Info:"
+	print " Source ATS identifier: %s " % __ATS_ID
+	print " Generated on: %s (local time)" % time.strftime("%D %H:%M:%S", time.localtime(__TE_GENERATION_TIMESTAMP))
+	print " Generated by Testerman Server: %s (%s)" % (__TS_NAME, __TS_VERSION)
+	print
+	print "Accepted parameters:"
+	print __formatTable(headers = ['name', ('defaultValue', 'default value'), 'type', 'description' ], rows = __SCRIPT_METADATA['parameters'].values(), order = 'name')
+	print 
+	print "This TE has not been signed."
+	
+		
+def __formatTable(headers = [], rows = [], order = None, notAvailableLabel = "(n/a)"):
+	"""
+	Pretty format the list of dict (rows) according to the header list (headers)
+	Header names not found in the dict are not displayed, and
+	only header names found in the dict are displayed.
+	
+	Header is a list of either simple string (name) or tuple (name, label, [formatter]).
+	If it is a tuple, label is used to display the header, and name
+	to look for the element in the dicts.
+	The optional formatter is a function that will take the value to format as single arg.
+	"""
+	def formatRow(cols, widths):
+		"""
+		Formatting helper: row pretty print.
+		"""
+		line = " %s%s " % (cols[0], (widths[0]-len(cols[0]))*' ')
+		for i in range(1, len(cols)):
+			line = line + "| %s%s " % (cols[i], (widths[i]-len(cols[i]))*' ')
+		return line
+
+	def expand(header):
+		"""
+		returns the name, label, and formatter for a header entry.
+		"""
+		if isinstance(header, tuple):
+			if len(header) == 2:
+				return header[0], header[1], lambda x: x
+			elif len(header) == 3:
+				return header
+			else:
+				raise Exception("Invalid header")
+		else:
+			return header, header, lambda x:x
+
+	headers = map(expand, headers)
+
+	# First, we initialize the widths for each column
+	colLabels = []
+	widths = []
+	for name, label, _ in headers:
+		widths.append(len(label))
+		colLabels.append(label)
+
+	if order:
+		rows.sort(lambda x, y: cmp(x.get(order), y.get(order)))
+
+	lines = [ ]
+	for entry in rows:
+		i = 0
+		line = []
+		for name, label, formatter in headers:
+			if entry.has_key(name):
+				e = str(formatter(entry[name]))
+			else:
+				e = notAvailableLabel
+			if len(e) > widths[i]: widths[i] = len(e)
+			line.append(e)
+			i += 1
+		lines.append(line)
+
+	# Then we can display them
+	res = formatRow(colLabels, widths)
+	res += "\n"
+	res += '-'*len(res) + "\n"
+	for line in lines:
+		res += formatRow(line, widths) + "\n"
+	return res
+	
+
+################################################################################
+# TE base functions
+################################################################################
+
+def scanPlugins(paths, label):
+	for path in paths:
+		if not path in sys.path:
+			sys.path.append(path)
+	for path in paths:
+		try:
+			for m in os.listdir(path):
+				if m.startswith('.') or m.startswith('__init__') or not (os.path.isdir(path + '/' + m) or m.endswith('.py')):
+					continue
+				if m.endswith('.py'):
+					m = m[:-3]
+				try:
+					__import__(m)
+					# Actually, internal level is never activated at this time...
+					TestermanTCI.logInternal("INFO: analyzed %s %s" % (label, m))
+				except Exception, e:
+					TestermanTCI.logUser("WARNING: unable to import %s %s: %s" % (label, m, str(e)))
+		except Exception, e:
+			TestermanTCI.logUser("WARNING: unable to scan %s path %s: %s" % (label, path, str(e)))
+
+def initializeLogger(ilServerIp, ilServerPort, jobId, logFilename, maxPayloadSize):
+	if ilServerIp:
+		TestermanTCI.initialize(ilServerAddress = (ilServerIp, ilServerPort), jobId = jobId, logFilename = logFilename, maxPayloadSize = maxPayloadSize)
+		TestermanTCI.logInternal("initializing: using IlServer tcp://%s:%d" % (ilServerIp, ilServerPort))
+	else:
+		TestermanTCI.initialize(ilServerAddress = None, logFilename = logFilename, maxPayloadSize = maxPayloadSize)
+		TestermanTCI.logInternal("initializing: using local log filename: %s" % logFilename)
+
+def finalizeLogger():
+	try:
+		TestermanTCI.finalize()
+	except:
+		pass
+
+# Global TE initialization.
+# Testerman core libs initialization, connections to Testerman infrastructure,
+# TE plugins (probes and codecs) loading.
+def initializeTe(tacsIP, tacsPort):
+	if not tacsIP:
+		TestermanTCI.logUser("Support for remote probes is disabled (no TACS provided)")
+		TestermanSA.initialize(None)
+	else:
+		TestermanTCI.logInternal("initializing: using TACS tcp://%s:%d" % (tacsIP, tacsPort))
+		TestermanSA.initialize((tacsIP, tacsPort))
+	TestermanPA.initialize()
+	Testerman._initialize()
+	scanPlugins(ProbePaths, "probe")
+	scanPlugins(CodecPaths, "codec")
+
+def finalizeTe():
+	TestermanTCI.logInternal("finalizing...")
+	Testerman._finalize()
+	TestermanPA.finalize()
+	TestermanSA.finalize()
+	TestermanTCI.logInternal("finalized.")
+
+def convert_value(value, format = 'string'):
+	def to_bool(v):
+		if isinstance(v, (bool, int)):
+			return bool(v)
+		if isinstance(v, basestring):
+			return v.lower() in [ '1', 'true', 't', 'on' ]
+		return False	
+
+	if format == "string":
+		return unicode(value)
+	if format == "boolean":
+		return to_bool(value)
+	if format == "integer":
+		return int(value)
+	if format == "float":
+		return float(value)
+	return value
+
+################################################################################
+# TE Main
+################################################################################
+
+
+#
+__parseArgs()
+
+
+##
+# Logger initialization
+##
+try:
+	import TestermanTCI
+	initializeLogger(ilServerIp = IlServerIp, ilServerPort = IlServerPort, jobId = JobId, logFilename = LogFilename, maxPayloadSize = MaxLogPayloadSize)
+except Exception, e:
+	# We can't even log anything. 
+	print("Unable to connect to logging server: %s" % str(e))
+	sys.exit(RETURN_CODE_LOGGER_FAILURE)
+
+# TODO: check the current implementation version against the version that generated the TE (TS_VERSION).
+
+# OK, now we can at least log our start event
+TestermanTCI.logAtsStarted(id_ = __ATS_ID)
+
+##
+# Core libs initialization
+##
+try:
+	import ${adapter_module_name} as Testerman
+	from ${adapter_module_name} import *
+	initializeTe(TacsIp, TacsPort)
+except Exception, e:
+	__Return_Code = RETURN_CODE_INIT_FAILURE
+	TestermanTCI.logUser("Unable to initialize Code TE librairies: %s" % TestermanTCI.getBacktrace())
+	TestermanTCI.logAtsStopped(id_ = __ATS_ID, result = __Return_Code)
+	finalizeLogger()
+	sys.exit(__Return_Code)
+
+##
+# Cancellation setup (SIGINT/KeyboardInterrupt)
+##
+def onUserInterruptSignal(sig, frame):
+	# Will raise a CancelException before next test execution.
+	Testerman._cancel()
+
+signal.signal(signal.SIGINT, onUserInterruptSignal)
+
+##
+# "action" management (SIGUSR1)
+##
+def onActionPerformed(sig, frame):
+	Testerman._actionPerformedByUser()
+
+signal.signal(signal.SIGUSR1, onActionPerformed)
+
+##
+# Loads the input session
+##
+inputSession = {}
+try:
+	f = open(InputSessionFilename, 'r')
+	inputSession = pickle.loads(f.read())
+	f.close()
+except Exception, e:
+	TestermanTCI.logInternal("Unable to load input session: %s" % str(e))
+
+##
+# Globals wrapping: a way to to export to the global scopes
+# variables that will change along the time
+# DOES NOT WORK, SORRY.
+##
+#class GlobalWrapper:
+#	@property
+#	def mtc(self):
+#		testcase = getLocalContext().getTestCase()
+#		if testcase:
+#			return testcase._mtc
+#		else:
+#			return None
+#
+#TheGlobalWrapper = GlobalWrapper()
+#
+#globals()['mtc'] = TheGlobalWrapper.mtc
+
+##
+# ATS code reinjection
+##
+try:
+	# Session-provided parameters
+	for k, v in inputSession.items():
+		# Make the PX_ parameters appear as module variables for convenience
+		# Convert them to the type indicated in the script signature if one is available.
+		if k.startswith('PX_'):
+			# If the parameter is defined in the script signature, convert
+			# it to the correct type.
+			if k in __SCRIPT_METADATA['parameters']:
+				format = __SCRIPT_METADATA['parameters'][k]['type']
+				try:
+					v = convert_value(v, format)
+				except Exception, e:
+					raise Exception("Invalid value for parameter %s: '%s' is not a valid %s value" % (k, v, format))
+
+			Testerman.set_variable(k, v)
+			TestermanTCI.logUser("Using %s=%s" % (k, v))
+			setattr(sys.modules[__name__], k, v)
+		else:
+			Testerman.set_variable(k, v)
+	
+	# Complete with default values from the metadata
+	for k, d in __SCRIPT_METADATA['parameters'].items():
+		if not k in inputSession:
+			format = d['type']
+			default = d['defaultValue']
+			try:
+				v = convert_value(default, format)
+			except Exception, e:
+				raise Exception("Invalid default value for parameter %s: '%s' is not a valid %s value" % (k, v, format))
+
+			Testerman.set_variable(k, v)
+			TestermanTCI.logUser("Using [default] %s=%s" % (k, v))
+			setattr(sys.modules[__name__], k, v)
+
+	##
+	# The following code has been imported "as is" from the source ATS
+	##
+
+${source_ats}
+
+except TestermanCancelException, e:
+	__Return_Code = RETURN_CODE_CANCELLED
+	__Return_Message = "ATS cancelled by user."
+
+except TestermanStopException, e:
+	__Return_Code = e.retcode
+	if e.retcode is None:
+		__Return_Code = RETURN_CODE_OK
+	__Return_Message = "ATS explicitely stopped in control part."
+
+except TestermanTtcn3Exception, e:
+	__Return_Code = RETURN_CODE_TTCN3_ERROR
+	__Return_Message = "TTCN-3 like error: %s" % str(TestermanTCI.getBacktrace())
+
+except Exception, e:
+	__Return_Code = RETURN_CODE_TE_ERROR
+	__Return_Message = "Generic exception: %s" % str(TestermanTCI.getBacktrace())
+
+
+# Dumps the current session
+try:
+	f = open(OutputSessionFilename, 'w')
+	f.write(pickle.dumps(Testerman._get_all_session_variables()))
+	f.close()
+except Exception, e:
+	TestermanTCI.logInternal("Unable to dump current session: %s" % str(e))
+
+
+##
+# Finalization
+##
+try:
+	finalizeTe()
+except:
+	pass
+
+if __Return_Message:
+	TestermanTCI.logUser(__Return_Message)
+TestermanTCI.logAtsStopped(id_ = __ATS_ID, result = __Return_Code)
+
+finalizeLogger()
+
+# Make sure all our process children are killed
+TestermanPA.killChildren()
+sys.exit(__Return_Code)

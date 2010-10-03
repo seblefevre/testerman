@@ -36,8 +36,17 @@ import tokenize
 import StringIO
 import modulefinder
 import imp
+import re
+
 
 cm = ConfigManager.instance()
+
+# The Test Executable template is basically a python file
+# with some ${token} in it, substituted on TE generation.
+# If you modify it, make sure that the resulting TE
+# keeps the same command line flags for server-controlled executions.
+TE_TEMPLATE_NAME = "TestExecutable.py.template"
+
 
 def getLogger():
 	return logging.getLogger('TEFactory')
@@ -98,6 +107,8 @@ def smartReindent(code, indentCharacter = '\t', reindentCount = 1):
 def createTestExecutable(name, ats):
 	"""
 	Creates a complete, command-line parameterized TE from a source ATS.
+	This basically replaces specific fields in the TE template with
+	actual values.
 
 	@type  name: string
 	@param name: the ATS friendly name / identifier	
@@ -128,321 +139,52 @@ def createTestExecutable(name, ats):
 		adapterModuleName = cm.get("testerman.te.python.ttcn3module")
 
 	getLogger().info("%s: language API %s - selected adapter module: %s" % (name, metadata.api, adapterModuleName))
-
-	# We construct the te as a list to ''.join() for better performance (better than str += operator)
-	te = []
-
-	# The decorator header
-	te.append("""################################################################################
-# -*- coding: utf-8 -*-
-#
-# This Test Executable (TE) was automatically created
-# by Testerman Server %(version)s on %(time)s
-# based on the source ATS %(name)s.
-#
-################################################################################
-
-import os
-import pickle
-import random
-import signal
-import sys
-import time
-
-################################################################################
-# Some constants
-################################################################################
-
-RETURN_CODE_LOGGER_FAILURE = 10
-RETURN_CODE_INIT_FAILURE = 11
-RETURN_CODE_CANCELLED = 1
-RETURN_CODE_TTCN3_ERROR = 12
-RETURN_CODE_TE_ERROR = 13
-RETURN_CODE_OK = 0
-
-PASS = "pass"
-FAIL = "fail"
-ERROR = "error"
-NONE = "none"
-INCONC = "inconc"
-
-TS_VERSION = %(version)s
-
-ATS_ID = %(name)s
-""" % dict(name = repr(name), version = repr(Versions.getServerVersion()), time = time.strftime("%Y%m%d, at %H:%M:%S", time.localtime(time.time()))))
-
-	# TE global variables
-	te.append("""
-################################################################################
-# TE variables (overridable on the command line)
-################################################################################
-
-# Set from command line: job dependent
-JobId = int(sys.argv[1])
-LogFilename = sys.argv[2]
-InputSessionFilename = sys.argv[3]
-OutputSessionFilename = sys.argv[4]
-
-# Set from command line (soon): server dependent
-IlServerIp = %(ilIp)s
-IlServerPort = %(ilPort)d
-TacsIp = %(tacsIp)s
-TacsPort = %(tacsPort)d
-MaxLogPayloadSize = %(maxLogPayloadSize)d
-ProbePaths = %(probePaths)s
-CodecPaths = %(codecPaths)s
-""" % dict(ilIp = repr(ilIp), ilPort = ilPort, tacsIp = repr(tacsIp), tacsPort = tacsPort, 
-           maxLogPayloadSize = maxLogPayloadSize, probePaths = repr(probePaths), codecPaths = repr(codecPaths)))
-
-	# Some ATS-dedicated functions
-	te.append("""
-################################################################################
-# TE base functions
-################################################################################
-
-def scanPlugins(paths, label):
-	for path in paths:
-		if not path in sys.path:
-			sys.path.append(path)
-	for path in paths:
-		try:
-			for m in os.listdir(path):
-				if m.startswith('.') or m.startswith('__init__') or not (os.path.isdir(path + '/' + m) or m.endswith('.py')):
-					continue
-				if m.endswith('.py'):
-					m = m[:-3]
-				try:
-					__import__(m)
-					# Actually, internal level is never activated at this time...
-					TestermanTCI.logInternal("INFO: analyzed %s %s" % (label, m))
-				except Exception, e:
-					TestermanTCI.logUser("WARNING: unable to import %s %s: %s" % (label, m, str(e)))
-		except Exception, e:
-			TestermanTCI.logUser("WARNING: unable to scan %s path %s: %s" % (label, path, str(e)))
-
-def initializeLogger(ilServerIp, ilServerPort, jobId, logFilename, maxPayloadSize):
-	TestermanTCI.initialize(ilServerAddress = (ilServerIp, ilServerPort), jobId = jobId, logFilename = logFilename, maxPayloadSize = maxPayloadSize)
-	TestermanTCI.logInternal("initializing: using IlServer tcp://%s:%d" % (ilServerIp, ilServerPort))
-
-def finalizeLogger():
-	TestermanTCI.finalize()
-
-def initializeTe(tacsIP, tacsPort):
-	"\"\"
-	Global TE initialization.
-	Testerman core libs initialization, connections to Testerman infrastructure,
-	TE plugins (probes and codecs) loading.
-	"\"\"
-	TestermanTCI.logInternal("initializing: using TACS tcp://%s:%d" % (tacsIP, tacsPort))
-	TestermanSA.initialize((tacsIP, tacsPort))
-	TestermanPA.initialize()
-	Testerman._initialize()
-	scanPlugins(ProbePaths, "probe")
-	scanPlugins(CodecPaths, "codec")
-
-def finalizeTe():
-	TestermanTCI.logInternal("finalizing...")
-	Testerman._finalize()
-	TestermanPA.finalize()
-	TestermanSA.finalize()
-	TestermanTCI.logInternal("finalized.")
-
-def convert_value(value, format = 'string'):
-	def to_bool(v):
-		if isinstance(v, (bool, int)):
-			return bool(v)
-		if isinstance(v, basestring):
-			return v.lower() in [ '1', 'true', 't', 'on' ]
-		return False	
-
-	if format == "string":
-		return unicode(value)
-	if format == "boolean":
-		return to_bool(value)
-	if format == "integer":
-		return int(value)
-	if format == "float":
-		return float(value)
-	return value
-
- 
-""")
-
-	# TE Initialization
-	te.append("""
-################################################################################
-# TE Main
-################################################################################
-
-#: Main return result from the execution
-# WARNING/FIXME: make sure that the ATS won't override such a variable (oh well.. what if it does ? nothing impacting...)
-ReturnCode = RETURN_CODE_OK
-ReturnMessage = ''
-
-ScriptMetadata = %(metadata)s
-
-##
-# Logger initialization
-##
-try:
-	import TestermanTCI
-	initializeLogger(ilServerIp = IlServerIp, ilServerPort = IlServerPort, jobId = JobId, logFilename = LogFilename, maxPayloadSize = MaxLogPayloadSize)
-except Exception, e:
-	# We can't even log anything. 
-	print("Unable to connect to logging server: %%s" %% str(e))
-	sys.exit(RETURN_CODE_LOGGER_FAILURE)
-
-# TODO: check the current implementation version against the version that generated the TE (TS_VERSION).
-
-# OK, now we can at least log our start event
-TestermanTCI.logAtsStarted(id_ = ATS_ID)
-
-##
-# Core libs initialization
-##
-try:
-	import %(adapterModuleName)s as Testerman
-	from %(adapterModuleName)s import *
-	initializeTe(TacsIp, TacsPort)
-except Exception, e:
-	ReturnCode = RETURN_CODE_INIT_FAILURE
-	TestermanTCI.logUser("Unable to initialize Code TE librairies: %%s" %% TestermanTCI.getBacktrace())
-	TestermanTCI.logAtsStopped(id_ = ATS_ID, result = ReturnCode)
-	sys.exit(ReturnCode)
-""" % dict(adapterModuleName = adapterModuleName, metadata = repr(metadata.toDict())))
-
-	# Main try/catch containing the (almost) untouched ATS code
-	te.append("""
-
-##
-# Cancellation setup (SIGINT/KeyboardInterrupt)
-##
-def onUserInterruptSignal(sig, frame):
-	# Will raise a CancelException before next test execution.
-	Testerman._cancel()
-
-signal.signal(signal.SIGINT, onUserInterruptSignal)
-
-##
-# "action" management (SIGUSR1)
-def onActionPerformed(sig, frame):
-	Testerman._actionPerformedByUser()
-
-signal.signal(signal.SIGUSR1, onActionPerformed)
-
-##
-# Loads the input session
-##
-inputSession = {}
-try:
-	f = open(InputSessionFilename, 'r')
-	inputSession = pickle.loads(f.read())
-	f.close()
-except Exception, e:
-	TestermanTCI.logInternal("Unable to load input session: %s" % str(e))
-
-##
-# Globals wrapping: a way to to export to the global scopes
-# variables that will change along the time
-# DOES NOT WORK, SORRY.
-##
-#class GlobalWrapper:
-#	@property
-#	def mtc(self):
-#		testcase = getLocalContext().getTestCase()
-#		if testcase:
-#			return testcase._mtc
-#		else:
-#			return None
-#
-#TheGlobalWrapper = GlobalWrapper()
-#
-#globals()['mtc'] = TheGlobalWrapper.mtc
-
-##
-# ATS code reinjection
-##
-try:
-	# Set the session and ATS parameters
-	for k, v in inputSession.items():
-		# Make the PX_ parameters appear as module variables for convenience
-		# Convert them to the type indicated in the script signature if one is available.
-		if k.startswith('PX_'):
-			# If the parameter is defined in the script signature, convert
-			# it to the correct type.
-			if k in ScriptMetadata['parameters']:
-				format = ScriptMetadata['parameters'][k]['type']
-				try:
-					v = convert_value(v, format)
-				except Exception, e:
-					raise Exception("Invalid value for parameter %s: '%s' is not a valid %s value" % (k, v, format))
-
-			Testerman.set_variable(k, v)
-			TestermanTCI.logUser("Using %s=%s" % (k, v))
-			setattr(sys.modules[__name__], k, v)
-		else:
-			Testerman.set_variable(k, v)
-
-	##
-	# The following code has been imported "as is" from the source ATS
-	##
-		
-""")
-	te.append(smartReindent(ats))
-	te.append("""
-
-except TestermanCancelException, e:
-	ReturnCode = RETURN_CODE_CANCELLED
-	ReturnMessage = "ATS cancelled by user."
-
-except TestermanStopException, e:
-	ReturnCode = e.retcode
-	if e.retcode is None:
-		ReturnCode = RETURN_CODE_OK
-	ReturnMessage = "ATS explicitely stopped in control part."
-
-except TestermanTtcn3Exception, e:
-	ReturnCode = RETURN_CODE_TTCN3_ERROR
-	ReturnMessage = "TTCN-3 like error: %s" % str(TestermanTCI.getBacktrace())
-
-except Exception, e:
-	ReturnCode = RETURN_CODE_TE_ERROR
-	ReturnMessage = "Generic exception: %s" % str(TestermanTCI.getBacktrace())
-
-
-# Dumps the current session
-try:
-	f = open(OutputSessionFilename, 'w')
-	f.write(pickle.dumps(Testerman._get_all_session_variables()))
-	f.close()
-except Exception, e:
-	TestermanTCI.logInternal("Unable to dump current session: %s" % str(e))
-
-
-##
-# Finalization
-##
-try:
-	finalizeTe()
-except:
-	pass
-
-if ReturnMessage:
-	TestermanTCI.logUser(ReturnMessage)
-TestermanTCI.logAtsStopped(id_ = ATS_ID, result = ReturnCode)
-
-try:
-	finalizeLogger()
-except:
-	pass
-
-# Make sure all our process children are killed
-TestermanPA.killChildren()
-sys.exit(ReturnCode)
-""")
 	
-	return ''.join(te)
+	# Open the template.
+	templateFilename =  "%s/%s" % (cm.get_transient('ts.server_root'), TE_TEMPLATE_NAME)
+	try:
+		f = open(templateFilename, 'r')
+		template = f.read()
+		f.close()
+	except:
+		raise Exception("Unable to build Test Executable: Test Executable template %s not found" % templateFilename)
 
+	# Continue with variable substitution	
+	def substituteVariables(s, values):
+		"""
+		Replaces ${name} with values[name] in s.
+		If name is not found, the token is left unchanged.
+		"""
+		def _subst(match, local_vars = None):
+			name = match.group(1)
+			if name.endswith('_repr'):
+				return repr(values.get(name[:-5], '${%s}' % name))
+			else:
+				return values.get(name, '${%s}' % name)
+		return re.sub(r'\$\{([a-zA-Z_0-9-]+)\}', _subst, s)
+
+	now = time.time()
+	variables = dict(
+		il_ip = ilIp, il_port = ilPort, 
+		tacs_ip = tacsIp, tacs_port = tacsPort,
+    max_log_payload_size = maxLogPayloadSize, 
+		probe_paths = probePaths, codec_paths = codecPaths,
+		adapter_module_name = adapterModuleName, 
+		metadata = metadata.toDict(),
+		source_ats = smartReindent(ats),
+		ats_id = name,
+		ts_version = Versions.TESTERMAN_SERVER_VERSION,
+		ts_name = cm.get('ts.name'),
+		gen_timestamp = now,
+		gen_time = time.strftime('%Y%m%d %H:%M:%S UTC', time.gmtime(now)),
+		)
+	try:
+		te = substituteVariables(template, variables)
+	except Exception, e:
+		getLogger().error("Unable to substitute variables in TE: %s" % str(e))
+		raise e
+	
+	return te
 	
 def createCommandLine(jobId, teFilename, logFilename, inputSessionFilename, outputSessionFilename, modulePaths):
 	"""
@@ -451,8 +193,18 @@ def createCommandLine(jobId, teFilename, logFilename, inputSessionFilename, outp
 	"""
 	ret = {}
 
-	# No --flags for now.
-	cmdOptions = [ str(jobId), logFilename, inputSessionFilename, outputSessionFilename ]
+	# Add the various flags for a server-controlled execution
+	cmdOptions = map(str, [ 
+		'--server-controlled', 
+		'--job-id', jobId, 
+		'--remote-log-filename', logFilename, 
+		'--input-session-filename', inputSessionFilename, 
+		'--output-session-filename', outputSessionFilename,
+		'--tacs-ip', cm.get("tacs.ip"),
+		'--tacs-port', cm.get("tacs.port"),
+		'--il-ip', cm.get("interface.il.ip"),
+		'--il-port', cm.get("interface.il.port"),
+		])
 
 	# Interpreter
 	pythonInterpreter = cm.get("testerman.te.python.interpreter")

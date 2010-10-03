@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 ##
 # This file is part of Testerman, a test automation system.
-# Copyright (c) 2008-2009 Sebastien Lefevre and other contributors
+# Copyright (c) 2008,2009,2010 Sebastien Lefevre and other contributors
 #
 # This program is free software; you can redistribute it and/or modify it under
 # the terms of the GNU General Public License as published by the Free Software
@@ -360,7 +360,20 @@ class IaClient(Nodes.ConnectingNode):
 	def getCounter(self, path):
 		return 0
 	#...
-		
+
+
+class DisabledIaClient:
+	"""
+	This dummy implementation prevents all communications on Ia channel.
+	This is used when no TACS address is provided during initialization.
+	"""
+	def setLogNotificationCallback(self, cb): pass
+	def setReceivedNotificationCallback(self, cb): pass
+	def setProbeNotificationCallback(self, cb): pass
+	def stop(self): pass
+	def finalize(self): pass
+	def __getattr__(self, name):
+		raise Exception("No TACS provided - there is no support for remote probe; Ia client has been disabled")
 
 TheIaClient = None
 
@@ -369,9 +382,12 @@ def instance():
 
 def initialize(name, serverAddress):
 	global TheIaClient
-	TheIaClient = IaClient(name)
-	instance().initialize(serverAddress)
-	instance().start()
+	if serverAddress:
+		TheIaClient = IaClient(name)
+		instance().initialize(serverAddress)
+		instance().start()
+	else:
+		TheIaClient = DisabledIaClient()
 
 def finalize():
 	instance().stop()
