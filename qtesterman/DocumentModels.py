@@ -127,14 +127,18 @@ class MetadataModel(QObject):
 		"""
 		To call once modifications have been saved
 		"""
-		self.setModified(False)
+		self.setModified(False, force = True)
 
-	def setModified(self, modified):
+	def setModified(self, modified, force = False):
+		"""
+		Updates the modified state from true to false only if force is set.
+		"""
 		if modified:
 			self.notifyUpdate()
 		if modified != self.modified:
-			self.modified = modified
-			self.emit(SIGNAL('modificationChanged(bool)'), self.modified)
+			if modified or force:
+				self.modified = modified
+				self.emit(SIGNAL('modificationChanged(bool)'), self.modified)
 
 	def notifyUpdate(self):
 		if not self.notificationDisabled:
