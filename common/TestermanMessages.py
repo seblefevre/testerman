@@ -93,6 +93,7 @@ class Message(object):
 	
 	ENCODING_UTF8 = "utf-8"
 	ENCODING_BASE64 = "base64"
+	ENCODING_NONE = "none"
 	
 	CONTENT_TYPE_PYTHON_PICKLE = "application/x-python-pickle" # specific type
 	CONTENT_TYPE_JSON = "application/json" # Official one
@@ -129,7 +130,7 @@ class Message(object):
 			self.setContentType(self.CONTENT_TYPE_JSON)
 		elif profile == self.CONTENT_TYPE_PYTHON_PICKLE:
 			self.body = pickle.dumps(body)
-			self.setContentEncoding(self.ENCODING_UTF8)
+			self.setContentEncoding(self.ENCODING_NONE)
 			self.setContentType(self.CONTENT_TYPE_PYTHON_PICKLE)
 		elif profile == self.CONTENT_TYPE_GZIP:
 			self.body = base64.encodestring(zlib.compress(body))
@@ -177,6 +178,7 @@ class Message(object):
 			body = body.decode('utf-8')
 		elif contentEncoding == self.ENCODING_BASE64:
 			body = base64.decodestring(body)
+		# Other encodings are not decoded/supported
 		
 		# Then turn the content type into something higher level
 		if contentType == self.CONTENT_TYPE_JSON:
