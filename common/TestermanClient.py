@@ -123,7 +123,6 @@ class Client(Nodes.ConnectingNode):
 			port = int(port)
 			return (host, port)
 		except Exception, e:
-			print "DEBUG: " + str(e)
 			return ('', 0)
 
 	def startXc(self):
@@ -1082,7 +1081,7 @@ class Client(Nodes.ConnectingNode):
 			return self.__proxy.restartAgent(agentName)
 		except xmlrpclib.Fault, e:
 			self.getLogger().error("Restarting fault: " + str(e))
-			raise e
+			raise Exception(e.faultString)
 		return False
 
 	def updateAgent(self, agentName, branch = None, version = None):
@@ -1095,7 +1094,7 @@ class Client(Nodes.ConnectingNode):
 			return self.__proxy.updateAgent(agentName, branch, version)
 		except xmlrpclib.Fault, e:
 			self.getLogger().error("Updating fault: " + str(e))
-			raise e
+			raise Exception(e.faultString)
 		return False
 
 	##

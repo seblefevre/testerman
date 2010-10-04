@@ -698,7 +698,7 @@ class PositionalSequenceNode(SyntaxNode):
 			# The line has not been consumed completely - just check that
 			# we have all our mandatory fields
 			if nextField < len(self._fields):
-				raise MissingToken("missing mandatory positional argument %s (%s)" % (nextField, self._field[nextField][1]))
+				raise MissingToken("missing mandatory positional argument %s (%s)" % (nextField, self._fields[nextField][1]))
 
 			# OK, we have everything, and nothing can't be completed at
 			# our level (i.e. in this node branch) anymore

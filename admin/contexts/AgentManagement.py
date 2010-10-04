@@ -51,7 +51,7 @@ class AgentContext(CommandContext):
 
 		# Update agent
 		branches = EnumNode()
-		branches.addChoice("stable", "stable version"),
+		branches.addChoice("stable", "stable version")
 		branches.addChoice("testing", "testing version")
 		branches.addChoice("experimental", "experimental version")
 		node = SequenceNode()
@@ -144,21 +144,21 @@ class AgentContext(CommandContext):
 		Restarts the agent agent:agentName
 		"""
 		self.notify("Restarting agent %s..." % agent)
-		ret = self._getClient().restartAgent(agent)
-		if not ret:
-			self.notify("Unable to restart this agent.")
-		else:
+		try:
+			self._getClient().restartAgent(agent)
 			self.notify("Agent successfully restarted.")
+		except Exception, e:
+			self.notify("Unable to restart this agent:\n%s" % str(e))
 
 	def updateAgent(self, agent, branch = 'stable', version = None):
 		"""
 		Requests the agent agent:agentName to update
 		"""
 		self.notify("Updating agent %s..." % agent)
-		ret = self._getClient().updateAgent(agent, branch, version)
-		if not ret:
-			self.notify("Unable to update this agent.")
-		else:
+		try:
+			self._getClient().updateAgent(agent, branch, version)
 			self.notify("Agent successfully updated.")
 			self.notify("Don't forget to restart it to take the update into account.")
+		except Exception, e:
+			self.notify("Unable to update this agent:\n%s" % str(e))
 

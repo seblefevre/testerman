@@ -335,19 +335,23 @@ class IaClient(Nodes.ConnectingNode):
 		request = Messages.Request("RESTART", agentUri, "Ia", "1.0")
 		request.setHeader('Agent-Uri', str(agentUri))
 		response = self.executeRequest(0, request)
-		if response and response.getStatusCode() == 200:
+		if not response:
+			raise TaccException("Timeout while restarting agent %s" % agentUri)
+		elif response.getStatusCode() == 200:
 			return True
 		else:
-			return False
+			raise TaccException("Unable to restart agent %s: %s" % (agentUri, response.getApplicationBody()))
 
 	def updateAgent(self, agentUri):
 		request = Messages.Request("UPDATE", agentUri, "Ia", "1.0")
 		request.setHeader('Agent-Uri', str(agentUri))
 		response = self.executeRequest(0, request)
-		if response and response.getStatusCode() == 200:
+		if not response:
+			raise TaccException("Timeout while updating agent %s" % agentUri)
+		elif response.getStatusCode() == 200:
 			return True
 		else:
-			return False
+			raise TaccException("Unable to update agent %s: %s" % (agentUri, response.getApplicationBody()))
 
 	def getVariables(self):
 		request = Messages.Request("GET-VARIABLES", "system:tacs", "Ia", "1.0")
