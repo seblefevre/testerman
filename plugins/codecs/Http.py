@@ -65,6 +65,9 @@ class HttpRequestCodec(CodecManager.IncrementalCodec):
 				bodyLength = len(body)
 			ret.append('Content-Length: %d' % bodyLength)
 		ret.append('')
+		
+		ret = map(lambda x: x.encode('iso8859-1'), ret)
+		
 		if body:
 			ret.append(body)
 		
