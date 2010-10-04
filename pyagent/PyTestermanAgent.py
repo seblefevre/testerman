@@ -656,7 +656,7 @@ class Agent(Nodes.ConnectingNode):
 			branches = None
 		else:
 			branches = preferredBranches
-		currentVersion = VERSION
+		currentVersion = Version.VERSION
 		# basepath is "pyagent/..", where pyagent is the name of the folder contained in the component package.
 		basepath = os.path.normpath(os.path.realpath(os.path.dirname(sys.modules[globals()['__name__']].__file__)))
 	
