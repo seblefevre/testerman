@@ -375,7 +375,7 @@ div.system-payload {
 	padding: 2px;
   border: solid 0px;
 	background: #eeeeee;
-	font: normal 11px courier;
+	font: normal 11px "courier new";
   word-wrap: break-word;
   display: none; /* switched to block via javascript, collapsed by default */
 }
@@ -388,7 +388,7 @@ div.message .value {
 	padding: 2px;
   border: solid 0px;
 	background: #eeeeee;
-	font: normal 11px courier;
+	font: normal 11px "courier new";
 }
 
 div.message .record {
