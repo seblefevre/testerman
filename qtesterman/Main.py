@@ -41,6 +41,7 @@ import OutlineView
 import ChatView
 import Preferences
 import DocumentManager
+import LogViewer
 
 # FIXME: editors should be loaded as "plugins"
 # The Editors module contains a reference to QScintilla.
@@ -748,6 +749,8 @@ class WMainWindow(QMainWindow):
 		self.saveToRepositoryAsAction.setIcon(icon(':/icons/save-to-repository.png'))
 		self.saveLocalCopyAsAction = TestermanAction(self, "Save a &local copy...", self.saveLocalCopyAs, "Save a copy of the current document on the local computer")
 		self.saveLocalCopyAsAction.setIcon(icon(':/icons/file-save-copy.png'))
+		self.openLogAction = TestermanAction(self, "Open &log file...", self.openLog, "Open a log file in the log analyzer")
+#		self.openLogAction.setIcon(icon(':/icons/file-open.png'))
 
 		# Edit
 		self.replaceAction = TestermanAction(self, "Searc&h/Replace", self.replace, "Search and/or replace text in the document", "Ctrl+R")
@@ -824,12 +827,14 @@ class WMainWindow(QMainWindow):
 		self.fileMenu.addAction(self.newCampaignAction)
 		self.fileMenu.addAction(self.newModuleAction)
 		self.fileMenu.addAction(self.openAction)
-		self.fileMenu.addAction(self.reloadAction)
+		self.fileMenu.addAction(self.openLogAction)
 		self.fileMenu.addAction(self.saveAction)
 		self.fileMenu.addAction(self.saveAsAction)
 		self.fileMenu.addAction(self.saveLocalCopyAsAction)
 		self.fileMenu.addSeparator()
 		self.fileMenu.addAction(self.saveToRepositoryAsAction)
+		self.fileMenu.addSeparator()
+		self.fileMenu.addAction(self.reloadAction)
 		self.fileMenu.addSeparator()
 		self.fileMenu.addAction(self.closeAction)
 		self.fileMenu.addSeparator()
@@ -901,6 +906,20 @@ class WMainWindow(QMainWindow):
 			directory = os.path.dirname(unicode(filename))
 			settings.setValue('lastVisitedDirectory', QVariant(directory))
 			self.documentManager.openUrl(QUrl.fromLocalFile(filename))
+
+	def openLog(self):
+		"""
+		Open a Open File dialog, etc.
+		"""
+		settings = QSettings()
+		directory = settings.value('lastVisitedDirectory', QVariant("")).toString()
+		filename = QFileDialog.getOpenFileName(self, "Choose a file", directory, "Log file (*.xml *.log);;All (*)")
+		if not filename.isEmpty():
+			directory = os.path.dirname(unicode(filename))
+			settings.setValue('lastVisitedDirectory', QVariant(directory))
+			logAnalyzer = LogViewer.WLogViewer(parent = self)
+			logAnalyzer.openUrl(QUrl.fromLocalFile(filename))
+			logAnalyzer.show()
 
 	def quit(self):
 		"""
