@@ -184,8 +184,7 @@ class WRemoteFileListWidget(QListWidget):
 		
 	Emits some signals:
 	- dirChanged(QString path): the current dir has been changed. Path is a
-	  relative path from the base path. You may call getAbsolutePath() to
-		get the docroot path.
+	  docroot-path.
 	- fileSelected(QUrl fileUrl): a file has been selected by activating it
 	  (double-click, etc). fileUrl is the complete url to the file.
 	"""
@@ -193,9 +192,9 @@ class WRemoteFileListWidget(QListWidget):
 		"""
 		@type  basePath: string
 		@param basePath: the "minimal" path; the user won't be able
-		to browse outside it.
+		to browse outside it (docroot-relative)
 		@type  path: string
-		@param path: the current path, relative to basePath
+		@param path: the current path (docroot-relative)
 		@type  filter_: list of strings
 		@param filter_: if None, all files are displayed. If set, only these
 		file types are displayed. In any case, directories are shown.
@@ -228,7 +227,6 @@ class WRemoteFileListWidget(QListWidget):
 		menu.popup(event.globalPos())
 
 	def refresh(self):
-		print "DEBUG: path: %s" % self._path
 		self.clear()
 		try:
 			l = self.getClient().getDirectoryListing(self._path)
@@ -240,16 +238,17 @@ class WRemoteFileListWidget(QListWidget):
 			self.addItem(DirListItem('%s/%s' % (self._path, '..')))
 
 		fileItems = []
-		for entry in l:
-			t = entry['type']
-			if t == 'directory':
-				child = DirListItem('%s/%s' % (self._path, entry['name']))
-				# Directories added first - file item addition deferred
-				self.addItem(child)
-			elif self._filter is None or t in self._filter:
-				child = FileListItem('%s/%s' % (self._path, entry['name']))
-				# Deferred addition
-				fileItems.append(child)
+		if l is not None:
+			for entry in l:
+				t = entry['type']
+				if t == 'directory':
+					child = DirListItem('%s/%s' % (self._path, entry['name']))
+					# Directories added first - file item addition deferred
+					self.addItem(child)
+				elif self._filter is None or t in self._filter:
+					child = FileListItem('%s/%s' % (self._path, entry['name']))
+					# Deferred addition
+					fileItems.append(child)
 
 		for child in fileItems:
 			self.addItem(child)
@@ -276,39 +275,25 @@ class WRemoteFileListWidget(QListWidget):
 	def getClient(self):
 		return self._client
 
-	def setPath(self, path):
-		"""
-		Sets a path relative to the base path
-		"""
-		p = os.path.normpath("%s/%s" % (self._basePath, unicode(path)))
-		p = p.replace('\\', '/') # keep / as sep as we use the server convention
-		# Restrict to base path
-		if not p.startswith(self._basePath):
-			p = self._basePath
-		self._path = p
-		self.refresh()
-	
 	def getPath(self):
-		return unicode(self._path)[len(self._basePath):]
-	
-	def getAbsolutePath(self):
 		return self._path
 
-	def setAbsolutePath(self, path):
+	def setPath(self, path):
 		"""
-		Sets an absolute path
+		Sets the current path to path
 		"""
 		p = os.path.normpath(unicode(path))
 		p = p.replace('\\', '/') # keep / as sep as we use the server convention
-#		print "DEBUG: setting absolute path to %s..." % p
+#		print "DEBUG: setting path to %s..." % p
 		# Restrict to base path
+		# FIXME - this allows something like /repository2 if /repository is the base path
 		if not p.startswith(self._basePath):
 			p = self._basePath
 		self._path = p
 		self.refresh()
 
 	def createFolder(self):
-#		print "DEBUG: creating a new folder in %s..." % self.getAbsolutePath()
+#		print "DEBUG: creating a new folder in %s..." % self.getPath()
 		(name, status) = QInputDialog.getText(self, "New folder", "Folder name:")
 		while status and not validateDirectoryName(name):
 			# Display some error message
@@ -316,12 +301,12 @@ class WRemoteFileListWidget(QListWidget):
 			(name, status) = QInputDialog.getText(self, "New folder", "Folder name:")
 
 		if not name.isEmpty():
-			self._client.makeDirectory("%s/%s" % (self.getAbsolutePath(), name))
+			self._client.makeDirectory("%s/%s" % (self.getPath(), name))
 			self.refresh()
 
 	def onItemActivated(self, item):
 		if isinstance(item, DirListItem):
-			self.setAbsolutePath(item.getUrl().path())
+			self.setPath(item.getUrl().path())
 			self.emit(SIGNAL('dirChanged(QString)'), self.getPath())
 		else:
 			self.emit(SIGNAL('fileSelected(QUrl)'), item.getUrl())
@@ -330,11 +315,13 @@ class WRemoteFileDialog(QDialog):
 	"""
 	File selector.
 	"""
-	def __init__(self, client, basePath = '/repository', path = '/', filter_ = None, defaultExtension = None, saveMode = False, parent = None):
+	def __init__(self, client, basePath = '/repository', path = None, filter_ = None, defaultExtension = None, saveMode = False, parent = None):
 		QDialog.__init__(self, parent)
 		self._client = client
 		self._defaultExtension = defaultExtension
 		self._saveMode = saveMode
+		if not path:
+			path = basePath
 		self.__createWidgets(basePath, path, filter_)
 		
 		if self._saveMode:
@@ -374,8 +361,8 @@ class WRemoteFileDialog(QDialog):
 		layout.addLayout(buttonLayout)
 
 		self.connect(self._listWidget, SIGNAL('currentItemChanged(QListWidgetItem*, QListWidgetItem*)'), self.onCurrentItemChanged)
-
 		self.updateCurrentPathLabel(self._listWidget.getPath())
+		self._filenameLineEdit.setFocus(Qt.OtherFocusReason)
 
 	def updateCurrentPathLabel(self, path):
 		if not path:
@@ -403,7 +390,7 @@ class WRemoteFileDialog(QDialog):
 					return
 
 				# Set the complete selected file name
-				self._selectedFilename = "%s/%s" % (self._listWidget.getAbsolutePath(), filename)
+				self._selectedFilename = "%s/%s" % (self._listWidget.getPath(), filename)
 				if self._warningOnOverwrite:
 					# Check if the file exist - in real time, not based on the current view
 					# (which may not be up-to-date)
@@ -416,7 +403,7 @@ class WRemoteFileDialog(QDialog):
 			
 			else:
 				# Set the complete selected file name
-				self._selectedFilename = "%s/%s" % (self._listWidget.getAbsolutePath(), filename)
+				self._selectedFilename = "%s/%s" % (self._listWidget.getPath(), filename)
 
 			QDialog.accept(self)
 
@@ -436,15 +423,17 @@ class WRemoteFileDialog(QDialog):
 ##
 # Convenience function to get a filename to use to save a file to the repository
 ##
-def getSaveFilename(client, basePath = '/repository', path = '/', title = "Save file as...", filter_ = None, defaultExtension = None, parent = None):
+def getSaveFileName(client, basePath = '/repository', dir = '', caption = "Save file as...", filter_ = None, defaultExtension = None, parent = None):
 	"""
 	Convenience function.
 
 	Returns a QString with a path to use to save a file, 
 	or an empty string if no name has been selected (or dialog box cancelled)
 	"""
-	dialog = WRemoteFileDialog(client, basePath, path, filter_, defaultExtension, saveMode = True, parent = parent)
-	dialog.setWindowTitle(title)
+	if not dir:
+		dir = basePath
+	dialog = WRemoteFileDialog(client, basePath, dir, filter_, defaultExtension, saveMode = True, parent = parent)
+	dialog.setWindowTitle(caption)
 	if dialog.exec_() == QDialog.Accepted:
 		return dialog.getSelectedFilename()
 	else:
@@ -828,7 +817,7 @@ class DirWidgetItem(ExpandableWidgetItem):
 		# Delta deletion or addition
 		reason = notification.getHeader('Reason')
 		name = notification.getHeader('File-Name')
-		print "DEBUG: file event notification on uri %s: '%s' %s" % (notification.getUri(), name, reason)
+#		print "DEBUG: file event notification on uri %s: '%s' %s" % (notification.getUri(), name, reason)
 		if reason == 'deleted':
 			# name, which is an item in this folder, has been deleted.
 			# Find it and delete it.
@@ -844,7 +833,7 @@ class DirWidgetItem(ExpandableWidgetItem):
 			self.addFetchedChildItems([{'name': name, 'type': applicationType}])
 		elif reason == 'renamed':
 			newname = notification.getHeader('File-New-Name')
-			print "DEBUG: file event notification on uri %s: '%s' %s to '%s'" % (notification.getUri(), name, reason, newname)
+#			print "DEBUG: file event notification on uri %s: '%s' %s to '%s'" % (notification.getUri(), name, reason, newname)
 			if newname:
 				for i in range(0, self.childCount()):
 					item = self.child(i)
@@ -1026,9 +1015,7 @@ class ProfilesDirWidgetItem(ExpandableWidgetItem):
 		return ret
 
 	def addFetchedChildItems(self, data):
-		print "DEBUG: adding profiles"
 		for name in data:
-			print "DEBUG: adding profile %s" % name
 			item = ProfileWidgetItem(name)
 			self.addChild(item)
 
@@ -1472,7 +1459,7 @@ class WServerFileSystemTreeWidget(QTreeWidget):
 
 	def _createDirectory(self, item):
 		path = item.getUrl().path()
-		print "DEBUG: creating a new folder in %s..." % path
+#		print "DEBUG: creating a new folder in %s..." % path
 		(name, status) = QInputDialog.getText(self, "New folder", "Folder name:")
 		while status and not validateDirectoryName(name):
 			# Display some error message
@@ -1489,7 +1476,7 @@ class WServerFileSystemTreeWidget(QTreeWidget):
 
 	def _exportPackage(self, item):
 		path = item.getUrl().path()
-		print "DEBUG: exporting package from %s..." % path
+#		print "DEBUG: exporting package from %s..." % path
 
 		settings = QSettings()
 		directory = settings.value('lastVisitedDirectory', QVariant("")).toString()
@@ -1528,7 +1515,7 @@ class WServerFileSystemTreeWidget(QTreeWidget):
 
 	def _createProfile(self, item):
 		associatedScriptPath = item.parent().getUrl().path()
-		print "DEBUG: creating a new profile associated to %s..." % associatedScriptPath
+#		print "DEBUG: creating a new profile associated to %s..." % associatedScriptPath
 		(name, status) = QInputDialog.getText(self, "New profile", "Profile name:")
 		while status and not validateDirectoryName(name):
 			# Display some error message
@@ -1558,7 +1545,7 @@ class WServerFileSystemTreeWidget(QTreeWidget):
 		# We assume a source list containing only one URL (single selection only)
 		# Will require some clean up one day.
 		for url in sources:
-			print "DEBUG: copying %s to %s..." % (url.path(), destination)
+#			print "DEBUG: copying %s to %s..." % (url.path(), destination)
 			src = unicode(url.path())
 			srcBasename = os.path.split(src)[1]
 			dst = unicode(destination)
@@ -1606,7 +1593,7 @@ class WServerFileSystemTreeWidget(QTreeWidget):
 		# Will require some clean up one day.
 		url = sources[0]
 
-		print "DEBUG: importing %s to %s..." % (url.path(), destination)
+#		print "DEBUG: importing %s to %s..." % (url.path(), destination)
 		src = unicode(url.path())
 		srcBasename = os.path.split(src)[1]
 		dst = unicode(destination)
@@ -1682,7 +1669,7 @@ class WServerFileSystemTreeWidget(QTreeWidget):
 			for i in range(len(sources)):
 				src = sources[i]
 				dst = destinations[i]
-				print "DEBUG: copying %s to %s..." % (src, dst)
+#				print "DEBUG: copying %s to %s..." % (src, dst)
 				progress.setLabelText("Copying %s to %s..." % (src, dst))
 				QApplication.instance().processEvents()
 				self.getClient().copy(src, dst)
@@ -1705,7 +1692,7 @@ class WServerFileSystemTreeWidget(QTreeWidget):
 		@type  destination: QString (path)
 		"""
 		for url in sources:
-			print "DEBUG: moving %s to %s..." % (url.path(), destination)
+#			print "DEBUG: moving %s to %s..." % (url.path(), destination)
 			self.getClient().move(unicode(url.path()), unicode(destination))
 
 	def _renameItem(self, item, currentName, newName):
@@ -1718,7 +1705,7 @@ class WServerFileSystemTreeWidget(QTreeWidget):
 		@raises: Exception in case of an error.
 		"""
 		path = unicode(item.getUrl().path())
-		print "DEBUG: renaming %s from %s to %s..." % (path, currentName, newName)
+#		print "DEBUG: renaming %s from %s to %s..." % (path, currentName, newName)
 
 		if not validateFileName(newName):
 			raise Exception("The following characters are forbidden in a file name:\n%s" % ', '.join([x for x in RESTRICTED_NAME_CHARACTERS]))
@@ -1787,7 +1774,7 @@ class WServerFileSystemTreeWidget(QTreeWidget):
 			elif parent.getUrl():
 				destination = parent.getUrl().path()
 			else:
-				print "DEBUG: cannot copy/move to this node: no associated URL"
+#				print "DEBUG: cannot copy/move to this node: no associated URL"
 				return False
 
 			# Tried to emit a signal so that the drop op is complete when
@@ -1816,7 +1803,7 @@ class WServerFileSystemTreeWidget(QTreeWidget):
 			return
 		url = item.getUrl()
 		if url:
-			print "DEBUG: opening url %s..." % url.toString()
+#			print "DEBUG: opening url %s..." % url.toString()
 			self.emit(SIGNAL('openUrl(const QUrl&)'), url)
 
 

@@ -241,9 +241,17 @@ class WDocumentEditor(QWidget):
 		@returns: True if successufully saved, False otherwise
 		"""
 		self.updateModel()
+		
+		initialDir = None
+		if self.model.isRemote():
+			filename = self.model.getUrl().path()
+			initialDir = os.path.split(unicode(filename))[0]
+		
+		print "DEBUG: initial dir: %s" % initialDir
 
 		# Get a new filename (docroot-path, extension added if needed, overwrite confirmation prompted)
-		filename = RemoteBrowsers.getSaveFilename(getProxy(), title = "Save to repository as", filter_ = [ self.model.getDocumentType() ], defaultExtension = self.model.getFileExtension(), parent = self)
+		
+		filename = RemoteBrowsers.getSaveFileName(getProxy(), dir = initialDir, caption = "Save to repository as...", filter_ = [ self.model.getDocumentType() ], defaultExtension = self.model.getFileExtension(), parent = self)
 		if not filename.isEmpty():
 			# Now we can save the file
 			return self._saveRemotely(filename)

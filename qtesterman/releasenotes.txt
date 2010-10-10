@@ -27,6 +27,8 @@ KNOWN BUGS:
 - Fixed: inverted zoom in editor when using the mouse wheel.
 - Fixed: when opening a deleted log from the job manager, the log window
   does not show up anymore.
+- Fixed: "save to repository" dialog box now starts from the current document's
+  path (if it was saved into the repository before).
 
 
 1.2.1:

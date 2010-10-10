@@ -1069,7 +1069,8 @@ class ProfileModel(DocumentModel):
 	
 	No metadata aspect model.
 	
-	The body model is QDomDocument.
+	The body aspect is "private" and should not be used
+	by the views that observe this model.
 	
 	This model is persisted/stored as a utf-8 encoded XML file.
 	-> or should we stick to a key=value configuration file ?
@@ -1086,7 +1087,8 @@ class ProfileModel(DocumentModel):
 		
 		Splits the source document to extract the metadataSource (as buffer string),
 		and a body model.
-		For this PackageDescriptionModel, the body model is a QDomDocument.
+
+		For this ProfileModel, the body model is a QDomDocument.
 		There is no metadata in this kind of document.
 		
 		@rtype: (buffer string, QDomDocument)
