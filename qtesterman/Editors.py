@@ -247,8 +247,6 @@ class WDocumentEditor(QWidget):
 			filename = self.model.getUrl().path()
 			initialDir = os.path.split(unicode(filename))[0]
 		
-		print "DEBUG: initial dir: %s" % initialDir
-
 		# Get a new filename (docroot-path, extension added if needed, overwrite confirmation prompted)
 		
 		filename = RemoteBrowsers.getSaveFileName(getProxy(), dir = initialDir, caption = "Save to repository as...", filter_ = [ self.model.getDocumentType() ], defaultExtension = self.model.getFileExtension(), parent = self)

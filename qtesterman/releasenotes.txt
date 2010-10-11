@@ -2,10 +2,6 @@ This is QTesterman, a PyQt4-based Ritch Client for Testerman.
 =============================================================
 
 KNOWN BUGS:
-- Root files in the repository are not monitored correctly, i.e. if
-  an item is created (for instance) in the root repository folder, you won't
-  see it before refreshing the whole browser view. However, files should not
-  be created/deleted/renamed at root level frequently.
 - Profiles management is minimal for now: no way to delete/rename one,
   and it is not possible to remove parameters in a profile.
 - The script properties editor does not reselect the parameter you just
@@ -29,6 +25,7 @@ KNOWN BUGS:
   does not show up anymore.
 - Fixed: "save to repository" dialog box now starts from the current document's
   path (if it was saved into the repository before).
+- Fixed: root files in the repository are now monitored correctly.
 
 
 1.2.1:

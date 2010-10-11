@@ -1019,8 +1019,62 @@ class ProfilesDirWidgetItem(ExpandableWidgetItem):
 			item = ProfileWidgetItem(name)
 			self.addChild(item)
 
-	def getUrl(self):
-		return None
+	def onExpanded(self):
+		"""
+		Re-implemented from ExpandableWidgetItem.
+		Xc-Subscribes for updates regarding this directory.
+		"""
+		self._subscribe()
+
+	def _subscribe(self):
+		self.getClient().subscribe('filesystem:%s' % self.getUrl().path(), self._onFileSystemNotification)
+	
+	def onCollapsed(self):
+		"""
+		Re-implemented from ExpandableWidgetItem.
+		Xc-Unsubscribes for updates regarding this directory.
+		"""
+		self._unsubscribe()
+	
+	def _unsubscribe(self):
+		self.getClient().unsubscribe('filesystem:%s' % self.getUrl().path(), self._onFileSystemNotification)
+
+	def __del__(self):
+		self.onCollapsed()
+		ExpandableWidgetItem.__del__(self)
+	
+	def _onFileSystemNotification(self, notification):
+		"""
+		Callback called whenever a file system notification occurs related
+		to this directory.
+		"""
+		if notification.getMethod() != 'FILE-EVENT':
+			return
+		# Delta deletion or addition
+		reason = notification.getHeader('Reason')
+		name = notification.getHeader('File-Name')
+#		print "DEBUG: file event notification on uri %s: '%s' %s" % (notification.getUri(), name, reason)
+		if reason == 'deleted':
+			# name, which is an item in this folder, has been deleted.
+			# Find it and delete it.
+			for i in range(0, self.childCount()):
+				item = self.child(i)
+				if item.getBasename() == name:
+					self.removeChild(item)
+					break
+		elif reason == 'created':
+			# a new item name has been created
+			applicationType = notification.getHeader('File-Type')
+			self.addFetchedChildItems([name])
+		elif reason == 'renamed':
+			newname = notification.getHeader('File-New-Name')
+#			print "DEBUG: file event notification on uri %s: '%s' %s to '%s'" % (notification.getUri(), name, reason, newname)
+			if newname:
+				for i in range(0, self.childCount()):
+					item = self.child(i)
+					if item.getBasename() == name:
+						item.setBasename(newname)
+
 
 class ProfileWidgetItem(BaseWidgetItem):
 	"""
@@ -1319,7 +1373,9 @@ class WServerFileSystemTreeWidget(QTreeWidget):
 		menu.popup(event.globalPos())
 
 	def refresh(self):
+		self._unsubscribe()
 		AsyncExpander(self.invisibleRootItem(), self.fetchChildItems, self.addFetchedChildItems).expand()
+		self._subscribe()
 	
 	def setClient(self, client, autorefresh = True):
 		self._client = client
@@ -1328,6 +1384,47 @@ class WServerFileSystemTreeWidget(QTreeWidget):
 	
 	def getClient(self):
 		return self._client
+
+	def _subscribe(self):
+		self.getClient().subscribe('filesystem:%s' % self._path, self._onFileSystemNotification)
+	
+	def _unsubscribe(self):
+		self.getClient().unsubscribe('filesystem:%s' % self._path, self._onFileSystemNotification)
+	
+	def _onFileSystemNotification(self, notification):
+		"""
+		Callback called whenever a file system notification occurs related
+		to this directory.
+		"""
+		if notification.getMethod() != 'FILE-EVENT':
+			return
+		
+		node = self.invisibleRootItem()
+		# Delta deletion or addition
+		reason = notification.getHeader('Reason')
+		name = notification.getHeader('File-Name')
+#		print "DEBUG: file event notification on uri %s: '%s' %s" % (notification.getUri(), name, reason)
+		if reason == 'deleted':
+			# name, which is an item in this folder, has been deleted.
+			# Find it and delete it.
+			for i in range(0, node.childCount()):
+				item = node.child(i)
+				if item.getBasename() == name:
+					node.removeChild(item)
+					break
+		elif reason == 'created':
+			# a new item name has been created
+			applicationType = notification.getHeader('File-Type')
+			# Reimplemented in DirWidgetItem subclasses
+			self.addFetchedChildItems([{'name': name, 'type': applicationType}])
+		elif reason == 'renamed':
+			newname = notification.getHeader('File-New-Name')
+#			print "DEBUG: file event notification on uri %s: '%s' %s to '%s'" % (notification.getUri(), name, reason, newname)
+			if newname:
+				for i in range(0, node.childCount()):
+					item = node.child(i)
+					if item.getBasename() == name:
+						item.setBasename(newname)
 
 	def fetchChildItems(self, path = None):
 		"""
