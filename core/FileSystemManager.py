@@ -135,6 +135,7 @@ class FileSystemManager:
 		if not objectpath:
 			objectpath = '/'
 		applicationType = self.getApplicationType(objectname, objectpath, backendType)
+		getLogger().debug("notifying fs change: %s:%s %s (%s)" % (objectpath, objectname, event, applicationType))
 		if applicationType:
 			uri = 'filesystem:%s' % objectpath
 			notification = Messages.Notification("FILE-EVENT", uri, "Xc", Versions.getXcVersion())
@@ -252,18 +253,23 @@ class FileSystemManager:
 		(adjusted, backend) = FileSystemBackendManager.getBackend(filename)
 		if not backend:
 			raise Exception('No backend available to manipulate %s' % filename)
-
+		
 		newfile = False
 		if not self.isfile(filename):
 			newfile = True
 
-		ret = backend.write(adjusted, content, baseRevision = None, reason = reason)
-		if ret and notify:
+		try:
+			backend.write(adjusted, content, baseRevision = None, reason = reason)
+		except Exception, e:
+			getLogger().error("Unable to write %s: %s" % (filename, str(e)))
+			return False
+
+		if notify:
 			if newfile:
 				self._notifyFileCreated(filename)
 			else:
 				self._notifyFileChanged(filename) # Well, could be a new revision, too.
-		return ret
+		return True
 
 	def _writeProfile(self, filename, profilename, content, notify):
 		resourcepath = '%s/profiles/%s' % (filename, profilename)
@@ -272,16 +278,23 @@ class FileSystemManager:
 			raise Exception('No backend available to manipulate %s' % filename)
 
 		newfile = False
-		if not self.isfile(filename):
+		if not self.attributes(resourcepath):
 			newfile = True
+		
+		print "DEBUG: new profile (%s): %s" % (resourcepath, newfile)
 
-		ret = backend.writeprofile(adjusted, profilename, content)
-		if ret and notify:
+		try:
+			backend.writeprofile(adjusted, profilename, content)
+		except Exception, e:
+			getLogger().error("Unable to profile %s for %s: %s" % (profilename, filename, str(e)))
+			return False
+
+		if notify:
 			if newfile:
 				self._notifyFileCreated(resourcepath)
 			else:
 				self._notifyFileChanged(resourcepath)
-		return ret
+		return True
 	
 	def unlink(self, filename, reason = None, notify = True):
 		(adjusted, backend) = FileSystemBackendManager.getBackend(filename)
