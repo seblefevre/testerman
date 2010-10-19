@@ -17,6 +17,8 @@ KNOWN BUGS:
 - Added: support for script parameter's types (boolean, integer, float, string).
 - Added: support for script "language API" to enable the use of alternative
   TTCN-3 librairies.
+- Added: it is now possible to paste copied script parameters to a spreadsheet
+  or any text application.
 - Modified: finally a dedicated Testerman icon !
 - Modified: the job manager now displays more recent jobs on the top.
   For a campaign, however, older child jobs are displayed at the bottom.

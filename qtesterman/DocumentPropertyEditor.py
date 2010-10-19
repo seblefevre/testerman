@@ -264,7 +264,10 @@ class WParametersEditor(QTreeView):
 		"""
 		Copy the current items to the clipboard
 		"""
-		QApplication.clipboard().setMimeData(objectsToMimeData(self.PARAMETERS_MIME, self.getSelectedParameters()))
+		mimeData = objectsToMimeData(self.PARAMETERS_MIME, self.getSelectedParameters())
+		# Also add a text representation to paste to other applications
+		mimeData.setText("\n".join([ "%(name)s\t%(default)s\t%(type)s\t%(description)s" % p for p in self.getSelectedParameters()]))
+		QApplication.clipboard().setMimeData(mimeData)
 
 	def getSelectedParametersNames(self):
 		selectedParametersNames = []
