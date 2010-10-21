@@ -25,83 +25,134 @@ HEADERLINE_REGEXP = re.compile(r'(?P<header>[a-zA-Z0-9_-]+)\s*:\s*(?P<value>.*)'
 REQUESTLINE_REGEXP = re.compile(r'(?P<method>[a-zA-Z0-9_-]+)\s*(?P<url>[^\s]*)\s*(?P<version>[a-zA-Z0-9_/\.-]+)')
 STATUSLINE_REGEXP = re.compile(r'(?P<version>[a-zA-Z0-9_/\.-]+)\s*(?P<status>[0-9]+)\s*(?P<reason>.*)')
 
+def chunk(body):
+	"""
+	Chunks a body in one piece.
+	"""
+	return "%x\r\n%s\r\n0\r\n" % (len(body), body)
+
 
 class HttpRequestCodec(CodecManager.IncrementalCodec):
 	"""
-	Encode/decode from to:
+	= Identification and Properties =
 	
+	Codec IDs: `http.request`
+
+	Properties:
+	|| '''Name''' || '''Type''' || '''Default value''' || '''Description''' ||
+	|| header_encoding || string  || `'iso8859-1'` || Encoding to use to encode header values. ||
+
+	= Overview =
+
+	This codec enables to encode/decode HTTP 1.0/1.1 requests,
+	and provides some built-in functionalities to manage low-level stuff such as
+	content-lenght and transfer-encoding management. 
+
+	== Encoding ==
+	
+	...
+
+	This encoder automatically computes the content-length if not provided,
+	unless a transfer-encoding was set explicitly to `chunked`. In this case,
+	the body is automatically chunked (in a single piece).
+	
+	== Decoding ==
+	
+	...
+	
+	This is an incremental decoder.
+
+	It automatically waits for a complete payload before passing it to
+	your application, supporting content-length header (if present)
+	or `chunked` transfer-encoding (the body is automatically reconstructed
+	in this cae).
+	
+	Invalid or incomplete HTTP requests are not decoded.
+
+	Upon decoding, all header names are transformed to lower caps so that
+	a unified way of matching them may be used in your ATSes.
+	
+	== Availability ==
+
+	All platforms.
+
+	== Dependencies ==
+
+	None.
+
+	== See Also ==
+	
+	This codec is typically used with CodecHttpResponse (`http.response`).
+
+	= TTCN-3 Type Equivalence =
+	
+	This codec encodes/decodes the following structure:
+	{{{
 	type record HttpRequest
 	{
-		charstring method,
-		charstring url,
+		charstring method optional, // default: GET
+		charstring url optional, // default: /
 		charstring version optional, // default: HTTP/1.1
 		record { charstring <header name>* } headers optional, // default: {}
 		charstring body optional, // default: ''
 	}
-	
-	Automatically computes the content-length if not provided.
-	
-	When decoded, all header names are transformed to lower caps.
+	}}}
 	"""
 	def encode(self, template):
 		method = template.get('method', 'GET')
-		url = template['url']
+		url = template.get('url', '/')
 		version = template.get('version', 'HTTP/1.1')
 		headers = template.get('headers', {})
 		body = template.get('body', '')
 		
 		contentLengthAdded = False
+		transferEncodingAdded = False
+		
 		ret = []
 		ret.append('%s %s %s' % (method, url, version))
+		
+		chunked = False
+		if self.getProperty('transfer_encoding', None) == "chunked":
+			chunked = True
+			
 		for key, val in headers.items():
 			if val is None:
 				continue
 			if key.lower() == 'content-length':
 				contentLengthAdded = True
-			ret.append('%s: %s' % (key, str(val)))
-		if not contentLengthAdded:
+			if key.lower() == 'transfer-encoding':
+				transferEncodingAdded = True
+				if val == "chunked":
+					chunked = True
+				else:
+					chunked = False
+			ret.append(u'%s: %s' % (key, unicode(val)))
+
+		if not contentLengthAdded and not chunked:
 			bodyLength = 0
 			if body:
 				bodyLength = len(body)
 			ret.append('Content-Length: %d' % bodyLength)
+		
+		if chunked and not transferEncodingAdded:
+			ret.append('Transfer-Encoding', 'chunked')
+		
+		# Header values are encoded as iso8859-1. 
+		# However 
+		ret = map(lambda x: x.encode(self.getProperty('header_encoding', 'iso8859-1')), ret)
+		
 		ret.append('')
 		
-		ret = map(lambda x: x.encode('iso8859-1'), ret)
-		
 		if body:
-			ret.append(body)
+			if chunked:
+				ret.append(chunk(body))
+			else:
+				ret.append(body)
 		
 		ret.append('')
 
 		ret = '\r\n'.join(ret)
 		return (ret, self.getSummary(template))
-
-#	def decode(self, data):
-#		ret = {}
-#		lines = data.split('\r\n')
-#		m = REQUESTLINE_REGEXP.match(lines[0])
-#		if not m:
-#			raise Exception("Invalid request line")
-#		ret['method'] = m.group('method')
-#		ret['url'] = m.group('url')
-#		ret['version'] = m.group('version')
-#		ret['headers'] = {}
-#		
-#		i = 1
-#		for header in lines[1:]:
-#			i += 1
-#			l = header.strip()
-#			if not header:
-#				break # reached body
-#			m = HEADERLINE_REGEXP.match(l)
-#			if m:
-#				ret['headers'][m.group('header').lower()] = m.group('value')
-#			else:
-#				raise Exception("Invalid header in message (%s)" % str(l))
-#		
-#		ret['body'] = "\r\n".join(lines[i:])
-#		
-#		return (ret, self.getSummary(ret))
 
 	def incrementalDecode(self, data):
 		"""
@@ -199,8 +250,60 @@ CodecManager.registerCodecClass('http.request', HttpRequestCodec)
 
 class HttpResponseCodec(CodecManager.IncrementalCodec):
 	"""
-	Encode/decode from to:
+	= Identification and Properties =
 	
+	Codec IDs: `http.response`
+
+	Properties:
+	|| '''Name''' || '''Type''' || '''Default value''' || '''Description''' ||
+	|| header_encoding || string  || `'iso8859-1'` || Encoding to use to encode header values. ||
+
+	= Overview =
+
+	This codec enables to encode/decode HTTP 1.0/1.1 responses,
+	and provides some built-in functionalities to manage low-level stuff such as
+	content-lenght and transfer-encoding management. 
+
+	== Encoding ==
+	
+	...
+
+	This encoder automatically computes the content-length if not provided,
+	unless a transfer-encoding was set explicitly to `chunked`. In this case,
+	the body is automatically chunked (in a single piece).
+	
+	== Decoding ==
+	
+	...
+	
+	This is an incremental decoder.
+
+	It automatically waits for a complete payload before passing it to
+	your application, supporting content-length header (if present)
+	or `chunked` transfer-encoding (the body is automatically reconstructed
+	in this cae).
+	
+	Invalid or incomplete HTTP responses are not decoded.
+
+	Upon decoding, all header names are transformed to lower caps so that
+	a unified way of matching them may be used in your ATSes.
+
+	== Availability ==
+
+	All platforms.
+
+	== Dependencies ==
+
+	None.
+
+	== See Also ==
+	
+	This codec is typically used with CodecHttpRequest (`http.request`).
+
+	= TTCN-3 Type Equivalence =
+	
+	This codec encodes/decodes the following structure:
+	{{{	
 	type record HttpResponse
 	{
 		charstring version optional, // default: HTTP/1.1
@@ -209,10 +312,7 @@ class HttpResponseCodec(CodecManager.IncrementalCodec):
 		record { charstring <header name>* } headers optional, // default: {}
 		charstring body optional, // default: ''
 	}
-	
-	Automatically computes the content-length if not provided.
-	
-	When decoded, all header names are transformed to lower caps.
+	}}}
 	"""
 	def encode(self, template):
 		status = template['status']
@@ -222,22 +322,49 @@ class HttpResponseCodec(CodecManager.IncrementalCodec):
 		body = template.get('body', '')
 		
 		contentLengthAdded = False
+		transferEncodingAdded = False
+
 		ret = []
 		ret.append('%s %s %s' % (version, str(status), reason))
+
+		chunked = False
+		if self.getProperty('transfer_encoding', None) == "chunked":
+			chunked = True
+
 		for key, val in headers.items():
 			if val is None:
 				continue
 			if key.lower() == 'content-length':
 				contentLengthAdded = True
-			ret.append('%s: %s' % (key, str(val)))
-		if not contentLengthAdded:
+			if key.lower() == 'transfer-encoding':
+				transferEncodingAdded = True
+				if val.lower() == "chunked":
+					chunked = True
+				else:
+					chunked = False
+			ret.append(u'%s: %s' % (key, unicode(val)))
+
+		if not contentLengthAdded and not chunked:
 			bodyLength = 0
 			if body:
 				bodyLength = len(body)
 			ret.append('Content-Length: %d' % bodyLength)
+		
+		if chunked and not transferEncodingAdded:
+			ret.append('Transfer-Encoding', 'chunked')
+		
+		# Header values are encoded as iso8859-1. 
+		# However 
+		ret = map(lambda x: x.encode(self.getProperty('header_encoding', 'iso8859-1')), ret)
+
 		ret.append('')
+
 		if body:
-			ret.append(body)
+			if chunked:
+				ret.append(chunk(body))
+			else:
+				ret.append(body)
+
 		ret.append('')
 		
 		return ('\r\n'.join(ret), self.getSummary(template))
