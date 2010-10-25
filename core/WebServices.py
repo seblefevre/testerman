@@ -1276,5 +1276,32 @@ def getVariables(component = "ts"):
 		return None # To be implemented
 	else:
 		return None
-		
+
+def purgeJobs(older_than):
+	"""
+	Purges jobs in the queue that:
+	- are completed (any status)
+	- and whose completion time is strictly older than the provided older_than timestamp (UTC)
+
+	@type  older_than: float (timestamp)
+	@param older_than: the epoch timestamp of the older job to keep
+
+	@throws Exception in case of an error
+
+	@rtype: int
+	@returns: the number of purged jobs
+	"""
+	getLogger().info(">> purgeJobs(%s)" % older_than)
+	res = 0
+	try:
+		res = JobManager.instance().purgeJobs(older_than)
+	except Exception, e:
+		e =  Exception("Unable to complete purgeJobs operation: %s\n%s" % (str(e), Tools.getBacktrace()))
+		getLogger().info("<< getJobStatus(...): Fault:\n%s" % str(e))
+		raise(e)
+
+	getLogger().info("<< purgeJobs: %s job(s) purged" % res)
+	return res
+	
+	
 	

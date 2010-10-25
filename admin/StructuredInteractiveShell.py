@@ -764,7 +764,12 @@ class CommandContext(ChoiceNode):
 		# Let's execute the command
 		(commandName, args) = value
 		if isinstance(args, dict):
-			return self.__commands[commandName](**args)
+			# If a parameter was named like something-like-this,
+			# it is renamed to something_like_this 
+			kwargs = {}
+			for k, v in args.items():
+				kwargs[k.replace('-', '_')] = v
+			return self.__commands[commandName](**kwargs)
 		elif args is None:
 			return self.__commands[commandName]()
 		else:

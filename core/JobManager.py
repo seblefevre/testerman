@@ -428,6 +428,9 @@ class Job(object):
 			else:
 				# Never started. Keep start/stop and running time to None.
 				getLogger().info("%s aborted" % (str(self)))
+				# Always set a stop time, including for failed jobs - this is their failure time
+				if not self._stopTime:
+					self._stopTime = time.time()
 			self.postRun()
 			self.cleanup()
 		
@@ -447,7 +450,7 @@ class Job(object):
 		Returns the job info as a dict
 		"""
 		runningTime = None		
-		if self._stopTime:
+		if self._stopTime and self._startTime:
 			runningTime = self._stopTime - self._startTime
 	
 		if self._parent:
@@ -714,7 +717,10 @@ class AtsJob(Job):
 		getLogger().info("%s: resolved deps:\n%s" % (str(self), deps))
 
 		getLogger().info("%s: creating TE..." % str(self))
-		te = TEFactory.createTestExecutable(self.getName(), self._source)
+		try:
+			te = TEFactory.createTestExecutable(self.getName(), self._source)
+		except Exception, e:
+			return handleError(26, str(e))
 		
 		# TODO: delegate TE check to the TE factory (so that if e need to use another builder that
 		# build something else than a Python script, it contains its own checker)
@@ -1615,6 +1621,37 @@ class JobManager:
 		job = self.getJob(id_)
 		if job:
 			return job.reschedule(at)
+	
+	def isBottomUpTreeCompleted(self, job):
+		if not job._stopTime: return False
+		parent = job._parent
+		while parent:
+			if not parent._stopTime:
+				return False
+			parent = parent._parent
+		return True 
+
+	def purgeJobs(self, older_than):
+		"""
+		Scans the queue and purge jobs whose completion time is older than older_than.
+		
+		If one of the parent jobs is still running (a campaign, etc),
+		the job is kept even if it was completed before the older_than.
+		"""
+		self._lock()
+		try:
+		
+			keptQueue = []
+			count = len(self._jobQueue)
+			# Let's select kept jobs instead of removing items in the current jobqueue
+			for job in self._jobQueue:
+				if not self.isBottomUpTreeCompleted(job) or not (job._stopTime and job._stopTime < older_than):
+					keptQueue.append(job)
+					count -= 1
+			self._jobQueue = keptQueue
+			return count
+		finally:	
+			self._unlock()
 
 TheJobManager = None
 

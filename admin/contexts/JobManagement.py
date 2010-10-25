@@ -19,9 +19,10 @@
 ##
 
 
-import TestermanClient
+import TestermanManagementClient
 
 import os
+import datetime
 import time
 
 ##
@@ -48,7 +49,7 @@ class JobContext(CommandContext):
 		states.addChoice("complete", "successfully completed jobs only")
 		states.addChoice("error", "error jobs only")
 		node.addField("state", "filter on state", states, optional = True)
-		node.addField("username", "filter on username", StringNode(), optional = True)
+		node.addField("username", "filter on username", StringNode("username"), optional = True)
 		self.addCommand("show", "show registered jobs", node, self.showJobs)
 
 		# send a signal
@@ -64,15 +65,20 @@ class JobContext(CommandContext):
 
 		# Monitor a job
 		node = SequenceNode()
-		node.addField("job", "the job id of the job to monitor", IntegerNode())
+		node.addField("job", "the job id of the job to monitor", IntegerNode("job id"))
 		self.addCommand("monitor", "monitor a job", node, self.monitorJob)
+		
+		# Purge the queue
+		node = SequenceNode()
+		node.addField("older-than", "purge jobs whose root job was completed at least N days ago", IntegerNode("number of days"))
+		self.addCommand("purge", "purge old jobs", node, self.purgeJobs)
 
 	def _getClient(self):
 		if not self._client:
 			serverUrl = os.environ.get('TESTERMAN_SERVER')
 			if not serverUrl:
 				raise Exception("Sorry, no testerman server set (TESTERMAN_SERVER).")
-			self._client = TestermanClient.Client(name = "Testerman Admin", userAgent = "testerman-admin", serverUrl = serverUrl)
+			self._client = TestermanManagementClient.Client(name = "Testerman Admin", userAgent = "testerman-admin", serverUrl = serverUrl)
 
 		return self._client
 
@@ -129,4 +135,11 @@ class JobContext(CommandContext):
 		if username:
 			rows = [ x for x in rows if x['username'] == username ]
 		self.printTable(headers, rows)
+
+	def purgeJobs(self, older_than):
+		since = datetime.datetime.now() - datetime.timedelta(days = older_than)
+		timestamp = time.mktime(since.timetuple()) # notice that timestamp is in UTC, while since is in localtime
+		self.notify("Purging jobs whose completion date is before %s (local time)..." % since.ctime())
+		ret = self._getClient().purgeJobs(timestamp)
+		self.notify("%s job(s) purged." % ret)
 
