@@ -1374,7 +1374,7 @@ class SystemTestComponent:
 		Unmap all mapped tsi ports.
 		"""
 		for (name, tsiPort) in self._tsiPorts.items():
-			for port in tsiPort._mappedPorts:
+			for port in [p for p in tsiPort._mappedPorts]: # copy the list, as it will be updated by port_unmap
 				port_unmap(port, tsiPort)
 	
 ################################################################################
