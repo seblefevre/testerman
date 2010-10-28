@@ -455,8 +455,8 @@ class TcpProbe(ProbeImplementationManager.ProbeImplementation):
 		self._lock()
 		try:
 			self._listeningSocket = socket.socket(socket.AF_INET, socket.SOCK_STREAM, socket.IPPROTO_TCP)
-			self._listeningSocket.bind(addr)
 			self._listeningSocket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+			self._listeningSocket.bind(addr)
 			self._listeningSocket.listen(10)
 		except Exception, e:
 			self._unlock()
