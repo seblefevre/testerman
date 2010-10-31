@@ -568,6 +568,13 @@ class WMainWindow(QMainWindow):
 	"""
 	Main Window class.
 	"""
+	
+	# The standard view
+	PERSPECTIVE_DEFAULT = "default"
+	# A view where the central widget is maximized
+	PERSPECTIVE_MAXIMIZED = "maximized"
+	# More to come - maybe
+	
 	def __init__(self, parent = None):
 		QMainWindow.__init__(self, parent)
 		QApplication.instance().set('gui.mainwindow', self)
@@ -585,6 +592,10 @@ class WMainWindow(QMainWindow):
 
 		# List of QString
 		self.previousUrlsToRetry = []
+		
+		self._perspectives = {}
+		self._currentPerspective = self.PERSPECTIVE_DEFAULT
+		self._initialPerspective = self._currentPerspective
 
 		QApplication.instance().notifyInitializationProgress("Ready")
 
@@ -655,6 +666,8 @@ class WMainWindow(QMainWindow):
 		return somethingReopened
 
 	def __createWidgets(self):
+		# Registered dock widgets
+		self._docks = []
 		try:
 			# Log window
 			self._logWindow = Logger.WLogger(self)
@@ -684,32 +697,38 @@ class WMainWindow(QMainWindow):
 			self.repositoryBrowserDock = RemoteBrowsers.WRepositoryBrowsingDock(self)
 			self.repositoryBrowserDock.setObjectName("repositoryBrowserDock")
 			self.addDockWidget(Qt.LeftDockWidgetArea, self.repositoryBrowserDock)
+			self._docks.append(self.repositoryBrowserDock)
 
 			QApplication.instance().notifyInitializationProgress("Initializing script properties editor...")
 			self.documentPropertyEditorDock = DocumentPropertyEditor.WScriptPropertiesEditorDock(self.documentManager.tab, self)
 			self.documentPropertyEditorDock.setObjectName("scriptPropertyEditorDock") # this scriptPropertyEditorDock name is kept for settings compatibility
 			self.addDockWidget(Qt.LeftDockWidgetArea, self.documentPropertyEditorDock)
+			self._docks.append(self.documentPropertyEditorDock)
 
 			QApplication.instance().notifyInitializationProgress("Initializing job manager...")
 			self.jobManagerDock = JobManager.WJobManagerDock(self)
 			self.jobManagerDock.setObjectName("jobManagerDock")
 			self.addDockWidget(Qt.RightDockWidgetArea, self.jobManagerDock)
+			self._docks.append(self.jobManagerDock)
 
 			QApplication.instance().notifyInitializationProgress("Initializing probe manager...")
 			self.probeManagerDock = ProbeManager.WProbeManagerDock(self)
 			self.probeManagerDock.setObjectName("probeManagerDock")
 			self.addDockWidget(Qt.RightDockWidgetArea, self.probeManagerDock)
+			self._docks.append(self.probeManagerDock)
 
 			QApplication.instance().notifyInitializationProgress("Initializing outline view...")
 			self.outlineViewDock = OutlineView.WOutlineViewDock(self.documentManager.tab, self)
 			self.outlineViewDock.setObjectName("outlineViewDock")
 			self.addDockWidget(Qt.RightDockWidgetArea, self.outlineViewDock)
+			self._docks.append(self.outlineViewDock)
 			QApplication.instance().set("gui.outlineview", self.outlineViewDock.getOutlineView())
 
 			QApplication.instance().notifyInitializationProgress("Initializing chat component...")
 			self.chatViewDock = ChatView.WChatViewDock(self)
 			self.chatViewDock.setObjectName("chatViewDock")
 			self.addDockWidget(Qt.LeftDockWidgetArea, self.chatViewDock)
+			self._docks.append(self.chatViewDock)
 
 			# Status bar
 			self.statusBar = WMainStatusBar()
@@ -940,6 +959,10 @@ class WMainWindow(QMainWindow):
 				elif ret == QMessageBox.Cancel:
 					event.ignore()
 					return
+
+		# For now, back to the standard/default perspective to save it
+		self.setCurrentPerspective(self.PERSPECTIVE_DEFAULT)
+
 		self.writeSettings()
 		QApplication.instance().client().finalize()
 		event.accept()
@@ -959,6 +982,41 @@ class WMainWindow(QMainWindow):
 		settings.setValue('pos',  QVariant(self.pos()))
 		settings.setValue('state', QVariant(self.saveState(1)))
 		settings.endGroup()
+	
+	##
+	# "Perspectives" management (experimental)
+	##
+	def setCurrentPerspective(self, name):
+		"""
+		Switches the current perspective to the one named "name".
+		"""
+		log("Switching perspectives: from %s to %s" % (self._currentPerspective, name))
+		# Save the current perspective
+		self._perspectives[self._currentPerspective] = self.saveState(1)
+		perspective = self._perspectives.get(name, None)
+		if perspective:
+			self.restoreState(perspective, 1)
+		else:
+			log("The target perspective %s is new - nothing to restore" % name)
+		self._currentPerspective = name
+
+	def getCurrentPerspective(self):
+		return self._currentPerspective
+	
+	def toggleMaximizeCentralWidget(self):
+		"""
+		Convenience function.
+		"""
+		if self.getCurrentPerspective() == self.PERSPECTIVE_MAXIMIZED:
+			# Restore to the standard perspective
+			self.setCurrentPerspective(self._initialPerspective)
+			self._initialPerspective = None
+		else:
+			# Switch to the maximized "perspective"
+			self._initialPerspective = self.getCurrentPerspective()
+			self.setCurrentPerspective(self.PERSPECTIVE_MAXIMIZED)
+			for dock in self._docks:
+				dock.hide()
 
 	def save(self):
 		self.documentManager.saveCurrent()
@@ -1148,7 +1206,6 @@ def runLogAnalyzer(logFilename, shouldConnect = False):
 	@type  logFilename: unicode
 	@param logFilename: the filename of the log file to open
 	"""
-	import LogViewer
 	logFilename = os.path.normpath(os.path.realpath(logFilename))
 
 	# OK, now we can create some Qt objects.

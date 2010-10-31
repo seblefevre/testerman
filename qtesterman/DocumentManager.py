@@ -75,6 +75,7 @@ class WDocumentManager(CommonWidgets.WEnhancedTabWidget):
 		self.setDocumentMode(True)
 		self.connect(self.tab, SIGNAL('currentChanged(int)'), self.onCurrentDocumentChanged)
 		self.connect(self.tab, SIGNAL('tabCloseRequested(int)'), self.closeTab)
+		self.connect(self.tab, SIGNAL('tabExpandRequested(int)'), self.expandTab)
 
 	def onCurrentDocumentChanged(self, index):
 		wdocument = self.tab.widget(index)
@@ -360,6 +361,10 @@ class WDocumentManager(CommonWidgets.WEnhancedTabWidget):
 				return
 		self.tab.removeTab(index)
 		self.documentUrlsUpdated()
+	
+	def expandTab(self, index):
+#		self.tab.setCurrentIndex(index)
+		QApplication.instance().get('gui.mainwindow').toggleMaximizeCentralWidget()
 
 	def saveCurrentToRepositoryAs(self):
 		self.tab.currentWidget().saveToRepositoryAs()		
