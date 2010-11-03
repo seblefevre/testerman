@@ -1410,7 +1410,7 @@ class Scheduler(threading.Thread):
 		getLogger().info("Job scheduler stopped.")
 	
 	def check(self):
-		jobs = self._manager.getWaitingJobs()
+		jobs = self._manager.getWaitingRootJobs()
 		for job in jobs:
 			if job.getScheduledStartTime() < time.time():
 				getLogger().info("Scheduler: starting new job: %s" % str(job))
@@ -1540,16 +1540,18 @@ class JobManager:
 		self._scheduler.notify()
 		return job.getId()
 	
-	def getWaitingJobs(self):
+	def getWaitingRootJobs(self):
 		"""
-		Only extracts the waiting jobs subset from the queue.
+		Only extracts the waiting root jobs subset from the queue.
 		Useful for the scheduler.
+		Non-root (waiting) jobs are started by their parents explicitely,
+		not by the scheduler.
 
 		@rtype: list of Job instances
 		@returns: the list of waiting jobs.
 		"""
 		self._lock()
-		ret = filter(lambda x: x.getState() == Job.STATE_WAITING, self._jobQueue)
+		ret = filter(lambda x: (x.getParent() is None) and (x.getState() == Job.STATE_WAITING), self._jobQueue)
 		self._unlock()
 		return ret
 	
