@@ -27,6 +27,7 @@ import ProbeImplementationManager
 
 import glob
 import os
+import os.path
 import re
 import threading
 
@@ -59,7 +60,7 @@ class FileWatcherProbe(ProbeImplementationManager.ProbeImplementation):
 	matching lines if new lines are created and the file reset before the next file check, but this should not be a show-stopper
 	considering the typical use cases for this probe.
 	
-	When you do not need to watch these files any more, send a stopWatchingFiles command. 
+	When you do not need to watch these files anymore, send a stopWatchingFiles command. 
 	
 	The probe automatically stops watching files on unmap and when the current test case is over. 
 	
@@ -79,6 +80,16 @@ class FileWatcherProbe(ProbeImplementationManager.ProbeImplementation):
 	 * Applied to telecom systems, could be used to check CDR (Call Detail Reports) files, possibly in conjunction with a custom codec to apply to the notified lines
 	 * Checking that no error is dumped in a log file during a test. In this case, the probe is probably controlled by a background, dedicated behaviour, setting its verdict to fail as soon as it received an error line notification.
 
+
+	== Known Bugs ==
+	
+	This probe may not detect a file recreation on some file systems such as ext3,
+	in the following case:
+	 * the file is recreated/replaced with a larger file than the initial one,
+	 * AND the file's inode is not changed (which is the case with ext3, apparently).
+	
+	In this case, only the delta lines between the old file and the new ones are
+	reported, instead of reporting all the lines of the file.
 
 	== Availability ==
 
@@ -188,6 +199,22 @@ class WatchingThread(threading.Thread):
 	def run(self):
 		self._probe.getLogger().debug("Starting watching files %s with %s every %ss" % (self._files, self._patterns, self._interval))
 		self._watchedFiles = {}
+		# First pass: register watched files at the moment we start watching
+		try:
+			for f in self._files:
+				for filename in glob.glob(f):
+					if not self._watchedFiles.has_key(filename):
+						# First look at the file. Just reference file info
+						try:
+							if os.path.isfile(filename):
+								self._watchedFiles[filename] = os.stat(filename)
+								self._probe.getLogger().debug("New file %s registered for watching" % filename)
+						except Exception, e:
+							self._probe.getLogger().debug("Unable to registered file %s: %s" % (filename, str(e)))
+		except Exception, e:
+			self._probe.getLogger().debug("Error while registered watched files: %s" % str(e))
+
+		# Now, watch for file changes / reset / new files	
 		while not self._stopEvent.isSet():
 			try:
 				for f in self._files:
@@ -207,42 +234,72 @@ class WatchingThread(threading.Thread):
 		self._probe.getLogger().debug("Watching thread stopped")
 	
 	def _checkFile(self, filename):
-		if not self._watchedFiles.has_key(filename):
-			# First look at the file. Just reference file info
-			self._watchedFiles[filename] = os.stat(filename)
-		
-		ref = self._watchedFiles[filename]
-		current = os.stat(filename)
-		self._watchedFiles[filename] = current
-		
 		# Let's compute what we miss since the last watch
 		# The offset in bytes, from the start of the file,
 		# containing missed data
 		offset = None
+
+		if not self._watchedFiles.has_key(filename):
+			# New file since the last tick
+			if os.path.isfile(filename):
+				# First look at the file. Just reference file info
+				current = os.stat(filename)
+				self._watchedFiles[filename] = current
+				self._probe.getLogger().debug("New file %s created since the last tick" % filename)
+				offset = 0
 		
-		# If the file was recreated in the meanwhile,
-		# we should consider it globally
-		# ctime is platform-dependent, so we'll use inode
-		if current.st_ino != ref.st_ino:
-			self._probe.getLogger().debug("File %s recreated since the last tick" % filename)
-			offset = 0
-		elif current.st_size > ref.st_size:
-			self._probe.getLogger().debug("File %s has new data since the last tick" % filename)
-			# Not recreated, but increased in size
-			offset = ref.st_size
-		elif current.st_size < ref.st_size:
-			self._probe.getLogger().debug("File %s was reset since the last tick" % filename)
-			# Not recreated, but resetted in the meanwhile
-			offset = 0
+		else:
+			# The file already existed during the last tick
+			ref = self._watchedFiles[filename]
+			current = os.stat(filename)
+			self._watchedFiles[filename] = current
+		
+			# If the file was recreated in the meanwhile,
+			# we should consider its whole content again.
+			# The problem is to detect the file was recreated.
+			#
+			# ctime is platform- (or app- ?) dependent, leading to false positives
+			# inode (st_ino) is file-system dependent (ext3 seems to reuse it)
+			# we try a mixed approach here
+			if current.st_size == ref.st_size:
+				if current.st_ctime != ref.st_ctime:
+					self._probe.getLogger().debug("File %s recreated since the last tick" % filename)
+					offset = 0
+				# same size and same ctime: no change
+			elif current.st_size > ref.st_size:
+				# Problem here.
+				# The file may have been fully reset (with a larger content)
+				# or just continued
+				
+				# The ctime test is not safe here; some write() op updates the ctime too
+				
+				# We try a inode test, but it is not perfect
+				# On some filesystems (ext3...), we miss the recreation event
+				if current.st_ino != ref.st_ino:
+					self._probe.getLogger().debug("File %s recreated since the last tick" % filename)
+					offset = 0
+				else:
+					self._probe.getLogger().debug("File %s has new data since the last tick" % filename)
+					# Not recreated, but increased in size
+					offset = ref.st_size
+			elif current.st_size < ref.st_size:
+				self._probe.getLogger().debug("File %s was reset (content replaced) or recreated since the last tick" % filename)
+				# Not recreated, but reset in the meanwhile
+				offset = 0
 		
 		if offset is None:
+			# Nothing to do for the file
 			return
 		
+		# OK, scan the file to get matching new lines
 		self._probe.getLogger().debug("File %s changed since the last tick, starting at %d" % (filename, offset))
 		f = open(filename, 'r')
 		f.seek(offset)
 		newlines = f.readlines()
 		f.close()
+		# Technically, the file may have grown since we took the ref size
+		# We should lock the file until we complete our analysis and reading
+		# but the current implementation should be enough for typical probe usages
 		
 		for line in newlines:
 			for pattern in self._patterns:
