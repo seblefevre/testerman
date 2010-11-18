@@ -463,7 +463,7 @@ class Job(object):
 		'running-time': runningTime, 'parent-id': parentId,
 		'state': self.getState(), 'result': self._result, 'type': self._type,
 		'username': self._username, 'scheduled-at': self._scheduledStartTime,
-		'path': self._path }
+		'path': self._path, 'log-filename': self._logFilename }
 		return ret
 	
 	def __str__(self):
@@ -1460,10 +1460,7 @@ class JobManager:
 
 	def persist(self):
 		"""
-		Persist the current job queue to disk.
-		WARNING: not thread safe.
-		Must be called when the queue manager is stopped (no further activity within the 
-		job queue)
+		Persists the current job queue to disk.
 		"""
 		if not cm.get('testerman.var_root'):
 			return 

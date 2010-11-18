@@ -29,7 +29,7 @@ class Client(TestermanClient.Client):
 	# Specific Server Management functions
 	##
 	
-	def purgeJobs(self, older_than):
+	def purgeJobQueue(self, older_than):
 		"""
 		Purges jobs in the queue that:
 		- are completed (any status)
@@ -44,8 +44,16 @@ class Client(TestermanClient.Client):
 		@returns: the number of purged jobs
 		"""
 		try:
-			return self.__proxy.purgeJobs(older_than)
+			return self.__proxy.purgeJobQueue(older_than)
 		except xmlrpclib.Fault, e:
 			self.getLogger().error("Fault while purging old jobs: " + str(e))
 			raise Exception(e.faultString)
 		
+
+	def persistJobQueue(self):
+		try:
+			return self.__proxy.persistJobQueue()
+		except xmlrpclib.Fault, e:
+			self.getLogger().error("Fault while persisting jobs: " + str(e))
+			raise Exception(e.faultString)
+	

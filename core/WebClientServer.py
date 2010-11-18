@@ -46,11 +46,17 @@ import time
 import optparse
 import re
 import libxml2
+import JSON
 
 VERSION = '0.1.0'
 
 
 DEFAULT_PAGE = "/index.vm"
+
+JSON_CONTENT_TYPE = "text/plain" # or application/json
+
+# "ajax-like" method async timeout
+TIMEOUT_GET_JOB_STATUS = 10.0
 
 cm = ConfigManager.instance()
 
@@ -70,10 +76,11 @@ def formatTimestamp(timestamp):
 ################################################################################
 
 class WebClientApplication(WebServer.WebApplication):
-	def __init__(self, testermanClient, **kwargs):
+	def __init__(self, testermanClient, jobMonitorManager, **kwargs):
 		WebServer.WebApplication.__init__(self, **kwargs)
 		self._client = testermanClient
 		self._repositoryHome = None
+		self._jobMonitorManager = jobMonitorManager
 
 	def authenticate(self, username, password):
 		self._repositoryHome = None
@@ -240,12 +247,17 @@ class WebClientApplication(WebServer.WebApplication):
 		except Exception, e:
 			getLogger().error("handle_monitor_ats: %s" % str(e))
 			error = True
+		
+		if jobInfo is None:
+			error = True
 
-		print jobInfo		
 		context = dict(jobId = jobId, error = error)
 		if not error:
 			for (k, v) in jobInfo.items():
 				context[k.replace('-', '')] = v
+			
+#			self._startMonitoring(jobInfo)
+			
 		if context.has_key('runningtime') and context['runningtime']:
 			context['runningtime'] = '%2.2f' % context['runningtime']
 
@@ -370,7 +382,181 @@ class WebClientApplication(WebServer.WebApplication):
 		
 		filename = os.path.split(path)[1] + '.xml'
 		self._sendContent(log, contentType = "application/xml", asFilename = filename)
+
+
+	def handle_get_job_info(self, jobId, lastKnownState = None):
+		"""
+		Called via an ajax-like call.
 		
+		Returns the job status, either the current one if lastKnownState is different
+		from the current one,
+		or subscribes and waits for a state change to return it.
+		"""
+		jobInfo = self._jobMonitorManager.getJobInfo(jobId, lastKnownState)
+		
+		result = {}
+		if jobInfo:
+			for (k, v) in jobInfo.items():
+				result[k.replace('-', '')] = v
+			
+			result["finished"] = (jobInfo["state"] in [ "complete", "cancelled", "killed", "error" ])
+		else:
+			result = None
+		
+		self._sendContent(JSON.dumps(result), contentType = JSON_CONTENT_TYPE)
+	
+	
+	def handle_get_runtime_log(self, jobId, lastLogEventId = 0):
+		"""
+		Called via an ajax-like call.
+		Returns the new log elements for a particular job (id'd by jobId)
+		since the lastLogElementId.
+		
+		If the jobId is currently registered in our current monitoring threads,
+		returns them as XML elements
+		
+		Otherwise returns a null object.
+		"""
+		elements = self._jobMonitorManager.getEvents(jobId)
+		
+		if not elements:
+			time.sleep(1) # force a wait to avoid a requery. Normally we should wait until a new event arrives instead.
+		
+		logElements = [ dict(eventId = lastLogEventId + x[0], data = x[1]) for x in elements ]
+		
+		self._sendContent(JSON.dumps(logElements), contentType = JSON_CONTENT_TYPE)
+	
+	def _startMonitoring(self, jobInfo):
+		self._jobMonitorManager.monitor(jobInfo)
+
+
+class JobMonitorManager:
+	"""
+	This component is responsible for monitoring jobs that
+	are watched by at least one web client,
+	and buffering log events to serve them to the web clients
+	via ajax polling.
+	"""
+	
+	class EventQueue:
+		"""
+		The queue that contains buffered events for a particular
+		job.
+		"""
+		def __init__(self, jobInfo):
+			self._id = jobInfo['id']
+			self._lastUpdate = time.time()
+			self._lastEventId = -1
+			self._queue = []
+			self._running = True
+		
+		def setStopped(self):
+			self._running = False
+			self._lastUpdate = time.time()
+		
+		def enqueue(self, event):
+			self._queue.append(event)
+			self._lastEventId += 1
+			self._lastUpdate = time.time()
+		
+		def isStopped(self):
+			return not self._running
+		
+		def getLastUpdate(self):
+			return self._lastUpdate
+
+	def __init__(self, testermanClient):
+		# TODO: add locks everywhere
+		self._queues = {}			
+		
+		self._client = testermanClient
+	
+	def _getClient(self):
+		return self._client
+
+	def getJobInfo(self, jobId, lastKnownState):
+		getLogger().debug("Checking for job info for %s (from %s)" % (jobId, lastKnownState))
+		
+		
+		jobInfo = self._getClient().getJobInfo(int(jobId))
+		if jobInfo:
+			getLogger().debug("Got job info for %s: %s" % (jobId, jobInfo))
+		else:
+			getLogger().debug("job %s does not exist, not monitoring" % jobId)
+			return None # non-existent job
+
+		if jobInfo['state'] != lastKnownState:
+			getLogger().debug("job %s state changed from %s to %s between two calls, not monitoring" % (jobId, lastKnownState, jobInfo["state"]))
+			return jobInfo
+
+		# finished ? no need to wait for a change
+		if jobInfo['state'] in ['complete', 'cancelled', 'killed', 'error']:
+			getLogger().debug("job %s is already over, not monitoring" % (jobId))
+			return jobInfo
+		
+		# Otherwise, let's subscribe and wait for a change.
+		event = threading.Event()
+		def onNotification(notification):
+			uri = notification.getUri()
+			if notification.getMethod() == "JOB-EVENT":
+				getLogger().debug("new job event received for job %s" % (jobId))
+				jobInfo = notification.getApplicationBody()
+				event.set()
+		
+		uri = "job:%s" % jobId
+		getLogger().debug("subscribed to job events for job %s" % (jobId))
+		self._getClient().subscribe(uri, onNotification)
+		# timeout, let's force the source to poll each x seconds
+		event.wait(TIMEOUT_GET_JOB_STATUS)
+		self._getClient().unsubscribe(uri, onNotification)
+		return jobInfo
+	
+			
+	def monitor(self, jobInfo):
+		jobId = jobInfo['id']
+		state = jobInfo['state']
+		uri = "job:%s" % jobId
+		if state in ['waiting', 'running', 'cancelling']:
+			if not jobId in self._queues:
+				self._getClient().subscribe(uri, self.onNotification)
+				self._queues[uri] = self.EventQueue(jobInfo)
+		else:
+			# Nothing to do, already stopped
+			pass
+	
+	def onNotification(self, notification):
+		uri = notification.getUri()
+		if notification.getMethod() == "LOG":
+			if uri in self._queues:
+				self._queues.enqueue(notification.getBody())
+		elif notification.getMethod() == "JOB-EVENT":
+			if uri in self._queues:
+				state = notification.getApplicationBody()['state']
+				if not state in ['waiting', 'running', 'cancelling']:
+					self._getClient().unsubscribe(uri, self.onNotification)
+					self._queues[uri].setStopped()
+	
+	def garbageCollection(self):
+		"""
+		To be called regularly.
+		"""
+		timeout = 60
+		toPurge = []
+		for uri, queue in self._queues.items():
+			if queue.isStopped() and queue.getLastUpdate() < (time.time() - timeout):
+				# Let's purge the queue entrie
+				toPurge.append(uri)
+		
+		for uri in toPurge:
+			del self._queues[uri]
+	
+	def getEvents(self, jobId, startingFromId = 0):
+		MAX_EVENTS = 100
+		uri = "job:%s" % jobId
+		if uri in self._queues:
+			q = self._queues[uri]
+			return zip(xrange(MAX_EVENTS), q._queue[startingFromId:])
+		return []
 
 ############################################################
 # The HTTP Server
@@ -397,14 +583,18 @@ class HttpServerThread(threading.Thread):
 		address = (cm.get("interface.wc.ip"), cm.get("interface.wc.port"))
 		serverUrl = "http://%s:%s" % (cm.get("ts.ip"), cm.get("ts.port"))
 		client = TestermanClient.Client(name = "Testerman WebClient", userAgent = "WebClient/%s" % VERSION, serverUrl = serverUrl)
+		self._client = client
 		RequestHandler.registerApplication('/', WebClientApplication, 
 			documentRoot = cm.get("testerman.webclient.document_root"), 
 			testermanClient = client,
+			jobMonitorManager = JobMonitorManager(client),
 			debug = cm.get("wcs.debug"),
 			authenticationRealm = 'Testerman WebClient')
 		self._server = HttpServer(address, RequestHandler)
 
 	def run(self):
+		self._client.startXc()
+		getLogger().info("Testerman Client Xc interface started")
 		getLogger().info("HTTP server started")
 		try:
 			while not self._stopEvent.isSet(): 
@@ -412,6 +602,8 @@ class HttpServerThread(threading.Thread):
 		except Exception, e:
 			getLogger().error("Exception in HTTP server thread: " + str(e))
 		getLogger().info("HTTP server stopped")
+		self._client.stopXc()
+		
 
 	def stop(self):
 		try:

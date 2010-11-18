@@ -73,6 +73,9 @@ class JobContext(CommandContext):
 		node.addField("older-than", "purge jobs whose root job was completed at least N days ago", IntegerNode("number of days"))
 		self.addCommand("purge", "purge old jobs", node, self.purgeJobs)
 
+		# Persist the queue
+		self.addCommand("persist", "persist current job queue", None, self.persistJobs)
+
 	def _getClient(self):
 		if not self._client:
 			serverUrl = os.environ.get('TESTERMAN_SERVER')
@@ -140,6 +143,10 @@ class JobContext(CommandContext):
 		since = datetime.datetime.now() - datetime.timedelta(days = older_than)
 		timestamp = time.mktime(since.timetuple()) # notice that timestamp is in UTC, while since is in localtime
 		self.notify("Purging jobs whose completion date is before %s (local time)..." % since.ctime())
-		ret = self._getClient().purgeJobs(timestamp)
+		ret = self._getClient().purgeJobQueue(timestamp)
 		self.notify("%s job(s) purged." % ret)
 
+	def persistJobs(self):
+		self.notify("Persisting job queue...")
+		ret = self._getClient().persistJobQueue()
+		self.notify("Job queue persisted successfully.")

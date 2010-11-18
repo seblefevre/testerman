@@ -52,7 +52,7 @@ import zlib
 #: API versions: major.minor
 #: major += 1 if not backward compatible,
 #: minor += 1 if feature-enriched, backward compatible
-WS_VERSION = '1.4'
+WS_VERSION = '1.5'
 
 
 ################################################################################
@@ -1277,11 +1277,13 @@ def getVariables(component = "ts"):
 	else:
 		return None
 
-def purgeJobs(older_than):
+def purgeJobQueue(older_than):
 	"""
 	Purges jobs in the queue that:
 	- are completed (any status)
 	- and whose completion time is strictly older than the provided older_than timestamp (UTC)
+
+	@since: 1.5
 
 	@type  older_than: float (timestamp)
 	@param older_than: the epoch timestamp of the older job to keep
@@ -1291,17 +1293,38 @@ def purgeJobs(older_than):
 	@rtype: int
 	@returns: the number of purged jobs
 	"""
-	getLogger().info(">> purgeJobs(%s)" % older_than)
+	getLogger().info(">> purgeJobQueue(%s)" % older_than)
 	res = 0
 	try:
 		res = JobManager.instance().purgeJobs(older_than)
 	except Exception, e:
 		e =  Exception("Unable to complete purgeJobs operation: %s\n%s" % (str(e), Tools.getBacktrace()))
-		getLogger().info("<< getJobStatus(...): Fault:\n%s" % str(e))
+		getLogger().info("<< purgeJobQueue(...): Fault:\n%s" % str(e))
 		raise(e)
 
-	getLogger().info("<< purgeJobs: %s job(s) purged" % res)
+	getLogger().info("<< purgeJobQueue: %s job(s) purged" % res)
 	return res
+
+def persistJobQueue():	
+	"""	
+	Persists the current job queue to the standard persistence file.
+	This administrative function may be convenient when you're about
+	to kill the server violently.
 	
+	@since: 1.5
+
+	@throws Exception in case of an error
 	
+	@rtype: None
+	"""
+	getLogger().info(">> persistJobQueue()")
 	
+	try:
+		res = JobManager.instance().persist()
+	except Exception, e:
+		e =  Exception("Unable to complete persistJobQueue operation: %s\n%s" % (str(e), Tools.getBacktrace()))
+		getLogger().info("<< persistJobQueue(...): Fault:\n%s" % str(e))
+		raise(e)
+
+	getLogger().info("<< persistJobQueue returned")
+	return None

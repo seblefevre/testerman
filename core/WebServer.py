@@ -20,15 +20,15 @@
 
 import ConfigManager
 import Tools
-import Versions
 
 import airspeed 
 
 import logging
-import BaseHTTPServer
 import os.path
 import socket
 import base64
+import cgi
+
 
 DEFAULT_PAGE = "/index.vm"
 
@@ -178,7 +178,7 @@ class WebApplicationDispatcherMixIn:
 			path = '/' + path
 		
 		# Matches the context root only on the "directory part" of the path
-		p = os.path.split(self.path)[0]
+		p = os.path.split(path)[0]
 		contextRoot = ''
 		for cr in self._applications.keys():
 			if p.startswith(cr) and len(cr) > len(contextRoot):
@@ -186,7 +186,7 @@ class WebApplicationDispatcherMixIn:
 
 		application = self._applications.get(contextRoot)
 		if application:
-			webRequest = WebRequest(self, path = self.path[len(contextRoot):], contextRoot = contextRoot)
+			webRequest = WebRequest(self, path = path[len(contextRoot):], contextRoot = contextRoot)
 			app = application['appclass'](**application['parameters'])
 			app.request = webRequest
 			getLogger().debug("Forwarding request %s to %s" % (webRequest, app))
@@ -278,7 +278,13 @@ class WebApplication:
 			# If we have a specific handler to serve the request, call it.
 			if hasattr(self, handler):
 				getLogger().debug("Requested dynamic resource: %s" % path[1:])
-				getattr(self, handler)(args)
+				# Keyword arguments
+				if args and '&' in args:
+					args = dict(cgi.parse_qsl(args, True))
+					getattr(self, handler)(**args)
+				# or raw string
+				else:
+					getattr(self, handler)(args)
 			# Airspeed template ?
 			elif self._isTemplate(path):
 				getLogger().debug("Requested airspeed template: %s" % path[1:])

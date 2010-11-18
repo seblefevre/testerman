@@ -399,10 +399,12 @@ class Client(Nodes.ConnectingNode):
 			self.__localSubscriptions[uri].append(callback)
 			self._unlock()
 			self.sendNotification(self.__channel, Messages.Notification("SUBSCRIBE", uri, "XC", "1.0"))
+			self.getLogger().debug("subscribed to URI %s, callback %s" % (uri, callback))
 			return
 
 		if not callback in self.__localSubscriptions[uri]:
 			self.__localSubscriptions[uri].append(callback)
+			self.getLogger().debug("already subscribed to URI %s, added callback %s" % (uri, callback))
 
 		self._unlock()
 
@@ -423,6 +425,8 @@ class Client(Nodes.ConnectingNode):
 		# If Xc is not connected, does nothing ?
 		# if not self.__channel:
 		# 	return
+
+		self.getLogger().debug("unsubscribing from URI %s, callback %s" % (uri, callback))
 
 		self._lock()
 		# We only send an UNSUBSCRIBE if no registered callback remains.

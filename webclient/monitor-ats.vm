@@ -4,6 +4,7 @@
 <head>
 	<title>Monitoring Job ID ${jobId}</title>
 	<link rel="stylesheet" type="text/css" href="static/testerman.css" />
+	<script type="text/javascript" src="static/testerman.js"></script>
 </head>
 <body>
 	<div id="page">
@@ -16,33 +17,110 @@
 			<div id="content" class="wiki">
 				<div class="wikipage">
 
-<h2>Monitoring Job ID ${jobId}</h2>
-#if ($error)
-<p>
-Unable to retrieve a status for this job. The ATS may not have been started/scheduled due to an error.
-</p>
-#else
-<ul>
-<li>ATS name: <a class="wiki" href="browser?/repository/${name}">${name}</a></li>
-<li>Current job state: ${state}</li>
-<li>Started by: ${username}</li>
-#if ($runningtime)
-	<li>Running time: ${runningtime}s</li>
-#end
-</ul>
-#end
-
 <p>
 <a class="wiki" href="monitor_ats?${jobId}">Refresh this page</a>
 </p>
 
-#if ($logFilename)
+<h2>Monitoring Job ID ${jobId}</h2>
+<div id="job-status">
+</div>
+
+<script type="text/javascript">
+/**
+ * Job update
+ */
+function startMonitoringJobState(jobId) {
+	getJobUpdate(jobId, "unknown", onJobUpdate, onJobNotFound);
+}
+
+function onJobNotFound(jobId, lastKnownState) {
+	var text = "<p>" +
+"Unable to retrieve a status for this job. It may not exist on the server, or may not have been started/scheduled due to an error." +
+"</p>";
+	replaceContent("job-status", text);
+}
+
+function onJobUpdate(jobId, jobInfo) {
+	var text = "<ul><li>ATS name: <a class=\"wiki\" href=\"browser?/repository/" + jobInfo.name + "\">" + jobInfo.name + "</a></li>" +
+"<li>Current job state: " + jobInfo.state + "</li><li>Started by: " + jobInfo.username + "</li>";
+
+	if (jobInfo.runningtime) {
+		text = text + "<li>Running time: " + jobInfo.runningtime + "s</li>";
+	}
+	
+	text = text + "</ul>";
+	
+	replaceContent("job-status", text);
+	
+	if (jobInfo.logfilename) {
+		text = "<ul>" +
+"	<li><a class=\"wiki\" href=\"view_log?" + jobInfo.logfilename + "\">view</a></li>" +
+"	<li><a class=\"wiki\" href=\"download_log?" + jobInfo.logfilename + "\">download</a></li>" + 
+"</ul>"
+		
+		replaceContent("execution-logs", text);
+	}	
+	
+	if (!jobInfo.finished) {
+		// rearm our monitoring
+		getJobUpdate(jobId, jobInfo.state, onJobUpdate, onJobNotFound);
+	}
+	
+}
+
+/** 
+ * Log monitoring
+ */
+
+function startMonitoringLogs(jobId) {
+	getNewLogEvents(jobId, 0, onLogEvents, onLogEventError);
+}
+
+function onLogEventError(jobId, lastAttemptedEventId) {
+	// Let's rearm our poller
+//	getNewLogEvents(jobId, lastAttemptedEventId, onLogEvents, onLogEventError);
+}
+
+
+function onLogEvents(jobId, events) {
+	var eventId;
+	var rtl = document.getElementById("rtl");
+	for (var i = 0; i < events.length; i++) {
+		var event = events[i];
+		eventId = event.eventId;
+		var txtNode = document.createTextNode(event.data + "\n");
+		rtl.appendChild(txtNode);
+	}
+	
+	if (eventId < 10) {
+		// Let's rearm our poller
+		getNewLogEvents(jobId, eventId + 1, onLogEvents, onLogEventError);
+	}
+}
+
+
+/**
+ * Auto start monitoring on page load
+ */
+window.onload = function() {
+	startMonitoringJobState(${jobId});
+}
+</script>
+
+<!--
+<h2>Real-time Logs</h2>
+<a class="wiki" href="startMonitoringLogs(${jobId});">Refresh Logs</a>
+<pre id="rtl">
+Some logs here.
+</pre> -->
+
+
 <h2>Execution Logs</h2>
-<ul>
-	<li><a class="wiki" href="view_log?${logFilename}">view</a></li>
-	<li><a class="wiki" href="download_log?${logFilename}">download</a></li>
-</ul>
-#end
+<div id="execution-logs">
+<p>
+Execution logs are currently unavailable for this job.
+</p>
+</div>
 
 				</div>
 			</div>

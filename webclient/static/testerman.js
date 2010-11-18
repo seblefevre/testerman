@@ -19,6 +19,11 @@ function expandCollapseAll(s) {
 }
 
 
+function replaceContent(id, s) {
+	var n = document.getElementById(id);
+	n.innerHTML = s;
+}
+
 function htmlEscape(s) {
 	var e = document.createElement("div");
 	e.innerText = e.textContent = s;
@@ -112,3 +117,72 @@ var Base64 = {
 		return string;
 	}
 }
+
+
+/** 
+ * Some Ajax-related functions
+ */
+
+function createXMLHttpRequest() {
+	try { return new XMLHttpRequest(); } catch(e) {}
+	try { return new ActiveXObject("Msxml2.XMLHTTP"); } catch (e) {}
+	alert("XMLHttpRequest not supported");
+	return null;
+}
+
+var MAXIMUM_WAITING_TIME = 100000.0;
+
+function getNewLogEvents(jobId, lastEventId, onEvents, onPollingError) {
+	var xhReq = createXMLHttpRequest();
+	xhReq.open("GET", "get_runtime_log?jobId=" + jobId + "&lastLogEventId=" + lastEventId, true); // Server stuck in a loop.
+	var requestTimer = setTimeout(function() {
+  	 xhReq.abort();
+  	 // Handle timeout situation, e.g. Retry or inform user.
+	}, MAXIMUM_WAITING_TIME);
+	xhReq.onreadystatechange = function() {
+		if (xhReq.readyState != 4)  { 
+			return;
+		}
+		clearTimeout(requestTimer);
+		if (xhReq.status != 200)  {
+			onPollingError(jobId, lastEventId);
+			return;
+		}
+		var serverResponse = eval('('+ xhReq.responseText + ')');
+		onEvents(jobId, serverResponse);
+	}
+	xhReq.send(null);
+}
+
+function getJobUpdate(jobId, lastKnownState, onUpdate, onJobNotFound) {
+	var xhReq = createXMLHttpRequest();
+	xhReq.open("GET", "get_job_info?jobId=" + jobId + "&lastKnownState=" + lastKnownState, true); // Server stuck in a loop.
+	var requestTimer = setTimeout(function() {
+  	 xhReq.abort();
+  	 // Handle timeout situation, e.g. Retry or inform user.
+	}, MAXIMUM_WAITING_TIME);
+	xhReq.onreadystatechange = function() {
+		if (xhReq.readyState != 4)  {
+			return;
+		}
+		clearTimeout(requestTimer);
+		if (xhReq.status != 200)  {
+			console.log("error status", xhReq.status);
+			// Ignore user interruption (always returning a status == 0 ?)
+			if (xhReq.status != 0) {
+				onJobNotFound(jobId, lastKnownState);
+			}
+			return;
+		}
+		var serverResponse = eval('('+ xhReq.responseText + ')');
+		
+		if (serverResponse) {
+			onUpdate(jobId, serverResponse);
+		}
+		else {
+			onJobNotFound(jobId, lastKnownState);
+		}
+	}
+	xhReq.send(null);
+}
+
