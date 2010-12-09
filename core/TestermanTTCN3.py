@@ -58,6 +58,12 @@ error_ = VERDICT_ERROR
 inconc_ = VERDICT_INCONC
 none_ = VERDICT_NONE
 
+# Public aliases for userland modules 
+PASS = VERDICT_PASS
+FAIL = VERDICT_FAIL
+ERROR = VERDICT_ERROR
+INCONC = VERDICT_INCONC
+NONE = VERDICT_NONE
 
 _GeneratorBaseId = 0
 _GeneratorBaseIdMutex = threading.RLock()
