@@ -141,6 +141,7 @@ class TestermanContext:
 		self._defaultAltsteps = {}
 		# The pipe used for system queue notifications in alt()
 		self._systemQueueNotifier = None
+		self._systemQueueNotifierUserCount = 0 # smart counter, multiple nested alt() can use the same notifier
 	
 	def getValues(self):
 		return self._values
@@ -207,16 +208,21 @@ class TestermanContext:
 	def getSystemQueueNotifier(self):
 		if not self._systemQueueNotifier:
 			self._systemQueueNotifier = os.pipe()
+			self._systemQueueNotifierUserCount = 0
+		self._systemQueueNotifierUserCount += 1
 		return self._systemQueueNotifier
 	
-	def cleanSystemQueueNotifier(self):
-		if self._systemQueueNotifier:
+	def cleanSystemQueueNotifier(self, force = False):
+		self._systemQueueNotifierUserCount -= 1
+		if (force or self._systemQueueNotifierUserCount <= 0) and self._systemQueueNotifier:
 			try:
 				os.close(self._systemQueueNotifier[0])
 				os.close(self._systemQueueNotifier[1])
 			except:
 				pass
+			self._systemQueueNotifierUserCount = 0
 			self._systemQueueNotifier = None
+			logInternal("tc %s does not use the system queue notifier any more - cleaned up" % self._tc)
 	
 def getLocalContext():
 	"""
@@ -1827,6 +1833,8 @@ def alt(alternatives):
 				systemQueueWatched = True
 			watchedPortsFds.append(condition.port.getNotifierFd())
 		portAlternatives[condition.port].append((guard, condition, actions))
+	
+	logInternal("alt: tc %s is watching the following fds: %s - watching the system queue: %s" % (getLocalContext().getTc(), watchedPortsFds, systemQueueWatched))
 
 	# Step 2.
 	matchedInfo = None # tuple (guard, template, asValue, actions, message, decodedMessage)
@@ -2001,6 +2009,7 @@ def alt(alternatives):
 			# Now wait until another message arrives on one of our watched ports (if we have to wait)
 			if (not matchedInfo) or repeat:
 				try:
+					logInternal("alt: tc %s is renewing its subscription on the following fds: %s" % (getLocalContext().getTc(), watchedPortsFds))
 					r, w, e = select.select(watchedPortsFds, [], [])
 				except select.error, e:
 					if e.args[0] == 4:
