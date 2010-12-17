@@ -1,0 +1,92 @@
+#! /bin/sh
+
+### BEGIN INIT INFO
+# Provides:		testerman
+# Required-Start:	$remote_fs $syslog
+# Required-Stop:	$remote_fs $syslog
+# Default-Start:	2 3 4 5
+# Default-Stop:		
+# Short-Description:	Testerman Server Components
+### END INIT INFO
+
+set -e
+
+# /etc/init.d/testerman: start and stop the Testerman Server components
+
+TESTERMAN_USER=testerman
+TESTERMAN_HOME=/home/${TESTERMAN_USER}/testing
+
+if [ ! -x ${TESTERMAN_HOME}/bin/testerman-admin ]; then
+	echo "No testerman installation found in $TESTERMAN_HOME"
+	exit 1
+fi
+
+umask 022
+
+. /lib/lsb/init-functions
+
+export PATH="${PATH:+$PATH:}/usr/sbin:/sbin"
+
+start_all() {
+	/bin/su -l -c "${TESTERMAN_HOME}/bin/testerman-admin start all" $TESTERMAN_USER
+	status="$?"
+	return $status
+}
+
+stop_all() {
+	/bin/su -l -c "${TESTERMAN_HOME}/bin/testerman-admin stop all" $TESTERMAN_USER
+	status="$?"
+	return $status
+}
+
+restart_all() {
+	/bin/su -l -c "${TESTERMAN_HOME}/bin/testerman-admin restart all" $TESTERMAN_ISER
+	status="$?"
+	return $status
+}
+
+status() {
+	/bin/su -l -c "${TESTERMAN_HOME}/bin/testerman-admin status" $TESTERMAN_USER 
+	status="$?"
+	return $status
+}
+
+
+case "$1" in
+  start)
+	log_daemon_msg "Starting Testerman Server components" "testerman"
+	if start_all; then
+	    log_end_msg 0
+	else
+	    log_end_msg 1
+	fi
+	;;
+	
+  stop)
+	log_daemon_msg "Stopping Testerman Server components" "testerman"
+	if stop_all; then
+	    log_end_msg 0
+	else
+	    log_end_msg 1
+	fi
+	;;
+  
+	restart)
+	log_daemon_msg "Restarting Testerman Server components" "testerman"
+	if restart_all; then
+	    log_end_msg 0
+	else
+	    log_end_msg 1
+	fi
+	;;
+
+  status)
+	status && exit 0 || exit $?
+	;;
+
+  *)
+	log_action_msg "Usage: /etc/init.d/testerman {start|stop|restart|status}"
+	exit 1
+esac
+
+exit 0
