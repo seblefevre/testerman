@@ -93,70 +93,68 @@ class SoapDigitalSignatureCodec(CodecManager.Codec):
 	You may use with CodecXml for that purpose, for instance:
 	
 	{{{
-#!python
-signing_privkey = '''-----BEGIN RSA PRIVATE KEY-----
-MIICXgIBAAKBgQDMJBNZoKMEoEs+m/V8jjMAX57uQEJsyYe+2SbWjrZ3knQb+3+6
-iMywhduDuVJJhE7leOoDZIlghOCr1CEkIZK+/HoH/kg++Olz8taOG8L/P3GnMfx4
-...
-gj1qvwBfBVaLGVep1QnQt1DFBbKP36I=
------END RSA PRIVATE KEY-----'''
+	#!python
+	signing_privkey = '''-----BEGIN RSA PRIVATE KEY-----
+	MIICXgIBAAKBgQDMJBNZoKMEoEs+m/V8jjMAX57uQEJsyYe+2SbWjrZ3knQb+3+6
+	iMywhduDuVJJhE7leOoDZIlghOCr1CEkIZK+/HoH/kg++Olz8taOG8L/P3GnMfx4
+	...
+	gj1qvwBfBVaLGVep1QnQt1DFBbKP36I=
+	-----END RSA PRIVATE KEY-----'''
 
-# The certificate associated with the key above.
-# Must be X509v3 with subjectKeyIdentifier extension.
-signing_certificate = '''-----BEGIN CERTIFICATE-----
-MIIDEzCCAnygAwIBAgIJAIfjr0Rpa5W7MA0GCSqGSIb3DQEBBQUAMGUxCzAJBgNV
-BAYTAkZSMQ8wDQYDVQQIEwZGcmFuY2UxETAPBgNVBAcTCEdyZW5vYmxlMQwwCgYD
-...
-gj1qvwBfBVaLGVep1QnQt1DFBbKP36I=
------END CERTIFICATE-----
-'''
-	
-# We create a codec alias to associate the outgoing signature
-# attributes
-define_codec_alias('ds', 'soap11.ds', 
-	signing_key = signing_privkey, 
-	signing_cert = signing_certificate)
+	# The certificate associated with the key above.
+	# Must be X509v3 with subjectKeyIdentifier extension.
+	signing_certificate = '''-----BEGIN CERTIFICATE-----
+	MIIDEzCCAnygAwIBAgIJAIfjr0Rpa5W7MA0GCSqGSIb3DQEBBQUAMGUxCzAJBgNV
+	BAYTAkZSMQ8wDQYDVQQIEwZGcmFuY2UxETAPBgNVBAcTCEdyZW5vYmxlMQwwCgYD
+	...
+	gj1qvwBfBVaLGVep1QnQt1DFBbKP36I=
+	-----END CERTIFICATE-----
+	'''
 
-
-class TC_SOAP_DS_SAMPLE(TestCase):
-	def body(self):
-
-		port01 = self.mtc['port01']
-		port02 = self.mtc['port02']
-		connect(port01, port02)
-
-		# Create a structured xml document
-		document = ('Envelope', { 'ns': 'http://...', 'children': [ ... ])
-
-		# Stacked codecs - first we serialize the document with the 'xml' codec,
-		# then we sign it with the 'ds' aliased codec .
-		message = with_('ds', with_('xml', document))
-		# This sends a signed message
-		port01.send(message)
-		
-		# On matching event, you'll be able to see the signed message
-		port02.receive()
-
-		# Of course, we could use the 'ds' aliased codec directly with
-		# an xml string
-
-		xml = '<soapenv:Envelope xmlns:ns="http://acme.com/api/1" xmlns:soapenv="http://schemas.xmlsoap.org/soap/envelope/">
- <soapenv:Body>
-    <ns:operationRequest>
-       <ns:someParameter />
-    </ns:operationRequest>
- </soapenv:Body>
-</soapenv:Envelope>'
-
-		port01.send(with_('ds', xml))
-
-		# On matching event, you'll be able to see the signed message
-		port02.receive()
+	# We create a codec alias to associate the outgoing signature
+	# attributes
+	define_codec_alias('ds', 'soap11.ds', 
+		signing_key = signing_privkey, 
+		signing_cert = signing_certificate)
 
 
-TC_SOAP_DS_SAMPLE().execute()
+	class TC_SOAP_DS_SAMPLE(TestCase):
+		def body(self):
+
+			port01 = self.mtc['port01']
+			port02 = self.mtc['port02']
+			connect(port01, port02)
+
+			# Create a structured xml document
+			document = ('Envelope', { 'ns': 'http://...', 'children': [ ... ])
+
+			# Stacked codecs - first we serialize the document with the 'xml' codec,
+			# then we sign it with the 'ds' aliased codec .
+			message = with_('ds', with_('xml', document))
+			# This sends a signed message
+			port01.send(message)
+
+			# On matching event, you'll be able to see the signed message
+			port02.receive()
+
+			# Of course, we could use the 'ds' aliased codec directly with
+			# an xml string
+
+			xml = '<soapenv:Envelope xmlns:ns="http://acme.com/api/1" xmlns:soapenv="http://schemas.xmlsoap.org/soap/envelope/">
+	 <soapenv:Body>
+    	<ns:operationRequest>
+      	 <ns:someParameter />
+    	</ns:operationRequest>
+	 </soapenv:Body>
+	</soapenv:Envelope>'
+
+			port01.send(with_('ds', xml))
+
+			# On matching event, you'll be able to see the signed message
+			port02.receive()
 
 
+	TC_SOAP_DS_SAMPLE().execute()
 	}}}
 	
 	This codec, which is actually a signer on encoding, and
