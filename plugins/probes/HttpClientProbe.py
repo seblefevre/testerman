@@ -207,16 +207,12 @@ class ResponseThread(threading.Thread):
 				if self._socket in r:
 					read = self._socket.recv(1024*1024)
 					buf += read
-					# If we are in HTTP/1.0, we should wait for the connection close to decode our message,
-					# since there is no chunk transfer encoding and content-length is not mandatory.
-					if self._probe['version'] == 'HTTP/1.0' and read:
-						# Still connected (i.e. we did not get our r + 0 byte signal
-						continue
 					
 					decodedMessage = None
 
 					self._probe.getLogger().debug('data received (bytes %d), decoding attempt...' % len(buf))
 					(status, _, decodedMessage, summary) = CodecManager.incrementalDecode('http.response', buf)
+
 					if status == CodecManager.IncrementalCodec.DECODING_NEED_MORE_DATA:
 						if not read:
 							# We are disconnected.
@@ -228,7 +224,7 @@ class ResponseThread(threading.Thread):
 						raise Exception('Unable to decode response: decoding error')
 					else:
 						# DECODING_OK
-						fromAddr = "%s:%s" % self._socket.getpeername()
+						fromAddr = "%s:%s" % (self._probe['host'], self._probe['port'])
 						self._probe.getLogger().debug('message decoded, enqueuing...')
 						self._probe.logReceivedPayload(summary, buf, fromAddr)
 						self._probe.triEnqueueMsg(decodedMessage, fromAddr)
