@@ -76,11 +76,11 @@ def formatTimestamp(timestamp):
 ################################################################################
 
 class WebClientApplication(WebServer.WebApplication):
-	def __init__(self, testermanClient, jobMonitorManager, **kwargs):
+	def __init__(self, testermanClient, **kwargs):
 		WebServer.WebApplication.__init__(self, **kwargs)
 		self._client = testermanClient
 		self._repositoryHome = None
-		self._jobMonitorManager = jobMonitorManager
+		self._jobMonitorManager = JobMonitorManager(testermanClient)
 
 	def authenticate(self, username, password):
 		self._repositoryHome = None
@@ -587,7 +587,6 @@ class HttpServerThread(threading.Thread):
 		RequestHandler.registerApplication('/', WebClientApplication, 
 			documentRoot = cm.get("testerman.webclient.document_root"), 
 			testermanClient = client,
-			jobMonitorManager = JobMonitorManager(client),
 			debug = cm.get("wcs.debug"),
 			authenticationRealm = 'Testerman WebClient')
 		self._server = HttpServer(address, RequestHandler)
