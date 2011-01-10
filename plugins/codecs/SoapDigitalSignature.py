@@ -77,7 +77,7 @@ class SoapDigitalSignatureCodec(CodecManager.Codec):
 	|| encoding     || string  || `'utf-8'` || encoding/signing: encoding format. decoding: decoding format if no prolog is present ||
 	|| write_prolog || boolean || `True` || encoding/signing: write the `<?xml version="1.0" encoding="..." ?>` prolog or not ||
 	|| signing_key  || string || `None` || encoding/signing: the private key to use to sign the outgoing message, provided as a PEM string. If none is provided, a default key is used. ||
-	|| signing_cert || string || `None` || encoding/signing: the X.509 certificate associated to the key above, provided as a PEM string. If none is provided, a default certificate associated to the private key above is used. ||
+	|| signing_certificate || string || `None` || encoding/signing: the X.509 certificate associated to the key above, provided as a PEM string. If none is provided, a default certificate associated to the private key above is used. ||
 	|| expected_certificates || list of strings || `[]` || decoding/verification: a list of X.509 certificates, provided as PEM strings, that will be used as signing candidates. One of them should be referenced in the signature to validate, based on its subject key identifier. By default, the default signing certificate above is included. ||
 
 	= Overview =
@@ -238,9 +238,16 @@ class SoapDigitalSignatureCodec(CodecManager.Codec):
 		if not isinstance(template, basestring):
 			raise Exception('This codec requires a string')
 		
-		cert, ski = SoapSecurity.loadCertFromPem(self.getProperty('signing_cert', DEFAULT_SIGNING_CERTIFICATE))
-		privkey = SoapSecurity.loadKeyFromPem(self.getProperty('signing_key', DEFAULT_SIGNING_PRIVATE_KEY))
+		pemcert = self.getProperty('signing_certificate')
+		if not pemcert:
+			pemcert = DEFAULT_SIGNING_CERTIFICATE
+		pemkey = self.getProperty('signing_key')
+		if not pemkey:
+			pemkey = DEFAULT_SIGNING_PRIVATE_KEY
+		cert, ski = SoapSecurity.loadCertFromPem(pemcert)
+		privkey = SoapSecurity.loadKeyFromPem(pemkey)
 		
+		self.log("Signing certificate & private keys loaded")
 		doc = libxml2.parseDoc(template)
 		# Sign the body only
 		xpc = doc.xpathNewContext()
@@ -248,7 +255,9 @@ class SoapDigitalSignatureCodec(CodecManager.Codec):
 		tbs = xpc.xpathEval("/soap:Envelope/soap:Body")
 		signedMessage = SoapSecurity.signMessage(doc, cert, privkey, tbsElements = tbs)
 
+		self.log("Message signed")
 		root = signedMessage.getRootElement()
+		self.log("Serializing signed message")
 
 		encoding = self.getProperty('encoding', 'utf-8')
 		ret = ''

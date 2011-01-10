@@ -127,6 +127,22 @@ def getOrCreateNs(node, content, prefix):
 	return node.newNs(content, prefix)
 	
 
+def getFirstElementChild(node):
+	"""
+	Returns the first element child.
+	
+	node.firstElementChild() is not available for all libxml2 versions.
+	"""
+	child = node.children
+	if not child:
+		return None
+	while child:
+		if child.type == 'element':
+			return child
+		child = child.next
+	return None
+
+
 ###############################################################################
 # Certificates/Key loading & referencing by Subject Key Identifier
 ###############################################################################
@@ -464,8 +480,9 @@ def signMessage(doc, cert, privkey, tbsElements = [],
 	if not header:
 		header = libxml2.newNode("Header")
 		header.setNs(ns_soap)
-		if env.firstElementChild():
-			env.firstElementChild().addPrevSibling(header)
+		firstElementChild = getFirstElementChild(env)
+		if firstElementChild:
+			firstElementChild.addPrevSibling(header)
 		else:
 			env.addChild(header)
 	else:
