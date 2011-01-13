@@ -545,6 +545,7 @@ class TcpProbe(ProbeImplementationManager.ProbeImplementation):
 				if status == CodecManager.IncrementalCodec.DECODING_NEED_MORE_DATA:
 					# Do nothing. Just wait for new raw segments.
 					self.getLogger().info("Waiting for more raw segments to complete incremental decoding (using codec %s)." % decoder)
+					conn.decodingBuffer = buf
 					break
 				elif status == CodecManager.IncrementalCodec.DECODING_OK:
 					if consumedSize == 0:
