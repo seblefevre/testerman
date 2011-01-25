@@ -280,7 +280,7 @@ class _BranchCondition:
 		self.from_ = from_
 
 ################################################################################
-# Some tools: StateManager (to implement alt-based state machines)
+# Some tools: Variable & StateManager (to implement alt-based state machines)
 ################################################################################
 
 class StateManager:
@@ -308,6 +308,14 @@ class StateManager:
 		return self._state
 	def set(self, state):
 		self._state = state
+
+class Variable(StateManager):
+	"""
+	Alias to render the StateManager a general-purpose
+	variable that can be set in alt/lambda.
+	"""
+	pass
+
 
 ################################################################################
 # Exceptions
