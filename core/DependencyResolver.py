@@ -74,33 +74,33 @@ def python_getDependencyFilenames(source, sourcePath = None, recursive = True, s
 	@returns: a list of docroot-path to dependencies (no duplicate).
 	"""
 	ret = []
+
 	# Bootstrap the deps (stored as (list of imported modules, path of the importing file) )
-	deps = [ (d, sourcePath) for d in python_getDirectDependencies(source) ]
+	toResolve = [ (d, sourceFilename) for d in python_getImportedUserlandModules(source, sourceFilename = sourceFilename) ]
 	
-	# tuple (dep, fromPath)
-	analyzedDeps = []
-	# dep only
-	alreadyAnalyzedDeps = []
+	# the list of resolved dependencies,
+	# as a map (import, fromFilename): resolvedFilename
+	resolvedSoFar = {}
 	
-	while len(deps):
-		dep, fromFilePath = deps.pop()
+	# For each deps to resolve (a list of (import, fromFilename)),
+	# we need to resolve the filename that will provide this import for this file.
+	while len(toResolve):
+		getLogger().debug("List of imports to resolve for script %s:\n%s" % (sourceFilename, "\n".join(["%s (used in %s)" % x for x in toResolve])))
+		dep, fromFilename = toResolve.pop()
 		# Some non-userland files - not resolved to build the TE userland package
 		# How can we detect standard Python includes ?
 		# fromFilePath starts with the "python home" ? something else ?
-		getLogger().debug("%s: analyzing module dependency %s" % (sourceFilename, dep))
+		getLogger().debug("Resolving import %s from %s..." % (dep, fromFilename))
 
-		# Skip some 
+		# Skip some dependencies provided by the Testerman infrastructure
 		#if dep in [ ]:
-		#	getLogger().info("Skipping dependency analysis: not userland (%s)" % dep)
+		#	getLogger().info("Resolving import %s from %: skipped, not userland" % (dep, fromFilename))
 		#	continue
 
-		# Skip already analyzed deps (analyzed from this very path,
-		# since the same dep name, from different paths, may resolved to
-		# different things)
-		if (dep, fromFilePath) in analyzedDeps:
+		# Skip already resolved dependencies
+		if (dep, fromFilename) in resolvedSoFar:
+			getLogger().debug("Resolving import %s from %s: already resolved as %s" % (dep, fromFilename, resolvedSoFar[(dep, fromFilename)]))
 			continue
-
-		getLogger().debug("%s: analyzing dependency %s (from %s)..." % (sourceFilename, dep, fromFilePath))
 
 		# Ordered list of filenames within the docroot that could provide the dependency:
 		# (module path)
@@ -108,12 +108,14 @@ def python_getDependencyFilenames(source, sourcePath = None, recursive = True, s
 		# - then search from the userland module paths (limited to '/repository/' for now)
 		modulePaths = []
 		# First, try a local module (relative path) (same dir as the currently analyzed file)
-		if fromFilePath:
-			modulePaths.append(fromFilePath)
+		if sourcePath:
+			modulePaths.append(sourcePath)
+		# Then fall back to standard "testerman userland paths" (for now, hardcoded to /repository)
 		for modulePath in [ '/repository' ]:
-			modulePaths.append(modulePath)
+			if not modulePath in modulePaths:
+				modulePaths.append(modulePath)
 
-		getLogger().debug("%s: analyzing dependency %s, search path: %s..." % (sourceFilename, dep, modulePaths))
+		getLogger().debug("Resolving import %s from %s: searching in paths:\n%s" % (dep, fromFilename, "\n".join(modulePaths)))
 
 		found = None
 		depSource = None
@@ -127,37 +129,38 @@ def python_getDependencyFilenames(source, sourcePath = None, recursive = True, s
 				found = depFilename
 				break
 		if not found:
-			raise Exception('%s: missing module: %s is not available in the repository (search path: %s)' % (sourceFilename, dep, modulePaths))
+			getLogger().debug("Resolving import %s from %s: failed, not available in the repository, searched in paths:\n%s" % (dep, fromFilename, "\n".join(modulePaths)))
+			raise Exception('Missing module: %s (imported from %s) is not available in the repository (search path: %s)' % (dep, fromFilename, modulePaths))
 
-		# OK, we found a file.
+		# OK, we resolved a file.
+		resolvedSoFar[(dep, fromFilename)] = depFilename
+		getLogger().debug("Resolving import %s from %s: resolved as %s" % (dep, fromFilename, depFilename))
 		if not depFilename in ret:
-			getLogger().info('%s: python dependency added: %s' % (sourceFilename, depFilename))
 			ret.append(depFilename)
+			getLogger().debug("Script %s is now using the following files:\n%s" % (sourceFilename, "\n".join(ret)))
 
-		# Now, analyze it and add new dependencies to analyze
+		# Now, analyze the resolved file and add its own dependencies to the list to resolve,
+		# if not already resolved
 		if recursive:
-			fromFilePath = '/'.join(depFilename.split('/')[:-1])
-			directDependencies = python_getDirectDependencies(depSource)
-			getLogger().debug('%s: direct dependencies for file %s (%s):\n%s' % (sourceFilename, depFilename, 
-				fromFilePath, str(directDependencies)))
-			for d in directDependencies:
-				if not d in deps and not (d, fromFilePath) in analyzedDeps and d != dep:
-					deps.append((d, fromFilePath))
-
-		# Flag the dep as analyzed - from this path (since it may lead to another filename
-		# when evaluated from another path)
-		analyzedDeps.append((dep, fromFilePath))
-		alreadyAnalyzedDeps.append(dep)
+			sourcePath = '/'.join(depFilename.split('/')[:-1])
+			importedModules = python_getImportedUserlandModules(depSource, depFilename)
+			for im in importedModules:
+				if not (im, depFilename) in resolvedSoFar:
+					toResolve.append((im, depFilename))
+				else:
+					getLogger().debug("Resolving import %s from %s: already resolved" % (im, depFilename))
 
 	return ret	
 
-def python_getDirectDependencies(source):
+def python_getImportedUserlandModules(source, sourceFilename):
 	"""
-	Returns a list of direct dependencies (source is an ATS/Module source code),
+	Returns a list of direct (userland) dependencies (source is an ATS/Module source code),
 	as a list of module names (not filenames !)
 	
 	@type  source: utf-8 string
 	@param source: Python source code
+	@type  sourceFilename: utf-8 string
+	@param sourceFilename: the filename of this source, if known
 	
 	@rtype: list of strings
 	@returns: a list of module names ('mylibs.mymodule', 'amodule', etc) 
@@ -175,7 +178,7 @@ def python_getDirectDependencies(source):
 		if '__main__' in mods:
 			directdeps.append(name)
 	
-	getLogger().info('Unresolved modules: %s' % str(directdeps))
+	getLogger().info('Userland modules imported by file %s:\n%s' % (sourceFilename, "\n".join(directdeps)))
 	
 	return directdeps
 
