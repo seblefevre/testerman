@@ -2868,7 +2868,7 @@ def _templateMatch(message, template, path):
 	# all entries in template dict must match ; extra message entries are ignored (but kept in "decoded dict")
 	if isinstance(template, dict):
 		if not isinstance(message, dict):
-			logInternal("mistmatch: %s: expected a dict << %s >>, got << %s >>" % (path, unicode(template), unicode(message)))
+			logInternal("mismatch: %s: expected a dict << %s >>, got << %s >>" % (path, repr(template), repr(message)))
 			return (False, message)
 		# Existing entries in template dict must be matched (excepting 'omit' entries, which must not be present...)
 		decodedDict = {}
@@ -2881,16 +2881,16 @@ def _templateMatch(message, template, path):
 				(ret, decodedField) = _templateMatch(message[key], tmplt, u"%s.{%s}" % (path, unicode(key)))
 				decodedDict[key] = decodedField
 				if not ret:
-					logInternal("mistmatch: %s: mismatched dict entry %s" % (path, unicode(key)))
+					logInternal("mismatch: %s: mismatched dict entry %s" % (path, unicode(key)))
 					result = False
 					# continue to traverse the dict to perform "maximum" message decoding
 			elif isinstance(tmplt, (omit, any_or_none, ifpresent)) or (isinstance(tmplt, extract) and isinstance(tmplt._template, (omit, any_or_none, ifpresent))):
 				# if the missing keys are omit(), that's ok.
-				logInternal("omit: %s: omitted value %s not found, or optional value not found. Great." % (path, unicode(key)))
+				logInternal("omit: %s: omitted value %s not found, or optional value not found. OK." % (path, repr(key)))
 				continue
 			else:
 				# if it's something else, missing key, so no match.
-				logInternal("mistmatch: %s: missing dict entry %s" % (path, unicode(key)))
+				logInternal("mismatch: %s: missing dict entry %s" % (path, repr(key)))
 				result = False
 		# Now, add message keys that were not in template to the decoded dict
 		for key, m in message.items():
@@ -2902,11 +2902,11 @@ def _templateMatch(message, template, path):
 	# Must be the same choice name (ie tupe[0]) and matching value
 	if isinstance(template, tuple):
 		if not isinstance(message, tuple):
-			logInternal("mistmatch: %s: expected a tuple << %s >>, got << %s >>" % (path, unicode(template), unicode(message)))
+			logInternal("mismatch: %s: expected a tuple << %s >>, got << %s >>" % (path, repr(template), repr(message)))
 			return (False, message)
 		# Check choice
 		if not message[0] == template[0]:
-			logInternal("mistmatch: %s: tuple choice differs (message: %s, template %s)" % (path, unicode(message[0]), unicode(template[0])))
+			logInternal("mismatch: %s: tuple choices differ (message: %s, template %s)" % (path, repr(message[0]), repr(template[0])))
 			return (False, message)
 		# Check value
 		(ret, decoded) = _templateMatch(message[1], template[1], u"%s.(%s)" % (path, unicode(message[0])))
@@ -2918,7 +2918,7 @@ def _templateMatch(message, template, path):
 	# unless we have some * in template.
 	if isinstance(template, list):
 		if not isinstance(message, list):
-			logInternal("mistmatch: %s: expected a list" % path)
+			logInternal("mismatch: %s: expected a list" % path)
 			return (False, message)
 		
 		# Wildcard (*) support:
@@ -2958,7 +2958,7 @@ def _templateMatch_list(message, template, path):
 	Semi-recursive implementation.
 	De-recursived on wildcard * only.
 	"""
-	logInternal("Trying to match %s with %s" % (unicode(message), unicode(template)))
+	logInternal("Trying to match %s with %s" % (repr(message), repr(template)))
 	# match(message, *|template) =
 	#  matched = False
 	#  i = 0
@@ -2996,7 +2996,7 @@ def _templateMatch_list(message, template, path):
 
 	if _is_any_or_none(th):
 		if not tt:
-			logInternal("_templateMatch_list matched: %s against %s ([*])" % (unicode(message), unicode(template)))
+			logInternal("_templateMatch_list matched: %s against %s ([*])" % (repr(message), repr(template)))
 			return (True, message)
 		matched = False
 		decodedList = []
@@ -3007,7 +3007,7 @@ def _templateMatch_list(message, template, path):
 			if not matched:
 				decodedList.append(message[i])
 			i += 1
-		logInternal("_templateMatch_list res %s: %s against %s ([*])" % (matched, unicode(message), unicode(template)))
+		logInternal("_templateMatch_list res %s: %s against %s ([*])" % (matched, repr(message), repr(template)))
 		# decodedList += trailingDecodedList
 		for e in trailingDecodedList:
 			decodedList.append(e)
@@ -3021,7 +3021,7 @@ def _templateMatch_list(message, template, path):
 
 		if not ret and not isinstance(th, ifpresent):
 			# mismatch on non-optional/if present element
-			logInternal("_templateMatch_list mismatched on first element: %s against %s " % (unicode(message), unicode(template)))
+			logInternal("_templateMatch_list mismatched on first element: %s against %s " % (repr(message), repr(template)))
 			result = False
 			# Display why we didn't match our element
 			decodedList.append(decodedAttemptedElement)
@@ -3044,19 +3044,19 @@ def _templateMatch_list(message, template, path):
 			# template elements.
 			decodedList.append(decodedAttemptedElement)
 
-			logInternal("_templateMatch_list mismatched on first optional element: %s against %s " % (unicode(message), unicode(template)))
+			logInternal("_templateMatch_list mismatched on first optional element: %s against %s " % (repr(message), repr(template)))
 			(ret, decoded) = _templateMatch_list(message, tt, path)
 			result = ret
 			decodedList += decoded
 		else:
 			# Display why we didn't match our element
 			decodedList.append(decodedAttemptedElement)
-			logInternal("_templateMatch_list matched on first element: %s against %s " % (unicode(message), unicode(template)))
+			logInternal("_templateMatch_list matched on first element: %s against %s " % (repr(message), repr(template)))
 			(ret, decoded) = _templateMatch_list(mt, tt, path)
 			result = ret
 			decodedList += decoded
 
-#		logInternal("_templateMatch_list res %s: %s against %s ([*])" % (result, unicode(message), unicode(template)))
+#		logInternal("_templateMatch_list res %s: %s against %s ([*])" % (result, repr(message), repr(template)))
 		return (result, decodedList)
 
 
