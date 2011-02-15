@@ -69,10 +69,12 @@ def python_getDependencyFilenames(source, sourcePath = None, recursive = True, s
 	@type  sourceFilename: string
 	@param sourceFilename: a string to help identify the file that yielded the source. 
 	For non-repository files, use <local>, by convention.
+	Otherwise, use the full docroot path+filename to the script.
 	
 	@rtype: list of strings
 	@returns: a list of docroot-path to dependencies (no duplicate).
 	"""
+	getLogger().info("Resolving dependencies for file %s (sourcePath: %s)" % (sourceFilename, sourcePath))
 	ret = []
 
 	# Bootstrap the deps (stored as (list of imported modules, path of the importing file) )

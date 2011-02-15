@@ -709,7 +709,11 @@ class AtsJob(Job):
 
 		getLogger().info("%s: resolving dependencies..." % str(self))
 		try:
-			deps = DependencyResolver.python_getDependencyFilenames(self._source, self._path, recursive = True)
+			deps = DependencyResolver.python_getDependencyFilenames(
+				source = self._source, 
+				sourcePath = self._path, 
+				recursive = True,
+				sourceFilename = self._name)
 		except Exception, e:
 			desc = "unable to resolve dependencies: %s" % str(e)
 			return handleError(25, desc)
