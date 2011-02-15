@@ -815,13 +815,12 @@ def getDependencies(path, recursive = False):
 		if source is None:
 			raise Exception('Cannot find %s' % path)
 		
-		sourcePath = os.path.split(path)[0]
 		if path.endswith('.py'):
-			res = DependencyResolver.python_getDependencyFilenames(source, sourcePath, recursive, path)
+			res = DependencyResolver.python_getDependencyFilenames(source, path, recursive)
 		elif path.endswith('.ats'):
-			res = DependencyResolver.python_getDependencyFilenames(source, sourcePath, recursive, path)
+			res = DependencyResolver.python_getDependencyFilenames(source, path, recursive)
 		elif path.endswith('.campaign'):	
-			res = DependencyResolver.campaign_getDependencyFilenames(source, sourcePath, recursive, path)
+			res = DependencyResolver.campaign_getDependencyFilenames(source, os.path.split(path)[0], recursive, path)
 		else:
 			raise Exception('Unsupported file format, cannot resolve dependencies')
 		

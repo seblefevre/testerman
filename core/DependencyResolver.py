@@ -47,7 +47,7 @@ def getLogger():
 # Python source management
 ################################################################################
 
-def python_getDependencyFilenames(source, sourcePath = None, recursive = True, sourceFilename = "<local>"):
+def python_getDependencyFilenames(source, sourceFilename, recursive = True):
 	"""
 	Returns a list of userland module filenames
 	(including their own dependencies) the ATS/module depends on.
@@ -60,21 +60,18 @@ def python_getDependencyFilenames(source, sourcePath = None, recursive = True, s
 	
 	@type  source: utf-8 string
 	@param source: a Python source file (module or ATS)
-	@type  sourcePath: string
-	@param sourcePath: docroot path used as a 'working dir' to search for
-	relative dependencies. Typically the path where the source has been extracted
-	from.
+	@type  sourceFilename: string
+	@param sourceFilename: the full docroot path to the source file. 
+	For non-repository files, should be set to something like /repository/<anonymous.ats>
+	so that we can deduce the docroot "working dir" dependencies should be searched from.
 	@type  recursive: bool
 	@param recursive: if True, search recursively for dependencies in imported modules.
-	@type  sourceFilename: string
-	@param sourceFilename: a string to help identify the file that yielded the source. 
-	For non-repository files, use <local>, by convention.
-	Otherwise, use the full docroot path+filename to the script.
 	
 	@rtype: list of strings
 	@returns: a list of docroot-path to dependencies (no duplicate).
 	"""
-	getLogger().info("Resolving dependencies for file %s (sourcePath: %s)" % (sourceFilename, sourcePath))
+
+	getLogger().info("Resolving dependencies for file %s" % sourceFilename)
 	ret = []
 
 	# Bootstrap the deps (stored as (list of imported modules, path of the importing file) )
@@ -110,8 +107,8 @@ def python_getDependencyFilenames(source, sourcePath = None, recursive = True, s
 		# - then search from the userland module paths (limited to '/repository/' for now)
 		modulePaths = []
 		# First, try a local module (relative path) (same dir as the currently analyzed file)
-		if sourcePath:
-			modulePaths.append(sourcePath)
+		sourcePath = os.path.split(fromFilename)[0] 
+		modulePaths.append(sourcePath)
 		# Then fall back to standard "testerman userland paths" (for now, hardcoded to /repository)
 		for modulePath in [ '/repository' ]:
 			if not modulePath in modulePaths:
@@ -144,7 +141,6 @@ def python_getDependencyFilenames(source, sourcePath = None, recursive = True, s
 		# Now, analyze the resolved file and add its own dependencies to the list to resolve,
 		# if not already resolved
 		if recursive:
-			sourcePath = '/'.join(depFilename.split('/')[:-1])
 			importedModules = python_getImportedUserlandModules(depSource, depFilename)
 			for im in importedModules:
 				if not (im, depFilename) in resolvedSoFar:
@@ -289,7 +285,7 @@ def campaign_getDependencyFilenames(source, sourcePath = None, recursive = False
 				if type_ == 'campaign':
 					nextDependencies = campaign_getDependencyFilenames(nextSource, nextPath, True, filename)
 				elif type_ == 'ats':
-					nextDependencies = python_getDependencyFilenames(nextSource, nextPath, True, filename)
+					nextDependencies = python_getDependencyFilenames(nextSource, sourceFilename = filename, recursive = True)
 				
 				for dep in nextDependencies:
 					if not dep in currentDependencies:

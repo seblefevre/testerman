@@ -294,9 +294,8 @@ class Job(object):
 		self._logFilename = None
 		
 		self._username = None
-		# The docroot path to the source, for server-based execution.
+		# The complete docroot path to the source file of this job (including filename)
 		# client-based source and non-source based jobs set it to None
-		# You may see it as a 'working (docroot) directory' for the job.
 		self._path = None
 		
 		# This mapping may override the injected initial session parameters on run.
@@ -616,7 +615,8 @@ class AtsJob(Job):
 			# We consider the atsPath to be /repository/ + the path indicated in
 			# the ATS name. So the name (constructed by the client) should follow some rules 
 			# to make it work correctly.
-			self._path = '/%s/%s' % (cm.get_transient('constants.repository'), '/'.join(self.getName().split('/')[:-1]))
+
+			self._path = '/repository/%s' % (self.getName())
 		# Basic normalization
 		if not self._path.startswith('/'):
 			self._path = '/%s' % self._path
@@ -711,9 +711,8 @@ class AtsJob(Job):
 		try:
 			deps = DependencyResolver.python_getDependencyFilenames(
 				source = self._source, 
-				sourcePath = self._path, 
 				recursive = True,
-				sourceFilename = self._name)
+				sourceFilename = self._path)
 		except Exception, e:
 			desc = "unable to resolve dependencies: %s" % str(e)
 			return handleError(25, desc)
@@ -908,7 +907,7 @@ class AtsJob(Job):
 		teLogFilename = "%s/%s.log" % (baseDirectory, basename)
 		teFilename = "%s/main_te.py" % (tePackageDirectory)
 		# module paths relative to the TE package dir
-		modulePaths = [ self._path[1:], 'repository' ] # we strip the leading / of the atspath
+		modulePaths = [ os.path.split(self._path)[0][1:], 'repository' ] # we strip the leading / of the atspath
 		# Get the TE command line options
 		cmd = TEFactory.createCommandLine(jobId = self.getId(), teFilename = teFilename, logFilename = teLogFilename, inputSessionFilename = inputSessionFilename, outputSessionFilename = outputSessionFilename, modulePaths = modulePaths)
 		executable = cmd['executable']
