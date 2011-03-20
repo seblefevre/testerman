@@ -105,8 +105,10 @@ class MetadataModel(QObject):
 		self.description = None
 		# : unicode string
 		self.languageApi = None
-		#: document parameters (ATS variables). Indexed by a unicode name, contain dicts[unicode] of unicode
+		#: document parameters (ATS variables). Indexed by a unicode name, contain dicts[string] of unicode
 		self.parameters = {}
+		#: execution groups. Indexed by a unicode name, contain dict[string] of unicode
+		self.groups = {}
 
 		# For heavy modifications, we allow to disable the model notification mechanism.
 		# In this case, use:
@@ -207,6 +209,18 @@ class MetadataModel(QObject):
 
 				parameter = parameter.nextSiblingElement()
 
+		# Groups
+		groups = metadataDoc.documentElement().firstChildElement('groups')
+		if not groups.isNull():
+			group = groups.firstChildElement('group')
+			while not group.isNull():
+				self.groups[unicode(group.attribute('name'))] = {
+					'description': unicode(group.text()),
+					'name': unicode(group.attribute('name'))
+				}
+
+				group = group.nextSiblingElement()
+
 		self.setModified(True)
 		
 		log(u"Metadata set: " + unicode(self))
@@ -230,6 +244,9 @@ class MetadataModel(QObject):
 			<parameters>
 				<parameter name="PX_PARAM1" default="defaultValue01" type="string"><![CDATA[description]]></parameter>
 			</parameters>
+			<groups>
+				<group name="GX_GROUP1"><![CDATA[description]]></group>
+			</groups>
 		</meta>'
 
 		@rtype: buffer string
@@ -244,9 +261,13 @@ class MetadataModel(QObject):
 		res += u'<parameters>\n'
 		for (name, p) in self.parameters.items():
 			# We must escape the values (to avoid ", etc)
-			# TODO: use pure Qt facilities
 			res += u'<parameter name="%s" default="%s" type="%s"><![CDATA[%s]]></parameter>\n' % (Qt.escape(name), Qt.escape(p['default']), Qt.escape(p['type']), p['description'].replace('\n', '&cr;'))
 		res += u'</parameters>\n'
+		res += u'<groups>\n'
+		for (name, p) in self.groups.items():
+			# We must escape the values (to avoid ", etc)
+			res += u'<group name="%s"><![CDATA[%s]]></group>\n' % (Qt.escape(name), p['description'].replace('\n', '&cr;'))
+		res += u'</groups>\n'
 		res += u'</metadata>\n'
 		return res.encode('utf-8')
 
@@ -471,6 +492,173 @@ class MetadataModel(QObject):
 		@returns: the script prerequisites
 		"""
 		return self.prerequisites
+
+	def getGroup(self, name):
+		"""
+		Gets a group's attributes.
+
+		@type  name: unicode string
+		@param name: the name of the group
+
+		@rtype: dict[unicode] of unicode
+		@returns: { 'description', 'name' } or None if the group does not exist.
+		"""
+		ret = {}
+		if self.groups.has_key(name):
+			# returns a copy
+			for k, v in self.groups[name].items():
+				ret[k] = v
+			return ret
+		return None
+
+	def setGroup(self, name, description = None, newName = None):
+		"""
+		Sets a group or selected group attributes.
+		Adds it if name does not exists.
+		If newName is provided, rename the group (or create it with newName directly if it does not exist)
+
+		Keeps attributes that are set to None. For new groups with None attributes, uses an empty default value.
+		"""
+		# "batch group modification" - do not send a metadataUpdate() signal for each field
+		modified = self._addGroup(name)
+		modified = modified or self._updateGroupAttribute(name, "description", description)
+		modified = modified or self._updateGroupAttribute(name, "name", newName)
+		self.setModified(modified)
+
+	def addGroup(self, name, description = None):
+		"""
+		Adds a new group.
+		Automatically adjusts its name to match the convention and avoid collisions.
+		Returns the name of the added group.
+		"""
+		name = name.upper().replace(' ', '_')
+		if not name.startswith('GX_'):
+			name = 'GX_' + name
+		name = self.getNewGroupName(name)
+		
+		if not self._addGroup(name):
+			return None
+		
+		self._updateGroupAttribute(name, "description", description)
+		self.setModified(True)
+		return name
+
+	def _addGroup(self, name):
+		"""
+		Registers a new group. Returns True if the model was modified.
+		"""
+		name = name.upper().replace(' ', '_')
+		if not name.startswith('GX_'):
+			name = 'GX_' + name
+		if not self.groups.has_key(name):
+			self.groups[name] = { 'name': name, 'description': '' }
+			return True
+		return False
+
+	def _updateGroupAttribute(self, name, attribute, value):
+		"""
+		Updates a single field/attribute for a particular group.
+		"""
+		modified = False
+		if not self.groups.has_key(name):
+			return False
+		
+		if value is None:
+			return False
+
+		# We are renaming the group
+		if attribute == 'name':
+			# Adjust the name to something valid
+			value = value.upper().replace(' ', '_')
+			if not value.startswith('GX_'):
+				value = 'GX_' + value
+			if name != value:
+				# we are renaming the group
+				# Check if we are not renaming to another existing group
+				value = self.getNewGroupName(value)
+				# OK, we can rename to a new (possibly adjusted) name
+				group = self.groups[name]
+				group['name'] = value
+				del self.groups[name]
+				self.groups[value] = group
+				modified = True
+			else:
+				# This is a no-op. We did not changed the name
+				pass
+
+		elif self.groups[name][attribute] != value:
+			self.groups[name][attribute] = value
+			modified = True
+		
+		return modified
+		
+	def updateGroupAttribute(self, name, attribute, value):
+		"""
+		Updates a single field/attribute for a particular group.
+		"""
+		modified = self._updateGroupAttribute(name, attribute, value)
+		self.setModified(modified)
+
+	def deleteGroups(self, names):
+		"""
+		Deletes a list of groups, emit an updated signal at the end
+		if at least one group was actually removed.
+		"""
+		modified = False
+		for name in names:
+			if name in self.groups:
+				del self.groups[name]
+				modified = True
+		self.setModified(modified)
+
+	def getGroups(self):
+		# Warning: be sure that the caller copy this if it wants to modify it.
+		return self.groups
+
+	def getNewGroupName(self, name):
+		"""
+		Makes sure to get a new group name that is not in use currently.
+		If baseName is available, returns it.
+		If not, tries baseName_%2.2d starting at 1 until something is found.
+		Tries to autodetect a numbering; if found, use it to select the next item if the name currently exists.
+
+		@type  baseName: unicode string
+		@param baseName: the baseName to check
+
+		@rtype: unicode string
+		@returns: a group name that is not in used for now.
+		"""
+		# Pattern autodetection: look for somethingN where N are digits.
+		digits = ''
+		i = len(name) - 1
+		while (name[i] in "1234567890") and i >= 0:
+			digits = name[i] + digits
+			i -= 1
+
+		padding = 2
+		baseName = name
+		index = 1
+		try:
+			if len(digits) > 0:
+				index = int(digits)
+				baseName = name[:i+1]
+				padding = len(digits)
+		except:
+			pass
+
+		format = u"%%s%%%d.%dd" % (padding, padding)
+		while self.groups.has_key(name):
+			name = format % (baseName, index)
+			index += 1
+		return name
+
+	def removeGroup(self, name):
+		if self.groups.has_key(name):
+			del self.groups[name]
+			self.setModified(True)
+			return True
+		return False
+
 
 
 class DocumentModel(QObject):
@@ -916,7 +1104,17 @@ class AtsModel(PythonDocumentModel):
 	Basic reimplementation from DocumentModel.
 	"""
 	def __init__(self):
-		defaultMetadataSource = u'<?xml version="1.0" encoding="utf-8"?>\n<meta>\n<description><![CDATA[description]]></description>\n<prerequisites><![CDATA[prerequisites]]></prerequisites><parameters><parameter name="PX_PARAM1" default="defaultValue01" type="string"></parameter></parameters>\n</meta>'
+		defaultMetadataSource = u'''<?xml version="1.0" encoding="utf-8"?>
+<meta>
+<description><![CDATA[description]]></description>
+<prerequisites><![CDATA[prerequisites]]></prerequisites>
+<parameters>
+<parameter name="PX_PARAM1" default="defaultValue01" type="string"></parameter>
+</parameters>
+<parameters>
+<!-- there is no default groups -->
+</parameters>
+</meta>'''
 		PythonDocumentModel.__init__(self, defaultMetadataSource)
 		self.setFileExtension("ats")
 		self.setDocumentType(TYPE_ATS)

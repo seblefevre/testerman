@@ -41,6 +41,8 @@ import RemoteBrowsers
 import TemplateManager
 import DocumentManager
 
+import DocumentPropertyEditor
+
 ##
 # A WDocument is either a WModuleDocument, WAtsDocument, or a WCampaignDocument.
 #
@@ -528,7 +530,11 @@ class WAtsDocumentEditor(WDocumentEditor):
 	"""
 	Enable to edit and manipulate the script (execute as, associate an id, etc).
 
-	Derived view from WDocument
+	Derived view from WDocument.
+	
+	Now includes the script properties editor:
+	- one panel to edit the script prototype,
+	- another panel to edit available groups
 	"""
 	def __init__(self, atsModel, parent = None):
 		WDocumentEditor.__init__(self, atsModel, parent)
@@ -539,7 +545,27 @@ class WAtsDocumentEditor(WDocumentEditor):
 
 	def onModelDocumentReplaced(self):
 		self.editor.setPlainText(self.model.getBodyModel())
+		self.parametersEditor.setModel(self.model.getMetadataModel())
+		self.groupsEditor.setModel(self.model.getMetadataModel())
 
+	def toggleParametersEditor(self, checked):
+		if checked:
+			self.parametersEditor.show()		
+		else:
+			self.parametersEditor.hide()
+
+	def toggleGroupsEditor(self, checked):
+		if checked:
+			self.groupsEditor.show()		
+		else:
+			self.groupsEditor.hide()
+		
+	def togglePropertiesEditor(self, checked):
+		if checked:
+			self.propertiesEditor.show()		
+		else:
+			self.propertiesEditor.hide()
+		
 	def __createWidgets(self):
 		"""
 		A main WScriptEditor, plus an associated action bar at the bottom with:
@@ -547,14 +573,11 @@ class WAtsDocumentEditor(WDocumentEditor):
 		- a button to check syntax
 		"""
 
-		layout = QVBoxLayout()
-
 		# The code editor
 		self.editor = WPythonCodeEditor(self.model.getBodyModel(), self)
 		# QsciScintilla directly manage the signal
 		self.connect(self.editor, SIGNAL('modificationChanged(bool)'), self.model.onBodyModificationChanged)
-		layout.addWidget(self.editor)
-		
+
 		# Split view test
 		"""
 		e = WPythonCodeEditor(None, self, self.editor.document())
@@ -563,14 +586,38 @@ class WAtsDocumentEditor(WDocumentEditor):
 		e.setWindowFlags(Qt.Window)
 		e.show()
 		"""
-		
 
-		# The action bar below
+
+		##
+		# The topbar enables to show/hide ATS metadata editors, and embeds a search widget
+		##
+		topbarLayout = QHBoxLayout()
+		# Script parameters
+		self.parametersButton = QPushButton("ATS Parameters")
+		topbarLayout.addWidget(self.parametersButton)
+		self.parametersButton.setCheckable(True)
+		self.connect(self.parametersButton, SIGNAL('toggled(bool)'), self.toggleParametersEditor)
+		# Groups
+		self.groupsButton = QPushButton("Testcase Groups")
+		topbarLayout.addWidget(self.groupsButton)
+		self.groupsButton.setCheckable(True)
+		self.connect(self.groupsButton, SIGNAL('toggled(bool)'), self.toggleGroupsEditor)
+		# Basic properties
+		self.propertiesButton = QPushButton("Properties")
+		topbarLayout.addWidget(self.propertiesButton)
+		self.propertiesButton.setCheckable(True)
+		self.connect(self.propertiesButton, SIGNAL('toggled(bool)'), self.togglePropertiesEditor)
+		topbarLayout.addStretch()
+
+		##
+		# The action bar, bottom bar
+		##
 		actionLayout = QHBoxLayout()
 
 		# A find widget
 		self.find = CommonWidgets.WSciFind(self.editor, self)
-
+		actionLayout.addWidget(self.find)
+		
 		# Actions associated with ATS edition:
 		# syntax check,
 		# documentation via ATS documentation plugins,
@@ -614,7 +661,6 @@ class WAtsDocumentEditor(WDocumentEditor):
 		self.launchLog = QCheckBox("Display runtime log")
 		self.launchLog.setChecked(True)
 
-		actionLayout.addWidget(self.find)
 		actionLayout.addStretch()
 		actionLayout.addWidget(self.documentationButton)
 		actionLayout.addWidget(self.syntaxCheckButton)
@@ -622,6 +668,44 @@ class WAtsDocumentEditor(WDocumentEditor):
 		actionLayout.addWidget(self.profileSelector)
 		actionLayout.addWidget(self.launchLog)
 		actionLayout.setMargin(2)
+
+		##
+		# (Initially) Hidden widgets
+		##
+		self.parametersEditor = DocumentPropertyEditor.WParametersEditor()
+		self.parametersEditor.hide()
+		self.parametersEditor.setModel(self.model.getMetadataModel())
+
+		self.groupsEditor = DocumentPropertyEditor.WGroupsEditor()
+		self.groupsEditor.hide()
+		self.groupsEditor.setModel(self.model.getMetadataModel())
+
+		self.propertiesEditor = DocumentPropertyEditor.WScriptPropertiesEditor()
+		self.propertiesEditor.hide()
+		self.propertiesEditor.setModel(self.model.getMetadataModel())
+
+		##
+		# Final layout
+		##
+		layout = QVBoxLayout()
+		layout.addLayout(topbarLayout)
+		
+		self.mainSplitter = QSplitter(Qt.Vertical)
+		
+		self.mainSplitter.addWidget(self.parametersEditor)
+		self.mainSplitter.addWidget(self.groupsEditor)
+		self.mainSplitter.addWidget(self.propertiesEditor)
+		self.mainSplitter.addWidget(self.editor)
+		
+		self.mainSplitter.setCollapsible(0, False)
+		self.mainSplitter.setCollapsible(1, False)
+		self.mainSplitter.setCollapsible(2, False)
+		self.mainSplitter.setCollapsible(3, False)
+		self.mainSplitter.setStretchFactor(0, 1)
+		self.mainSplitter.setStretchFactor(1, 1)
+		self.mainSplitter.setStretchFactor(2, 1)
+		self.mainSplitter.setStretchFactor(3, 3)
+		layout.addWidget(self.mainSplitter)
 		layout.addLayout(actionLayout)
 		layout.setMargin(0)
 		self.setLayout(layout)
@@ -783,6 +867,13 @@ class WCampaignDocumentEditor(WDocumentEditor):
 
 	def onModelDocumentReplaced(self):
 		self.editor.setPlainText(self.model.getBodyModel())
+		self.parametersEditor.setModel(self.model.getMetadataModel())
+
+	def toggleParametersEditor(self, checked):
+		if checked:
+			self.parametersEditor.show()		
+		else:
+			self.parametersEditor.hide()
 
 	def __createWidgets(self):
 		"""
@@ -791,14 +882,31 @@ class WCampaignDocumentEditor(WDocumentEditor):
 		- a button to check syntax (well, not yet)
 		"""
 		layout = QVBoxLayout()
+
 		# The code editor
 		self.editor = WPythonCodeEditor(self.model.getBodyModel(), self)
 		# QsciScintilla directly manage the signal
 		self.connect(self.editor, SIGNAL('modificationChanged(bool)'), self.model.onBodyModificationChanged)
-		layout.addWidget(self.editor)
+	
+		##
+		# The topbar enables to show/hide Campaign metadata editors, and embeds a search widget
+		##
+		topbarLayout = QHBoxLayout()
+		# Script parameters
+		self.parametersButton = QPushButton("Campaign Parameters")
+		topbarLayout.addWidget(self.parametersButton)
+		self.parametersButton.setCheckable(True)
+		self.connect(self.parametersButton, SIGNAL('toggled(bool)'), self.toggleParametersEditor)
+		topbarLayout.addStretch()
 
-		# The action bar below
+		##
+		# The action bar, bottom bar
+		##
 		actionLayout = QHBoxLayout()
+
+		# A find widget
+		self.find = CommonWidgets.WSciFind(self.editor, self)
+		actionLayout.addWidget(self.find)
 
 		# Run actions
 		self.runAction = CommonWidgets.TestermanAction(self, "&Run", self.run, "Run now")
@@ -818,8 +926,31 @@ class WCampaignDocumentEditor(WDocumentEditor):
 
 		actionLayout.addStretch()
 		actionLayout.addWidget(self.runButton)
-	
 		actionLayout.setMargin(2)
+
+		##
+		# (Initially) Hidden widgets
+		##
+		self.parametersEditor = DocumentPropertyEditor.WParametersEditor()
+		self.parametersEditor.hide()
+		self.parametersEditor.setModel(self.model.getMetadataModel())
+
+		##
+		# Final layout
+		##
+		layout = QVBoxLayout()
+		layout.addLayout(topbarLayout)
+		
+		self.mainSplitter = QSplitter(Qt.Vertical)
+		
+		self.mainSplitter.addWidget(self.parametersEditor)
+		self.mainSplitter.addWidget(self.editor)
+		
+		self.mainSplitter.setCollapsible(0, False)
+		self.mainSplitter.setCollapsible(1, False)
+		self.mainSplitter.setStretchFactor(0, 1)
+		self.mainSplitter.setStretchFactor(1, 3)
+		layout.addWidget(self.mainSplitter)
 		layout.addLayout(actionLayout)
 		layout.setMargin(0)
 		self.setLayout(layout)
