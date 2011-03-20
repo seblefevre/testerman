@@ -43,6 +43,9 @@ def extractMetadata(document, commentsPrefix = '#'):
 		<parameters>
 			<parameter name="..." type="string" default="..."><![CDATA[(parameter description)]]></parameter>
 		</parameters>
+		<groups>
+			<group name="..."><![CDATA[(group description)]]></group>
+		</groups>
 	</metadata>
 	
 	For now, only the type "string" is supported.
@@ -113,6 +116,7 @@ class Metadata:
 		self.prerequisites = ''
 		self.api = '1' # default language API
 		self.parameters = {}
+		self.groups = {}
 	
 	def getDefaultSessionDict(self):
 		"""
@@ -127,18 +131,27 @@ class Metadata:
 
 	def getSignature(self):
 		"""
-		Returns the script signature as a dict[parameter] = dict(name, defaultValue, type, description)
+		Returns the script type signature/prototype as a dict[parameter] = dict(name, defaultValue, type, description)
 		"""
 		ret = {}
 		for k, v in self.parameters.items():
 			ret[k] = dict(name = v.name, defaultValue = v.defaultValue, type = v.type_, description = v.description)
+		return ret
+
+	def getGroups(self):
+		"""
+		Returns the available groups as a dict[group] = dict(name, description)
+		"""
+		ret = {}
+		for k, v in self.groups.items():
+			ret[k] = dict(name = k, description = v)
 		return ret
 	
 	def toDict(self):
 		"""
 		Turns this object into a dict-based representation.
 		"""
-		ret = dict(description = self.description, api = self.api, parameters = self.getSignature())
+		ret = dict(description = self.description, api = self.api, parameters = self.getSignature(), groups = self.getGroups())
 		return ret
 		
 
@@ -189,6 +202,14 @@ def parseMetadata(xmlMetadata):
 				metadata.parameters[name] = p
 			except Exception, e:
 				getLogger().warning("Unable to parse a parameter in metadata: %s" % str(e))
+
+		for group in doc.getElementsByTagName('group'):
+			try:
+				name = group.attributes['name'].value
+				description = group.childNodes[0].data
+				metadata.groups[name] = description
+			except Exception, e:
+				getLogger().warning("Unable to parse a group in metadata: %s" % str(e))
 	
 	except Exception:
 		getLogger().warning("Unable to parse metadata:\n%s" % Tools.getBacktrace())
@@ -207,6 +228,9 @@ if __name__ == '__main__':
 # <parameters>
 # <parameter name="PX_UNICODE_STRING" type="string" default="ça marche"><![CDATA[unicode test string. Do not modify it.]]></parameter>
 # </parameters>
+# <group>
+# <parameter name="PX_UNICODE_STRING" type="string" default="ça marche"><![CDATA[unicode test string. Do not modify it.]]></parameter>
+# </parameters>
 # </metadata>
 # __METADATA__END__
 """
@@ -221,6 +245,8 @@ if __name__ == '__main__':
 			for p in m.getDefaultSessionDict().items():
 				print "%s: %s" % p
 			print m.getSignature()
+			print
+			print m.getGroups()
 			print
 			print m.toDict()
 		

@@ -47,6 +47,7 @@ JobId = None
 LogFilename = None
 InputSessionFilename = None
 OutputSessionFilename = None
+__SelectedGroups = None # None means all groups are selected. Otherwise provide a list of strings (group names)
 
 MaxLogPayloadSize = ${max_log_payload_size_repr}
 
@@ -102,9 +103,10 @@ def __parseArgs():
 	group.add_option("--session-parameters", dest = "sessionParameters", metavar = "PARAMETERS", help = "initial session parameters, overriding those from session-filename, if any", default = "")
 	group.add_option("--log-filename", dest = "logFilename", metavar = "FILE", help = "generate output logs to FILE. Set to to - for stdout.", default = None)
 	group.add_option("--info", dest = "showInfo", action = "store_true", help = "display various information about this test executable and exit", default = False)
+	group.add_option("--groups", dest = "groups", metavar = "GROUPS", help = "only run specific testcase groups (coma-separated list of groups)", default = None)
 	parser.add_option_group(group)
 	
-	group = optparse.OptionGroup(parser, "Server-backed Execution Options (For information only, you shall not use these options)")
+	group = optparse.OptionGroup(parser, "Server-backed Execution Options (For information only, you should not use these options)")
 	group.add_option("--server-controlled", dest = "standalone", action = "store_false", help = "server-controlled execution. This TE is run and controlled by a Testerman Server. You should not have to use this option, it is reserved for server-side execution only.", default = True)
 	group.add_option("--job-id", dest = "jobId", metavar = "ID", help = "job id for this TE, as allocated by the server", default = None, type = "int")
 	group.add_option("--remote-log-filename", dest = "remoteLogFilename", metavar = "FILE", help = "log filename to use, as allocated by the server", default = None)
@@ -113,7 +115,16 @@ def __parseArgs():
 	parser.add_option_group(group)
 	
 	(options, args) = parser.parse_args()
-	
+
+	if options.groups:
+		__SelectedGroups = []
+		for group in options.groups.split(','):
+			group = group.upper()
+			if not group.startswith('GX_'):
+				group = 'GX_' + group
+			if not group in __SelectedGroups:
+				__SelectedGroups.append(group)
+
 	if options.standalone:
 		# Optional TACS
 		TacsIp = options.tacsIp
@@ -169,6 +180,9 @@ def __showInfo():
 	print
 	print "Accepted parameters:"
 	print __formatTable(headers = ['name', ('defaultValue', 'default value'), 'type', 'description' ], rows = __SCRIPT_METADATA['parameters'].values(), order = 'name')
+	print 
+	print "Selectable execution groups:"
+	print __formatTable(headers = ['name', 'description' ], rows = __SCRIPT_METADATA['groups'].values(), order = 'name')
 	print 
 	print "This TE has not been signed."
 	
@@ -302,7 +316,7 @@ def finalizeTe():
 	TestermanSA.finalize()
 	TestermanTCI.logInternal("finalized.")
 
-def convert_value(value, format = 'string'):
+def __convert_value(value, format = 'string'):
 	def to_bool(v):
 		if isinstance(v, (bool, int)):
 			return bool(v)
@@ -325,7 +339,7 @@ def convert_value(value, format = 'string'):
 ################################################################################
 
 
-#
+# Parse command line arguments
 __parseArgs()
 
 
@@ -419,7 +433,7 @@ try:
 			if k in __SCRIPT_METADATA['parameters']:
 				format = __SCRIPT_METADATA['parameters'][k]['type']
 				try:
-					v = convert_value(v, format)
+					v = __convert_value(v, format)
 				except Exception, e:
 					raise Exception("Invalid value for parameter %s: '%s' is not a valid %s value" % (k, v, format))
 
@@ -435,13 +449,31 @@ try:
 			format = d['type']
 			default = d['defaultValue']
 			try:
-				v = convert_value(default, format)
+				v = __convert_value(default, format)
 			except Exception, e:
 				raise Exception("Invalid default value for parameter %s: '%s' is not a valid %s value" % (k, v, format))
 
 			Testerman.set_variable(k, v)
 			TestermanTCI.logUser("Using [default] %s=%s" % (k, v))
 			setattr(sys.modules[__name__], k, v)
+
+
+	# Groups selection, i.e. set GX_GroupName
+	if __SelectedGroups:
+		for k, d in __SCRIPT_METADATA['groups'].items():
+			if k in __SelectedGroups:
+				TestermanTCI.logUser("Testcase group %s selected for execution" % (k))
+				setattr(sys.modules[__name__], k, True)
+			else:
+				TestermanTCI.logUser("Testcase Group %s unselected" % (k))
+				setattr(sys.modules[__name__], k, False)
+	else:
+		TestermanTCI.logUser("All test cases have been selected.")
+		# Now set all groups as being selected
+		for k, d in __SCRIPT_METADATA['groups'].items():
+			TestermanTCI.logUser("Testcase group %s selected for execution" % (k))
+			setattr(sys.modules[__name__], k, True)
+	
 
 	##
 	# The following code has been imported "as is" from the source ATS

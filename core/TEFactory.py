@@ -186,7 +186,7 @@ def createTestExecutable(name, ats):
 	
 	return te
 	
-def createCommandLine(jobId, teFilename, logFilename, inputSessionFilename, outputSessionFilename, modulePaths):
+def createCommandLine(jobId, teFilename, logFilename, inputSessionFilename, outputSessionFilename, modulePaths, selectedGroups = None):
 	"""
 	@rtype: a dict { 'executable': string, 'env': dict[string] of strings, 'args': list of strings }
 	@returns: the info needed to an execve or the like to execute the TE.
@@ -205,6 +205,9 @@ def createCommandLine(jobId, teFilename, logFilename, inputSessionFilename, outp
 		'--il-ip', cm.get("interface.il.ip"),
 		'--il-port', cm.get("interface.il.port"),
 		])
+
+	if selectedGroups is not None:
+		cmdOptions += [ '--groups', ','.join(selectedGroups) ]
 
 	# Interpreter
 	pythonInterpreter = cm.get("testerman.te.python.interpreter")

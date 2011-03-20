@@ -723,6 +723,7 @@ class AtsJob(Job):
 		try:
 			te = TEFactory.createTestExecutable(self.getName(), self._source)
 		except Exception, e:
+			getLogger().debug("Exception while creating the TE: %s\n%s" % (str(e), Tools.getBacktrace()))
 			return handleError(26, str(e))
 		
 		# TODO: delegate TE check to the TE factory (so that if e need to use another builder that
