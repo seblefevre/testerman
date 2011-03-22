@@ -214,6 +214,10 @@ class FileSystemManager:
 		return applicationType
 	
 	def read(self, filename):
+		"""
+		Returns the content of a file.
+		vpath is supported.
+		"""
 		# Analyse the vpath: could be a virtual folder such as
 		# associated profiles or associated executions
 		vpath = VirtualPath(filename)
@@ -231,6 +235,7 @@ class FileSystemManager:
 	def write(self, filename, content, reason = None, notify = True):
 		"""
 		Automatically creates the missing directories up to the file, if needed.
+		vpath is supported.
 		"""
 		# Analyse the vpath: could be a virtual folder such as
 		# associated profiles or associated executions
@@ -297,15 +302,32 @@ class FileSystemManager:
 		return True
 	
 	def unlink(self, filename, reason = None, notify = True):
+		"""
+		Removes a file.
+		vpath is supported to remove a profile.
+		"""
+		vpath = VirtualPath(filename)
+		baseObject = vpath.getBaseValue()
+
 		(adjusted, backend) = FileSystemBackendManager.getBackend(filename)
 		if not backend:
 			raise Exception('No backend available to manipulate %s' % filename)
-		ret = backend.unlink(adjusted, reason)
+
+		if vpath.isProfileRelated():
+			ret = backend.unlinkprofile(adjusted, vpath.getVirtualValue())
+		else:
+			ret = backend.unlink(adjusted, reason)
+
 		if ret and notify:
 			self._notifyFileDeleted(filename)
 		return ret
 
 	def getdir(self, path):
+		"""
+		Lists the contents of a directory.
+		
+		vpath is supported to list the profiles virtual folder.
+		"""
 		# Analyse the vpath: could be a virtual folder such as
 		# associated profiles or associated executions
 		vpath = VirtualPath(path)
@@ -335,6 +357,7 @@ class FileSystemManager:
 	def mkdir(self, path, notify = True):
 		"""
 		Automatically creates all the directories to create this one.
+		vpath is NOT supported.
 		
 		@rtype: bool
 		@returns: True if the directory was created or was already created
@@ -368,6 +391,8 @@ class FileSystemManager:
 	def rmdir(self, path, recursive = False, notify = True):
 		"""
 		Removes a directory.
+		vpath is NOT supported.
+		
 		If recursive is set to True, which is DANGEROUS,
 		will remove all existing files and directories before deleting
 		the directory.
@@ -422,6 +447,10 @@ class FileSystemManager:
 		return ret
 
 	def attributes(self, filename):
+		"""
+		Get the attributes of a file.
+		vpath is supported.
+		"""
 		vpath = VirtualPath(filename)
 		baseObject = vpath.getBaseValue()
 
@@ -447,17 +476,25 @@ class FileSystemManager:
 		return backend.isdir(adjusted)
 
 	def isfile(self, path):
+		"""
+		FIXME: A profile is currently not a file...
+		"""
 		(adjusted, backend) = FileSystemBackendManager.getBackend(path)
 		if not backend:
 			raise Exception('No backend available to manipulate %s' % path)
 		return backend.isfile(adjusted)
 	
 	def exists(self, path):
+		"""
+		FIXME: A profile currently does not exist with these criteria...
+		"""
 		return self.isdir(path) or self.isfile(path)
 	
 	def _copy(self, source, destination, removeAfterCopy = False, notify = True):
 		"""
 		Recursive copy from source (file or dir, docroot path) to destination (existing dir or file to overwrite)
+		vpath is NOT supported at this level (self.copy() supports it).
+		However, this function is profiles-aware and will copy script-associated profiles with the script.
 		
 		The usual rules apply:
 		- if source is a directory, destination must be an existing directory
@@ -519,7 +556,22 @@ class FileSystemManager:
 			
 			content = self.read(source)
 			self.write(dst, content, notify = notify)
+
+			# take care of associated profiles
+			profiles = self.getdir("%s/profiles" % source)
+			if profiles:
+				for profile in profiles:
+					if profile['type'] == APPTYPE_PROFILE:
+						spname = "%s/profiles/%s" % (source, profile['name'])
+						dpname = "%s/profiles/%s" % (dst, profile['name'])
+						getLogger().debug("Copying profile implicitly: %s to %s" % (spname, dpname))
+						p = self.read(spname)
+						if p is not None:
+							self.write(dpname, content = p, notify = notify)
+			# associated execution log files are NOT copied
+				
 			if removeAfterCopy:
+				# will delete associated profiles, if any
 				self.unlink(source, notify = notify)
 			
 			return True
@@ -527,21 +579,72 @@ class FileSystemManager:
 		else:
 			getLogger().warning("Unable to qualify source file. Not copying.")
 			return False
+
+	def _copyprofile(self, source, destination, removeAfterCopy, notify = True):
+		"""
+		Copy a profile - the destination may be outside a profiles virtual folder, too.
+		
+		destination can be a vprofiles folder, or any folder, or a fully qualified
+		filename (including a vprofile).
+		"""
+		dvpath = VirtualPath(destination)
+		dst = destination
+		if self.isdir(destination):
+			# The destination is a dir, so let's add a basename to get a
+			# fully qualified destination name
+			_, basename = os.path.split(source)
+			dst = '%s/%s' % (destination, basename)
+
+		elif dvpath.isProfileRelated():
+			if not dvpath.getVirtualValue():
+				# no basename provided for the dest in a /profiles/ vdir
+				_, basename = os.path.split(source)
+				dst = '%s/%s' % (destination, basename)
+		
+		p = self.read(source)
+		if p is not None:
+			self.write(dst, content = p, notify = notify)
+		else:
+			return False
+
+		if removeAfterCopy:
+			self.unlink(source)
+		return True
 	
 	def copy(self, source, destination, notify = True):
 		"""
 		Copy source to destination.
+		vpath is supported.
+		
+		TODO/FIXME: code cleanup, correct support of all cases:
+		anyfile should be copiable to a vprofiles folder, not only
+		vprofiles sources.
+		This must be taken into account in _copy() itself.
 		"""
-		return self._copy(source, destination, False, notify)
+		svpath = VirtualPath(source)
+		
+		if svpath.isProfileRelated():
+			# copy a profile
+			return self._copyprofile(source, destination, False, notify)
+		else:
+			return self._copy(source, destination, False, notify)
 
 	def move(self, source, destination, notify = True):		
 		"""
 		Move source to destination.
 		"""
-		return self._copy(source, destination, True, notify)
+		svpath = VirtualPath(source)
+		
+		if svpath.isProfileRelated():
+			# copy a profile
+			return self._copyprofile(source, destination, True, notify)
+		else:
+			return self._copy(source, destination, True, notify)
 
 	def rename(self, source, newName):
 		"""
+		FIXME: support for vpath (to rename a profile)
+		
 		Constraints on name:
 		only [a-zA-Z0-9_.\(\)\[\]#-]
 		
@@ -563,7 +666,10 @@ class FileSystemManager:
 		if self.exists(destination):
 			return False
 		else:
-			ret = self.move(source, destination, False)
+			if self.isdir(source):
+				ret = backend.renamedir(source, newName)
+			else:
+				ret = backend.rename(source, newName)
 			if ret:
 				self._notifyFileRenamed(source, newName)
 			return ret

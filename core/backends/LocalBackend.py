@@ -144,6 +144,28 @@ class LocalBackend(FileSystemBackend.FileSystemBackend):
 			getLogger().warning("Unable to write content to %s: %s" % (filename, str(e)))
 			raise(e)
 
+	def rename(self, filename, newname, reason = None):
+		newname = os.path.split(filename)[0] + '/%s' % newname
+		filename = self._realpath(filename)
+		if not filename: 
+			return False
+		
+		newn = self._realpath(newname)
+		if not newn: 
+			getLogger().warning("Unable to rename %s to %s: the target name is not in base path" % (filename, newname, str(e)))
+			return False
+		
+		profilesdir = "%s.profiles" % filename
+		newprofilesdir = "%s.profiles" % newn
+		try:
+			os.rename(filename, newn)
+			# rename profiles dir, too
+			os.rename(profilesdir, newprofilesdir)
+			return True
+		except Exception, e:
+			getLogger().warning("Unable to rename %s to %s: %s" % (filename, newname, str(e)))
+		return False
+
 	def unlink(self, filename, reason = None):
 		filename = self._realpath(filename)
 		if not filename: 
@@ -209,6 +231,18 @@ class LocalBackend(FileSystemBackend.FileSystemBackend):
 				return True
 		except Exception, e:
 			getLogger().warning("Unable to rmdir %s: %s" % (path, str(e)))
+		return False
+
+	def renamedir(self, path, newname):
+		path = self._realpath(path)
+		if not path: 
+			return False
+		
+		try:
+			os.rename(path, newname)
+			return True
+		except Exception, e:
+			getLogger().warning("Unable to rename dir %s to %s: %s" % (path, newname, str(e)))
 		return False
 
 	def attributes(self, filename, revision = None):

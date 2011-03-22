@@ -159,6 +159,16 @@ class FileSystemBackend:
 		"""
 		return False
 
+	def rename(self, filename, newname, reason = None):
+		"""
+		Renames a file to newname, without changing its directory.
+		Associated profiles must be kept after renaming.
+
+		@rtype: bool
+		@returns: True if OK, False otherwise (typically raise exceptions in case of errors)
+		"""
+		return False
+
 	def getdir(self, path):
 		"""
 		Reads the contents of a directory.
@@ -236,6 +246,16 @@ class FileSystemBackend:
 		@returns: True if OK, False otherwise (typically raise exceptions in case of errors)
 		"""
 		return False
+
+	def renamedir(self, path, newname, reason = None):
+		"""
+		Renames a directory to newname, without changing its directory.
+
+		@rtype: bool
+		@returns: True if OK, False otherwise (typically raise exceptions in case of errors)
+		"""
+		return False
+
 	
 	def attributes(self, filename, revision = None):
 		"""
