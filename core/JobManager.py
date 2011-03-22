@@ -306,7 +306,11 @@ class Job(object):
 	
 	def setScheduledStartTime(self, timestamp):
 		now = time.time()
-		if timestamp < now:
+		if timestamp is None:
+			# No timestamp provided, we consider an "instant" run.
+			# The 1s delay allow the client to register for logs.
+			timestamp = now + 1.0; 
+		elif timestamp < now:
 			timestamp = now
 		self._scheduledStartTime = timestamp
 	
@@ -628,6 +632,14 @@ class AtsJob(Job):
 		self._baseName = None
 		self._baseDirectory = None
 		self._tePackageDirectory = None
+		
+		self._selectedGroups = None
+	
+	def setSelectedGroups(self, selectedGroups):
+		self._selectedGroups = selectedGroups
+	
+	def getSelectedGroups(self):
+		return self._selectedGroups
 	
 	def handleSignal(self, sig):
 		getLogger().info("%s received signal %s" % (str(self), sig))
@@ -910,7 +922,14 @@ class AtsJob(Job):
 		# module paths relative to the TE package dir
 		modulePaths = [ os.path.split(self._path)[0][1:], 'repository' ] # we strip the leading / of the atspath
 		# Get the TE command line options
-		cmd = TEFactory.createCommandLine(jobId = self.getId(), teFilename = teFilename, logFilename = teLogFilename, inputSessionFilename = inputSessionFilename, outputSessionFilename = outputSessionFilename, modulePaths = modulePaths)
+		cmd = TEFactory.createCommandLine(
+			jobId = self.getId(), 
+			teFilename = teFilename, 
+			logFilename = teLogFilename, 
+			inputSessionFilename = inputSessionFilename, 
+			outputSessionFilename = outputSessionFilename, 
+			modulePaths = modulePaths,
+			selectedGroups = self.getSelectedGroups())
 		executable = cmd['executable']
 		args = cmd['args']
 		env = cmd['env']

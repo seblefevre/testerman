@@ -89,6 +89,7 @@ def __getVersion():
 def __parseArgs():
 	global IlServerIp, IlServerPort, TacsIp, TacsPort
 	global LogFilename, JobId, InputSessionFilename, OutputSessionFilename
+	global __SelectedGroups
 	parser = optparse.OptionParser(version = __getVersion())
 
 	group = optparse.OptionGroup(parser, "General Options")
@@ -116,7 +117,7 @@ def __parseArgs():
 	
 	(options, args) = parser.parse_args()
 
-	if options.groups:
+	if options.groups is not None:
 		__SelectedGroups = []
 		for group in options.groups.split(','):
 			group = group.upper()
@@ -459,19 +460,20 @@ try:
 
 
 	# Groups selection, i.e. set GX_GroupName
-	if __SelectedGroups:
+	if __SelectedGroups is not None:
+		# Notice that it may be an empty list -> no test to execute.
 		for k, d in __SCRIPT_METADATA['groups'].items():
 			if k in __SelectedGroups:
-				TestermanTCI.logUser("Testcase group %s selected for execution" % (k))
+				TestermanTCI.logUser("Testcase group %s has been selected" % (k))
 				setattr(sys.modules[__name__], k, True)
 			else:
-				TestermanTCI.logUser("Testcase Group %s unselected" % (k))
+				TestermanTCI.logUser("Testcase group %s has been deselected" % (k))
 				setattr(sys.modules[__name__], k, False)
 	else:
 		TestermanTCI.logUser("All test cases have been selected.")
 		# Now set all groups as being selected
 		for k, d in __SCRIPT_METADATA['groups'].items():
-			TestermanTCI.logUser("Testcase group %s selected for execution" % (k))
+			TestermanTCI.logUser("Testcase group %s has been selected" % (k))
 			setattr(sys.modules[__name__], k, True)
 	
 

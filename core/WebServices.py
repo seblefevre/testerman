@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 ##
 # This file is part of Testerman, a test automation system.
-# Copyright (c) 2008,2009,2010 Sebastien Lefevre and other contributors
+# Copyright (c) 2008-2011 Sebastien Lefevre and other contributors
 #
 # This program is free software; you can redistribute it and/or modify it under
 # the terms of the GNU General Public License as published by the Free Software
@@ -52,7 +52,7 @@ import zlib
 #: API versions: major.minor
 #: major += 1 if not backward compatible,
 #: minor += 1 if feature-enriched, backward compatible
-WS_VERSION = '1.5'
+WS_VERSION = '1.6'
 
 
 ################################################################################
@@ -112,7 +112,7 @@ def getXcVersion():
 # service: job (Job management)
 ################################################################################
 
-def scheduleAts(source, atsId, username, session, at, path = None):
+def scheduleAts(source, atsId, username, session, at, path = None, groups = None):
 	"""
 	Schedules an ATS to start at <at>
 	
@@ -134,6 +134,10 @@ def scheduleAts(source, atsId, username, session, at, path = None):
 	             if any. For source files not located on the server, set to None.
 	             For the other ones, enables to know where to search dependencies
 	             from.
+	@since: 1.6
+	@type  groups: list os unicode strings, or None
+	@param groups: a list of groups selected for this run. If set to None, all groups are considered
+	               (no particular selection)
 	
 	@throws Exception: in case of an internal error
 
@@ -143,7 +147,7 @@ def scheduleAts(source, atsId, username, session, at, path = None):
 	          job-id: the newly created job id, only valid if status == 0
 	          message: a human readable string indicating what was done.
 	"""
-	getLogger().info(">> scheduleAts(..., session = %s)" % str(session))
+	getLogger().info(">> scheduleAts(at = %s, username = %s, ..., session = %s, groups = %s)" % (at, username, session, groups))
 
 	try:
 		# FIXME: ats and the dict of string seems to be received as unicode,
@@ -162,12 +166,13 @@ def scheduleAts(source, atsId, username, session, at, path = None):
 		job.setUsername(username)
 		job.setScheduledStartTime(at)
 		job.setScheduledSession(s)
+		job.setSelectedGroups(groups)
 		jobId = JobManager.instance().submitJob(job)
 		message = ""
-		if job.getScheduledStartTime() <= time.time():
+		if at is None or at <= time.time():
 			message = "immediate start"
 		else:
-			message = "will start on %s" % time.strftime("%Y%m%d, at %H:%M:%S", time.localtime(job.getScheduledStartTime()))
+			message = "will start on %s" % time.strftime("%Y-%m-%d, at %H:%M:%S (server time)", time.localtime(job.getScheduledStartTime()))
 		res = { 'job-id': jobId, 'job-uri': job.getUri(), 'message': "ATS scheduled, %s. Its job ID is %d" % (message, jobId) }
 	except Exception, e:
 		e =  Exception("Scheduling error: %s" % (str(e)))
@@ -229,7 +234,7 @@ def scheduleCampaign(source, campaignId, username, session, at, path = None):
 		job.setScheduledSession(s)
 		jobId = JobManager.instance().submitJob(job)
 		message = ""
-		if job.getScheduledStartTime() <= time.time():
+		if at is None or at <= time.time():
 			message = "immediate start"
 		else:
 			message = "will start on %s" % time.strftime("%Y%m%d, at %H:%M:%S", time.localtime(job.getScheduledStartTime()))
