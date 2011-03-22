@@ -1007,9 +1007,9 @@ class Port:
 		else:
 			return False
 
-	def receive(self, template = None, value = None, sender = None, from_ = None):
+	def receive(self, template = None, value = None, sender = None, from_ = None, timeout = None, on_timeout = None):
 		"""
-		Waits (blocking) for template to be received on this port. 
+		Waits (blocking if timeout = None) for template to be received on this port. 
 		If asValue is provided, store the received message to it.
 		
 		@type  template: any structure valid for a template
@@ -1020,9 +1020,24 @@ class Port:
 		@param sender: the name of the value() variable to store the sender of the message to.
 		@type  from_: string
 		@param from_: the SUT address to send the message shoud be received from
+		@type  timeout: float
+		@param timeout: if provided, the maximum time to wait for the message.
+		@type  on_timeout: function
+		@param on_timeout: the action to trigger on timeout, if timeout is provided.
 		"""
 		if self._started:
-			alt([[self.RECEIVE(template, value, sender, from_)]])
+			if timeout:
+				timer = Timer(timeout, name = 'implicit receive timer')
+				timer.start()
+				alt([
+					[self.RECEIVE(template, value, sender, from_)],
+					[timer.TIMEOUT,
+					 lambda: on_timeout()
+					]
+				])
+				timer.stop()
+			else:
+				alt([[self.RECEIVE(template, value, sender, from_)]])
 
 	def start(self):
 		"""
@@ -3343,6 +3358,15 @@ def disable_logs():
 def enable_logs():
 	TestermanTCI.enableLogs()
 
+################################################################################
+# Convenience functions: TTCN-3 "extensions"
+################################################################################
+
+def wait(duration, name = "wait"):
+	timer = Timer(duration, name)
+	timer.start()
+	timer.timeout()
+	
 
 ################################################################################
 # Control part functions
