@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 ##
 # This file is part of Testerman, a test automation system.
-# Copyright (c) 2009,2010 QTesterman contributors
+# Copyright (c) 2009,2010,2011 QTesterman contributors
 #
 # This program is free software; you can redistribute it and/or modify it under
 # the terms of the GNU General Public License as published by the Free Software
@@ -542,6 +542,8 @@ class WAtsDocumentEditor(WDocumentEditor):
 		self.filenameTemplate = "Testerman ATS (*.ats)"
 		self.connect(self.model, SIGNAL('modificationChanged(bool)'), self.onModelModificationChanged)
 		self.connect(self.model, SIGNAL('documentReplaced()'), self.onModelDocumentReplaced)
+		# deselected groups are "persisted" across runs
+		self._deselectedGroups = []
 
 	def onModelDocumentReplaced(self):
 		self.editor.setPlainText(self.model.getBodyModel())
@@ -644,11 +646,13 @@ class WAtsDocumentEditor(WDocumentEditor):
 		self.profileSelector = WProfileSelector(self.model)
 
 		# Run actions
-		self.runAction = CommonWidgets.TestermanAction(self, "&Run", self.run, "Run now")
+		self.runAction = CommonWidgets.TestermanAction(self, "&Run", self.run, "Run now, with regards to the previously unselected test groups")
 		self.runAction.setIcon(icon(':/icons/run.png'))
+		self.selectGroupsAndRunAction = CommonWidgets.TestermanAction(self, "Select groups && R&un", self.selectGroupsAndRun, "Select groups to run, then run")
 		self.runWithParametersAction = CommonWidgets.TestermanAction(self, "Run with &parameters...", self.runWithParameters, "Set parameters, then run")
 		self.scheduleRunAction = CommonWidgets.TestermanAction(self, "&Scheduled run...", self.scheduleRun, "Schedule a run")
 		self.runMenu = QMenu('Run', self)
+		self.runMenu.addAction(self.selectGroupsAndRunAction)
 		self.runMenu.addAction(self.runWithParametersAction)
 		self.runMenu.addAction(self.scheduleRunAction)
 		self.runButton = QToolButton()
@@ -740,15 +744,19 @@ class WAtsDocumentEditor(WDocumentEditor):
 			self.editor.setFocus(Qt.OtherFocusReason)
 		return 0
 
-	def _schedule(self, session, at = None):
+	def _schedule(self, session, at = None, selectedGroups = None):
 		"""
 		Returns the job ID is ok, None otherwise.
 		Takes care of the user notifications.
 		"""
-		if at is None:
-			at = time.time() + 1.0
 		try:
-			res = getProxy().scheduleAts(self.model.getDocumentSource(), unicode(self.model.getName()), unicode(QApplication.instance().username()), session, at)
+			res = getProxy().scheduleAts(
+				ats = self.model.getDocumentSource(), 
+				atsId = unicode(self.model.getName()),
+				username = unicode(QApplication.instance().username()),
+				session = session,
+				at = at,
+				groups = selectedGroups)
 		except Exception, e:
 			CommonWidgets.systemError(self, str(e))
 			return None
@@ -760,7 +768,8 @@ class WAtsDocumentEditor(WDocumentEditor):
 	##
 	def run(self):
 		"""
-		Immediate run, using the default parameters.
+		Immediate run, using the current profiles,
+		and the currently deselected test groups.
 		"""
 		# we 'commit' and verify the modified view of the script
 		if not self.verify(0):
@@ -774,12 +783,16 @@ class WAtsDocumentEditor(WDocumentEditor):
 				pm = DocumentModels.ProfileModel()
 				pm.setDocumentSource(profile)
 				session = pm.toSession()
-				print "Running with profile %s" % unicode(profileUrl.path())
+				log("Running with profile %s" % unicode(profileUrl.path()))
 			else:
-				print "WARNING: unable to fetch profile %s" % unicode(profileUrl.path())
+				log("WARNING: unable to fetch profile %s" % unicode(profileUrl.path()))
 
 		
-		jobId = self._schedule(session)
+		# compute selected groups
+		selectedGroups = [x for x in self.model.getMetadataModel().getGroups().keys() if not x in self._deselectedGroups]
+		log("Selected groups for this run: %s" % ",".join(selectedGroups))
+		
+		jobId = self._schedule(session, selectedGroups = selectedGroups or None)
 		if jobId is None:
 			return
 
@@ -788,6 +801,46 @@ class WAtsDocumentEditor(WDocumentEditor):
 			logViewer.openJob(jobId)
 			logViewer.show()
 
+	def selectGroupsAndRun(self):
+		"""
+		First displays a dialog to select groups to run, then run the script.
+		"""
+		# we 'commit' and verify the modified view of the script
+		if not self.verify(0):
+			return
+			
+		session = None
+		profileUrl = self.profileSelector.getProfileUrl()
+		if profileUrl:
+			profile = getProxy().getFile(unicode(profileUrl.path()))
+			if profile:
+				pm = DocumentModels.ProfileModel()
+				pm.setDocumentSource(profile)
+				session = pm.toSession()
+				print "Running with profile %s" % unicode(profileUrl.path())
+			else:
+				print "WARNING: unable to fetch profile %s" % unicode(profileUrl.path())
+
+		groupSelectorDialog = WGroupSelectorDialog(self.model.getMetadataModel(), self._deselectedGroups, self)
+		if groupSelectorDialog.exec_() == QDialog.Accepted:
+			self._deselectedGroups = groupSelectorDialog.getDeselectedGroups()
+		else:
+			QApplication.instance().get('gui.statusbar').showMessage('Operation cancelled')
+			return
+
+		# compute selected groups
+		selectedGroups = [x for x in self.model.getMetadataModel().getGroups().keys() if not x in self._deselectedGroups]
+		log("Selected groups for this run: %s" % ",".join(selectedGroups))
+		
+		jobId = self._schedule(session, selectedGroups = selectedGroups or None)
+		if jobId is None:
+			return
+
+		if self.launchLog.isChecked():
+			logViewer = LogViewer.WLogViewer(parent = self)
+			logViewer.openJob(jobId)
+			logViewer.show()
+		
 	def runWithParameters(self):
 		"""
 		Runs the script after asking for specific session parameters.
@@ -1963,6 +2016,148 @@ class WScheduleDialog(QDialog):
 		"""
 		return self._dateTimePicker.selectedDateTime().toTime_t()
 
+################################################################################
+# Group Selection
+################################################################################
+
+class WGroupTreeWidgetItem(QTreeWidgetItem):
+	"""
+	This item interfaces a metadata group element (dict[name, description]).
+	"""
+	def __init__(self, group, parent = None):
+		"""
+		@type  group: dict[unicode] of unicode
+		@param group: a representation of a parameter, as performed by a metadataModel:
+											a dict of 'name', 'description'.
+		"""
+		QTreeWidgetItem.__init__(self, parent)
+		self.group = group
+		self.setToolTip(1, self.group['description'])
+		self.setText(1, self.group['name'])
+		self.setText(2, self.group['description'])
+#		self.setFlags(Qt.ItemIsEnabled | Qt.ItemIsSelectable | Qt.ItemIsUserCheckable)
+
+class WGroupSelector(QTreeWidget):
+	"""
+	Using a documentModel.metadataModel.getGroups() as an input, enables to
+	select groups for a run.
+
+	This is not a view over a model; just an interface to modify things, with
+	exploitable outputs:
+	- getDeselectedGroups(): return the deselected groups only
+	"""
+	def __init__(self, groups, deselectedGroups, parent = None):
+		"""
+		We make a copy of the input groups dict, since we're about to reuse it for our own purposes.
+		"""
+		QTreeWidget.__init__(self, parent)
+		self.groups = copy.deepcopy(groups)
+		self.__createWidgets()
+		self.rebuildTree(deselectedGroups)
+
+	def __createWidgets(self):
+		labels = QStringList()
+		labels.append('')
+		labels.append('Name')
+		labels.append('Description')
+		self.setHeaderLabels(labels)
+		self.setRootIsDecorated(False)
+		self.setSortingEnabled(True)
+		self.header().setClickable(True)
+		# Default sort
+		self.sortItems(1, Qt.AscendingOrder)
+		self.setAlternatingRowColors(True)
+
+		# Context menu to check/uncheck all
+		self.menu = QMenu(self)
+		self.menu.addAction(CommonWidgets.TestermanAction(self, "Check all", self.checkAll))
+		self.menu.addAction(CommonWidgets.TestermanAction(self, "Uncheck all", self.uncheckAll))
+
+		self.setContextMenuPolicy(Qt.CustomContextMenu)
+		self.connect(self, SIGNAL("customContextMenuRequested (const QPoint&)"), self.onPopupMenu)
+
+	def onPopupMenu(self, event):
+		self.menu.popup(QCursor.pos())
+
+	def rebuildTree(self, deselectedGroups):
+		"""
+		Rebuild the tree according to the current "model"
+		"""
+		self.clear()
+
+		for (name, group) in self.groups.items():
+			item = WGroupTreeWidgetItem(group, self)
+			# selected by defaut
+			item.setCheckState(0, (not name in deselectedGroups) and Qt.Checked )
+
+		# We resort the view
+		self.sortItems(self.sortColumn(), self.header().sortIndicatorOrder())
+		self.resizeColumnToContents(0) # checkbox
+		self.resizeColumnToContents(1) # group name
+		self.setColumnWidth(2, 200) # description
+
+	def getDeselectedGroups(self):
+		"""
+		Returns a list containing deselected groups names.
+		@rtype: list of unicode
+		@returns: a list of deselected groups
+		"""
+		ret = []
+		for i in range(self.topLevelItemCount()):
+			item = self.topLevelItem(i)
+			group = item.group
+			if not item.checkState(0) == Qt.Checked:
+				ret.append(group['name'])
+		return ret
+
+	def checkAll(self):
+		for i in range(self.topLevelItemCount()):
+			item = self.topLevelItem(i)
+			item.setCheckState(0, Qt.Checked)
+	
+	def uncheckAll(self):
+		for i in range(self.topLevelItemCount()):
+			item = self.topLevelItem(i)
+			item.setCheckState(0, Qt.Unchecked)
+
+class WGroupSelectorDialog(QDialog):
+	"""
+	A WGroupSelector embedded within a dialog.
+	"""
+	def __init__(self, metadataModel, deselectedGroups = [], parent = None):
+		"""
+		metadataModel is the ATS' metadata model, containing the current list of possible groups.
+		deselectedGroups contains the previously deselected groups.
+		"""
+		QDialog.__init__(self, parent)
+		self.metadataModel = metadataModel
+		self.__createWidgets(deselectedGroups)
+
+	def sizeHint(self):
+		return QSize(500, 300)
+
+	def __createWidgets(self, deselectedGroups):
+		self.setWindowTitle("Select groups to run")
+		self.setWindowIcon(icon(':icons/testerman.png'))
+
+		layout = QVBoxLayout()
+		self.groupSelector = WGroupSelector(self.metadataModel.getGroups(), deselectedGroups, self)
+		layout.addWidget(self.groupSelector)
+
+		buttonLayout = QHBoxLayout()
+		buttonLayout.addStretch()
+		self.okButton = QPushButton("Run", self)
+		self.connect(self.okButton, SIGNAL("clicked()"), self.accept)
+		buttonLayout.addWidget(self.okButton)
+		self.cancelButton = QPushButton("Cancel", self)
+		self.connect(self.cancelButton, SIGNAL("clicked()"), self.reject)
+		buttonLayout.addWidget(self.cancelButton)
+		layout.addLayout(buttonLayout)
+
+		self.setLayout(layout)
+
+	def getDeselectedGroups(self):
+		return self.groupSelector.getDeselectedGroups()
 
 ###############################################################################
 # Package Description/Metadata Edition
