@@ -96,6 +96,7 @@ class RootContext(SIS.CommandContext):
 		self.addContext("components", "components management", contexts.ComponentContext())
 		self.addContext("agents", "agents and probes management", contexts.AgentContext())
 		self.addContext("jobs", "job management", contexts.JobContext())
+		self.addContext("repository", "repository browser", contexts.RepositoryContext())
 
 		# Show
 		orderChoice = SIS.EnumNode()
