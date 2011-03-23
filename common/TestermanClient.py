@@ -193,15 +193,15 @@ class Client(Nodes.ConnectingNode):
 		else:
 			return None
 
-	def scheduleAts(self, ats, atsId, username, session = {}, at = 0.0, path = None):
+	def scheduleAts(self, ats, atsId, username, session = {}, at = None, path = None, groups = None):
 		"""
 		Schedules an ATS to be executed at 'at' time.
-		If 'at' is lower than the current server's time, an immediate execution occurs. 
+		If 'at' is lower than the current server's time or None, an immediate execution occurs. 
 		
 		@type  ats: buffer string (utf-8 encoded string)
 		@param ats: the ATS to schedule
 		@type  atsId: unicode
-		@param atsId: a name identifying the ATS
+		@param atsId: a friendly name identifying the ATS
 		@type  session: dict[unicode] of strings
 		@param session: the initial session parameters, altering the ATS metadata's provided ones
 		@type  at: float
@@ -213,6 +213,9 @@ class Client(Nodes.ConnectingNode):
 	            	 if any. For source files not located on the server, set to None.
 	            	 For the other ones, enables to know where to search dependencies
 	            	 from.
+		@type  groups: list os unicode strings, or None
+		@param groups: a list of groups selected for this run. If set to None, all groups are considered
+		               (no particular selection)
 		
 		@throws Exception in case of a scheduling error.
 		
@@ -225,7 +228,7 @@ class Client(Nodes.ConnectingNode):
 				for (k, v) in session.items():
 					s[k.encode('utf-8')] = v.encode('utf-8')
 			
-			return self.__proxy.scheduleAts(ats, atsId.encode('utf-8'), username.encode('utf-8'), s, at, path)
+			return self.__proxy.scheduleAts(ats, atsId.encode('utf-8'), username.encode('utf-8'), s, at, path, groups)
 		except xmlrpclib.Fault, e:
 			self.getLogger().error("ATS Scheduling fault: " + str(e))
 			raise Exception(e.faultString)
