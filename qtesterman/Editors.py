@@ -487,43 +487,46 @@ class WProfileSelector(QComboBox):
 	"""
 	Fetches the available profiles associated with the script, and displays
 	them.
+	
+	Emit profileUpdated (QUrl) when a new profile has been selected
+	(QUrl = None if the default profile has been selected)
 	"""
-	def __init__(self, documentModel, parent = None):
+	def __init__(self, profileManager, parent = None):
 		QComboBox.__init__(self, parent)
 		self.addItem('(default profile)')
-		self._documentModel = documentModel
+		self._profileManager = profileManager
+		self.connect(self, SIGNAL('activated(int)'), self.onActivated)
+		self._refreshEntries()
+
+	def _refreshEntries(self, selected = None):
+		self.clear()
+		self._entries = self._profileManager.getAvailableProfiles()
+		l = self._entries.keys()
+		l.sort()
+		i = 0
+		for name in l:
+			self.addItem(name)
+			if name == selected:
+				self.setCurrentIndex(i)
+			i += 1
 	
 	def showPopup(self):
 		"""
-		Reimplemented.
+		Reimplemented to reload the available profiles in real time.
 		"""
 		current = unicode(self.currentText())
-		self.clear()
-		self.addItem('(default profile)')
-		selIndex = 0
-
-		if self._documentModel.isRemote():
-			try:
-				l = getProxy().getDirectoryListing(unicode(self._documentModel.getUrl().path()) + '/profiles')
-				if l is None:
-					l = []
-			except Exception, e:
-				log('Cannot get profiles for this script: %s' % e)
-				l = []
-			index = 1 # Skip the default profile
-			for name in [ x['name'][:-len('.profile')] for x in l if x['type'] == 'profile']:
-				if current == name:
-					selIndex = index
-				self.addItem(name) # skip the .profile when display the profile extension
-				index += 1
-		self.setCurrentIndex(selIndex)
-		
+		self._refreshEntries(current)
 		return QComboBox.showPopup(self)
 	
 	def getProfileUrl(self):
-		if self.currentIndex() > 0:
-			return QUrl(self._documentModel.getUrl().toString() + '/profiles/%s.profile' % unicode(self.currentText()))
-		return None
+		"""
+		To rename to getProfileModel once the profileManager will provide such models instead of URLs
+		"""
+		return self._entries.get(unicode(self.currentText()))
+	
+	def onActivated(self, index):
+		self.emit(SIGNAL("profileSelected"), self.getProfileUrl())
+	
 		
 
 class WAtsDocumentEditor(WDocumentEditor):
@@ -568,6 +571,12 @@ class WAtsDocumentEditor(WDocumentEditor):
 		else:
 			self.propertiesEditor.hide()
 		
+	def toggleProfilesEditor(self, checked):
+		if checked:
+			self.profilesEditor.show()		
+		else:
+			self.profilesEditor.hide()
+		
 	def __createWidgets(self):
 		"""
 		A main WScriptEditor, plus an associated action bar at the bottom with:
@@ -588,6 +597,24 @@ class WAtsDocumentEditor(WDocumentEditor):
 		e.setWindowFlags(Qt.Window)
 		e.show()
 		"""
+
+		##
+		# (Initially) Hidden widgets
+		##
+		self.parametersEditor = DocumentPropertyEditor.WParametersEditor()
+		self.parametersEditor.hide()
+		self.parametersEditor.setModel(self.model.getMetadataModel())
+
+		self.groupsEditor = DocumentPropertyEditor.WGroupsEditor()
+		self.groupsEditor.hide()
+		self.groupsEditor.setModel(self.model.getMetadataModel())
+
+		self.propertiesEditor = DocumentPropertyEditor.WScriptPropertiesEditor()
+		self.propertiesEditor.hide()
+		self.propertiesEditor.setModel(self.model.getMetadataModel())
+
+		self.profilesEditor = WProfilesEditor(self.model)
+		self.profilesEditor.hide()
 
 
 		##
@@ -642,9 +669,20 @@ class WAtsDocumentEditor(WDocumentEditor):
 		self.documentationButton.setMenu(self.documentationPluginsMenu)
 		self.documentationButton.setPopupMode(QToolButton.InstantPopup)
 
-		# Profile selector
-		self.profileSelector = WProfileSelector(self.model)
-
+		# Profile selector & associated actions
+		self.profileSelector = WProfileSelector(self.profilesEditor)
+		self.connect(self.profileSelector, SIGNAL('profileSelected'), self.onProfileSelected)
+		# The toggle button to show/hide the profile manager/editor
+		self.showProfilesEditorAction = QAction("Edit", self)
+		self.showProfilesEditorAction.setToolTip("Open/close the profiles editor")
+		self.showProfilesEditorAction.setCheckable(True)
+		self.showProfilesEditorAction.setIcon(icon(':/icons/profiles-editor'))
+		self.showProfilesEditorAction.setStatusTip("Open/close the profiles editor")
+		self.showProfilesEditorButton = QToolButton()
+		self.showProfilesEditorButton.setIconSize(QSize(16, 16))
+		self.showProfilesEditorButton.setDefaultAction(self.showProfilesEditorAction)
+		self.connect(self.showProfilesEditorAction, SIGNAL('toggled(bool)'), self.toggleProfilesEditor)
+		
 		# Run actions
 		self.runAction = CommonWidgets.TestermanAction(self, "&Run", self.run, "Run now, with regards to the previously unselected test groups")
 		self.runAction.setIcon(icon(':/icons/run.png'))
@@ -670,23 +708,9 @@ class WAtsDocumentEditor(WDocumentEditor):
 		actionLayout.addWidget(self.syntaxCheckButton)
 		actionLayout.addWidget(self.runButton)
 		actionLayout.addWidget(self.profileSelector)
+		actionLayout.addWidget(self.showProfilesEditorButton)
 		actionLayout.addWidget(self.launchLog)
 		actionLayout.setMargin(2)
-
-		##
-		# (Initially) Hidden widgets
-		##
-		self.parametersEditor = DocumentPropertyEditor.WParametersEditor()
-		self.parametersEditor.hide()
-		self.parametersEditor.setModel(self.model.getMetadataModel())
-
-		self.groupsEditor = DocumentPropertyEditor.WGroupsEditor()
-		self.groupsEditor.hide()
-		self.groupsEditor.setModel(self.model.getMetadataModel())
-
-		self.propertiesEditor = DocumentPropertyEditor.WScriptPropertiesEditor()
-		self.propertiesEditor.hide()
-		self.propertiesEditor.setModel(self.model.getMetadataModel())
 
 		##
 		# Final layout
@@ -700,19 +724,54 @@ class WAtsDocumentEditor(WDocumentEditor):
 		self.mainSplitter.addWidget(self.groupsEditor)
 		self.mainSplitter.addWidget(self.propertiesEditor)
 		self.mainSplitter.addWidget(self.editor)
+		self.mainSplitter.addWidget(self.profilesEditor)
 		
 		self.mainSplitter.setCollapsible(0, False)
 		self.mainSplitter.setCollapsible(1, False)
 		self.mainSplitter.setCollapsible(2, False)
 		self.mainSplitter.setCollapsible(3, False)
+		self.mainSplitter.setCollapsible(4, False)
 		self.mainSplitter.setStretchFactor(0, 1)
 		self.mainSplitter.setStretchFactor(1, 1)
 		self.mainSplitter.setStretchFactor(2, 1)
 		self.mainSplitter.setStretchFactor(3, 3)
+		self.mainSplitter.setStretchFactor(4, 1)
 		layout.addWidget(self.mainSplitter)
 		layout.addLayout(actionLayout)
 		layout.setMargin(0)
 		self.setLayout(layout)
+
+	def onProfileSelected(self, profileUrl):
+		"""
+		A new profile has been selected.
+		Update the currently displayed model in the profiles editor.
+		
+		FIXME: move this to the ProfilesEditor that must be able
+		to keep track of multiple open resources (url) with their
+		associated states (saved or not).
+		Here, we will overwrite the existing/unsaved profile with the
+		last saved one whenever we select one from the combobox.
+		"""
+		if profileUrl:
+			profile = getProxy().getFile(unicode(profileUrl.path()))
+			if profile:
+				pm = DocumentModels.ProfileModel()
+				pm.setDocumentSource(profile)
+				self.profilesEditor.setModel(pm)
+			else:
+				# FIXME
+				# We should indicate an error instead ??
+				pm = DocumentModels.ProfileModel()
+				pm.setDocumentSource('<?xml version="1.0"?><profile></profile>')
+				self.profilesEditor.setModel(pm)
+		else:
+			# default profile selected
+			# Normally the "instant" provide should be used instead.
+			pm = DocumentModels.ProfileModel()
+			pm.setDocumentSource('<?xml version="1.0"?><profile></profile>')
+			self.profilesEditor.setModel(pm)
+			
+		
 
 	def updateModel(self):
 		self.model.setBodyModel(self.editor.getCode())
@@ -2325,7 +2384,7 @@ DocumentManager.registerDocumentEditorClass(DocumentModels.TYPE_PACKAGE_METADATA
 # Profile
 ###############################################################################
 
-class WParameterTreeWidgetItem(QTreeWidgetItem):
+class WProfileValueTreeWidgetItem(QTreeWidgetItem):
 	def __init__(self, parent, parameter):
 		"""
 		parameter is a dict[unicode] of unicode containing "name", "description", "default", "value"
@@ -2337,11 +2396,21 @@ class WParameterTreeWidgetItem(QTreeWidgetItem):
 		self.key = parameter['name']
 		self.columns = [ 'name', 'type', 'description', 'default', 'value' ]
 		self.setFlags(Qt.ItemIsEnabled | Qt.ItemIsEditable | Qt.ItemIsSelectable)
-		if self.parameter['extra']:
-			self.setBackground(0, QBrush(Qt.lightGray))
+		self.setText(0, self.parameter['name'])
+		self.setText(1, self.parameter['type'])
+		self.setText(2, self.parameter['description'])
+		self.setText(3, self.parameter['default'])
+		self.setText(4, self.parameter['value'])
+
+		if self.parameter['auto_added']:
+			for i in range(len(self.columns)):
+				self.setForeground(i, QBrush(Qt.lightGray))
+		elif self.parameter['extra']:
+			for i in range(len(self.columns)):
+				self.setForeground(i, QBrush(Qt.darkRed))
 			self.setToolTip(0, "This parameter is not defined in the script properties. You may remove it.")
-		
-	def data(self, column, role):
+	
+	def _data(self, column, role):
 		name = self.columns[column]
 		if role == Qt.DisplayRole:
 			return QVariant(self.parameter[name])
@@ -2349,7 +2418,7 @@ class WParameterTreeWidgetItem(QTreeWidgetItem):
 			return QVariant(self.parameter[name])
 		return QVariant()
 
-	def setData(self, column, role, value):
+	def _setData(self, column, role, value):
 		val = unicode(value.toString())
 		name = self.columns[column]
 		if role == Qt.EditRole:
@@ -2359,7 +2428,7 @@ class WParameterTreeWidgetItem(QTreeWidgetItem):
 				# treeWidget by itself, AFAIK.
 				self.treeWidget().emit(SIGNAL('itemChanged(QTreeWidgetItem*, int)'), self, column)
 
-class WParametersEditor(QTreeWidget):
+class WProfileValuesEditor(QTreeWidget):
 	"""
 	An editor to edit the script parameters values for the profile.
 	Displays multiple columns: name, description, default value, and profile value.
@@ -2370,6 +2439,7 @@ class WParametersEditor(QTreeWidget):
 	"""
 	def __init__(self, parent = None):
 		QTreeWidget.__init__(self, parent)
+		self._scriptMetadataModel = None
 		self.__createWidgets()
 
 	def __createWidgets(self):
@@ -2389,6 +2459,61 @@ class WParametersEditor(QTreeWidget):
 #		self.setAcceptDrops(True)
 		
 		self.setAlternatingRowColors(True)
+		
+		self.connect(self, SIGNAL('itemChanged(QTreeWidgetItem*, int)'), self.onItemChanged)
+	
+	def onItemChanged(self, item, column):
+		# We should be more specific, updating only one particular item instead of everything.
+		self.updateModel()
+
+	def setMetadataModel(self, scriptMetadataModel):
+		"""
+		Sets the associated metadata model.
+		
+		The widget updates the view according to it, by displaying
+		default values/description/type associated to the profile's values,
+		automatically adding missing values,
+		and identifying spurious values.
+		"""
+		if self._scriptMetadataModel:
+			self.disconnect(self._scriptMetadataModel, SIGNAL("metadataUpdated()"), self.onMetadataModelUpdated)
+		self._scriptMetadataModel = scriptMetadataModel
+		if self._scriptMetadataModel:
+			self.connect(self._scriptMetadataModel, SIGNAL("metadataUpdated()"), self.onMetadataModelUpdated)
+		self.onMetadataModelUpdated()
+
+	def onMetadataModelUpdated(self):
+		"""
+		Updates/completes the view according to the script's parameters/signature.
+		"""
+		if self._scriptMetadataModel:
+			templateModel = self._scriptMetadataModel.getParameters()
+		else:
+			templateModel = {}
+
+		localModel = self._model.getParameters()
+
+		# Now, construct the tree, merging the info from the metadata model and the current profile
+		self.clear()
+
+		displayed = []		
+		# Construct the tree based on the "template", ie the script expected parameters
+		for k, v in templateModel.items():
+			d = {}
+			if k in localModel:
+				d = dict(name = k, value = localModel[k], description = v['description'], default = v['default'], type = v['type'], extra = False, auto_added = False)
+			else:
+				# in the template, not in the profile, initialize it to the defaut value
+				d = dict(name = k, value = v['default'], description = v['description'], default = v['default'], type = v['type'], extra = False, auto_added = True)
+			displayed.append(k)
+			WProfileValueTreeWidgetItem(self, d)
+
+		# Now complete with what was not displayed, but available in the profile model (extra parameters)
+		for k, v in localModel.items():
+			if not k in displayed:
+				d = dict(name = k, value = v, description = '', default = '', type = 'string', extra = True, auto_added = False)
+				WProfileValueTreeWidgetItem(self, d)
+		
 
 	def setModel(self, profileModel, scriptMetadataModel = None, applyMetadataModel = False):
 		"""
@@ -2410,33 +2535,39 @@ class WParametersEditor(QTreeWidget):
 				for k, v in templateModel.items():
 					d = {}
 					if k in localModel:
-						d = dict(name = k, value = localModel[k], description = v['description'], default = v['default'], type = v['type'], extra = False)
+						d = dict(name = k, value = localModel[k], description = v['description'], default = v['default'], type = v['type'], extra = False, auto_added = False)
 					else:
 						# in the template, not in the profile, initialize it to the defaut value
-						d = dict(name = k, value = v['default'], description = v['description'], default = v['default'], type = v['type'], extra = False)
+						d = dict(name = k, value = v['default'], description = v['description'], default = v['default'], type = v['type'], extra = False, auto_added = True)
 					displayed.append(k)
-					WParameterTreeWidgetItem(self, d)
+					WProfileValueTreeWidgetItem(self, d)
 
 			# Now complete with what was not displayed, but available in the profile model (extra parameters)
 			for k, v in localModel.items():
 				if not k in displayed:
 					d = dict(name = k, value = v, description = '(unknown)', default = '', type = 'string', extra = True)
-					WParameterTreeWidgetItem(self, d)
+					WProfileValueTreeWidgetItem(self, d)
 
 		else:
 			# We don't have a merge strategy. Just display the elements of the local model,
 			# with the description and default value from the scriptMetadataModel, if any
 			for k, v in localModel.items():
 				if k in templateModel:
-					d = dict(name = k, value = v, description = templateModel[k]['description'], default = templateModel[k]['default'], type = templateModel[k]['type'], extra = False)
+					d = dict(name = k, value = v, description = templateModel[k]['description'], default = templateModel[k]['default'], type = templateModel[k]['type'], extra = False, auto_added = False)
 				else:
-					d = dict(name = k, value = v, description = '', default = '', type = 'string', extra = True)
-				WParameterTreeWidgetItem(self, d)
+					d = dict(name = k, value = v, description = '', default = '', type = 'string', extra = True, auto_added = False)
+				WProfileValueTreeWidgetItem(self, d)
 				
 		# We re-sort the items according to the current sorting parameters
 		self.sortItems(self.sortColumn(), self.header().sortIndicatorOrder())
 	
-	def getParameters(self):
+	def updateModel(self):
+		"""
+		Writes the displayed/updated values back to the model.
+		"""
+		self._model.setParameters(self.getProfileValues())
+		
+	def getProfileValues(self):
 		"""
 		Returns a dict of the currently set values.
 		"""
@@ -2449,8 +2580,131 @@ class WParametersEditor(QTreeWidget):
 			value = item.text(4)
 			parameters[key] = value
 		return parameters
-		
 
+
+class WProfilesEditor(QWidget):
+	"""
+	A profiles editor/manager that is embedded within
+	a ATS or Campaign editor.
+	
+	Enables to add/delete/update profiles that
+	are associated with this script, and maintains a
+	list of available profiles for a run.
+	"""
+	def __init__(self, scriptModel, parent = None):
+		QWidget.__init__(self, parent)
+		self.__createWidgets()
+		# Knowing the associated MetadataModel is useful to reapply the template
+		# and/or to display in-use/deprecated values in a template, as well as type/description/etc
+		self._associatedScriptModel = scriptModel
+	
+	def __createWidgets(self):
+		layout = QVBoxLayout()
+		# First, display the current profile properties
+		l = QHBoxLayout()
+		l.addWidget(QLabel("Description:"))
+		self.profileDescription = QLineEdit()
+		l.addWidget(self.profileDescription)
+		l.setMargin(2)
+		layout.addLayout(l)
+
+		self.valuesEditor = WProfileValuesEditor()
+		layout.addWidget(self.valuesEditor)
+		
+		self.newAction = CommonWidgets.TestermanAction(self, "&New", self.newProfile, "Create a new profile for this script")
+		self.reapplyTemplateAction = CommonWidgets.TestermanAction(self, "&Clean", self.reapplyProfileTemplate, "Remove unused parameters")
+		self.saveAction = CommonWidgets.TestermanAction(self, "&Save", self.saveProfile, "Save the current profile")
+		self.saveAsAction = CommonWidgets.TestermanAction(self, "Save &As", self.saveProfileAs, "Save the current profile as a new name")
+		self.deleteAction = CommonWidgets.TestermanAction(self, "&Delete", self.deleteProfile, "Delete the current profile")
+		
+		self.newButton = QToolButton()
+		self.newButton.setDefaultAction(self.newAction)
+		self.reapplyTemplateButton = QToolButton()
+		self.reapplyTemplateButton.setDefaultAction(self.reapplyTemplateAction)
+		self.saveButton = QToolButton()
+		self.saveButton.setDefaultAction(self.saveAction)
+		self.saveAsButton = QToolButton()
+		self.saveAsButton.setDefaultAction(self.saveAsAction)
+		self.deleteButton = QToolButton()
+		self.deleteButton.setDefaultAction(self.deleteAction)
+		
+		# Then, display an action bar
+		actionLayout = QHBoxLayout()
+		actionLayout.addWidget(self.newButton)
+		actionLayout.addStretch()
+		actionLayout.addWidget(self.reapplyTemplateButton)
+		actionLayout.addWidget(self.saveButton)
+		actionLayout.addWidget(self.saveAsButton)
+		actionLayout.addWidget(self.deleteButton)
+		
+		layout.addLayout(actionLayout)
+		self.setLayout(layout)
+	
+	def newProfile(self):
+		# TODO: check that the current profile is saved/save-able.
+		model = DocumentModels.ProfileModel()
+		model.setDocumentSource('<?xml version="1.0"?><profile></profile>')
+		self.setModel(model)
+	
+	def saveProfile(self):
+		pass
+	
+	def saveProfileAs(self):
+		pass
+	
+	def deleteProfile(self):
+		pass
+
+	def reapplyProfileTemplate(self):
+		pass
+	
+	def setModel(self, model):
+		"""
+		Set the current profile's model to display.
+		"""
+		self.model = model
+		self.profileDescription.setText(self.model.getDescription())
+		self.valuesEditor.setModel(self.model)
+		self.valuesEditor.setMetadataModel(self._associatedScriptModel.getMetadataModel())
+
+	def getAvailableProfiles(self):
+		"""
+		Returns a list of profiles available for the associated script.
+		
+		This is a merged list from multiple sources:
+		1 - profiles available on the server, associated to the current document's url
+		2 - profiles that are not saved yet, only 'in memory'
+		In addition, for 1, the actual profile may be not saved yet.
+		"""
+		# dict[friendly name] = QUrl - to be replaced by dict[friendly name] = profileModel
+		ret = {}
+
+		# There is always a default profile available. Cannot be modified.
+#		default = DocumentModels.ProfileModel()
+#		default.setD(ocumentSource('<?xml version="1.0"?><profile></profile>')
+		ret['(default profile)'] = None
+		
+		# Then there may be a list of profiles from the server
+		if self._associatedScriptModel.isRemote():
+			try:
+				l = getProxy().getDirectoryListing(unicode(self._associatedScriptModel.getUrl().path()) + '/profiles')
+				if l is None:
+					l = []
+			except Exception, e:
+				log('Cannot get profiles for this script: %s' % e)
+				l = []
+			
+			for name in [ x['name'][:-len('.profile')] for x in l if x['type'] == 'profile']:
+				ret[name] = QUrl(self._associatedScriptModel.getUrl().toString() + '/profiles/%s.profile' % name)
+		
+		# Then we may have some unsaved profiles that are not available on the server yet
+		# TODO
+		
+		return ret
+		
+		
+		
+	
 class WProfileDocumentEditor(WDocumentEditor):
 	"""
 	Enable to edit and manipulate a profile.
@@ -2478,7 +2732,7 @@ class WProfileDocumentEditor(WDocumentEditor):
 		layout.setMargin(3)
 		
 		self._descriptionTextEdit = QTextEdit()
-		self._parametersEditor = WParametersEditor()
+		self._parametersEditor = WProfileValuesEditor()
 		
 		# Let's reference the different isModified() functions
 		self._editorModifiedFunctions = [ 
@@ -2551,7 +2805,7 @@ class WProfileDocumentEditor(WDocumentEditor):
 		"""
 		description = self._descriptionTextEdit.toPlainText()
 		self.model.setDescription(unicode(description))
-		self.model.setParameters(self._parametersEditor.getParameters())
+		self.model.setParameters(self._parametersEditor.geProfileValues())
 
 	def prepareDocumentationPluginsMenu(self):
 		self.documentationPluginsMenu.clear()

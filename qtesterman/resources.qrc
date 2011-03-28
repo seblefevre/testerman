@@ -99,6 +99,9 @@ pyrcc4 resources.qrc -o Resources.py
 	<!-- chat-room -->
 	<file alias="chat-room">resources/view-process-users.png</file>
 
+	<!-- editors -->
+	<file alias="profiles-editor">resources/user-properties.png</file>
+
 </qresource>
 
 <qresource prefix="animations">

@@ -1349,6 +1349,7 @@ class ProfileModel(DocumentModel):
 
 	def setDescription(self, description):
 		self._updateModelElement('description', description)
+		self.emit(SIGNAL('bodyUpdated()'))
 
 	def getParameters(self):
 		localModel = {}
@@ -1374,6 +1375,7 @@ class ProfileModel(DocumentModel):
 			parameter.appendChild(doc.createTextNode(v))
 			parameters.appendChild(parameter)
 		root.appendChild(parameters)
+		self.emit(SIGNAL('bodyUpdated()'))
 	
 	def getParameter(self, key):
 		pass
