@@ -60,6 +60,39 @@ class TestermanCheckableAction(QAction):
 		if shortcut: self.setShortcut(shortcut)
 		self.connect(self, SIGNAL("toggled(bool)"), callback)
 
+################################################################################
+# Name validation functions
+################################################################################
+
+RESTRICTED_NAME_CHARACTERS = "/\\' \"@|?*-"
+
+def validateFileName(name):
+	"""
+	Verifies that a file system name is suitable for the Testerman server.
+	
+	The Testerman FS allows file names that do not contain any
+	of the following characters:
+	
+	/\' "@|?*
+
+	@type  name: QString, unicode, ...
+	@param name: the name to validate
+	
+	@rtype: bool
+	@returns: True if OK, False otherwise.
+	"""
+	name = unicode(name)
+	for c in RESTRICTED_NAME_CHARACTERS:
+		if c in name:
+			return False
+	return True
+
+def validateDirectoryName(name):
+	"""
+	Convenience function (at least, for now).
+	"""
+	return validateFileName(name)
+
 
 ################################################################################
 # Message of the Day dialog

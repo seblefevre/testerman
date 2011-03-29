@@ -1278,6 +1278,8 @@ class ProfileModel(DocumentModel):
 		DocumentModel.__init__(self)
 		self.setFileExtension("profile")
 		self.setDocumentType(TYPE_PROFILE)
+		self._readOnly = False
+		self._friendlyName = ""
 		
 	def _split(self, documentSource):
 		"""
@@ -1341,6 +1343,18 @@ class ProfileModel(DocumentModel):
 			return None
 		return url.path()
 
+	def setReadOnly(self, ro):
+		self._readOnly = ro
+	
+	def isReadOnly(self):
+		return self._readOnly
+	
+	def setFriendlyName(self, fn):
+		self._friendlyName = fn
+	
+	def getFriendlyName(self):
+		return self._friendlyName
+
 	# Accessors
 
 	def getDescription(self):
@@ -1395,7 +1409,6 @@ class ProfileModel(DocumentModel):
 			root.appendChild(newChild)
 		else:
 			root.replaceChild(newChild, oldChild)
-
 
 	def toSession(self):
 		"""

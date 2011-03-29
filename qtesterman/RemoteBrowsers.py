@@ -39,6 +39,8 @@ from PyQt4.Qt import *
 
 from Base import *
 
+from CommonWidgets import *
+
 ################################################################################
 # Local Icon Cache
 ################################################################################
@@ -59,39 +61,6 @@ TheIconCache = IconCache()
 def icon(resource):
 	return TheIconCache.icon(resource)
 
-
-################################################################################
-# Name validation functions
-################################################################################
-
-RESTRICTED_NAME_CHARACTERS = "/\\' \"@|?*-"
-
-def validateFileName(name):
-	"""
-	Verifies that a file system name is suitable for the Testerman server.
-	
-	The Testerman FS allows file names that do not contain any
-	of the following characters:
-	
-	/\' "@|?*
-
-	@type  name: QString, unicode, ...
-	@param name: the name to validate
-	
-	@rtype: bool
-	@returns: True if OK, False otherwise.
-	"""
-	name = unicode(name)
-	for c in RESTRICTED_NAME_CHARACTERS:
-		if c in name:
-			return False
-	return True
-
-def validateDirectoryName(name):
-	"""
-	Convenience function (at least, for now).
-	"""
-	return validateFileName(name)
 
 ################################################################################
 # Remote file selector (read-only browsing)
