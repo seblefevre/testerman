@@ -1280,6 +1280,9 @@ class ProfileModel(DocumentModel):
 		self.setDocumentType(TYPE_PROFILE)
 		self._readOnly = False
 		self._friendlyName = ""
+
+		# We set a default value for the profile - an empty, but valid, profile.
+		self.setDocumentSource('<?xml version="1.0"?><profile></profile>')
 		
 	def _split(self, documentSource):
 		"""

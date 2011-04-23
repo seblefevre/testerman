@@ -760,7 +760,8 @@ class WAtsDocumentEditor(WDocumentEditor):
 		profileModel = self.profilesManager.getProfileSelector().getProfileModel()
 		if profileModel:
 			session = profileModel.toSession()
-			log("Running with profile %s" % unicode(profileModel.getUrl().path()))
+			if profileModel.getUrl():
+				log("Running with profile %s" % unicode(profileModel.getUrl().path()))
 		
 		# compute selected groups
 		selectedGroups = [x for x in self.model.getMetadataModel().getGroups().keys() if not x in self._deselectedGroups]
@@ -791,9 +792,9 @@ class WAtsDocumentEditor(WDocumentEditor):
 				pm = DocumentModels.ProfileModel()
 				pm.setDocumentSource(profile)
 				session = pm.toSession()
-				print "Running with profile %s" % unicode(profileUrl.path())
+				log("Running with profile %s" % unicode(profileUrl.path()))
 			else:
-				print "WARNING: unable to fetch profile %s" % unicode(profileUrl.path())
+				log("WARNING: unable to fetch profile %s" % unicode(profileUrl.path()))
 
 		groupSelectorDialog = WGroupSelectorDialog(self.model.getMetadataModel(), self._deselectedGroups, self)
 		if groupSelectorDialog.exec_() == QDialog.Accepted:
@@ -2716,7 +2717,6 @@ class WProfilesManager(QWidget):
 				model = DocumentModels.ProfileModel()
 				model.setFriendlyName(name)
 				model.setSavedAttributes(url = QUrl('testerman://testerman%s/profiles/%s.profile' % (associatedScriptPath, name)), timestamp = time.time())
-				model.setDocumentSource('<?xml version="1.0"?><profile></profile>')
 				self._profileModels[unicode(name)] = model
 				
 				# Select the new model as the current one
@@ -2727,6 +2727,9 @@ class WProfilesManager(QWidget):
 				CommonWidgets.userError(self, "This profile already exists. Please select another name.")
 	
 	def saveProfile(self):
+		# make sure we dump the displayed info into the model
+		self.updateModel() 
+
 		filename = self.model.getUrl().path()
 
 		# Check if there is no newer file on the server
@@ -2746,7 +2749,6 @@ class WProfilesManager(QWidget):
 		return self._saveProfile(filename)
 
 	def _saveProfile(self, filename):
-		# self.updateModel() # make sure we dump the displayed info into the model
 		error = None
 		try:
 			# Store files as utf8
@@ -2772,7 +2774,41 @@ class WProfilesManager(QWidget):
 			return False
 	
 	def saveProfileAs(self):
-		pass
+		"""
+		Saves the currently edited model under a particular name,
+		and selects it under this new name.
+		"""
+		# Make sure the current model is in sync with its view
+		self.updateModel()
+		
+		# Step 1: ask for a new name
+		(name, status) = QInputDialog.getText(self, "Save profile as", "Profile name:")
+		while status and not CommonWidgets.validateDirectoryName(name):
+			# Display some error message
+			CommonWidgets.userError(self, "The following characters are forbidden in a profile name:\n%s" % ', '.join([x for x in CommonWidgets.RESTRICTED_NAME_CHARACTERS]))
+			(name, status) = QInputDialog.getText(self, "Save profile as", "Profile name:")
+		
+		if status and not name.isEmpty():
+			# TODO: (remote) overwrite check
+			if not unicode(name) in self._profileModels:
+				associatedScriptPath = self._associatedScriptModel.getUrl().path()
+				model = DocumentModels.ProfileModel()
+				model.setFriendlyName(name)
+
+				# Copy the current model to the new one
+				model.setDescription(self.model.getDescription())
+				model.setDocumentSource(self.model.getDocumentSource())
+				model.setSavedAttributes(url = QUrl('testerman://testerman%s/profiles/%s.profile' % (associatedScriptPath, name)), timestamp = time.time())
+				
+				# Attempt to save it
+				if self._saveProfile(model.getUrl().path()):
+					# If OK, let's register the new model into our local list
+					self._profileModels[unicode(name)] = model
+					# Select the new model as the current one
+					self.setModel(model)
+			else:
+				CommonWidgets.userError(self, "This profile already exists. Please select another name.")
+				# TODO: We should propose to overwrite it.
 	
 	def deleteProfile(self):
 		pass
@@ -2796,6 +2832,16 @@ class WProfilesManager(QWidget):
 		self.saveButton.setEnabled(not self.model.isReadOnly())
 		self.deleteButton.setEnabled(not self.model.isReadOnly())
 		self.reapplyTemplateButton.setEnabled(not self.model.isReadOnly())
+
+		# Also make sure that the associated profile selector displays the correct name
+		self.getProfileSelector().setEditText(self.model.getFriendlyName())
+
+	def updateModel(self):
+		"""
+		Commit the changes to the model.
+		"""
+		self.model.setDescription(unicode(self.profileDescription.text()))
+		# Parameters are committed "in real time" by the values editor
 
 	def getModel(self):
 		return self.model
