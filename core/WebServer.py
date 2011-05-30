@@ -474,9 +474,9 @@ class WebApplication:
 		
 		output = template.merge(context)
 		self.request.sendResponse(200)
-		self.request.sendHeader('Content-Type', contentType)
+		self.request.sendHeader('Content-Type', contentType + ';charset=utf-8')
 		self.request.endHeaders()
-		self.request.write(output)
+		self.request.write(output.encode('utf-8'))
 		self.request.flush()
 	
 	def _getDefaultTemplateContext(self):

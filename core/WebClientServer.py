@@ -34,6 +34,9 @@ import WebServer
 import Tools
 import ConfigManager
 import TestermanClient
+import TestermanMessages
+import TEFactory
+import ProfileTools
 
 import logging
 import BaseHTTPServer
@@ -49,7 +52,7 @@ import libxml2
 import JSON
 import SocketServer
 
-import TestermanMessages
+
 
 
 VERSION = '0.2.0'
@@ -62,7 +65,15 @@ JSON_CONTENT_TYPE = "text/plain" # or application/json
 # "ajax-like" method async timeout
 TIMEOUT_GET_JOB_STATUS = 10.0
 
+# Rights
+RIGHT_CUSTOMIZE_RUN_PARAMETERS = "customize-run-parameters"
+RIGHT_SELECT_RUN_PROFILE = "select-run-profile"
+
+
+
 cm = ConfigManager.instance()
+
+
 
 ################################################################################
 # Logging & Tooling
@@ -164,6 +175,16 @@ class WebClientApplication(WebServer.WebApplication):
 			getLogger().warning("Invalid password for user %s" % username)
 			return False
 
+	def hasRight(self, username, right):
+		"""
+		Checks if a particular user has a particular right.
+		Granted rights are defined as a coma-separated list of rights in the config file as wcs.users.%s.rights
+		"""
+		# Non-optimized implementation.
+		# Waiting for an end-to-end user management for the Testerman infrastructure.
+		rights = cm.get('wcs.users.%s.rights' % username) or ''
+		return right in rights.split(',')
+
 	def _getClient(self):
 		return self._client
 
@@ -231,6 +252,36 @@ class WebClientApplication(WebServer.WebApplication):
 		
 		@path: a testerman-docroot path to an ats.
 		"""
+		
+		# Fetch the file to extract the metadata
+		parameters = None
+		if self.hasRight(self.username, RIGHT_CUSTOMIZE_RUN_PARAMETERS):
+			try:
+				source = self._client.getFile(path)
+			except Exception, e:
+				getLogger().error("Unable to fetch source code for %s: %s" % (path, str(e)))
+				self.request.sendError(404, "ATS not found")
+				return
+			# Now extract the metadata from the source		
+			metadata = TEFactory.getMetadata(source)
+			# parameters must be re-encoded to UTF-8
+			parameters = metadata.getSignature().values()
+		
+
+		# Fetch the profiles
+		profiles = []
+		if self.hasRight(self.username, RIGHT_SELECT_RUN_PROFILE):
+			archivePath = '/archives/%s' % ('/'.join(path.split('/')[2:]))
+			try:
+				l = self._getClient().getDirectoryListing(path + '/profiles')
+			except Exception, e:
+				getLogger().error("Unable to fetch profiles for %s: %s" % (path, str(e)))
+				l = []
+			if l:
+				for entry in l:
+					if entry['type'] == 'profile':
+						profiles.append(dict(name = os.path.splitext(entry['name'])[0]))
+		
 
 		# Fetch available archived execution logs
 		logs = []
@@ -263,18 +314,50 @@ class WebClientApplication(WebServer.WebApplication):
 			webpaths.append(dict(label = x, path = current))
 			prev = current
 
-		context = dict(path = path, logs = logs, webpaths = webpaths)
+		context = dict(path = path, logs = logs, webpaths = webpaths, profiles = profiles, parameters = parameters)
 		
 		self._serveTemplate("ats.vm", context = context)
 
-	def handle_run_ats(self, path):
+	def handle_run_ats(self, path, profile = None, **customParameters):
 		"""
 		Execute an ATS whose testerman-docroot-path is provided in argument.
 		Once run, redirect the user to a monitoring page.
 		"""
+		print 80*"="
 		getLogger().info("Attempt to run %s" % path)
 		path = self._adjustRepositoryPath(path)
 		getLogger().info("Actually running %s" % path)
+
+		print 80*"="
+
+		parameters = {}
+
+		if profile:
+			if self.hasRight(self.username, RIGHT_SELECT_RUN_PROFILE):
+				getLogger().info("Running %s with profile %s" % (path, profile))
+				# We have to fetch the associated profile and turn its content into a dict of parameters
+				if profile == "__default__":
+					parameters = {}
+				else:
+					# Actually fetching (and parsing) the profile
+					try:
+						p = ProfileTools.parseProfile(self._getClient().getFile(path + '/profiles/%s.profile' % profile))
+						if not p:
+							raise Exception("Profile not found or invalid for this ATS")
+					except Exception, e:
+						getLogger().error("Error in run_ats: %s" % str(e))
+						raise e
+					parameters = p.getParameters()
+
+		else:
+			if self.hasRight(self.username, RIGHT_CUSTOMIZE_RUN_PARAMETERS):
+				getLogger().info("Running %s with custom parameters:\n%s" % (path, repr(customParameters.items())))
+				# Provided parameters must be decoded from utf8 to unicode
+				# (provided as utf8 by the browser because the page was served as char-encoding utf8)
+				for k, v in customParameters.items():
+					parameters[k.decode('utf-8')] = v.decode('utf-8')
+			
+		getLogger().info("Running %s with resolved parameters:\n%s" % (path, repr(parameters.items())))
 
 		# Reconstruct the server path the file is located into
 		dirpath = '/'.join(path.split('/')[:-1])
@@ -289,14 +372,14 @@ class WebClientApplication(WebServer.WebApplication):
 			# the archive folder where log files will be created. This is thus much more
 			# than a 'label'...
 			label = path[len('/repository/'):]
-			session = {}
+			session = parameters
 			at = None
 			username = '%s@%s' % (self.username, self.request.getClientAddress()[0])
 
 			ret = self._getClient().scheduleAts(source, label, username, session, at, path = dirpath)
 			jobId = ret['job-id']
 		except Exception, e:
-			print "DEBUG: run_ats: %s" % e
+			getLogger().error("Error in run_ats: %s" % str(e))
 			raise e
 
 		if jobId:
@@ -684,7 +767,6 @@ class HttpServerThread(threading.Thread):
 		getLogger().info("HTTP server stopped")
 		self._client.stopXc()
 		
-
 	def stop(self):
 		try:
 			self._stopEvent.set()
