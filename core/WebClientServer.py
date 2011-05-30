@@ -47,8 +47,12 @@ import optparse
 import re
 import libxml2
 import JSON
+import SocketServer
 
-VERSION = '0.1.0'
+import TestermanMessages
+
+
+VERSION = '0.2.0'
 
 
 DEFAULT_PAGE = "/index.vm"
@@ -69,6 +73,75 @@ def getLogger():
 
 def formatTimestamp(timestamp):
   return time.strftime("%Y%m%d %H:%M:%S", time.localtime(timestamp))  + ".%3.3d" % int((timestamp * 1000) % 1000)
+
+
+################################################################################
+# Request Handler to provide Xc-equivalent interface through HTML5 WebSockets
+################################################################################
+
+class XcApplication(WebServer.WebSocketApplication):
+	def __init__(self, testermanServerUrl, **kwargs):
+		WebServer.WebSocketApplication.__init__(self, **kwargs)
+		self._client = TestermanClient.Client(name = "Testerman WebClient/WebSocket", userAgent = "WebClient/%s" % VERSION, serverUrl = testermanServerUrl)
+
+	def _getClient(self):
+		return self._client
+
+	def __str__(self):
+		return "WebSocket/Xc application [%s]" % str(self._getClientAddress())
+
+	def _onXcNotification(self, notification):
+		"""
+		Forward subscribed events to the WebSocket client
+		"""
+		if notification.isNotification():
+			getLogger().debug("%s: received an Xc notification to forward" % self)
+			self.wsSend(str(notification))
+
+	##
+	# Reimplementations from WebSocketApplication
+	##
+	
+	def onWsOpen(self):
+		getLogger().info("%s: connected" % self)
+		# We connect the Xc Client and starts it.
+		self._client.startXc()
+
+	def onWsClose(self):
+		getLogger().info("%s: disconnected" % self)
+		# Let's disconnect the Xc Client
+		self._client.stopXc()
+
+	def onWsMessage(self, msg):
+		"""
+		Xc-like to Xc transformation.
+		Not all Xc methods are supported.
+		For now, we handle SUBSCRIBE <uri> only.
+		
+		The Xc-like (Xcl) interface is used between a web client and this application.
+		This is not a complete Xc implementation to make web clients easier to develop.
+		"""
+		try:
+			m = TestermanMessages.parse(msg)
+		except Exception, e:
+			getLogger().info("%s: Invalid Xc message: %s" % (self, str(e)))
+			return
+		
+		if m.isRequest():
+			method = m.getMethod()
+			uri = str(m.getUri())
+			if method == "SUBSCRIBE":
+				getLogger().info("%s: subscribing to %s" % (self, uri))
+				# We should do some authorization stuff here -not everybody should be allowed to monitor anything
+				self._client.subscribe(uri, self._onXcNotification)
+				getLogger().info("%s: subscribed to %s" % (self, uri))
+			else:
+				getLogger().info("%s: unsupported Xc request method (%s)" % (self, method))
+				return
+			
+		else:
+			getLogger().info("%s: unsupported Xc message, not a request" % (self))
+			return
 
 
 ################################################################################
@@ -563,9 +636,13 @@ class JobMonitorManager:
 ############################################################
 
 class RequestHandler(WebServer.WebApplicationDispatcherMixIn, BaseHTTPServer.BaseHTTPRequestHandler):
+	# Temporary stuff: make connection read unbuffered (for websocket support)
+	rbufsize = 0
+	# and write buffered for explicit flush()
+	wbufsize = -1
 	pass
 
-class HttpServer(BaseHTTPServer.HTTPServer):
+class HttpServer(SocketServer.ThreadingMixIn, BaseHTTPServer.HTTPServer):
 	allow_reuse_address = True
 	def handle_request_with_timeout(self, timeout):
 		"""
@@ -589,6 +666,10 @@ class HttpServerThread(threading.Thread):
 			testermanClient = client,
 			debug = cm.get("wcs.debug"),
 			authenticationRealm = 'Testerman WebClient')
+		RequestHandler.registerApplication('/websocket', XcApplication, 
+			testermanServerUrl = serverUrl,
+			debug = cm.get("wcs.debug"))
+
 		self._server = HttpServer(address, RequestHandler)
 
 	def run(self):

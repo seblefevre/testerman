@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 ##
 # This file is part of Testerman, a test automation system.
-# Copyright (c) 2010 Sebastien Lefevre and other contributors
+# Copyright (c) 2010,2011 Sebastien Lefevre and other contributors
 #
 # This program is free software; you can redistribute it and/or modify it under
 # the terms of the GNU General Public License as published by the Free Software
@@ -28,7 +28,11 @@ import os.path
 import socket
 import base64
 import cgi
-
+import hashlib
+import struct
+import time
+import threading
+import select
 
 DEFAULT_PAGE = "/index.vm"
 
@@ -132,17 +136,52 @@ class WebRequest:
 	def write(self, t):
 		return self.__handler.wfile.write(t)
 
+	def flush(self):
+		return self.__handler.wfile.flush()
+
 	def sendError(self, code, message = None):
-		return self.__handler.send_error(code, message)
+		self.__handler.send_error(code, message)
+		self.__handler.wfile.flush()
 
 	def sendResponse(self, code, message = None):
-		return self.__handler.send_response(code, message)
+		self.__handler.send_response(code, message)
+		self.__handler.wfile.flush()
 
 	def sendHeader(self, keyword, value):
 		return self.__handler.send_header(keyword, value)
 
 	def endHeaders(self):
 		return self.__handler.end_headers()
+	
+	# Things to cleanup/refactor, used to prototype a websocket server
+	def _getHandler(self):
+		return self.__handler
+		
+	def read(self, size = -1):
+		return self.__handler.rfile.read(size)
+
+	def recv(self, size = 1024):
+		return self.__handler.connection.recv(size)
+	
+	def setCloseCallback(self, cb):
+		"""
+		Make sure the callback is called when the connection is closed
+		"""
+		self._onClose = cb
+		self.__handler.finish = self._finish
+
+	def _finish(self):
+		# Don't forget to do what the basic StreamRequestHandler does
+		if not self.__handler.wfile.closed:
+			self.__handler.wfile.flush()
+		self.__handler.wfile.close()
+		self.__handler.rfile.close()
+		# Then, our addition
+		try:
+			self._onClose()
+		except:
+			pass
+		
 
 
 class WebApplicationDispatcherMixIn:
@@ -158,6 +197,9 @@ class WebApplicationDispatcherMixIn:
 	# Register applications in this map: context-root: WebApplicationClass
 	# for instance: '/webclient': { 'class': WebClientApplication, 'parameters': { ... } }
 	_applications = {}
+
+	# Runtime cache to avoid instantiating the same application (same context root) for each request	
+	_applicationInstances = {}
 
 	@classmethod
 	def registerApplication(cls, contextRoot, applicationClass, **kwargs):
@@ -186,8 +228,17 @@ class WebApplicationDispatcherMixIn:
 
 		application = self._applications.get(contextRoot)
 		if application:
-			webRequest = WebRequest(self, path = path[len(contextRoot):], contextRoot = contextRoot)
+			# check if we have already instanciated the app
+#			app = self._applicationInstances.get(contextRoot)
+#			if not app:
+#				# First instance, put it into the cache
+#				app = application['appclass'](**application['parameters'])
+#				self._applicationInstances[contextRoot] = app
+#		... then use a return app.do_GET(request) instead of a request injection
+
 			app = application['appclass'](**application['parameters'])
+
+			webRequest = WebRequest(self, path = path[len(contextRoot):], contextRoot = contextRoot)
 			app.request = webRequest
 			getLogger().debug("Forwarding request %s to %s" % (webRequest, app))
 			return app.do_GET()
@@ -245,8 +296,8 @@ class WebApplication:
 	def _getDebug(self):
 		return self._debug
 	
-	def _getClient(self):
-		return self.request.getClient()
+	def _getClientAddress(self):
+		return self.request.getClientAddress()
 
 	def _isTemplate(self, path):
 		_, ext = os.path.splitext(path)
@@ -260,6 +311,7 @@ class WebApplication:
 			self.request.sendHeader('WWW-Authenticate', 'Basic realm="%s"' % self._authenticationRealm)
 			self.request.endHeaders()
 			self.request.write('Authentication failure')
+			self.request.flush()
 			return
 
 		path = self.request.getPath()
@@ -347,6 +399,7 @@ class WebApplication:
 					self.request.sendHeader('Content-Disposition', 'attachment; filename="%s"' % asFilename)
 				self.request.endHeaders()
 				self.request.write(contents)
+				self.request.flush()
 
 	def _getContentType(self, path):
 		"""
@@ -369,6 +422,7 @@ class WebApplication:
 			self.request.sendHeader('Content-Disposition', 'attachment; filename="%s"' % asFilename)
 		self.request.endHeaders()
 		self.request.write(txt)
+		self.request.flush()
 
 	##
 	# Templates (airspeed based)
@@ -423,6 +477,7 @@ class WebApplication:
 		self.request.sendHeader('Content-Type', contentType)
 		self.request.endHeaders()
 		self.request.write(output)
+		self.request.flush()
 	
 	def _getDefaultTemplateContext(self):
 		"""
@@ -449,6 +504,214 @@ class WebApplication:
 		# More to come
 		return ret
 
+
+class WebSocketApplication:
+	"""
+	Base class to create a WebSocket server that can register into the
+	WebApplicationDispatcherMixIn handler.
+	
+	This class manages the WebSocket handshake.
+	
+	You just have to inherit from it,
+	then implement onMessage(msg) to handle an incoming message,
+	and use send(msg) to send a message, or close() to close
+	the connection.
+	
+	This is a minimalist implementation of a WebSocket server, not
+	optimized at all, especially with regards to thread management.
+	"""
+
+	# If you want to authenticate your users, provide a realm
+	#	and reimplement the authenticate() method.
+	
+	def __init__(self, debug = False, authenticationRealm = None):
+		# the request is injected here when it is about to be processed by the application
+		self.request = None
+		self._debug = debug
+		self._authenticationRealm = authenticationRealm
+		self.username = None
+
+	def __str__(self):
+		return "WebSocket application"
+	
+	def authenticate(self, username, password):
+		return True
+	
+	def _authenticate(self):
+		self.username = None
+		if not self._authenticationRealm:
+			return
+
+		authorization = self.request.getHeaders().get('authorization')
+		if not authorization:
+			raise AuthenticationError('Authentication required')
+		kind, data = authorization.split(' ')
+		if not kind == 'Basic':
+			raise AuthenticationError('Unsupported authentication type')
+		
+		username, password = base64.decodestring(data).split(':', 1)
+		if not self.authenticate(username, password):
+			raise AuthenticationError('Authentication failure')
+
+		getLogger().info("Authenticated as user %s" % (username))	
+		self.username = username
+
+	def _getDebug(self):
+		return self._debug
+	
+	def _getClientAddress(self):
+		return self.request.getClientAddress()
+
+	def do_GET(self):
+		# Is basic authentication supported for WebSocket ?
+		try:
+			self._authenticate()
+		except AuthenticationError, e:
+			self.request.sendResponse(401)
+			self.request.sendHeader('WWW-Authenticate', 'Basic realm="%s"' % self._authenticationRealm)
+			self.request.endHeaders()
+			self.request.write('Authentication failure')
+			self.request.flush()
+			return
+		
+		getLogger().debug("WebSocket handshake handling")
+		
+		# WebSocket Handshake
+		wsKey1 = self.request.getHeaders().get('Sec-WebSocket-Key1')
+		wsKey2 = self.request.getHeaders().get('Sec-WebSocket-Key2')
+		host = self.request.getHeaders().get('Host')
+		origin = self.request.getHeaders().get('Origin')
+		
+		path = self.request.getPath()
+		body = self.request.recv(1024)
+
+#		print "WebSocket handshake handling:"
+#		print wsKey1
+#		print wsKey2
+#		print host
+#		print origin
+#		print "Body:"
+#		print repr(body)
+		
+		spaces1 = wsKey1.count(" ")
+		spaces2 = wsKey2.count(" ")
+		num1 = int("".join([c for c in wsKey1 if c.isdigit()])) / spaces1
+		num2 = int("".join([c for c in wsKey2 if c.isdigit()])) / spaces2
+
+		token = hashlib.md5(struct.pack('>II8s', num1, num2, body)).digest()
+
+		getLogger().debug("Writing handshake response")
+
+		self.request.sendResponse(101, "WebSocket Protocol Handshake")
+		self.request.sendHeader('Upgrade', 'WebSocket')
+		self.request.sendHeader('Connection', 'Upgrade')
+		self.request.sendHeader('Sec-WebSocket-Origin', origin)
+		self.request.sendHeader('Sec-WebSocket-Location', 'ws://%s%s%s' % (host, self.request.getContextRoot(), self.request.getPath()))
+		self.request.endHeaders()
+		self.request.write(token)
+		self.request.flush()
+		
+		self.request.setCloseCallback(self.onWsClose)
+
+		# Ready		
+		getLogger().info("WebSocket link connected from %s" % str(self._getClientAddress()))
+		try:
+			self.onWsOpen()
+		except Exception, e:
+			getLogger().error("WebSocket: userland error when handling onWsOpen(): %s" % str(e))
+			self.wsClose()
+
+		# Now, wait for new content, detect PDUs, send them to the onMessage handler
+
+		# this code is probably to move into a WebSocketConnection class
+		# Actually, this is the classic server loop that wait for events and/or send things.
+		# To keep it simple (well, this is a server loop running inside the thread generated by another server loop :-),
+		# incoming event handling will be synchronous only, within the server thread.
+		h = self.request._getHandler()
+		sock = h.connection
+		
+		self._stopEvent = threading.Event()
+		self.buf = ''
+		
+		while not self._stopEvent.isSet():
+			try:
+				r, w, e = select.select([ sock ], [], [ sock ], 1)
+
+				# Received an error from the network
+				if sock in e:
+					raise EOFError("WebSocket: Socket select error: disconnecting")
+				
+				# Received a message from the network
+				if sock in r:
+					read = sock.recv(65535)
+					if not read:
+						raise EOFError("Nothing to read on read event: disconnecting")
+					self.buf = ''.join([self.buf, read]) # faster than += r
+					self.__on_incoming_data()
+				
+			except EOFError, e:
+				getLogger().info("WebSocket: Disconnected by peer.")
+				self.wsClose()
+
+			except socket.error, e:
+				getLogger().error("WebSocket: Low level error: " + str(e))
+				self.wsClose()
+
+			except Exception, e:
+				getLogger().error("WebSocket: Exception in main pool for incoming data: " + str(e))
+				self.wsClose()
+
+	def __on_incoming_data(self):
+		pdus = self.buf.split('\xff')
+		for pdu in pdus[:-1]:
+			if pdu.startswith('\x00'):
+				msg = pdu[1:]
+				if not msg:
+					# According to WebSocket protocol 76, this is a way to request a clean disconnection.
+					getLogger().debug("WebSocket: received empty message, disconnecting")
+					self.wsClose()
+					return
+				getLogger().debug("WebSocket: received message:\n%s" % repr(msg))
+				try:
+					self.onWsMessage(msg)
+				except Exception, e:
+					getLogger().error("WebSocket: userland exception while handling message:\n%s\n%s" % (repr(msg), Tools.getBacktrace()))
+		self.buf = pdus[-1]
+
+	##
+	# To reimplement in subclasses
+	##
+
+	def onWsMessage(self, msg):
+		pass
+	
+	def onWsClose(self):
+		getLogger().info("WebSocket link disconnected from %s" % str(self._getClientAddress()))
+	
+	def onWsOpen(self):
+		pass
+	
+	##
+	# Convenience functions for sub-classes implementing an actual websocket app
+	##
+	
+	def wsSend(self, msg):
+		"""
+		Create and send a 'WebSocket packet', with the WebSocket PDU delimiters.
+		"""
+		self.request.write('\x00' + msg + '\xff')
+		self.request.flush()
+
+	def wsClose(self):
+		"""
+		Close the websocket link
+		"""
+		self._stopEvent.set()
+
+
+################################################################################
+# Actual Web Applications (that can be deployed)
+################################################################################
 
 class TestermanWebApplication(WebApplication):
 	"""

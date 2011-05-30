@@ -17,15 +17,12 @@
 			<div id="content" class="wiki">
 				<div class="wikipage">
 
-<p>
-<a class="wiki" href="monitor_ats?${jobId}">Refresh this page</a>
-</p>
-
 <h2>Monitoring Job ID ${jobId}</h2>
 <div id="job-status">
 </div>
 
 <script type="text/javascript">
+
 /**
  * Job update
  */
@@ -34,68 +31,328 @@ function startMonitoringJobState(jobId) {
 }
 
 function onJobNotFound(jobId, lastKnownState) {
-	var text = "<p>" +
-"Unable to retrieve a status for this job. It may not exist on the server, or may not have been started/scheduled due to an error." +
-"</p>";
+	var text = "<p>Unable to retrieve a status for this job. It may not exist on the server, or may not have been started/scheduled due to an error.</p>";
 	replaceContent("job-status", text);
 }
 
 function onJobUpdate(jobId, jobInfo) {
-	var text = "<ul><li>ATS name: <a class=\"wiki\" href=\"browser?/repository/" + jobInfo.name + "\">" + jobInfo.name + "</a></li>" +
-"<li>Current job state: " + jobInfo.state + "</li><li>Started by: " + jobInfo.username + "</li>";
+	var text = "<ul>";
+	text += "<li>ATS name: <a class=\"wiki\" href=\"browser?/repository/" + jobInfo.name + "\">" + jobInfo.name + "</a></li>";
+	text += "<li>Current job state: " + jobInfo.state + "</li>";
+	text += "<li>Started by: " + jobInfo.username + "</li>";
 
 	if (jobInfo.runningtime) {
-		text = text + "<li>Running time: " + jobInfo.runningtime + "s</li>";
+		if (jobInfo.state == "running") {
+			text += "<li>Running from: " + Math.round(jobInfo.runningtime * 1000)/1000 + " s</li>";
+		} else {
+			text += "<li>Run duration: " + Math.round(jobInfo.runningtime * 1000)/1000 + " s</li>";
+		}
 	}
 	
-	text = text + "</ul>";
+	text += "</ul>";
 	
 	replaceContent("job-status", text);
 	
 	if (jobInfo.logfilename) {
-		text = "<ul>" +
-"	<li><a class=\"wiki\" href=\"view_log?" + jobInfo.logfilename + "\">view</a></li>" +
-"	<li><a class=\"wiki\" href=\"download_log?" + jobInfo.logfilename + "\">download</a></li>" + 
-"</ul>"
+		text = "<p>Offline logs:</p>";
+		text += "<ul>";
+		text +=	"<li><a class=\"wiki\" href=\"view_log?" + jobInfo.logfilename + "\">view</a></li>";
+		text += "<li><a class=\"wiki\" href=\"download_log?" + jobInfo.logfilename + "\">download</a></li>";
+		text += "</ul>";
 		
-		replaceContent("execution-logs", text);
+		replaceContent("complete-logs-links", text);
 	}	
 	
 	if (!jobInfo.finished) {
 		// rearm our monitoring
 		getJobUpdate(jobId, jobInfo.state, onJobUpdate, onJobNotFound);
+	} else {
+		// Stop log monitoring
+		stopMonitoringLogs();
 	}
-	
 }
+
 
 /** 
- * Log monitoring
+ * Log monitoring - websocket based
  */
 
+function subscribe(uri) {
+	var n = "SUBSCRIBE " + uri + " Xc/1.0\nType: request\n\n";
+	return n;
+}
+
+// Xc web socket
+var xcws = null;
+
 function startMonitoringLogs(jobId) {
-	getNewLogEvents(jobId, 0, onLogEvents, onLogEventError);
+	try {
+		xcws = new WebSocket("ws://localhost:8888/websocket/xc");
+	} catch(err) {
+		replaceContent("log-monitoring-status", "<b>disabled</b>. Check that your browser supports websocket (for instance Chrome 11+, Firefox 4.0.1+ with network.websocket.override-security-block set to true.");
+		return;
+	}
+	xcws.onopen = function(e) { if (xcws != null) { xcws.send(subscribe("job:" + jobId)); onLogMonitoringEnabled(); } }
+	xcws.onclose = function(e) { onLogMonitoringDisabled(); }
+	xcws.onmessage = function(e) { onXcNotification(e.data); }
+};
+
+function onLogMonitoringEnabled() {
+	replaceContent("log-monitoring-status", "running");	
 }
 
-function onLogEventError(jobId, lastAttemptedEventId) {
-	// Let's rearm our poller
-//	getNewLogEvents(jobId, lastAttemptedEventId, onLogEvents, onLogEventError);
+function onLogMonitoringDisabled() {
+	if (xcws != null) {
+		replaceContent("log-monitoring-status", "reconnecting...");
+ 		setTimeout("startMonitoringLogs()", 1000);
+ 	} else {
+		replaceContent("log-monitoring-status", "stopped");
+	}
 }
 
+function stopMonitoringLogs() {
+	if (xcws != null) {
+		ws = xcws;
+		xcws = null;
+		ws.send(""); // protocol 76, enables to close a socket correctly ??
+	}
+}
 
-function onLogEvents(jobId, events) {
-	var eventId;
-	var rtl = document.getElementById("rtl");
-	for (var i = 0; i < events.length; i++) {
-		var event = events[i];
-		eventId = event.eventId;
-		var txtNode = document.createTextNode(event.data + "\n");
-		rtl.appendChild(txtNode);
+/**
+ * Parse a Xc notification.
+ */
+function onXcNotification(notification) {
+	// parsed notification
+	var body = null;
+
+	var lines = notification.split('\n');
+	if (lines[0].indexOf("LOG ") != 0) {
+		// This is not a LOG event
+		return;
 	}
 	
-	if (eventId < 10) {
-		// Let's rearm our poller
-		getNewLogEvents(jobId, eventId + 1, onLogEvents, onLogEventError);
+	// This is a log event.
+	// By "design", this is always an event related to this job
+	
+	for (var i = 1; i < lines.length ; i++) {
+		// ignore the headers. We are waiting for LOG notifications, content-type: application/xml.
+		// this is not a full-fledged Xc notification parser.
+		if (lines[i].length == 0) {
+			body = lines.slice(i+1).join('\n');
+			break;
+		}
 	}
+	
+	if (body != null) {
+		// Now, we should parse the xml log contained in this body
+		
+		/*
+		var logEvent = logXmlToPlainText(body);
+		if (logEvent != null) {
+			appendLogEvent(logEvent);
+		}
+		*/
+		
+		var logEvent = logXmlToTableRow(body);
+		if (logEvent != null) {
+			appendLogEventToTable(logEvent);
+		}
+	}
+}
+
+function appendLogEventToTable(logEvent) {
+	var newtr = document.createElement("tr");
+	newtr.innerHTML = logEvent;
+	document.getElementById("logsTable").appendChild(newtr);
+	
+	if (!document.logsForm.logsFreeze.checked) {
+		var scrollarea = document.getElementById("scrollarea-logs");
+		scrollarea.scrollTop = scrollarea.scrollHeight;
+	}
+	
+}
+
+function appendLogEvent(text) {
+	document.logsForm.logsArea.value += text + "\n";
+	// autoscroll
+	if (!document.logsForm.logsFreeze.checked) {
+		document.logsForm.logsArea.scrollTop = document.logsForm.logsArea.scrollHeight;
+	}
+};
+
+
+
+/**
+ * Parses an XML log event and turns it
+ * into a readable string.
+ */
+function logXmlToPlainText(xml) {
+
+	var res;
+
+	var parser = new DOMParser();
+	var doc = parser.parseFromString(xml, "text/xml");
+	
+	var e = doc.documentElement
+	var n = e.nodeName;
+	if (n == "user") {
+		res = e.firstChild.data;
+	} else if (n == "ats-started") {
+		res = "ATS " + e.attributes["id"].value + " started";
+	} else if (n == "ats-stopped") {
+		res = "ATS " + e.attributes["id"].value + " stopped, final result is " + e.attributes["result"].value;
+	} else if (n == "testcase-started") {
+		res = "TestCase " + e.attributes["id"].value + " started";
+	} else if (n == "testcase-stopped") {
+		res = "TestCase " + e.attributes["id"].value + " stopped, final verdict is " + e.attributes["verdict"].value;
+	} else if (n == "timer-started") {
+		res = "Timer " + e.attributes["id"].value + " started (" + e.attributes["duration"].value + ") on TC " + e.attributes["tc"].value;
+	} else if (n == "timer-stopped") {
+		res = "Timer " + e.attributes["id"].value + " stopped on TC " + e.attributes["tc"].value;
+	} else if (n == "timer-expiry") {
+		res = "Timer " + e.attributes["id"].value + " timeout on TC " + e.attributes["tc"].value;
+	} else if (n == "tc-created") {
+		res = "Test Component " + e.attributes["id"].value + " created";
+	} else if (n == "tc-started") {
+		res = "PTC " + e.attributes["id"].value + " started with Behaviour " + e.attributes["behaviour"].value;
+	} else if (n == "tc-stopped") {
+		res = "PTC " + e.attributes["id"].value + " stopped, local verdict is " + e.attributes["verdict"].value;
+	} else if (n == "verdict-updated") {
+		res = "Verdict updated to " + e.attributes["verdict"].value + " on TC " + e.attributes["tc"].value;
+	} else if (n == "message-sent") {
+		res = e.attributes["from-tc"].value + "." + e.attributes["from-port"].value + " --> " + e.attributes["to-tc"].value + "." + e.attributes["to-port"].value;
+	} else if (n == "template-match") {
+		res = "Template match on port " + e.attributes["tc"].value + "." + e.attributes["port"].value;
+	} else if (n == "template-mismatch") {
+		res = "Template mismatch on port " + e.attributes["tc"].value + "." + e.attributes["port"].value;
+	} else if (n == "timeout-branch") {
+		res = "Timeout match for Timer " + e.attributes["id"].value;
+	} else if (n == "system-sent") {
+		res = e.attributes["tsi-port"].value + "&gt;&gt; " + e.attributes["label"].value;
+	} else if (n == "system-received") {
+		res = e.attributes["tsi-port"].value + "&lt;&lt; " + e.attributes["label"].value;
+	}	else {
+		// skip other events
+		return null;
+	}
+	
+	var d = new Date(parseFloat(e.attributes["timestamp"].value)*1000);
+	
+	var formattedDate = "" + d.getFullYear() + pad((d.getMonth()+1), 2) + pad(d.getDate(), 2) + " " + d.getHours() + d.getMinutes() + d.getSeconds() + "." + d.getMilliseconds();
+	
+	res = formattedDate + " | " + e.attributes["class"].value + " | " + res;
+	
+	return res;
+}
+
+
+/**
+ * Format a testerman message (provided as a DOM node) 
+ * to html
+ */
+function messageToHtml(msg) {
+	var res;
+	
+	if (msg.nodeType == 1) {
+		// element
+		var n = msg.nodeName;
+
+		if (n == "r") {
+			// record
+			res = "record:<ul class='record'>";
+			for (var field in msg.childNodes) {
+				if ((field.nodeType == 1) && (field.nodeName == "f")) {
+					res += "<li>" + field.attributes["n"].value + ": " + messageToHtml(field.firstChild) + "</li>"; // must be firstChildElement, not firstChild (which is probably an attribute...)
+				}
+			}
+			res += "</ul>";
+		} else if (n == "l") {
+			// list
+			res = "list:<ol class='list'>";
+			for (var item in msg.childNodes) {
+				if ((item.nodeType == 1) && (item.nodeName == "i")) {
+					res += "<li>" + messageToHtml(item.firstChild) + "</li>";
+				}
+			}
+			res += "</ol>";
+		} else if (n == "c") {
+			// choice
+			res = "choice " + msg.attributes["n"].value + ": " + messageToHtml(msg.firstChild);
+		} else {
+			res = "";
+		}
+	} else if ((msg.nodeType == 3) || (msg.nodeType == 4)) {
+		// text/cdata
+		res = msg.data.split('\n').join("<br />");
+	} else {
+		return "";
+	}
+	
+	return res;
+}
+
+function logXmlToTableRow(xml) {
+
+	var res;
+
+	// a "unique" id identifying event log entries
+	var cid = Math.random(); 
+
+	var parser = new DOMParser();
+	var doc = parser.parseFromString(xml, "text/xml");
+	
+	var e = doc.documentElement
+	var n = e.nodeName;
+	if (n == "user") {
+		res = e.firstChild.data.split('\n').join("<br />");
+	} else if (n == "ats-started") {
+		res = "ATS " + e.attributes["id"].value + " started";
+	} else if (n == "ats-stopped") {
+		res = "ATS " + e.attributes["id"].value + " stopped, final result is " + e.attributes["result"].value;
+	} else if (n == "testcase-started") {
+		res = "TestCase " + e.attributes["id"].value + " started";
+	} else if (n == "testcase-stopped") {
+		res = "TestCase " + e.attributes["id"].value + " stopped, final verdict is " + e.attributes["verdict"].value;
+	} else if (n == "timer-started") {
+		res = "Timer " + e.attributes["id"].value + " started (" + e.attributes["duration"].value + ") on TC " + e.attributes["tc"].value;
+	} else if (n == "timer-stopped") {
+		res = "Timer " + e.attributes["id"].value + " stopped on TC " + e.attributes["tc"].value;
+	} else if (n == "timer-expiry") {
+		res = "Timer " + e.attributes["id"].value + " timeout on TC " + e.attributes["tc"].value;
+	} else if (n == "tc-created") {
+		res = "Test Component " + e.attributes["id"].value + " created";
+	} else if (n == "tc-started") {
+		res = "PTC " + e.attributes["id"].value + " started with Behaviour " + e.attributes["behaviour"].value;
+	} else if (n == "tc-stopped") {
+		res = "PTC " + e.attributes["id"].value + " stopped, local verdict is " + e.attributes["verdict"].value;
+	} else if (n == "verdict-updated") {
+		res = "Verdict updated to " + e.attributes["verdict"].value + " on TC " + e.attributes["tc"].value;
+	} else if (n == "message-sent") {
+		res = e.attributes["from-tc"].value + "." + e.attributes["from-port"].value + " --> " + e.attributes["to-tc"].value + "." + e.attributes["to-port"].value;
+		res = "<a href=\"javascript:expandCollapse('message-" + cid + "-sent-message')\">" + res + "</a>";
+		res += "<div class='message' id='message-" + cid + "-sent-message'>" + messageToHtml(e.getElementsByTagName("message")[0].firstChild) + "</div>";
+	} else if (n == "template-match") {
+		res = "Template match on port " + e.attributes["tc"].value + "." + e.attributes["port"].value;
+	} else if (n == "template-mismatch") {
+		res = "Template mismatch on port " + e.attributes["tc"].value + "." + e.attributes["port"].value;
+	} else if (n == "timeout-branch") {
+		res = "Timeout match for Timer " + e.attributes["id"].value;
+	} else if (n == "system-sent") {
+		res = e.attributes["tsi-port"].value + "&gt;&gt; " + e.attributes["label"].value;
+	} else if (n == "system-received") {
+		res = e.attributes["tsi-port"].value + "&lt;&lt; " + e.attributes["label"].value;
+	}	else {
+		// skip other events
+		return null;
+	}
+	
+	var d = new Date(parseFloat(e.attributes["timestamp"].value)*1000);
+	
+	var formattedDate = "" + d.getFullYear() + pad((d.getMonth()+1), 2) + pad(d.getDate(), 2) + " " + d.getHours() + d.getMinutes() + d.getSeconds() + "." + d.getMilliseconds();
+	
+	res = "<td class='time'>" + formattedDate + "</td><td>" + e.attributes["class"].value + "</td><td class='" + n + "'>" + res + "</td>";
+	
+	return res;
 }
 
 
@@ -103,6 +360,7 @@ function onLogEvents(jobId, events) {
  * Auto start monitoring on page load
  */
 window.onload = function() {
+	startMonitoringLogs(${jobId});
 	startMonitoringJobState(${jobId});
 }
 </script>
@@ -114,12 +372,25 @@ window.onload = function() {
 Some logs here.
 </pre> -->
 
+<style type="text/css"> 
+</style> 
 
 <h2>Execution Logs</h2>
 <div id="execution-logs">
+
+<p>Monitoring status: <span id="log-monitoring-status">stopped</span></p>
+<div id="scrollarea-logs">
+	<table class="ats" id="logsTable">
+	
+	</table> 
+</div>
 <p>
-Execution logs are currently unavailable for this job.
+				<form name="logsForm">
+					<input type="checkbox" name="logsFreeze" />Freeze auto-scroll
+				</form>
 </p>
+</div>
+<div id="complete-logs-links">
 </div>
 
 				</div>

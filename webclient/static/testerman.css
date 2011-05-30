@@ -352,20 +352,20 @@ table td.time {
 
 /* Detailed log view - the different types of entries */
 
-table.testcase-analysis-table .user {
+table .user {
 	font-style: italic;
 }
 
-table.testcase-analysis-table .testcase-started {
+table .testcase-started {
 	font-weight: bold;
 }
-table.testcase-analysis-table .testcase-stopped {
+table .testcase-stopped {
 	font-weight: bold;
 }
-table.testcase-analysis-table .template-match {
+table .template-match {
 	color: lawngreen;
 }
-table.testcase-analysis-table .template-mismatch {
+table .template-mismatch {
 	color: red;
 }
 
@@ -400,3 +400,9 @@ div.message .list {
 	margin: 1px;
 }
 
+
+#scrollarea-logs {
+	height: 300px;
+	overflow: auto;
+	background-color: #f9f9f9;
+}

@@ -118,9 +118,28 @@ var Base64 = {
 	}
 }
 
+/**
+ * pad a number over N digits
+ * Surprising such a way to format numbers does not exist by default ?!
+ */
+function pad(number, length) {
+	var str = number.toString();
+	while (str.length < length) {
+		str = '0' + str;
+	}
+	return str;
+}
+
 
 /** 
- * Some Ajax-related functions
+ * Xc-like interface:
+ *
+ * Job Monitoring.
+ *
+ * Job monitoring does not required low latency and is
+ * implemented in ajax-style, using an XML RPC request to
+ * get a job status update.
+ *
  */
 
 function createXMLHttpRequest() {
@@ -132,27 +151,6 @@ function createXMLHttpRequest() {
 
 var MAXIMUM_WAITING_TIME = 100000.0;
 
-function getNewLogEvents(jobId, lastEventId, onEvents, onPollingError) {
-	var xhReq = createXMLHttpRequest();
-	xhReq.open("GET", "get_runtime_log?jobId=" + jobId + "&lastLogEventId=" + lastEventId, true); // Server stuck in a loop.
-	var requestTimer = setTimeout(function() {
-  	 xhReq.abort();
-  	 // Handle timeout situation, e.g. Retry or inform user.
-	}, MAXIMUM_WAITING_TIME);
-	xhReq.onreadystatechange = function() {
-		if (xhReq.readyState != 4)  { 
-			return;
-		}
-		clearTimeout(requestTimer);
-		if (xhReq.status != 200)  {
-			onPollingError(jobId, lastEventId);
-			return;
-		}
-		var serverResponse = eval('('+ xhReq.responseText + ')');
-		onEvents(jobId, serverResponse);
-	}
-	xhReq.send(null);
-}
 
 function getJobUpdate(jobId, lastKnownState, onUpdate, onJobNotFound) {
 	var xhReq = createXMLHttpRequest();
@@ -174,10 +172,10 @@ function getJobUpdate(jobId, lastKnownState, onUpdate, onJobNotFound) {
 			}
 			return;
 		}
-		var serverResponse = eval('('+ xhReq.responseText + ')');
+		var jobInfo = eval('('+ xhReq.responseText + ')');
 		
-		if (serverResponse) {
-			onUpdate(jobId, serverResponse);
+		if (jobInfo) {
+			onUpdate(jobId, jobInfo);
 		}
 		else {
 			onJobNotFound(jobId, lastKnownState);
@@ -185,4 +183,15 @@ function getJobUpdate(jobId, lastKnownState, onUpdate, onJobNotFound) {
 	}
 	xhReq.send(null);
 }
+
+
+/**
+ * Xc-like interface:
+ *
+ * Log monitoring.
+ *
+ * This time, low-latency is required, and we should not
+ * miss events between two long polling attempt.
+ */
+
 
