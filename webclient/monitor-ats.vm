@@ -54,8 +54,7 @@ function onJobUpdate(jobId, jobInfo) {
 	replaceContent("job-status", text);
 	
 	if (jobInfo.logfilename) {
-		text = "<p>Offline logs:</p>";
-		text += "<ul>";
+		text = "<ul>";
 		text +=	"<li><a class=\"wiki\" href=\"view_log?" + jobInfo.logfilename + "\">view</a></li>";
 		text += "<li><a class=\"wiki\" href=\"download_log?" + jobInfo.logfilename + "\">download</a></li>";
 		text += "</ul>";
@@ -87,8 +86,9 @@ var xcws = null;
 
 function startMonitoringLogs(jobId) {
 	try {
-		xcws = new WebSocket("ws://localhost:8888/websocket/xc");
+		xcws = new WebSocket("ws://" + document.location.host + "/websocket/xc");
 	} catch(err) {
+		alert(err);
 		replaceContent("log-monitoring-status", "<b>disabled</b>. Check that your browser supports websocket (for instance Chrome 11+, Firefox 4.0.1+ with network.websocket.override-security-block set to true.");
 		return;
 	}
@@ -375,7 +375,7 @@ Some logs here.
 <style type="text/css"> 
 </style> 
 
-<h2>Execution Logs</h2>
+<h2>Real-time Logs</h2>
 <div id="execution-logs">
 
 <p>Monitoring status: <span id="log-monitoring-status">stopped</span></p>
@@ -390,7 +390,12 @@ Some logs here.
 				</form>
 </p>
 </div>
+
+<h2>Offline Logs</h2>
 <div id="complete-logs-links">
+<p>
+<i>Not yet available.</i>
+</p>
 </div>
 
 				</div>

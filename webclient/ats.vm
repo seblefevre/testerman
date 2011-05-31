@@ -24,7 +24,7 @@
 
 <h2>Execute</h2>
 <p>
-<form name="profilerun" method="GET" action="run_ats">
+<form name="profilerun" method="GET" action="run_ats" target="_blank">
 	<input type="hidden" name="path" value="${path}" /> 
 	Run this ATS with the following profile:
 	<select name="profile">
@@ -33,12 +33,12 @@
 		<option value="${profile.name}">${profile.name}</option>
 		#end
 	</select>
-	<input type="submit" value="Run" />
+	<input type="submit" value="Run (in a new window)" />
 </form>
 </p>
 #if ($parameters)
 <p>
-<form name="customrun" method="GET" action="run_ats">
+<form name="customrun" method="GET" action="run_ats" target="_blank">
 	Run this ATS with these specific values:
 	<input type="hidden" name="path" value="${path}" /> 
 	<table>
@@ -46,7 +46,7 @@
 	<tr><td title="${variable.description}">${variable.name}:</td><td><input type="text" name="${variable.name}" value="${variable.defaultValue}" /></td></tr>
 	#end
 	</table>
-	<input type="submit" value="Run" />
+	<input type="submit" value="Run (in a new window)" />
 </form>
 </p>
 #end

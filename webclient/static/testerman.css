@@ -405,4 +405,8 @@ div.message .list {
 	height: 300px;
 	overflow: auto;
 	background-color: #f9f9f9;
+	border: 1px solid black;
+	resize: vertical;
+	min-height: 200px;
+	max-height: 1000px;
 }
