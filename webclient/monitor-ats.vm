@@ -228,9 +228,9 @@ function logXmlToPlainText(xml) {
 	} else if (n == "timeout-branch") {
 		res = "Timeout match for Timer " + e.attributes["id"].value;
 	} else if (n == "system-sent") {
-		res = e.attributes["tsi-port"].value + "&gt;&gt; " + e.attributes["label"].value;
+		res = e.attributes["tsi-port"].value + "&gt;&gt; " + e.getElementsByTagName("label")[0].firstChild.data;
 	} else if (n == "system-received") {
-		res = e.attributes["tsi-port"].value + "&lt;&lt; " + e.attributes["label"].value;
+		res = e.attributes["tsi-port"].value + "&lt;&lt; " + e.getElementsByTagName("label")[0].firstChild.data;
 	}	else {
 		// skip other events
 		return null;
@@ -260,18 +260,18 @@ function messageToHtml(msg) {
 		if (n == "r") {
 			// record
 			res = "record:<ul class='record'>";
-			for (var field in msg.childNodes) {
-				if ((field.nodeType == 1) && (field.nodeName == "f")) {
-					res += "<li>" + field.attributes["n"].value + ": " + messageToHtml(field.firstChild) + "</li>"; // must be firstChildElement, not firstChild (which is probably an attribute...)
+			for (var child = msg.firstChild; child; child = child.nextSibling) {
+				if ((child.nodeType == 1) && (child.nodeName == "f")) {
+					res += "<li>" + child.attributes["n"].value + ": " + messageToHtml(child.firstChild) + "</li>";
 				}
 			}
 			res += "</ul>";
 		} else if (n == "l") {
 			// list
 			res = "list:<ol class='list'>";
-			for (var item in msg.childNodes) {
-				if ((item.nodeType == 1) && (item.nodeName == "i")) {
-					res += "<li>" + messageToHtml(item.firstChild) + "</li>";
+			for (var child = msg.firstChild; child; child = child.nextSibling) {
+				if ((child.nodeType == 1) && (child.nodeName == "i")) {
+					res += "<li>" + messageToHtml(child.firstChild) + "</li>";
 				}
 			}
 			res += "</ol>";
@@ -283,7 +283,7 @@ function messageToHtml(msg) {
 		}
 	} else if ((msg.nodeType == 3) || (msg.nodeType == 4)) {
 		// text/cdata
-		res = msg.data.split('\n').join("<br />");
+		res = "<span class=\"value\">" + msg.data.escapeHTML().split('\n').join("<br />") + "</span>";
 	} else {
 		return "";
 	}
@@ -304,43 +304,75 @@ function logXmlToTableRow(xml) {
 	var e = doc.documentElement
 	var n = e.nodeName;
 	if (n == "user") {
-		res = e.firstChild.data.split('\n').join("<br />");
+		res = "<span class='" + n + "'>" + e.firstChild.data.split('\n').join("<br />") + "</span>";
 	} else if (n == "ats-started") {
-		res = "ATS " + e.attributes["id"].value + " started";
+		res = "<span class='" + n + "'>ATS " + e.attributes["id"].value + " started" + "</span>";
 	} else if (n == "ats-stopped") {
-		res = "ATS " + e.attributes["id"].value + " stopped, final result is " + e.attributes["result"].value;
+		res = "<span class='" + n + "'>ATS " + e.attributes["id"].value + " stopped, final result is " + e.attributes["result"].value + "</span>";
 	} else if (n == "testcase-started") {
-		res = "TestCase " + e.attributes["id"].value + " started";
+		res = "<span class='" + n + "'>TestCase " + e.attributes["id"].value + " started" + "</span>";
 	} else if (n == "testcase-stopped") {
-		res = "TestCase " + e.attributes["id"].value + " stopped, final verdict is " + e.attributes["verdict"].value;
+		res = "<span class='" + n + "'>TestCase " + e.attributes["id"].value + " stopped, final verdict is " + e.attributes["verdict"].value + "</span>";
 	} else if (n == "timer-started") {
-		res = "Timer " + e.attributes["id"].value + " started (" + e.attributes["duration"].value + ") on TC " + e.attributes["tc"].value;
+		res = "<span class='" + n + "'>Timer " + e.attributes["id"].value + " started (" + e.attributes["duration"].value + ") on TC " + e.attributes["tc"].value + "</span>";
 	} else if (n == "timer-stopped") {
-		res = "Timer " + e.attributes["id"].value + " stopped on TC " + e.attributes["tc"].value;
+		res = "<span class='" + n + "'>Timer " + e.attributes["id"].value + " stopped on TC " + e.attributes["tc"].value + "</span>";
 	} else if (n == "timer-expiry") {
-		res = "Timer " + e.attributes["id"].value + " timeout on TC " + e.attributes["tc"].value;
+		res = "<span class='" + n + "'>Timer " + e.attributes["id"].value + " timeout on TC " + e.attributes["tc"].value + "</span>";
 	} else if (n == "tc-created") {
-		res = "Test Component " + e.attributes["id"].value + " created";
+		res = "<span class='" + n + "'>Test Component " + e.attributes["id"].value + " created" + "</span>";
 	} else if (n == "tc-started") {
-		res = "PTC " + e.attributes["id"].value + " started with Behaviour " + e.attributes["behaviour"].value;
+		res = "<span class='" + n + "'>PTC " + e.attributes["id"].value + " started with Behaviour " + e.attributes["behaviour"].value + "</span>";
 	} else if (n == "tc-stopped") {
-		res = "PTC " + e.attributes["id"].value + " stopped, local verdict is " + e.attributes["verdict"].value;
+		res = "<span class='" + n + "'>PTC " + e.attributes["id"].value + " stopped, local verdict is " + e.attributes["verdict"].value + "</span>";
 	} else if (n == "verdict-updated") {
-		res = "Verdict updated to " + e.attributes["verdict"].value + " on TC " + e.attributes["tc"].value;
+		res = "<span class='" + n + "'>erdict updated to " + e.attributes["verdict"].value + " on TC " + e.attributes["tc"].value + "</span>";
 	} else if (n == "message-sent") {
 		res = e.attributes["from-tc"].value + "." + e.attributes["from-port"].value + " --> " + e.attributes["to-tc"].value + "." + e.attributes["to-port"].value;
 		res = "<a href=\"javascript:expandCollapse('message-" + cid + "-sent-message')\">" + res + "</a>";
 		res += "<div class='message' id='message-" + cid + "-sent-message'>" + messageToHtml(e.getElementsByTagName("message")[0].firstChild) + "</div>";
 	} else if (n == "template-match") {
-		res = "Template match on port " + e.attributes["tc"].value + "." + e.attributes["port"].value;
+		var msgcid = "message-" + cid;
+		var tmpltcid = "template-" + cid;
+		res = "<span class='" + n + "'>Template match on port " + e.attributes["tc"].value + "." + e.attributes["port"].value + "</span> (";
+		res += "<a href=\"javascript:expandCollapse('" + msgcid + "')\">message</a>";
+		res += " | ";
+		res += "<a href=\"javascript:expandCollapse('" + tmpltcid + "')\">template</a>)";
+		res += "<div class='message' id='" + msgcid + "'>message: " + messageToHtml(e.getElementsByTagName("message")[0].firstChild) + "</div>";
+		res += "<div class='message' id='" + tmpltcid + "'>template: " + messageToHtml(e.getElementsByTagName("template")[0].firstChild) + "</div>";
 	} else if (n == "template-mismatch") {
-		res = "Template mismatch on port " + e.attributes["tc"].value + "." + e.attributes["port"].value;
+		var msgcid = "message-" + cid;
+		var tmpltcid = "template-" + cid;
+		res = "<span class='" + n + "'>Template mismatch on port " + e.attributes["tc"].value + "." + e.attributes["port"].value + "</span> (";
+		res += "<a href=\"javascript:expandCollapse('" + msgcid + "')\">message</a>";
+		res += " | ";
+		res += "<a href=\"javascript:expandCollapse('" + tmpltcid + "')\">template</a>)";
+		res += "<div class='message' id='" + msgcid + "'>message: " + messageToHtml(e.getElementsByTagName("message")[0].firstChild) + "</div>";
+		res += "<div class='message' id='" + tmpltcid + "'>template: " + messageToHtml(e.getElementsByTagName("template")[0].firstChild) + "</div>";
 	} else if (n == "timeout-branch") {
-		res = "Timeout match for Timer " + e.attributes["id"].value;
+		res = "<span class='" + n + "'>Timeout match for Timer " + e.attributes["id"].value + "</span>";
 	} else if (n == "system-sent") {
-		res = e.attributes["tsi-port"].value + "&gt;&gt; " + e.attributes["label"].value;
+		var msgcid = "system-sent-message-" + cid;
+		res = "<span class='" + n + "'>" + e.attributes["tsi-port"].value + " &gt;&gt; " + "<a href=\"javascript:expandCollapse('" + msgcid + "')\">" + e.getElementsByTagName("label")[0].firstChild.data + "</a>";
+		var payload = e.getElementsByTagName("payload")[0];
+		if (payload.attributes["encoding"] == "base64") {
+			res += " - <a href=\"javascript:base64DecodeById('" + msgcid + "', true)\">(decode)</a>";
+		}
+		res += "</span>";
+		res += "<div class='system-payload' id='" + msgcid + "'>";
+		res += payload.firstChild.data.escapeHTML().split('\n').join("<br />");
+		res += "</div>";
 	} else if (n == "system-received") {
-		res = e.attributes["tsi-port"].value + "&lt;&lt; " + e.attributes["label"].value;
+		var msgcid = "system-received-message-" + cid;
+		res = "<span class=\"system-received\">" + e.attributes["tsi-port"].value + " &lt;&lt; " + "<a href=\"javascript:expandCollapse('" + msgcid + "')\">" + e.getElementsByTagName("label")[0].firstChild.data + "</a>";
+		var payload = e.getElementsByTagName("payload")[0];
+		if (payload.attributes["encoding"] == "base64") {
+			res += " - <a href=\"javascript:base64DecodeById('" + msgcid + "', true)\">(decode)</a>";
+		}
+		res += "</span>";
+		res += "<div class='system-payload' id='" + msgcid + "'>";
+		res += payload.firstChild.data.escapeHTML().split('\n').join("<br />");
+		res += "</div>";
 	}	else {
 		// skip other events
 		return null;
@@ -350,7 +382,7 @@ function logXmlToTableRow(xml) {
 	
 	var formattedDate = "" + d.getFullYear() + pad((d.getMonth()+1), 2) + pad(d.getDate(), 2) + " " + d.getHours() + d.getMinutes() + d.getSeconds() + "." + d.getMilliseconds();
 	
-	res = "<td class='time'>" + formattedDate + "</td><td>" + e.attributes["class"].value + "</td><td class='" + n + "'>" + res + "</td>";
+	res = "<td class='time'>" + formattedDate + "</td><td>" + e.attributes["class"].value + "</td><td>" + res + "</td>";
 	
 	return res;
 }

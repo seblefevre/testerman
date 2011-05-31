@@ -1,4 +1,30 @@
 /**
+ * The usual suspects.
+ */
+
+String.prototype.escapeHTML = function() {                                        
+	return(                                                                 
+		this.replace(/&/g,'&amp;').                                         
+			replace(/>/g,'&gt;').                                           
+			replace(/</g,'&lt;').                                           
+			replace(/"/g,'&quot;')                                         
+	);                                                                      
+};
+
+/**
+ * Return the first child element of an XML node
+ */
+function getFirstChildElement(node)
+{
+	n = node.firstChild;
+	while (n && n.nodeType != 1) {
+  	n = n.nextSibling;
+  }
+	return n;
+}
+
+
+/**
  * Several basic functions to add some features
  * in ATS log views.
  */
