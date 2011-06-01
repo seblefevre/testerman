@@ -88,8 +88,7 @@ function startMonitoringLogs(jobId) {
 	try {
 		xcws = new WebSocket("ws://" + document.location.host + "/websocket/xc");
 	} catch(err) {
-		alert(err);
-		replaceContent("log-monitoring-status", "<b>disabled</b>. Check that your browser supports websocket (for instance Chrome 11+, Firefox 4.0.1+ with network.websocket.override-security-block set to true.");
+		replaceContent("execution-logs", "<p><b>Disabled</b>. Check that your browser supports websocket (for instance Chrome 11+, Firefox 4.0.1+ with network.websocket.override-security-block set to true).</p>");
 		return;
 	}
 	xcws.onopen = function(e) { if (xcws != null) { xcws.send(subscribe("job:" + jobId)); onLogMonitoringEnabled(); } }
@@ -396,13 +395,6 @@ window.onload = function() {
 	startMonitoringJobState(${jobId});
 }
 </script>
-
-<!--
-<h2>Real-time Logs</h2>
-<a class="wiki" href="startMonitoringLogs(${jobId});">Refresh Logs</a>
-<pre id="rtl">
-Some logs here.
-</pre> -->
 
 <style type="text/css"> 
 </style> 

@@ -2,7 +2,7 @@
 # -*- coding: utf-8 -*-
 ##
 # This file is part of Testerman, a test automation system.
-# Copyright (c) 2010 Sebastien Lefevre and other contributors
+# Copyright (c) 2010,2011 Sebastien Lefevre and other contributors
 #
 # This program is free software; you can redistribute it and/or modify it under
 # the terms of the GNU General Public License as published by the Free Software
@@ -226,7 +226,6 @@ class WebClientApplication(WebServer.WebApplication):
 		@path: testerman-docroot-path of the directory.
 		"""
 		try:
-			print "trying a getDirectory (%s) via %s..." % (path, self._getClient())
 			l = self._getClient().getDirectoryListing(path)
 		except Exception, e:
 			getLogger().error("Unable to browse directory %s: %s" % (path, str(e)))
@@ -264,8 +263,9 @@ class WebClientApplication(WebServer.WebApplication):
 				return
 			# Now extract the metadata from the source		
 			metadata = TEFactory.getMetadata(source)
-			# parameters must be re-encoded to UTF-8
 			parameters = metadata.getSignature().values()
+			# Let's sort them
+			parameters.sort(lambda x, y: cmp(x.get("name"), y.get("name")))
 		
 
 		# Fetch the profiles
@@ -323,12 +323,9 @@ class WebClientApplication(WebServer.WebApplication):
 		Execute an ATS whose testerman-docroot-path is provided in argument.
 		Once run, redirect the user to a monitoring page.
 		"""
-		print 80*"="
 		getLogger().info("Attempt to run %s" % path)
 		path = self._adjustRepositoryPath(path)
 		getLogger().info("Actually running %s" % path)
-
-		print 80*"="
 
 		parameters = {}
 
