@@ -30,6 +30,8 @@ KNOWN BUGS:
 - Fixed: "save to repository" dialog box now starts from the current document's
   path (if it was saved into the repository before).
 - Fixed: root files in the repository are now monitored correctly.
+- Fixed: crash when updating the log viewer once the log file has been deleted.
+
 
 
 1.2.1:

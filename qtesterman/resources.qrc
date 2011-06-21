@@ -101,6 +101,7 @@ pyrcc4 resources.qrc -o Resources.py
 
 	<!-- editors -->
 	<file alias="profiles-editor">resources/user-properties.png</file>
+	<file alias="testgroups-selector">resources/document-multiple.png</file>
 
 </qresource>
 

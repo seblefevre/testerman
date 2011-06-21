@@ -1073,6 +1073,12 @@ class WLogViewer(QWidget):
 				QMessageBox.information(self, getClientName(), "Unable to load this log file.")
 				return
 
+			if logfile is None:
+				# Log file removed or never created
+				QMessageBox.information(self, getClientName(), "The log file for this job has been deleted.")
+				# do nothing more
+				return
+
 		self.setJobState(state)
 
 		# When updating logs, we disable the tracking to speed up things

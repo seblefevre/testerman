@@ -529,6 +529,13 @@ class WAtsDocumentEditor(WDocumentEditor):
 			self.profilesManager.show()		
 		else:
 			self.profilesManager.hide()
+	
+	def toggleTestGroupsSelector(self, checked):
+		if checked:
+			self.testGroupsSelector.show()
+		else:
+			self.testGroupsSelector.hide()
+			
 		
 	def __createWidgets(self):
 		"""
@@ -633,6 +640,16 @@ class WAtsDocumentEditor(WDocumentEditor):
 		self.showProfilesEditorButton.setIconSize(QSize(16, 16))
 		self.showProfilesEditorButton.setDefaultAction(self.showProfilesEditorAction)
 		self.connect(self.showProfilesEditorAction, SIGNAL('toggled(bool)'), self.toggleProfilesEditor)
+		# Toggle button to show/hide runtime test group selection
+		self.showTestGroupsSelectorAction = QAction("Select", self)
+		self.showTestGroupsSelectorAction.setToolTip("Open/close the test groups selector")
+		self.showTestGroupsSelectorAction.setCheckable(True)
+		self.showTestGroupsSelectorAction.setIcon(icon(':/icons/testgroups-selector'))
+		self.showTestGroupsSelectorAction.setStatusTip("Open/close the test groups editor")
+		self.showTestGroupsSelectorButton = QToolButton()
+		self.showTestGroupsSelectorButton.setIconSize(QSize(16, 16))
+		self.showTestGroupsSelectorButton.setDefaultAction(self.showTestGroupsSelectorAction)
+		self.connect(self.showTestGroupsSelectorAction, SIGNAL('toggled(bool)'), self.toggleTestGroupsSelector)
 		
 		# Run actions
 		self.runAction = CommonWidgets.TestermanAction(self, "&Run", self.run, "Run now, with regards to the previously unselected test groups")
@@ -660,6 +677,8 @@ class WAtsDocumentEditor(WDocumentEditor):
 		actionLayout.addWidget(self.runButton)
 		actionLayout.addWidget(self.profilesManager.getProfileSelector())
 		actionLayout.addWidget(self.showProfilesEditorButton)
+		# Test Groups selector not added yet - for future study
+#		actionLayout.addWidget(self.showTestGroupsSelectorButton)
 		actionLayout.addWidget(self.launchLog)
 		actionLayout.setMargin(2)
 
@@ -785,16 +804,12 @@ class WAtsDocumentEditor(WDocumentEditor):
 			return
 			
 		session = None
-		profileUrl = self.profilesManager.getProfileSelector().getProfileUrl()
-		if profileUrl:
-			profile = getProxy().getFile(unicode(profileUrl.path()))
-			if profile:
-				pm = DocumentModels.ProfileModel()
-				pm.setDocumentSource(profile)
-				session = pm.toSession()
-				log("Running with profile %s" % unicode(profileUrl.path()))
-			else:
-				log("WARNING: unable to fetch profile %s" % unicode(profileUrl.path()))
+
+		profileModel = self.profilesManager.getProfileSelector().getProfileModel()
+		if profileModel:
+			session = profileModel.toSession()
+			if profileModel.getUrl():
+				log("Running with profile %s" % unicode(profileModel.getUrl().path()))
 
 		groupSelectorDialog = WGroupSelectorDialog(self.model.getMetadataModel(), self._deselectedGroups, self)
 		if groupSelectorDialog.exec_() == QDialog.Accepted:
