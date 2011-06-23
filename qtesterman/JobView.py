@@ -146,8 +146,8 @@ class JobItem(QTreeWidgetItem):
 			i = icon(':/icons/job-states/paused')
 		elif s in [ 'complete' ] and r == 0:
 			i = icon(':/icons/job-states/success')
-		elif s in [ 'complete' ] and r > 0: # This case should not be possible
-			i = icon(':/icons/job-states/warning')
+		elif s in [ 'complete' ] and r > 0: # complete with errors
+			i = icon(':/icons/job-states/complete-with-errors')
 		elif s in [ 'cancelled' ]:
 			i = icon(':/icons/job-states/warning')
 		elif s in [ 'error', 'killed' ]:

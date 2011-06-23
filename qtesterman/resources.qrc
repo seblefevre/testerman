@@ -82,6 +82,7 @@ pyrcc4 resources.qrc -o Resources.py
 	<file alias="job-states/warning">resources/dialog-warning.png</file>
 	<file alias="job-states/running">resources/media-playback-start.png</file>
 	<file alias="job-states/paused">resources/media-playback-pause.png</file>
+	<file alias="job-states/complete-with-errors">resources/warning.png</file>
 
 	<!-- probe management -->
 	<file alias="probe-unlocked.png">resources/user-online.png</file>
