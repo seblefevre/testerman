@@ -25,6 +25,7 @@ RETURN_CODE_CANCELLED = 1
 RETURN_CODE_TTCN3_ERROR = 12
 RETURN_CODE_TE_ERROR = 13
 RETURN_CODE_OK = 0
+RETURN_CODE_OK_WITH_FAILED_TC = 4
 
 PASS = "pass"
 FAIL = "fail"
@@ -37,22 +38,22 @@ INCONC = "inconc"
 ################################################################################
 
 # Global variables
-IlServerIp = None
-IlServerPort = None
-TacsIp = None
-TacsPort = None
+__IlServerIp = None
+__IlServerPort = None
+__TacsIp = None
+__TacsPort = None
 
 # Set from command line: job dependent
-JobId = None
-LogFilename = None
-InputSessionFilename = None
-OutputSessionFilename = None
+__JobId = None
+__LogFilename = None
+__InputSessionFilename = None
+__OutputSessionFilename = None
 __SelectedGroups = None # None means all groups are selected. Otherwise provide a list of strings (group names)
 
-MaxLogPayloadSize = ${max_log_payload_size_repr}
+__MaxLogPayloadSize = ${max_log_payload_size_repr}
 
-ProbePaths = ${probe_paths_repr}
-CodecPaths = ${codec_paths_repr}
+__ProbePaths = ${probe_paths_repr}
+__CodecPaths = ${codec_paths_repr}
 
 #: Main return result from the execution
 # WARNING/FIXME: make sure that the ATS won't override such a variable (oh well.. what if it does ? nothing impacting...)
@@ -72,8 +73,8 @@ __TS_NAME = ${ts_name_repr}
 __SCRIPT_METADATA = ${metadata_repr}
 
 # Default values
-DefaultIlServerPort = ${il_port_repr}
-DefaultTacsPort = ${tacs_port_repr}
+__Default__IlServerPort = ${il_port_repr}
+__Default__TacsPort = ${tacs_port_repr}
 
 
 ################################################################################
@@ -87,8 +88,8 @@ def __getVersion():
 	return ret
 
 def __parseArgs():
-	global IlServerIp, IlServerPort, TacsIp, TacsPort
-	global LogFilename, JobId, InputSessionFilename, OutputSessionFilename
+	global __IlServerIp, __IlServerPort, __TacsIp, __TacsPort
+	global __LogFilename, __JobId, __InputSessionFilename, __OutputSessionFilename
 	global __SelectedGroups
 	parser = optparse.OptionParser(version = __getVersion())
 
@@ -96,7 +97,7 @@ def __parseArgs():
 	group.add_option("--input-session-filename", dest = "inputSessionFilename", metavar = "FILE", help = "the file that contains serialized input session parameters. If provided, --session-filename and --session-parameters are ignored.", default = None)
 	group.add_option("--output-session-filename", dest = "outputSessionFilename", metavar = "FILE", help = "the file that will contain serialized output session parameters on completion. By default, this file is not created.", default = None)
 	group.add_option("--tacs-ip", dest = "tacsIp", metavar = "ADDRESS", help = "set TACS Ia target IP address to ADDRESS. By defaut, no TACS is used.", default = None)
-	group.add_option("--tacs-port", dest = "tacsPort", metavar = "PORT", help = "set TACS Ia target port address to PORT (default: %default)", default = DefaultTacsPort, type = "int")
+	group.add_option("--tacs-port", dest = "tacsPort", metavar = "PORT", help = "set TACS Ia target port address to PORT (default: %default)", default = __Default__TacsPort, type = "int")
 	parser.add_option_group(group)
 	
 	group = optparse.OptionGroup(parser, "Standalone Execution Options")
@@ -110,9 +111,9 @@ def __parseArgs():
 	group = optparse.OptionGroup(parser, "Server-backed Execution Options (For information only, you should not use these options)")
 	group.add_option("--server-controlled", dest = "standalone", action = "store_false", help = "server-controlled execution. This TE is run and controlled by a Testerman Server. You should not have to use this option, it is reserved for server-side execution only.", default = True)
 	group.add_option("--job-id", dest = "jobId", metavar = "ID", help = "job id for this TE, as allocated by the server", default = None, type = "int")
-	group.add_option("--remote-log-filename", dest = "remoteLogFilename", metavar = "FILE", help = "log filename to use, as allocated by the server", default = None)
+	group.add_option("--remote-log-filename", dest = "remote__LogFilename", metavar = "FILE", help = "log filename to use, as allocated by the server", default = None)
 	group.add_option("--il-ip", dest = "ilServerIp", metavar = "ADDRESS", help = "set Testerman Server Il (log) target IP address to ADDRESS", default = None)
-	group.add_option("--il-port", dest = "ilServerPort", metavar = "PORT", help = "set Testerman Server Il (log)  target port address to PORT (default: %default)", default = DefaultIlServerPort, type = "int")
+	group.add_option("--il-port", dest = "ilServerPort", metavar = "PORT", help = "set Testerman Server Il (log)  target port address to PORT (default: %default)", default = __Default__IlServerPort, type = "int")
 	parser.add_option_group(group)
 	
 	(options, args) = parser.parse_args()
@@ -128,17 +129,17 @@ def __parseArgs():
 
 	if options.standalone:
 		# Optional TACS
-		TacsIp = options.tacsIp
-		TacsPort = options.tacsPort
+		__TacsIp = options.tacsIp
+		__TacsPort = options.tacsPort
 		# Remote logging is disabled
-		IlServerIp = None
-		IlServerPort = None
+		__IlServerIp = None
+		__IlServerPort = None
 		# Optional (local) log filename
-		LogFilename = options.logFilename
+		__LogFilename = options.logFilename
 		# Optional session parameter management
-		InputSessionFilename = options.inputSessionFilename
-		OutputSessionFilename = options.outputSessionFilename
-		if not InputSessionFilename:
+		__InputSessionFilename = options.inputSessionFilename
+		__OutputSessionFilename = options.outputSessionFilename
+		if not __InputSessionFilename:
 			# Human-provided session parameters
 			# TODO
 			pass
@@ -148,25 +149,25 @@ def __parseArgs():
 			sys.exit(0)
 	
 	else:
-		IlServerIp = options.ilServerIp
-		IlServerPort = options.ilServerPort
-		TacsIp = options.tacsIp
-		TacsPort = options.tacsPort
-		LogFilename = options.remoteLogFilename
-		JobId = options.jobId
-		InputSessionFilename = options.inputSessionFilename
-		OutputSessionFilename = options.outputSessionFilename
+		__IlServerIp = options.ilServerIp
+		__IlServerPort = options.ilServerPort
+		__TacsIp = options.tacsIp
+		__TacsPort = options.tacsPort
+		__LogFilename = options.remote__LogFilename
+		__JobId = options.jobId
+		__InputSessionFilename = options.inputSessionFilename
+		__OutputSessionFilename = options.outputSessionFilename
 		
-		if not JobId:
+		if not __JobId:
 			sys.stderr.write("A job ID is mandatory when running in server-controlled mode.\n")
 			sys.exit(RETURN_CODE_TE_ERROR)
-		if not LogFilename:
+		if not __LogFilename:
 			sys.stderr.write("A remote log filename is mandatory when running in server-controlled mode.\n")
 			sys.exit(RETURN_CODE_TE_ERROR)
-		if not TacsIp:
+		if not __TacsIp:
 			sys.stderr.write("A valid TACS IP address is mandatory when running in server-controlled mode.\n")
 			sys.exit(RETURN_CODE_TE_ERROR)
-		if not IlServerIp:
+		if not __IlServerIp:
 			sys.stderr.write("A valid Il Server IP address is mandatory when running in server-controlled mode.\n")
 			sys.exit(RETURN_CODE_TE_ERROR)
 
@@ -261,7 +262,7 @@ def __formatTable(headers = [], rows = [], order = None, notAvailableLabel = "(n
 # TE base functions
 ################################################################################
 
-def scanPlugins(paths, label):
+def __scanPlugins(paths, label):
 	for path in paths:
 		if not path in sys.path:
 			sys.path.append(path)
@@ -281,7 +282,7 @@ def scanPlugins(paths, label):
 		except Exception, e:
 			TestermanTCI.logUser("WARNING: unable to scan %s path %s: %s" % (label, path, str(e)))
 
-def initializeLogger(ilServerIp, ilServerPort, jobId, logFilename, maxPayloadSize):
+def __initializeLogger(ilServerIp, ilServerPort, jobId, logFilename, maxPayloadSize):
 	if ilServerIp:
 		TestermanTCI.initialize(ilServerAddress = (ilServerIp, ilServerPort), jobId = jobId, logFilename = logFilename, maxPayloadSize = maxPayloadSize)
 		TestermanTCI.logInternal("initializing: using IlServer tcp://%s:%d" % (ilServerIp, ilServerPort))
@@ -289,7 +290,7 @@ def initializeLogger(ilServerIp, ilServerPort, jobId, logFilename, maxPayloadSiz
 		TestermanTCI.initialize(ilServerAddress = None, logFilename = logFilename, maxPayloadSize = maxPayloadSize)
 		TestermanTCI.logInternal("initializing: using local log filename: %s" % logFilename)
 
-def finalizeLogger():
+def __finalizeLogger():
 	try:
 		TestermanTCI.finalize()
 	except:
@@ -298,7 +299,7 @@ def finalizeLogger():
 # Global TE initialization.
 # Testerman core libs initialization, connections to Testerman infrastructure,
 # TE plugins (probes and codecs) loading.
-def initializeTe(tacsIP, tacsPort):
+def __initializeTe(tacsIP, tacsPort):
 	if not tacsIP:
 		TestermanTCI.logUser("Support for remote probes is disabled (no TACS provided)")
 		TestermanSA.initialize(None)
@@ -307,10 +308,10 @@ def initializeTe(tacsIP, tacsPort):
 		TestermanSA.initialize((tacsIP, tacsPort))
 	TestermanPA.initialize()
 	Testerman._initialize()
-	scanPlugins(ProbePaths, "probe")
-	scanPlugins(CodecPaths, "codec")
+	__scanPlugins(__ProbePaths, "probe")
+	__scanPlugins(__CodecPaths, "codec")
 
-def finalizeTe():
+def __finalizeTe():
 	TestermanTCI.logInternal("finalizing...")
 	Testerman._finalize()
 	TestermanPA.finalize()
@@ -349,7 +350,7 @@ __parseArgs()
 ##
 try:
 	import TestermanTCI
-	initializeLogger(ilServerIp = IlServerIp, ilServerPort = IlServerPort, jobId = JobId, logFilename = LogFilename, maxPayloadSize = MaxLogPayloadSize)
+	__initializeLogger(ilServerIp = __IlServerIp, ilServerPort = __IlServerPort, jobId = __JobId, logFilename = __LogFilename, maxPayloadSize = __MaxLogPayloadSize)
 except Exception, e:
 	# We can't even log anything. 
 	print("Unable to connect to logging server: %s" % str(e))
@@ -366,12 +367,12 @@ TestermanTCI.logAtsStarted(id_ = __ATS_ID)
 try:
 	import ${adapter_module_name} as Testerman
 	from ${adapter_module_name} import *
-	initializeTe(TacsIp, TacsPort)
+	__initializeTe(__TacsIp, __TacsPort)
 except Exception, e:
 	__Return_Code = RETURN_CODE_INIT_FAILURE
 	TestermanTCI.logUser("Unable to initialize Code TE librairies: %s" % TestermanTCI.getBacktrace())
 	TestermanTCI.logAtsStopped(id_ = __ATS_ID, result = __Return_Code)
-	finalizeLogger()
+	__finalizeLogger()
 	sys.exit(__Return_Code)
 
 ##
@@ -396,7 +397,7 @@ signal.signal(signal.SIGUSR1, onActionPerformed)
 ##
 inputSession = {}
 try:
-	f = open(InputSessionFilename, 'r')
+	f = open(__InputSessionFilename, 'r')
 	inputSession = pickle.loads(f.read())
 	f.close()
 except Exception, e:
@@ -475,7 +476,6 @@ try:
 		for k, d in __SCRIPT_METADATA['groups'].items():
 			TestermanTCI.logUser("Testcase group %s has been selected" % (k))
 			setattr(sys.modules[__name__], k, True)
-	
 
 	##
 	# The following code has been imported "as is" from the source ATS
@@ -501,10 +501,20 @@ except Exception, e:
 	__Return_Code = RETURN_CODE_TE_ERROR
 	__Return_Message = "Generic exception: %s" % str(TestermanTCI.getBacktrace())
 
+# Get a TC execution summary
+counts = {PASS: 0, NONE: 0, INCONC: 0, ERROR: 0, FAIL: 0} 
+for res in Testerman._AtsResults:
+	counts[res['verdict']] += 1
+TestermanTCI.logUser("ATS execution summary: %(pass)s TC passed, %(fail)s TC failed, %(inconc)s TC inconc, %(error)s TC in error, %(none)s TC without any verdict" % counts)
+# Fails the ATS job if not all testcases are passed
+if counts[FAIL] or counts[INCONC] or counts[ERROR] or counts[NONE]:
+	__Return_Message = "ATS completed, but some test cases were not successfully executed"
+	__Return_Code = RETURN_CODE_OK_WITH_FAILED_TC
+
 
 # Dumps the current session
 try:
-	f = open(OutputSessionFilename, 'w')
+	f = open(__OutputSessionFilename, 'w')
 	f.write(pickle.dumps(Testerman._get_all_session_variables()))
 	f.close()
 except Exception, e:
@@ -515,7 +525,7 @@ except Exception, e:
 # Finalization
 ##
 try:
-	finalizeTe()
+	__finalizeTe()
 except:
 	pass
 
@@ -523,7 +533,7 @@ if __Return_Message:
 	TestermanTCI.logUser(__Return_Message)
 TestermanTCI.logAtsStopped(id_ = __ATS_ID, result = __Return_Code)
 
-finalizeLogger()
+__finalizeLogger()
 
 # Make sure all our process children are killed
 TestermanPA.killChildren()

@@ -280,6 +280,10 @@ class _BranchCondition:
 		self.from_ = from_
 
 ################################################################################
+# ATS Context: ATS-wide 
+################################################################################
+
+################################################################################
 # Some tools: Variable & StateManager (to implement alt-based state machines)
 ################################################################################
 
@@ -1331,7 +1335,9 @@ class TestCase:
 
 		# Reset the system queue (to do on start only ?)
 		_resetSystemQueue()
-		
+
+		# Register the execution status in the ATS map
+		_AtsResults.append(dict(testcase_id = str(self), verdict = self._mtc._verdict))		
 		logTestcaseStopped(str(self), verdict = self._mtc._verdict, description = self._description)
 
 		# Make sure we clean the local contexts
@@ -2659,6 +2665,9 @@ _SessionVariables = {}
 # Ats variables are global variables for the ATS only.
 # They are not exposed or provisioned to/from the outside world.
 _AtsVariables = {}
+
+# Contains a list of dict (testcase_id, verdict) to get an ATS-level summary
+_AtsResults = []
 
 _VariableMutex = threading.RLock()
 

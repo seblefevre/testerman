@@ -984,7 +984,7 @@ class AtsJob(Job):
 			getLogger().info("%s: TE returned, retcode %d" % (str(self), retcode))
 			self.setResult(retcode)
 			# Maps standard retcode to states
-			if retcode == 0: # RETURN_CODE_OK
+			if retcode == 0 or retcode == 4: # RETURN_CODE_OK || RETURN_CODE_OK_WITH_FAILED_TC
 				self.setState(self.STATE_COMPLETE)
 			elif retcode == 1: # RETURN_CODE_CANCELLED
 				self.setState(self.STATE_CANCELLED)
