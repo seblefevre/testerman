@@ -38,8 +38,12 @@ import time
 import os
 import select
 
-# 1.1: added control:bind()
-API_VERSION = "1.1"
+# 1.1:
+# - added control:bind()
+# 1.2:
+# - added TestCase.stop_ats_on_testcase_failure(stop = True),
+# - added control:stop_testcase_on_failure(stop = True)
+API_VERSION = "1.2"
 
 ################################################################################
 # Some general functions
@@ -666,6 +670,12 @@ class TestComponent:
 		# Should we log the setverdict event if not actually updated ?
 		# if updated:
 		logVerdictUpdated(tc = str(self), verdict = self._verdict)
+		
+		# Auto-stop management
+		if self._mtc:
+			if self._testcase._stopOnFailure and verdict in [VERDICT_FAIL]:
+				logInternal("Stopping TestCase on failure (autostop is set)")
+				stop()
 
 	def _getverdict(self):
 		"""
@@ -1175,6 +1185,7 @@ class TestCase:
 		self._name = self.__class__.__name__
 		# This is a list of the ptc created by/within this testcase.
 		self._ptcs = []
+		self._stopOnFailure = False
 		logTestcaseCreated(str(self), role = self._role)
 
 		self._mtc = None
@@ -1183,7 +1194,7 @@ class TestCase:
 		# Aliases, provided for convenience in user part.
 		self.system = None
 		self.mtc = None
-	
+		
 	def __str__(self):
 		"""
 		Returns the testcase identifier.
@@ -1347,7 +1358,13 @@ class TestCase:
 		if _isAtsCancelled():
 			raise TestermanCancelException()
 
-		return self._mtc._getverdict()
+		verdict = self._mtc._getverdict()
+		# Support for auto ATS stop on failure
+		if _StopOnTestCaseFailure and verdict != PASS:
+			logUser("Stopping ATS due to a testcase failure (autostop is set)")
+			stop()
+		else:
+			return verdict
 
 	def _log(self, message):
 		"""
@@ -1364,6 +1381,14 @@ class TestCase:
 		TTCN-3: the stop operation can be applied to the MTC too.
 		"""
 		stop()
+	
+	def stop_testcase_on_failure(self, stop = True):
+		"""
+		Set whether the TestCase should stop automatically as soon as its MTC verdict
+		is set to ERROR or FAIL.
+		"""
+		self._stopOnFailure = stop
+		
 
 
 ################################################################################
@@ -2669,6 +2694,9 @@ _AtsVariables = {}
 # Contains a list of dict (testcase_id, verdict) to get an ATS-level summary
 _AtsResults = []
 
+# Enable to stop the ATS automatically as soon as a testcase is not passed
+_StopOnTestCaseFailure = False
+
 _VariableMutex = threading.RLock()
 
 def get_variable(name, default_value = None):
@@ -2694,6 +2722,11 @@ def _get_all_session_variables():
 	# Not protected, not a deep copy - should
 	# ony used internally, not part of the Testerman TE API.
 	return _SessionVariables
+
+def stop_ats_on_testcase_failure(stop = True):
+	global _StopOnTestCaseFailure
+	_StopOnTestCaseFailure = stop
+
 
 ################################################################################
 # codec management: 'with' support
