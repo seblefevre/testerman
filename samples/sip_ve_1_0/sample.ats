@@ -1,0 +1,232 @@
+# __METADATA__BEGIN__
+# <?xml version="1.0" encoding="utf-8" ?>
+# <metadata version="1.0">
+# <description>description</description>
+# <prerequisites>prerequisites</prerequisites>
+# <api>1</api>
+# <parameters>
+# <parameter name="PX_SIP_IP_1" default="127.0.0.1" type="string"><![CDATA[]]></parameter>
+# <parameter name="PX_SIP_IP_2" default="127.0.0.1" type="string"><![CDATA[]]></parameter>
+# <parameter name="PX_SIP_PORT_1" default="5072" type="integer"><![CDATA[]]></parameter>
+# <parameter name="PX_SIP_1" default="probe:udp01" type="string"><![CDATA[]]></parameter>
+# <parameter name="PX_SIP_2" default="probe:udp02" type="string"><![CDATA[]]></parameter>
+# <parameter name="PX_SIP_PORT_2" default="5074" type="integer"><![CDATA[]]></parameter>
+# <parameter name="PX_RTP_11" default="probe:rtp01" type="string"><![CDATA[]]></parameter>
+# <parameter name="PX_RTP_21" default="probe:rtp02" type="string"><![CDATA[]]></parameter>
+# </parameters>
+# <groups>
+# </groups>
+# </metadata>
+# __METADATA__END__
+##
+# SIP Virtual Endpoint sample.
+#
+# This ATS demonstrates how a SIP VE can be used through its
+# function-based API as defined in VirtualEndpoint module.
+#
+##
+
+# The VE function-based API
+from VirtualEndpoint import *
+
+# Some embedded G711a samples.
+# Embed them into a module them export them to speed up
+# the ATS execution (as it will be smaller).
+import WavSamples
+resource = WavSamples.PCMA_SAMPLE
+
+
+class TC_SIPVE_API_VE2VE(TestCase):
+	"""
+	A and B are two SIP VEs with a single line/audio channel.
+	
+	A calls B, B answers, both discuss for a little while,
+	then A hangs up.
+	"""
+	def body(self, ipA, portA, ipB, portB):
+		controlA = self.mtc['controlA']
+		controlB = self.mtc['controlB']
+		
+		# Do the Test Configuration and starts our simulators
+		endpointA = f_createEndpoint(self, controlA, "Endpoint A", (self.system['sip01'], ipA, portA), [ (self.system['rtp01'], ipA, 30000) ], proxyIp = ipB, proxyPort = portB)
+		endpointB = f_createEndpoint(self, controlB, "Endpoint B", (self.system['sip02'], ipB, portB), [ (self.system['rtp02'], ipB, 30002) ])
+		# Endpoint simulators are now started.
+		
+		f_plug(controlA)
+		f_plug(controlB)
+		# Tmp hack: wait for endpoints to be started (normally should be "idle" after being plugged)
+		f_wait(0.5)
+		try:
+			uri = 'sip:endpointB@%s:%s' % (ipB, portB)
+			log("Calling %s..." % uri)
+			callId = f_placeCall(controlA, uri)
+			receivedCallId = f_isRinging(controlB, timeout = 2.0)
+			if receivedCallId is None: raise Exception("No incoming call")
+			log("B is ringing")
+			if not f_isReceivingRingbackTone(controlA, callId, timeout = 2.0): raise Exception("No ringback tone on caller")
+			f_wait(1.0)
+			log("B is now answering")
+			f_answerCall(controlB, receivedCallId)
+			# Not good - areReceivingAudio(controls, timeout, duration) instead.
+			if not f_isReceivingAudio(controlA, callId, timeout = 2.0): raise Exception("A is not receiving audio")
+			if not f_isReceivingAudio(controlB, receivedCallId, timeout = 2.0): raise Exception("B is not receiving audio")
+			log("A and B were connected and talking")
+			f_wait(2.0)
+			log("A hangs up")
+			f_releaseCall(controlA, callId)
+			# Not good - areIdle(controls, timeout) instead.
+			if not f_isIdle(controlA, callId, timeout = 2.0): raise Exception("A is not back to idle")
+			if not f_isIdle(controlB, receivedCallId, timeout = 2.0): raise Exception("B is not back to idle")
+			log("A and B are now idle")
+			setverdict(PASS)
+		except Exception, e:
+			log(str(e))
+			setverdict(FAIL)
+		
+		# In any case, unplug the endpoints
+		f_unplug(controlA)
+		f_unplug(controlB)
+		
+		# Optional
+		endpointA.stop()
+		endpointB.stop()
+
+
+class APP_SIPVE_CALLED_VE(TestCase):
+	"""
+	We prepare a VE that waits for an incoming call.
+	Once connected, it plays a resource file (in loop) for a provided duration,
+	then hangs up.
+	"""
+	def body(self, ipB, portB, duration = 10.0):
+		controlB = self.mtc['controlB']
+		
+		# Do the Test Configuration and starts our simulators
+		endpointB = f_createEndpoint(self, controlB, "Endpoint B", (self.system['sip02'], ipB, portB), [ (self.system['rtp02'], ipB, 30002) ])
+		# Endpoint simulators are now started.
+		
+		f_plug(controlB)
+		# Tmp hack: wait for endpoints to be started (normally should be "idle" after being plugged)
+		f_wait(0.5)
+		try:
+			uri = 'sip:endpointB@%s:%s' % (ipB, portB)
+			action('Please call %s' % uri, timeout = 60.0)
+			receivedCallId = f_isRinging(controlB, timeout = 10.0)
+			if receivedCallId is None: raise Exception("No incoming call")
+			log("B is ringing")
+			f_wait(1.0)
+			log("B is now answering")
+			f_answerCall(controlB, receivedCallId)
+			# Not good - areReceivingAudio(controls, timeout, duration) instead.
+			if not f_isReceivingAudio(controlB, receivedCallId, timeout = 2.0): raise Exception("B is not receiving audio")
+			log("B was connected and talking with someone - probably you")
+			f_playWavFile(controlB, receivedCallId, resource, loopCount = 10)
+			f_wait(duration)
+			log("B hangs up")
+			f_releaseCall(controlB, receivedCallId)
+			# Not good - areIdle(controls, timeout) instead.
+			if not f_isIdle(controlB, receivedCallId, timeout = 2.0): raise Exception("B is not back to idle")
+			log("B is now idle - it was a pleasure to talk with you")
+			setverdict(PASS)
+		except Exception, e:
+			log(str(e))
+			setverdict(FAIL)
+		
+		# In any case, unplug the endpoints
+		f_unplug(controlB)
+		
+		# Optional
+		endpointB.stop()
+
+
+class APP_SIPVE_CALLING_VE(TestCase):
+	"""
+	We prepare a VE that calls a remote destination,
+	waits for the user to answer,
+	plays a file for a duration,
+	then hangs up.
+	
+	
+	For instance, you may start a SIP phone on your workstation,
+	and set the uri to sip:something@<yourip>:5060, or call yourself
+	through an Asterisk router, etc.
+	
+	"""
+	def body(self, ipA, portA, uri, proxyIp = None, proxyPort = 5060, duration = 10.0):
+		controlA = self.mtc['controlA']
+		
+		# Let's deduce a proxy from the uri, if not provided
+		# We should use a match() function with a uri codec instead of this pure Python code...
+		if not proxyIp:
+			ipport = uri.split('@')[1].split(':')
+			if len(ipport) == 2:
+				proxyIp = ipport[0]
+				proxyPort = int(ipport[1])
+			else:
+				proxyIp = ipport
+		
+		if not proxyIp:
+			log("Please provide a proxy or a full SIP URI")
+			setverdict(INCONC)
+			stop()
+		
+		# Do the Test Configuration and starts our simulators
+		endpointA = f_createEndpoint(self, controlA, "Endpoint A", (self.system['sip01'], ipA, portA), [ (self.system['rtp01'], ipA, 30000) ], proxyIp = proxyIp, proxyPort = proxyPort, codecs = [ 8 ])
+		# Endpoint simulators are now started.
+		
+		f_plug(controlA)
+		# Tmp hack: wait for endpoints to be started (normally should be "idle" after being plugged)
+		f_wait(0.5)
+
+		log("Calling %s via %s:%s..." % (uri, proxyIp, proxyPort))
+		callId = f_placeCall(controlA, uri)
+		try:
+			if not f_isReceivingRingbackTone(controlA, callId, timeout = 2.0): raise Exception("No ringback tone on caller")
+			action("Please answer the call", timeout = 5.0)
+			if not f_isReceivingAudio(controlA, callId, timeout = 2.0): raise Exception("A is not receiving audio")
+			log("A is receiving some audio")
+			log("Let's play some sound now")
+			f_playWavFile(controlA, callId, resource, loopCount = 10)
+			f_wait(duration)
+			log("A hangs up")
+			f_releaseCall(controlA, callId)
+			if not f_isIdle(controlA, callId, timeout = 2.0): raise Exception("A is not back to idle")
+			log("A is now idle - it was a pleasure to talk with you")
+			setverdict(PASS)
+		except Exception, e:
+			log(str(e))
+			f_releaseCall(controlA, callId)
+			setverdict(FAIL)
+		
+		# In any case, unplug the endpoints
+		f_unplug(controlA)
+		
+		# Optional
+		endpointA.stop()
+
+
+###############################################################################
+# Probe bindings
+###############################################################################
+
+bind('sip01', PX_SIP_1, 'udp', listening_port = PX_SIP_PORT_1)
+bind('rtp01', PX_RTP_11, 'rtp')
+bind('sip02', PX_SIP_2, 'udp', listening_port = PX_SIP_PORT_2)
+bind('rtp02', PX_RTP_21, 'rtp')
+
+
+###############################################################################
+# Control part
+###############################################################################
+
+# An actual test case, with 2 VEs calling each other.
+TC_SIPVE_API_VE2VE().execute(ipA = PX_SIP_IP_1, portA = PX_SIP_PORT_1, ipB = PX_SIP_IP_2, portB = PX_SIP_PORT_2)
+
+# If you want to call the VE with a SIP phone, run this
+# and dial sip:anything@PX_SIP_IP_2:PX_SIP_PORT_2
+#APP_SIPVE_CALLED_VE().execute(ipB = PX_SIP_IP_2, portB = PX_SIP_PORT_2)
+
+# If you want to be called by a VE, set up a SIP phone and set your URI here
+#uri = "sip:ekiga@192.168.1.78:5060"
+#APP_SIPVE_CALLING_VE().execute(ipA = PX_SIP_IP_1, portA = PX_SIP_PORT_1, uri = uri)
+
