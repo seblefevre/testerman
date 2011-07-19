@@ -81,10 +81,12 @@ type record Testcase {
 	charstring id,
 	universal charstring title,
 	charstring verdict,
+	charstring role, // testcase, preamble, postamble
 	universal charstring doc, // the full testcase docstring
 	universal charstring description, // the non-tagged docstring part
 	TaggedDescription tag, // a record of @tag names available in the docstring
 	record of Log userlogs,
+	record of LogEntry logentries,
 	charstring duration,
 	charstring start_time,
 	charstring stop_time,
@@ -94,6 +96,15 @@ type record Log {
 	charstring timestamp, // format HH:MM:SS.zzz, relative to start time
 	universal charstring message,
 }
+
+type record LogEntry {
+	charstring timestamp, // format HH:MM:SS.zzz, relative to start time
+	charstring fromPort optional,
+	charstring toPort optional,
+	charstring fromPort optional,
+	universal charstring message optional
+}
+
 </pre>
 """
 
@@ -218,6 +229,35 @@ class TestCaseVariables:
 				delta = timestamp - self._startTimestamp
 				t = QTime().addMSecs(int(delta * 1000)).toString('hh:mm:ss.zzz')
 				ret.append({'timestamp': t, 'message': element.text()})
+			return ret
+		elif name == "logs":
+			# Generated on the fly, as they may not be requested in all templates,
+			# costly to compute, and requested only once per testcase if requested
+			# (i.e. no cache required)
+			ret = []
+			for element in self._model.getDomElements():
+				timestamp = float(element.attribute('timestamp'))
+				delta = timestamp - self._startTimestamp
+				t = QTime().addMSecs(int(delta * 1000)).toString('hh:mm:ss.zzz')
+				tagname = unicode(element.tagName())
+				entry = {'timestamp': t, 'tagname': tagname}
+				
+				for attr in [ 'tsi-port', 'id', 'tc', 'duration', 'behaviour', 'verdict', 'result', 'timeout', 'from-tc', 'from-port', 'to-tc', 'to-port' ]:
+					e = element.attribute(attr)
+					if e and not e.isNull():
+						entry[attr.replace('-', '')] = e
+
+				for subelement in [ 'label', 'sut-address', 'message', 'template', 'payload' ]:
+					e = element.firstChildElement(subelement)
+					if e and not e.isNull():
+						entry[subelement.replace('-', '')] = e.text()
+
+				# Specific attributes per tag type
+				if tagname == "user":
+					entry['message'] = element.text()
+
+				ret.append(entry)
+				
 			return ret
 		else:
 			raise KeyError(name)
