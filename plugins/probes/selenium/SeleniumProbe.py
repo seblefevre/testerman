@@ -255,6 +255,17 @@ class SeleniumProbe(ProbeImplementationManager.ProbeImplementation):
 			self._selenium = None
 
 	def onTriSend(self, message, sutAddress):
+		# Support for a list as loose command model, with only positional args
+		# We turn this list into a (command, dict[target, value]) structure for further standard processing
+		if isinstance(message, list):
+			args = {}
+			m = message[1:]
+			if len(m) > 0:
+				args['target'] = m[0]
+			if len(m) > 1:
+				args['value'] = m[1]
+			message = (message[0], args)
+
 		if not isinstance(message, tuple) or len(message) != 2:
 			raise Exception("Invalid command message for this Selenium probe - expecting a couple (command, [args])")
 
