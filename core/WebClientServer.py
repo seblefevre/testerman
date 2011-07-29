@@ -292,18 +292,19 @@ class WebClientApplication(WebServer.WebApplication):
 			getLogger().error("Unable to fetch logs for %s: %s" % (path, str(e)))
 			l = []
 
-		for entry in l:
-			if entry['type'] == 'log':
-				log = {}
-				name = entry['name']
-				filename = '%s/%s' % (archivePath, name)
-				# According to the name, retrieve some additional info.
-				m = re.match(r'([0-9-]+)_(.*)\.log', name)
-				if m:
-					date = m.group(1)
-					username = m.group(2)
-					log = dict(name = name, filename = filename, date = date, username = username)
-					logs.append(log)
+		if l:
+			for entry in l:
+				if entry['type'] == 'log':
+					log = {}
+					name = entry['name']
+					filename = '%s/%s' % (archivePath, name)
+					# According to the name, retrieve some additional info.
+					m = re.match(r'([0-9-]+)_(.*)\.log', name)
+					if m:
+						date = m.group(1)
+						username = m.group(2)
+						log = dict(name = name, filename = filename, date = date, username = username)
+						logs.append(log)
 		
 		logs.reverse()
 
