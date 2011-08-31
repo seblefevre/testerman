@@ -198,27 +198,41 @@ class HttpRequestCodec(CodecManager.IncrementalCodec):
 			# Chunked based
 			# The chunksize is on a single line, in hexa
 			try:
-#				print "DEBUG: %s" % lines[i]
+#				print "DEBUG: initial chunk size line: %s" % repr(lines[i])
+				if not lines[i].strip():
+					return self.needMoreData() # Let's wait for the chunk size in a next payload
 				chunkSize = int(lines[i].strip(), 16)
+#				print "DEBUG: initial chunk size: %s" % chunkSize
+				
+				remainingPayload = '\r\n'.join(lines[i+1:])
+#				print "DEBUG: remaining payload: " + repr(remainingPayload)
+				
 				while chunkSize != 0:
-					i += 1
-#					print "DEBUG: %s" % lines[i]
-					chunkStartLine = i
-					currentLen = 0
-					while currentLen < chunkSize:
-						currentLen += len(lines[i]) + 2 # +2 for \r\n
-#						print "DEBUG: current len is %s, expected %s" % (currentLen, chunkSize)
-						i += 1
-					if currentLen == chunkSize:
-						# OK, perfect. We now have an empty line terminating the chunk.
-						ret['body'] += '\r\n'.join(lines[chunkStartLine:i])
-						# Skip the empty line
-						i += 1
-#						print "DEBUG: %s" % lines[i]
-						chunkSize = int(lines[i].strip(), 16)
+					# OK, let's start consuming our chunk, exactly chunkSize characters,
+					# then followed by an empty line, then possibly another chunksize, etc.
+					chunk = remainingPayload[:chunkSize]
+					if len(chunk) < chunkSize:
+						return self.needMoreData()
+					ret['body'] += chunk
+					
+#					print "DEBUG: added chunk:" + repr(chunk)
+#					print "DEBUG: now the body is: " + repr(ret['body'])
+					
+					# Now check that we have an empty line
+					remainingPayload = remainingPayload[chunkSize:]
+					
+					lines = remainingPayload.split('\r\n')
+					if lines[0]:
+						# should be an empty line... spurious data
+						raise Exception("No chunk boundary at the end of the chunk. Invalid data.")
+					if not lines[1]:
+						# No next chunk size yet
+						return self.needMoreData()
 					else:
-						# currentLen > chunkSize
-						raise Exception("Invalid chunk size: expected %s, got %s" % (chunkSize, currentLen))
+						chunkSize = int(lines[1].strip(), 16)
+					remainingPayload = '\r\n'.join(lines[2:])
+#					print "DEBUG: remaining payload: " + repr(remainingPayload)
+
 			except IndexError:
 				return self.needMoreData()
 		
@@ -413,27 +427,41 @@ class HttpResponseCodec(CodecManager.IncrementalCodec):
 			# Chunked based
 			# The chunksize is on a single line, in hexa
 			try:
-#				print "DEBUG: %s" % lines[i]
+#				print "DEBUG: initial chunk size line: %s" % repr(lines[i])
+				if not lines[i].strip():
+					return self.needMoreData() # Let's wait for the chunk size in a next payload
 				chunkSize = int(lines[i].strip(), 16)
+#				print "DEBUG: initial chunk size: %s" % chunkSize
+				
+				remainingPayload = '\r\n'.join(lines[i+1:])
+#				print "DEBUG: remaining payload: " + repr(remainingPayload)
+				
 				while chunkSize != 0:
-					i += 1
-#					print "DEBUG: %s" % lines[i]
-					chunkStartLine = i
-					currentLen = 0
-					while currentLen < chunkSize:
-						currentLen += len(lines[i]) + 2 # +2 for \r\n
-#						print "DEBUG: current len is %s, expected %s" % (currentLen, chunkSize)
-						i += 1
-					if currentLen == chunkSize:
-						# OK, perfect. We now have an empty line terminating the chunk.
-						ret['body'] += '\r\n'.join(lines[chunkStartLine:i])
-						# Skip the empty line
-						i += 1
-#						print "DEBUG: %s" % lines[i]
-						chunkSize = int(lines[i].strip(), 16)
+					# OK, let's start consuming our chunk, exactly chunkSize characters,
+					# then followed by an empty line, then possibly another chunksize, etc.
+					chunk = remainingPayload[:chunkSize]
+					if len(chunk) < chunkSize:
+						return self.needMoreData()
+					ret['body'] += chunk
+					
+#					print "DEBUG: added chunk:" + repr(chunk)
+#					print "DEBUG: now the body is: " + repr(ret['body'])
+					
+					# Now check that we have an empty line
+					remainingPayload = remainingPayload[chunkSize:]
+					
+					lines = remainingPayload.split('\r\n')
+					if lines[0]:
+						# should be an empty line... spurious data
+						raise Exception("No chunk boundary at the end of the chunk. Invalid data.")
+					if not lines[1]:
+						# No next chunk size yet
+						return self.needMoreData()
 					else:
-						# currentLen > chunkSize
-						raise Exception("Invalid chunk size: expected %s, got %s" % (chunkSize, currentLen))
+						chunkSize = int(lines[1].strip(), 16)
+					remainingPayload = '\r\n'.join(lines[2:])
+#					print "DEBUG: remaining payload: " + repr(remainingPayload)
+
 			except IndexError:
 				return self.needMoreData()
 		
