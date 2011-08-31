@@ -2809,46 +2809,58 @@ class CodecTemplate:
 	This is a proxy template class.
 	"""
 	def __init__(self, codec, template):
+		"""
+		codec can be a string identifying an actual codec to use,
+		but can also be a callable. In this case, the callable is used unconditionally to encode/decode.
+		Could be convenient to apply local, simple transformations before encoding or decoding a template.
+		"""
 		self._codec = codec
 		self._template = template
 	
 	def encode(self):
-		# Recursive encoding:
-		# first encode what should be encoded within the template,
-		# then encode it
-		try:
-			(encodedMessage, summary) = TestermanCD.encode(self._codec, _encodeTemplate(self._template))
-		except Exception:
-			# This includes a CodecNotFound exception
-			raise TestermanException('Encoding error: could not encode message with codec %s:\n%s' % (self._codec, getBacktrace()))
+		if callable(self._codec):
+			return self._codec(self._template)
 		else:
-			# Summary is FFU.
-			return encodedMessage
+			# Standard codec.
+			# Recursive encoding:
+			# first encode what should be encoded within the template,
+			# then encode it
+			try:
+				(encodedMessage, summary) = TestermanCD.encode(self._codec, _encodeTemplate(self._template))
+			except Exception:
+				# This includes a CodecNotFound exception
+				raise TestermanException('Encoding error: could not encode message with codec %s:\n%s' % (self._codec, getBacktrace()))
+			else:
+				# Summary is FFU.
+				return encodedMessage
 	
 	def getTemplate(self):
 		# recursive expansion
 		return _expandTemplate(self._template)
 		
 	def decode(self, encodedMessage):
-		# NB: no recursive decoding: let the calling templateMatch calls decode when needed
-		# This way, the codec only decodes what it knows how to decode, and has no need
-		# to know what other codecs are available.
-		try:
-			# In the TE context, 
-			(decodedMessage, summary) = TestermanCD.decode(self._codec, encodedMessage)
-		except TestermanCD.CodecNotFoundException:
-			raise TestermanException('Decoding error: codec %s not found' % self._codec)
-		except Exception:
-			logInternal('Decoding error: could not decode message with codec %s:\n%s' % (self._codec, getBacktrace()))
-			# Unable to decode: leave the buffer as is - it will lead to a match error probably.
-			# Leaving it as is enables to convey the payload all along the flow for further analysis.
-			return encodedMessage
-		if decodedMessage is None:
-			logInternal('Decoding error: could not decode message with codec %s' % self._codec)
-			return encodedMessage
+		if callable(self._codec):
+			return self._codec(encodedMessage)
 		else:
-			# Summary if FFU.
-			return decodedMessage
+			# NB: no recursive decoding: let the calling templateMatch calls decode when needed
+			# This way, the codec only decodes what it knows how to decode, and has no need
+			# to know what other codecs are available.
+			try:
+				# In the TE context, 
+				(decodedMessage, summary) = TestermanCD.decode(self._codec, encodedMessage)
+			except TestermanCD.CodecNotFoundException:
+				raise TestermanException('Decoding error: codec %s not found' % self._codec)
+			except Exception:
+				logInternal('Decoding error: could not decode message with codec %s:\n%s' % (self._codec, getBacktrace()))
+				# Unable to decode: leave the buffer as is - it will lead to a match error probably.
+				# Leaving it as is enables to convey the payload all along the flow for further analysis.
+				return encodedMessage
+			if decodedMessage is None:
+				logInternal('Decoding error: could not decode message with codec %s' % self._codec)
+				return encodedMessage
+			else:
+				# Summary if FFU.
+				return decodedMessage
 			
 # The main alias - as defined in Testerman API 1.0
 class with_(CodecTemplate):
