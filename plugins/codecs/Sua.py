@@ -668,7 +668,7 @@ class SuaCodec(CodecManager.IncrementalCodec):
 		m.fromUserland(template)
 		return (m.toNetwork(), m.summary())
 
-	def incrementalDecode(self, data):
+	def incrementalDecode(self, data, complete):
 		m = Message()
 		try:
 			m.fromNetwork(data)

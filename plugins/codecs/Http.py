@@ -135,7 +135,7 @@ class HttpRequestCodec(CodecManager.IncrementalCodec):
 			ret.append('Content-Length: %d' % bodyLength)
 		
 		if chunked and not transferEncodingAdded:
-			ret.append('Transfer-Encoding', 'chunked')
+			ret.append('Transfer-Encoding: chunked')
 		
 		# Header values are encoded as iso8859-1. 
 		# However 
@@ -154,7 +154,7 @@ class HttpRequestCodec(CodecManager.IncrementalCodec):
 		ret = '\r\n'.join(ret)
 		return (ret, self.getSummary(template))
 
-	def incrementalDecode(self, data):
+	def incrementalDecode(self, data, complete):
 		"""
 		Incremental decoder version:
 		- detect missing bytes if a content-length is provided
@@ -365,7 +365,7 @@ class HttpResponseCodec(CodecManager.IncrementalCodec):
 			ret.append('Content-Length: %d' % bodyLength)
 		
 		if chunked and not transferEncodingAdded:
-			ret.append('Transfer-Encoding', 'chunked')
+			ret.append('Transfer-Encoding: chunked')
 		
 		# Header values are encoded as iso8859-1. 
 		# However 
@@ -383,7 +383,7 @@ class HttpResponseCodec(CodecManager.IncrementalCodec):
 		
 		return ('\r\n'.join(ret), self.getSummary(template))
 
-	def incrementalDecode(self, data):
+	def incrementalDecode(self, data, complete):
 		"""
 		Incremental decoder version:
 		- detect missing bytes if a content-length is provided
@@ -478,6 +478,10 @@ class HttpResponseCodec(CodecManager.IncrementalCodec):
 				elif bl > cl:
 					# Truncate the body
 					ret['body'] = ret['body'][:cl]
+			else:
+				# No chunk, no content-length: wait until the end of the connection if we can
+				if not complete:
+					return self.needMoreData()
 		
 		return self.decoded(ret, self.getSummary(ret))
 
@@ -529,7 +533,7 @@ and this is the second one
 		print
 		print 80*'-'
 		print "Testing:\n%s" % s
-		(_, _, decoded, summary) = CodecManager.incrementalDecode(codec, s)
+		(_, _, decoded, summary) = CodecManager.incrementalDecode(codec, s, complete = True)
 		print "Decoded:\n%s\nSummary: %s" % (decoded, summary)
 		(reencoded, summary) = CodecManager.encode(codec, decoded)
 		print "Reencoded:\n%s\nSummary: %s" % (reencoded, summary)

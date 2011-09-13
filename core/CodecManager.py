@@ -137,7 +137,7 @@ class Codec:
 		"""
 		instance().log(message)
 
-	def incrementalDecode(self, data):
+	def incrementalDecode(self, data, complete):
 		"""
 		Provided for compatibility: so that non-incremental implementations
 		can be called transparently from code that assumes that an
@@ -240,7 +240,7 @@ class IncrementalCodec(Codec):
 		return (self.DECODING_OK, consumedBytes, decodedMessage, summary)
 	
 	# Functions to implement
-	def incrementalDecode(self, data):
+	def incrementalDecode(self, data, complete):
 		"""
 		To implement in your IncrementalCodec subclass.
 		
@@ -258,6 +258,12 @@ class IncrementalCodec(Codec):
 		
 		@type  data: string (as a buffer)
 		@param data: the encoded payload
+		@type  complete: bool
+		@param complete: set to true by the caller when no more data won't be available,
+		false otherwise. When set to false, NEED_MORE_DATA as a meaning. Otherwise,
+		this is interpreted as a DECODING_ERROR, as no more data won't be provided.
+		Sometimes the codec needs to know if it could collect more data or not to
+		know when it should stop its decoding.
 		
 		@rtype: tuple (int, int, obj, string)
 		@return: tuple (status, consumedBytes, message, summary) where:
@@ -284,7 +290,7 @@ class IncrementalCodec(Codec):
 		"""
 		Turns an incremental decoder into something callable from a non-incremental feeder.
 		"""
-		(status, consumedSize, decodedMessage, summary) = self.incrementalDecode(data)
+		(status, consumedSize, decodedMessage, summary) = self.incrementalDecode(data, complete = True)
 		if status == self.DECODING_OK:
 			return (decodedMessage, summary)
 		else:
@@ -369,13 +375,17 @@ class CodecManager(object):
 			# Unable to find the codec
 			raise CodecNotFoundException("Codec '%s' not found" % name)
 
-	def incrementalDecode(self, name, data,  **properties):
+	def incrementalDecode(self, name, data, complete, **properties):
 		# NB: we instantiate a codec each type to be thread safe and parallel
 		codec = self._getCodecInstance(name)
 		if codec:
 			for k, v in properties.items():
 				codec._setProperty(k, v)
-			return codec.incrementalDecode(data)
+			(ret, a, b, c) = codec.incrementalDecode(data, complete)
+			# If the codec expects more data and we can't provide mode: decoding error
+			if ret == codec.DECODING_NEED_MORE_DATA and complete:
+				ret = codec.DECODING_ERROR
+			return (ret, a, b, c)
 		else:
 			# Unable to find the codec
 			raise CodecNotFoundException("Codec '%s' not found" % name)
@@ -428,7 +438,7 @@ def decode(name, data, **properties):
 	"""
 	return instance().decode(name, data, **properties)
 
-def incrementalDecode(name, data, **properties):
+def incrementalDecode(name, data, complete, **properties):
 	"""
 	@type  name: string
 	@param name: the codec name
@@ -440,5 +450,5 @@ def incrementalDecode(name, data, **properties):
 	@rtype: <any>, or None
 	@returns: the decoded message according to the codec, or None if the codec was not found.
 	"""
-	return instance().incrementalDecode(name, data, **properties)
+	return instance().incrementalDecode(name, data, complete, **properties)
 

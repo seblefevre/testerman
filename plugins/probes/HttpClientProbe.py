@@ -211,7 +211,8 @@ class ResponseThread(threading.Thread):
 					decodedMessage = None
 
 					self._probe.getLogger().debug('data received (bytes %d), decoding attempt...' % len(buf))
-					(status, _, decodedMessage, summary) = CodecManager.incrementalDecode('http.response', buf)
+					# If we are not disconnected, notify that the codec can still expect more data (complete = False)
+					(status, _, decodedMessage, summary) = CodecManager.incrementalDecode('http.response', buf, complete = (not read))
 
 					if status == CodecManager.IncrementalCodec.DECODING_NEED_MORE_DATA:
 						if not read:

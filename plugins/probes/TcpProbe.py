@@ -521,27 +521,27 @@ class TcpProbe(ProbeImplementationManager.ProbeImplementation):
 				while len(conn.buffer) >= size:
 					msg = conn.buffer[:size]
 					conn.buffer = conn.buffer[size+1:]
-					self._preEnqueueMsg(conn, msg, "%s:%s" % addr)
+					self._preEnqueueMsg(conn, msg, "%s:%s" % addr, disconnected = (data == ''))
 
 			elif separator is not None:
 				msgs = conn.buffer.split(separator)
 				for msg in msgs[:-1]:
-					self._preEnqueueMsg(conn, msg, "%s:%s" % addr)
+					self._preEnqueueMsg(conn, msg, "%s:%s" % addr, disconnected = (data == ''))
 
 				conn.buffer = msgs[-1]
 			else:
 				msg = conn.buffer
 				conn.buffer = ''
 				# No separator or size criteria -> send to userland what we received according to the tcp stack
-				self._preEnqueueMsg(conn, msg, "%s:%s" % addr)
+				self._preEnqueueMsg(conn, msg, "%s:%s" % addr, disconnected = (data == ''))
 
-	def _preEnqueueMsg(self, conn, msg, addr):
+	def _preEnqueueMsg(self, conn, msg, addr, disconnected):
 		decoder = self['default_decoder']
 		if decoder:
 			buf = conn.decodingBuffer + msg
 			# Loop on multiple possible APDUs
 			while buf:
-				(status, consumedSize, decodedMessage, summary) = CodecManager.incrementalDecode(decoder, buf)
+				(status, consumedSize, decodedMessage, summary) = CodecManager.incrementalDecode(decoder, buf, complete = disconnected)
 				if status == CodecManager.IncrementalCodec.DECODING_NEED_MORE_DATA:
 					# Do nothing. Just wait for new raw segments.
 					self.getLogger().info("Waiting for more raw segments to complete incremental decoding (using codec %s)." % decoder)
@@ -562,8 +562,10 @@ class TcpProbe(ProbeImplementationManager.ProbeImplementation):
 					break
 
 		else: # No default decoder
-			self.logReceivedPayload("TCP data", msg, addr)
-			self.triEnqueueMsg(msg, addr)
+			if not disconnected:
+				# disconnected is set if and only if the new data is empty - don't send this empty message
+				self.logReceivedPayload("TCP data", msg, addr)
+				self.triEnqueueMsg(msg, addr)
 	
 	def _onIncomingConnection(self, sock, addr):
 		self._registerIncomingConnection(sock, addr)
@@ -621,6 +623,7 @@ class PollingThread(threading.Thread):
 							data = s.recv(65535)
 							if not data:
 								self._probe.getLogger().debug("%s disconnected by peer" % str(addr))
+								self._probe._feedData(addr, '') # notify the feeder that we won't have more data
 								self._probe._disconnect(addr, reason = "disconnected by peer")
 							else:
 								# New received message.
