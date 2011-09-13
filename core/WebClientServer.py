@@ -68,6 +68,7 @@ TIMEOUT_GET_JOB_STATUS = 10.0
 # Rights
 RIGHT_CUSTOMIZE_RUN_PARAMETERS = "customize-run-parameters"
 RIGHT_SELECT_RUN_PROFILE = "select-run-profile"
+RIGHT_SELECT_RUN_GROUPS = "select-run-groups"
 
 
 
@@ -253,20 +254,28 @@ class WebClientApplication(WebServer.WebApplication):
 		"""
 		
 		# Fetch the file to extract the metadata
+		try:
+			source = self._client.getFile(path)
+		except Exception, e:
+			getLogger().error("Unable to fetch source code for %s: %s" % (path, str(e)))
+			self.request.sendError(404, "ATS not found")
+			return
+		# Now extract the metadata from the source		
+		metadata = TEFactory.getMetadata(source)
+
+		# Fetch the parameters
 		parameters = None
 		if self.hasRight(self.username, RIGHT_CUSTOMIZE_RUN_PARAMETERS):
-			try:
-				source = self._client.getFile(path)
-			except Exception, e:
-				getLogger().error("Unable to fetch source code for %s: %s" % (path, str(e)))
-				self.request.sendError(404, "ATS not found")
-				return
-			# Now extract the metadata from the source		
-			metadata = TEFactory.getMetadata(source)
 			parameters = metadata.getSignature().values()
 			# Let's sort them
 			parameters.sort(lambda x, y: cmp(x.get("name"), y.get("name")))
-		
+
+		# Fetch the groups
+		groups = None
+		if self.hasRight(self.username, RIGHT_SELECT_RUN_GROUPS):
+			groups = metadata.getGroups().values() # list of dict of name, description
+			# Let's sort them
+			groups.sort(lambda x, y: cmp(x.get("name"), y.get("name")))
 
 		# Fetch the profiles
 		profiles = []
@@ -315,11 +324,11 @@ class WebClientApplication(WebServer.WebApplication):
 			webpaths.append(dict(label = x, path = current))
 			prev = current
 
-		context = dict(path = path, logs = logs, webpaths = webpaths, profiles = profiles, parameters = parameters)
+		context = dict(path = path, logs = logs, webpaths = webpaths, profiles = profiles, parameters = parameters, groups = groups)
 		
 		self._serveTemplate("ats.vm", context = context)
 
-	def handle_run_ats(self, path, profile = None, **customParameters):
+	def handle_run_ats(self, path, profile = None, groups = None, **customParameters):
 		"""
 		Execute an ATS whose testerman-docroot-path is provided in argument.
 		Once run, redirect the user to a monitoring page.
@@ -330,7 +339,7 @@ class WebClientApplication(WebServer.WebApplication):
 
 		parameters = {}
 
-		if profile:
+		if profile and profile != "__custom__":
 			if self.hasRight(self.username, RIGHT_SELECT_RUN_PROFILE):
 				getLogger().info("Running %s with profile %s" % (path, profile))
 				# We have to fetch the associated profile and turn its content into a dict of parameters
@@ -357,6 +366,18 @@ class WebClientApplication(WebServer.WebApplication):
 			
 		getLogger().info("Running %s with resolved parameters:\n%s" % (path, repr(parameters.items())))
 
+		if groups is not None:
+			if self.hasRight(self.username, RIGHT_SELECT_RUN_GROUPS):
+				if not isinstance(groups, list):
+					# Single value - was passed to this function as a simple value, not a list
+					groups = [ groups ]
+			else:
+				getLogger().info("Attempt to bypass groups selection right - discarding")
+				groups = None
+		
+		getLogger().info("Running %s with selected groups:\n%s" % (path, repr(groups)))
+
+
 		# Reconstruct the server path the file is located into
 		dirpath = '/'.join(path.split('/')[:-1])
 
@@ -374,7 +395,7 @@ class WebClientApplication(WebServer.WebApplication):
 			at = None
 			username = '%s@%s' % (self.username, self.request.getClientAddress()[0])
 
-			ret = self._getClient().scheduleAts(source, label, username, session, at, path = dirpath)
+			ret = self._getClient().scheduleAts(source, label, username, session, at, path = dirpath, groups = groups)
 			jobId = ret['job-id']
 		except Exception, e:
 			getLogger().error("Error in run_ats: %s" % str(e))
@@ -383,11 +404,11 @@ class WebClientApplication(WebServer.WebApplication):
 		if jobId:
 			# ATS started - let's monitor it
 			self.request.sendResponse(302)
-			self.request.sendHeader('Location', '/monitor_ats?%s' % jobId)
+			self.request.sendHeader('Location', 'monitor_ats?%s' % jobId)
 			self.request.endHeaders()
 		else:
 			self.request.sendResponse(302)
-			self.request.sendHeader('Location', '/ats?%s' % path)
+			self.request.sendHeader('Location', 'ats?%s' % path)
 			self.request.endHeaders()
 
 	def handle_monitor_ats(self, jobId):

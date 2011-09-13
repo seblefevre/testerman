@@ -332,7 +332,18 @@ class WebApplication:
 				getLogger().debug("Requested dynamic resource: %s" % path[1:])
 				# Keyword arguments
 				if args and '&' in args:
-					args = dict(cgi.parse_qsl(args, True))
+					args = cgi.parse_qs(args, True)
+					# parse_qs always returns args as values lists.
+					# We collapse those list into a single element or None if 1 or 0 elements are in it,
+					# preserving only actual lists.
+					for k, v in args.items():
+						if len(v) == 0:
+							args[k] = None
+						elif len(v) == 1:
+							args[k] = v[0]
+					print 80*"#"
+					print repr(args)
+					print 80*"#"
 					getattr(self, handler)(**args)
 				# or raw string
 				else:

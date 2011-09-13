@@ -23,33 +23,39 @@
 #end
 
 <h2>Execute</h2>
+<form name="run" method="GET" action="run_ats" target="_blank">
+<input type="hidden" name="path" value="${path}" /> 
+#if ($groups)
 <p>
-<form name="profilerun" method="GET" action="run_ats" target="_blank">
-	<input type="hidden" name="path" value="${path}" /> 
+Select groups to run:<br />
+	#foreach ($group in $groups)
+	<input type="checkbox" name="groups" value="${group.name}" checked="true">${group.name}: ${group.description}</input><br />
+	#end
+</p>
+#end
+<p>
 	Run this ATS with the following profile:
-	<select name="profile">
+	<select name="profile" onclick="document.getElementById('customparameters').style.display = (this.options[this.selectedIndex].value == '__custom__') ? 'block' : 'none';">
 		<option value="__default__">(default)</option>
+		#if ($parameters)
+		<option value="__custom__">(custom - see below)</option>
+		#end
 		#foreach ($profile in $profiles)
 		<option value="${profile.name}">${profile.name}</option>
 		#end
 	</select>
-	<input type="submit" value="Run (in a new window)" />
-</form>
 </p>
 #if ($parameters)
-<p>
-<form name="customrun" method="GET" action="run_ats" target="_blank">
-	Run this ATS with these specific values:
-	<input type="hidden" name="path" value="${path}" /> 
-	<table>
+## This block only appears if __custom__ has been selected above
+<p id="customparameters" style="display:none">
+	Use the following custom parameters:<br />
 	#foreach ($variable in $parameters)
-	<tr><td title="${variable.description}">${variable.name}:</td><td><input type="text" name="${variable.name}" value="${variable.defaultValue}" /></td></tr>
+	${variable.name}: <input type="text" name="${variable.name}" value="${variable.defaultValue}" /><br />
 	#end
-	</table>
-	<input type="submit" value="Run (in a new window)" />
-</form>
 </p>
 #end
+<input type="submit" value="Run (in a new window)" />
+</form>
 <h2>View Previous Runs Results</h2>
 <p>
 #if ($logs)

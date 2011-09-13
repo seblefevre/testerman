@@ -67,9 +67,9 @@ class RequestHandler(WebServer.WebApplicationDispatcherMixIn, SimpleXMLRPCServer
 	but also supports file serving via GET.
 	The do_GET implementation is provided by WebServer.WebApplicationDispatcherMixIn
 	"""
+	pass
 
 class XmlRpcServer(SocketServer.ThreadingMixIn, SimpleXMLRPCServer.SimpleXMLRPCServer):
-#class XmlRpcServer(SocketServer.ThreadingMixIn, SimpleXMLRPCServer.SimpleXMLRPCServer):
 	allow_reuse_address = True
 	def handle_request_with_timeout(self, timeout):
 		"""
@@ -98,6 +98,10 @@ class XmlRpcServerThread(threading.Thread):
 			testermanClient = client, 
 			debug = cm.get("ts.debug"),
 			authenticationRealm = 'Testerman WebClient')
+#		The Request handler compatible with websocket & XML-RPC is not ready yet.
+#		WebServer.WebApplicationDispatcherMixIn.registerApplication('/websocket', WebClientServer.XcApplication, 
+#			testermanServerUrl = serverUrl,
+#			debug = cm.get("ts.debug"))
 
 		# We should be more selective...
 		self._server.register_instance(WebServices)
