@@ -55,7 +55,7 @@ import SocketServer
 
 
 
-VERSION = '0.2.0'
+VERSION = '0.3.0'
 
 
 DEFAULT_PAGE = "/index.vm"
@@ -535,7 +535,7 @@ class WebClientApplication(WebServer.WebApplication):
 			self.request.sendError(404)
 			return
 		
-		stylesheet = "ats-log-textual.xsl"
+		stylesheet = "ats-log-textual.vm.xsl"
 		log = self.rawLogToStructuredLog(log, stylesheet)
 
 		self._sendContent(log, contentType = "application/xml")
@@ -767,7 +767,8 @@ class HttpServerThread(threading.Thread):
 			documentRoot = cm.get("testerman.webclient.document_root"), 
 			testermanClient = client,
 			debug = cm.get("wcs.debug"),
-			authenticationRealm = 'Testerman WebClient')
+			authenticationRealm = 'Testerman WebClient',
+			theme = cm.get("wcs.webui.theme"))
 		RequestHandler.registerApplication('/websocket', XcApplication, 
 			testermanServerUrl = serverUrl,
 			debug = cm.get("wcs.debug"))
@@ -824,6 +825,7 @@ def main():
 	cm.register("testerman.webclient.document_root", "%s/webclient" % testerman_home, xform = expandPath, dynamic = False)
 	cm.register("testerman.administrator.name", "administrator", dynamic = True)
 	cm.register("testerman.administrator.email", "testerman-admin@localhost", dynamic = True)
+	cm.register("wcs.webui.theme", "default", dynamic = True)
 
 
 	parser = optparse.OptionParser(version = getVersion())

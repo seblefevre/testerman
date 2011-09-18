@@ -36,6 +36,7 @@ Modifications for Testerman:
   argument and returns a string.
   Convenient to inject placeholders values with \n replaced with
   <br /> when generating code, for instance.
+- added support for #[[literal content]]# (Velocity 1.7)
 """
 
 import re, operator, os
@@ -210,7 +211,8 @@ class _Element:
 
     def identity_match(self, pattern):
         m = pattern.match(self._full_text, self.end)
-        if not m: raise NoMatch()
+        if not m:
+             raise NoMatch()
         self.end = m.start(pattern.groups)
         return m.groups()[:-1]
 
@@ -277,6 +279,25 @@ class Text(_Element):
     def evaluate(self, stream, namespace, loader, xform=None):
         stream.write(self.text)
 
+
+class FallthroughHashText(_Element):
+    """ Plain tex, starting a hash, but which wouldn't be matched
+        by a directive or a macro earlier.
+        The canonical example is an HTML color spec.
+        Another good example, is in-document hypertext links
+        (or the dummy versions thereof often used a href targets
+        when javascript is used.
+        Note that it MUST NOT match block-ending directives. """
+    # because of earlier elements, this will always start with a hash
+    PLAIN = re.compile(r'(\#+\{?[\d\w]*\}?)(.*)$', re.S)
+
+    def parse(self):
+        self.text, = self.identity_match(self.PLAIN)
+        if self.text.startswith('#end') or self.text.startswith('#{end}') or self.text.startswith('#else') or self.text.startswith('#{else}') or self.text.startswith('#elseif') or self.text.startswith('#{elseif}'):
+            raise NoMatch
+
+    def evaluate(self, stream, namespace, loader, xform=None):
+        stream.write(self.text)
 
 class IntegerLiteral(_Element):
     INTEGER = re.compile(r'(\d+)(.*)', re.S)
@@ -467,6 +488,18 @@ class Placeholder(_Element):
             stream.write(unicode(value))
 
 
+class LiteralContent(_Element):
+    START = re.compile(r'#\[\[(.*?)(\]\]#.*)', re.S + re.M)
+    END = re.compile(r'\]\]#(.*)$', re.S)
+		
+    def parse(self):
+        self.literalcontent, = self.identity_match(self.START)
+        self.require_match(self.END, ']]#')
+
+    def evaluate(self, stream, namespace, loader, xfrom=None):
+        stream.write(unicode(self.literalcontent))
+
+
 class SimpleReference(_Element):
     LEADING_DOLLAR = re.compile('\$(.*)', re.S)
 
@@ -652,7 +685,12 @@ class MacroCall(_Element):
         self.args = []
         if self.macro_name in MacroDefinition.RESERVED_NAMES or self.macro_name.startswith('end'):
             raise NoMatch()
-        self.require_match(self.OPEN_PAREN, '(')
+        if not self.optional_match(self.OPEN_PAREN):
+            # It's not really a macro call,
+            # it's just a spare pound sign with text after it,
+            # the typical example being a color spec: "#ffffff"
+            # call it not-a-match and then let another thing catch it
+            raise NoMatch()
         while True:
             try: self.args.append(self.next_element(Value))
             except NoMatch: break
@@ -760,7 +798,7 @@ class Block(_Element):
     def parse(self):
         self.children = []
         while True:
-            try: self.children.append(self.next_element((Text, Placeholder, Comment, IfDirective, SetDirective, ForeachDirective, IncludeDirective, ParseDirective, MacroDefinition, MacroCall)))
+            try: self.children.append(self.next_element((Text, Placeholder, Comment, IfDirective, SetDirective, ForeachDirective, IncludeDirective, ParseDirective, MacroDefinition, MacroCall, LiteralContent, FallthroughHashText)))
             except NoMatch: break
 
     def evaluate(self, stream, namespace, loader, xform=None):

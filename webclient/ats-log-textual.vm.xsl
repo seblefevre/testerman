@@ -10,21 +10,21 @@
 <html xmlns="http://www.w3.org/1999/xhtml">
 <head>
 	<title><xsl:value-of select="/ats//@id" /></title>
-	<link rel="stylesheet" type="text/css" href="static/testerman.css"></link>
+	<link rel="stylesheet" type="text/css" href="static/${theme}/testerman.css"></link>
 	<script type="text/javascript" src="static/testerman.js"></script>
 </head>
 <body>
 	<div id="page">
 		<div id="banner">
 			<div id="header">
-				<a id="logo" href="/"><img src="static/testerman-logo.png" alt="testerman" /></a>
+				<a id="logo" href="/"><img src="static/${theme}/testerman-logo.png" alt="testerman" /></a>
 			</div>
 		</div>
 		<div id="main">
 			<div id="content" class="wiki">
 				<div class="wikipage">
 
-<!-- the interesting part -->
+<!-- the interesting part #[[ -->
 <p>
 Test Execution Results for ATS:
 <a>
@@ -377,3 +377,5 @@ Test Execution Results for ATS:
 </xsl:template>
 
 </xsl:stylesheet>
+
+<!-- ]]# -->

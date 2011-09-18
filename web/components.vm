@@ -3,13 +3,13 @@
   
 <head>
 	<title>${config.ts_name} - Testerman server</title>
-	<link rel="stylesheet" type="text/css" href="static/testerman.css" />
+	<link rel="stylesheet" type="text/css" href="static/${theme}/testerman.css" />
 </head>
 <body>
 	<div id="page">
 		<div id="banner">
 			<div id="header">
-				<a id="logo" href="/"><img src="static/testerman-logo.png" alt="testerman" /></a>
+				<a id="logo" href="/"><img src="static/${theme}/testerman-logo.png" alt="testerman" /></a>
 			</div>
 		</div>
 		<div id="main">

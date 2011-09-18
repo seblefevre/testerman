@@ -262,11 +262,12 @@ class WebApplication:
 	# If you want to authenticate your users, provide a realm
 	#	and reimplement the authenticate() method.
 	
-	def __init__(self, documentRoot = '', debug = False, authenticationRealm = None):
+	def __init__(self, documentRoot = '', debug = False, authenticationRealm = None, theme = "default"):
 		self.request = None
 		self._documentRoot = documentRoot
 		self._debug = debug
 		self._authenticationRealm = authenticationRealm
+		self._theme = theme
 
 	def authenticate(self, username, password):
 		return True
@@ -300,8 +301,14 @@ class WebApplication:
 		return self.request.getClientAddress()
 
 	def _isTemplate(self, path):
-		_, ext = os.path.splitext(path)
-		return ext in ['.vm', '.vcss']
+		"""
+		Files with a 'secondary' extension are also checked:
+		file.vm : template
+		file.vm.ext : also a template
+		"""
+		name, ext = os.path.splitext(path)
+		return (ext in ['.vm', '.vcss']) or (os.path.splitext(name)[1] in ['.vm', '.vcss'])
+			
 	
 	def do_GET(self):
 		try:
@@ -476,13 +483,16 @@ class WebApplication:
 			self.request.sendError(415)
 			return
 		
-		# Apply the template
+		# Get the template and merge the context parameters		
 		template = airspeed.Template(contents)
-		if context is None:
-			context = self._getDefaultTemplateContext()
+		defaultContext = self._getDefaultTemplateContext()
+		if not context:
+			context = {}
+		for k in defaultContext:
+			if not k in context:
+				context[k] = defaultContext[k]
 		
-		context['contextroot'] = self.request.getContextRoot()
-		
+		# Apply the template
 		output = template.merge(context)
 		self.request.sendResponse(200)
 		self.request.sendHeader('Content-Type', contentType + ';charset=utf-8')
@@ -496,23 +506,15 @@ class WebApplication:
 		all templates.
 		"""
 		# All configuration and internal (transient) values
-		ret = { 'context-root': self.request.getContextRoot(), 'config': {}, 'internal': {}}
+		ret = { 'config': {}, 'internal': {}}
 		for v in cm.getVariables():
 			ret['config'][v['key'].replace('.', '_')] = v['actual']
 		for v in cm.getTransientVariables():
 			ret['internal'][v['key'].replace('.', '_')] = v['value']
 
-		# Published components
-		if cm.get('testerman.document_root'):
-			updateFile = '%s/updates.xml' % cm.get('testerman.document_root')
-			um = UpdateMetadataWrapper(updateFile)
-			try:
-				ret['components'] = um.getComponentsList()
-			except:
-				if self._getDebug():
-					getLogger().error(Tools.getBacktrace())
+		ret['contextroot'] = self.request.getContextRoot()
+		ret['theme'] = self._theme
 
-		# More to come
 		return ret
 
 
@@ -720,121 +722,3 @@ class WebSocketApplication:
 		self._stopEvent.set()
 
 
-################################################################################
-# Actual Web Applications (that can be deployed)
-################################################################################
-
-class TestermanWebApplication(WebApplication):
-	"""
-	This application completes the base one with dynamic resources
-	handlers implementations.
-	
-	Used to serve GET requests over the Ws interface, to
-	download installers, component, and offer other
-	server-oriented services.
-	"""
-	##
-	# Dynamic resources handlers
-	##
-
-	def handle_teapot(self, args):
-		"""
-		Test function.
-		"""
-		self.request.sendError(418)
-	
-	def handle_qtestermaninstaller(self, args):
-		"""
-		Sends the latest installer script to install QTesterman.
-		Substitute a default server/port on the fly.
-		"""
-		def xform(source):
-			# The Ws connection url could be constructed from multipe sources:
-			# - the HTTP 1.1 host header, if any
-			# - the web connection IP address (self.connection.getsockname())
-			#   but this is an IP address and not very friendly. However, it will always
-			#   work, as the web listener is the same as for the Ws interface.
-			# - from a dedicated configuration variable so that the admin
-			#   can set a valid, resolvable hostname to connect to the server instead of an IP address.
-			# - using the interface.ws.port and the local hostname, but this hostname
-			#   may not be resolved by the client. However, we'll opt for this option as a fallback for now
-			#   (more user friendly, and the chances that the hostname cannot be resolved or
-			#   resolved to an incorrect IP/interfaces are low - let me know if you have the need
-			#   for the second option instead).
-			if "host" in self.request.getHeaders():
-				url = 'http://%s' % self.request.getHeaders()["host"]
-			else:
-				url = 'http://%s:%s' % (socket.gethostname(), cm.get("interface.ws.port"))
-			return source.replace('DEFAULT_SERVER_URL = "http://localhost:8080"', 'DEFAULT_SERVER_URL = %s' % repr(url))
-
-		installerPath = os.path.abspath("%s/qtesterman/Installer.py" % cm.get_transient("testerman.testerman_home"))
-		# We should pre-configure the server Url on the fly
-		self._rawServeFile(installerPath, asFilename = "QTesterman-Installer.py", xform = xform)
-	
-	def handle_pyagentinstaller(self, args):
-		"""
-		Sends the latest installer script to install a PyAgent.
-		Substitute a default server/port on the fly.
-		"""
-		def xform(source):
-			return source.replace('DEFAULT_TACS_IP = "127.0.0.1"', 'DEFAULT_TACS_IP = %s' % repr(cm.get("interface.xa.ip"))).replace(
-			'DEFAULT_TACS_PORT = 40000', 'DEFAULT_TACS_PORT = %s' % repr(int(cm.get("interface.xa.port"))))
-		
-		installerPath = os.path.abspath("%s/pyagent/agent-installer.py" % cm.get_transient("testerman.testerman_home"))
-		# We should pre-configure the server Url on the fly
-		self._rawServeFile(installerPath, asFilename = "agent-installer.py", xform = xform)
-
-	def handle_docroot(self, path):
-		"""
-		Download a file from the testerman (not web) docroot
-		"""
-
-		path = os.path.abspath("%s/%s" % (cm.get('testerman.document_root'), path))
-		
-		getLogger().debug("Requested file: %s" % path)
-		
-		if not path.startswith(cm.get('testerman.document_root')):
-			# The query is outside the testerman docroot. Forbidden.
-			self.request.sendError(403)
-			return
-
-		self._rawServeFile(path, asFilename = os.path.basename(path))
-
-
-
-###############################################################################
-# updates.xml reader
-###############################################################################
-
-import xml.dom.minidom
-
-class UpdateMetadataWrapper:
-	"""
-	A class to manage several actions on the updates.xml
-	"""
-	def __init__(self, filename):
-		self._filename = filename
-		self._docroot = os.path.split(self._filename)[0]
-
-	def getComponentsList(self):
-		"""
-		Returns the currently published components and their status.
-		"""
-		f = open(self._filename, 'r')
-		content = ''.join([x.strip() for x in f.readlines()])
-		f.close()
-
-		ret = []
-		
-		doc = xml.dom.minidom.parseString(content)
-		for e in doc.firstChild.getElementsByTagName('update'):
-			version = e.attributes['version'].value
-			component = e.attributes['component'].value
-			branch = e.attributes['branch'].value
-			url = e.attributes['url'].value
-			ret.append(dict(version = version, component = component, branch = branch, archive = url))
-
-		# Ordered by component, then version
-		ret.sort(lambda x, y: cmp((x.get('component'), x.get('version')), (y.get('component'), y.get('version'))))
-		
-		return ret

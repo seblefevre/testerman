@@ -3,13 +3,13 @@
   
 <head>
 	<title>ATS: ${path}</title>
-	<link rel="stylesheet" type="text/css" href="static/testerman.css" />
+	<link rel="stylesheet" type="text/css" href="static/${theme}/testerman.css" />
 </head>
 <body>
 	<div id="page">
 		<div id="banner">
 			<div id="header">
-				<a id="logo" href="/"><img src="static/testerman-logo.png" alt="testerman" /></a>
+				<a id="logo" href="/"><img src="static/${theme}/testerman-logo.png" alt="testerman" /></a>
 			</div>
 		</div>
 		<div id="main">
@@ -35,7 +35,7 @@ Select groups to run:<br />
 #end
 <p>
 	Run this ATS with the following profile:
-	<select name="profile" onclick="document.getElementById('customparameters').style.display = (this.options[this.selectedIndex].value == '__custom__') ? 'block' : 'none';">
+	<select name="profile" onchange="document.getElementById('customparameters').style.display = (this.options[this.selectedIndex].value == '__custom__') ? 'block' : 'none';">
 		<option value="__default__">(default)</option>
 		#if ($parameters)
 		<option value="__custom__">(custom - see below)</option>
@@ -47,12 +47,14 @@ Select groups to run:<br />
 </p>
 #if ($parameters)
 ## This block only appears if __custom__ has been selected above
-<p id="customparameters" style="display:none">
+<div id="customparameters" style="display:none">
 	Use the following custom parameters:<br />
+	<table>
 	#foreach ($variable in $parameters)
-	${variable.name}: <input type="text" name="${variable.name}" value="${variable.defaultValue}" /><br />
+	<tr><td>${variable.name}:</td><td><input type="text" name="${variable.name}" value="${variable.defaultValue}" /></td></tr>
 	#end
-</p>
+	</table>
+</div>
 #end
 <input type="submit" value="Run (in a new window)" />
 </form>

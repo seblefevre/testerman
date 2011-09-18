@@ -3,14 +3,14 @@
   
 <head>
 	<title>Monitoring Job ID ${jobId}</title>
-	<link rel="stylesheet" type="text/css" href="static/testerman.css" />
+	<link rel="stylesheet" type="text/css" href="static/${theme}/testerman.css" />
 	<script type="text/javascript" src="static/testerman.js"></script>
 </head>
 <body>
 	<div id="page">
 		<div id="banner">
 			<div id="header">
-				<a id="logo" href="/"><img src="static/testerman-logo.png" alt="testerman" /></a>
+				<a id="logo" href="/"><img src="static/${theme}/testerman-logo.png" alt="testerman" /></a>
 			</div>
 		</div>
 		<div id="main">

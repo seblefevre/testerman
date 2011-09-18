@@ -3,13 +3,13 @@
   
 <head>
 	<title>${config.ts_name} - Testerman server</title>
-	<link rel="stylesheet" type="text/css" href="static/testerman.css" />
+	<link rel="stylesheet" type="text/css" href="static/${theme}/testerman.css" />
 </head>
 <body>
 	<div id="page">
 		<div id="banner">
 			<div id="header">
-				<a id="logo" href="/"><img src="static/testerman-logo.png" alt="testerman" /></a>
+				<a id="logo" href="/"><img src="static/${theme}/testerman-logo.png" alt="testerman" /></a>
 			</div>
 		</div>
 		<div id="main">
@@ -32,7 +32,7 @@ Administrator: <a href="mailto:${config.testerman_administrator_email}">${config
 <ul>
 	<li><a class="wiki" href="qtestermaninstaller">QTesterman installer</a> - Download and run this file to install the QTesterman rich client on your computer</li>
 	<li><a class="wiki" href="pyagentinstaller">PyAgent installer</a> - Download and run this command line script to install a PyAgent agent on your computer</li>
-	<li><a class="wiki" href="components.vm">Published components</a> - Directly download and install QTesterman or a PyAgent</li>
+	<li><a class="wiki" href="components">Published components</a> - Directly download and install QTesterman or a PyAgent</li>
 </ul>	
 
 <p>

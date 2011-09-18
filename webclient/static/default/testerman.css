@@ -1,0 +1,412 @@
+/* Theme: wide/almost full page, inspired by www.portablepython.com (thanks to their designers !) */
+
+/******************************************************************************
+ * General
+ ******************************************************************************/
+
+body, th, td {
+ font: normal 13px 'trebuchet ms', arial, verdana,'Bitstream Vera Sans',helvetica,sans-serif; /* Modified */
+}
+
+h1, h2, h3, h4 {
+ font-family: 'Century Gothic', 'Trebuchet MS', 'Arial Narrow', arial, verdana,'Bitstream Vera Sans',helvetica,sans-serif; 
+ font-weight: normal;
+ color: #a0a0a0; /* #326dc7; */ /* #728c40; */
+ letter-spacing: -0.018em;
+ page-break-after: avoid;
+}
+
+h1 {
+ margin-top: 30px;
+ border-width: 0 0 1px 0;
+ border-style: solid;
+ border-color: #eeeeee; 
+ font-size: 27px;
+ margin:0.15em 1em 0.5em 0;
+ /* text-transform: uppercase; */
+}
+
+/* Top-level element: page */
+/* page contains: 
+ * - banner (contains header, search, metanav [=login/pref/help/about]), 
+ * - mainnav [=wiki/timeline/...], 
+ * - main (which contains ctxtnav, content, altlinks), 
+ * - footer
+ */
+
+#page {
+ margin-left: 0px;
+ margin-right: 0px;
+ font-family: 'trebuchet ms', arial, verdana,'Bitstream Vera Sans',helvetica,sans-serif; 
+}
+
+body {
+ background: #fff url(grey-stripes.png) repeat-x;
+ color: #000;
+ margin-top: 0px; 
+ margin-bottom: 0px;
+ margin-left: 0px;
+ margin-right: 0px;
+ padding: 0;
+}
+
+#content a {
+ color: #4d87ce;
+ text-decoration: none;
+ border: 0px;
+ font-weight: bold;
+}
+
+#content a:hover {
+ color: #2a65ad;
+}
+
+/* banner */
+
+#banner {
+ height: 68px;
+ margin-left: 0px;
+ margin-right: 0px;
+}
+
+/* header - The logo */
+#header img {
+ border: none;
+ margin: 0 0 -2.4em 4em;
+}
+
+/* search div */
+#search {
+ margin-right: 66px;
+ margin-top: -15px;
+}
+
+/* Meta navigation */
+#metanav li {
+ color: #aaa;
+}
+
+#metanav a {
+ color: #aaa;
+}
+
+#metanav a:hover {
+ color: #ffc800;
+ background: transparent;
+}
+
+#metanav {
+ margin-right: 61px;
+ margin-top: -2px;
+}
+
+/* Main navigation bar (Wiki/Timeline/Roadmap/etc) */
+#mainnav {
+ border: 0px;
+ background: #fff;
+ font: normal 10px 'arial','trebuchet ms',verdana,'Bitstream Vera Sans',helvetica,arial,sans-serif; /* Modified */
+ margin-bottom: 0px;
+ margin-left: 0px;
+ margin-right: 0px;
+ margin-top: -15px;
+ padding: .3em 50px .3em 0;
+ height: 15px;
+}
+
+#mainnav li {
+ border: 0px;
+ padding: .25em 0
+}
+
+#mainnav :link, #mainnav :visited {
+ background: transparent;
+ border: 0px; 
+ color: #000000; 
+ padding: .3em 20px; 
+}
+
+#mainnav :link:hover, #mainnav :visited:hover {
+ border: 0px; 
+ background: #ffc800;
+ padding: .3em 20px; 
+}
+
+/* current tab */
+#mainnav .active :link, #mainnav .active :visited {
+ border: 0px; 
+ background: #444444;
+ color: #ffffff;
+ font-weight: bold;
+ padding: .3em 20px; 
+}
+
+#mainnav .active :link:hover, #mainnav .active :visited:hover {
+ border: 0px; 
+ padding: .3em 20px; 
+}
+
+/* main */
+
+#main {
+ margin-left: 0px;
+ margin-right: 0px;
+}
+
+/* Contextual navigation bar */
+#ctxtnav {
+ border: 1px solid #eeeeee;
+ border-left: 0px;
+ border-right: 0px;
+ border-bottom: 0px;
+ background: #ffffff;
+ height: 20px;
+ padding: 5px 61px 0 0px;
+ margin: 0;
+ margin-top: -2px;
+} /* Modified */
+
+#ctxtnav a {
+ color: #aaa;
+ text-decoration: none;
+ border: none;
+}
+
+#ctxtnav a:hover {
+ color: #ffc800;
+ background: transparent;
+}
+
+
+#altlinks {
+ background: #fff;
+}
+
+/* footer */
+#footer {
+ margin-left: 0px;
+ margin-right: 0px;
+ background: #fff;
+ padding: 10px;
+}
+
+
+#content {
+ margin-top: 0;
+ margin-left: 0px;
+ margin-right: 0px;
+ padding-top: 15px;
+ padding-bottom: 15px;
+ padding-left: 60px;
+ padding-right: 60px;
+ background: #fff;
+}
+
+.wikipage {
+ padding-left: 18px;
+}
+
+.wikipage h1, .wikipage h2, .wikipage h3 {
+margin-left:-18px;
+}
+
+h2 {
+ font-size:16px;
+}
+
+td {
+ border-width: 0 0 1px 0;
+ border-style: solid;
+ border-color: #eeeeee; 
+}
+
+
+/******************************************************************************
+ * Browser
+ ******************************************************************************/
+
+ul.browser li {
+	list-style-image: url('icon-unknown.png');
+}
+ul.browser li.ats {
+	list-style-image: url('icon-ats.png');
+}
+ul.browser li.campaign {
+	list-style-image: url('icon-campaign.png');
+}
+ul.browser li.directory {
+	list-style-image: url('icon-folder.png');
+}
+
+
+/******************************************************************************
+ * ATS Logs
+ ******************************************************************************/
+
+/* Test case summary (ats results view) */
+
+table.summary .pass {
+	color: \#0DCE07;
+}
+table.summary .fail {
+	color: \#bb0000;
+	font-weight: bold;
+}
+
+table.summary th {
+	border-width: 1px 1px 1px 1px;
+	border-style: inset;
+	border-color: gray;
+	padding: 3px;
+	font-weight: bold;
+}
+
+table.summary {
+	border-width: 1px;
+	border-spacing: 0px;
+	border-style: outset;
+	border-color: gray;
+	border-collapse: collapse;
+	background-color: #ffffff;
+}
+
+table.summary td {
+	border-width: 1px 1px 1px 1px;
+	padding: 3px;
+	border-style: inset;
+	border-color: gray;
+}
+
+/* Test case main presentation (ats results view) */
+
+table.testcase {
+	border-width: 1px;
+	border-spacing: 0px;
+	border-style: outset;
+	border-color: gray;
+	border-collapse: collapse;
+	background-color: #ffffff;
+/*	width: 600px; */
+}
+table.testcase th {
+	border-width: 1px 1px 1px 1px;
+	padding: 3px;
+	border-style: inset;
+	border-color: gray;
+	font-weight: bold;
+}
+
+table.testcase td {
+	border-width: 1px 1px 1px 1px;
+	padding: 3px;
+	border-style: inset;
+	border-color: gray;
+}
+
+table.testcase {
+	background-color: #ffffff;
+}
+table.postamble {
+	background-color: #ffffff;
+}
+table.preamble {
+	background-color: #ffffff;
+}
+
+/* Test case: user logs */
+
+table.testcase-userlog-table {
+	border-width: 0px;
+	border-spacing: 0px;
+	border-style: outset;
+	border-color: gray;
+	border-collapse: collapse;
+}
+
+table.testcase-userlog-table td {
+	padding: 1px;
+	padding-right: 10px;
+	border-width: 0px;
+	vertical-align: top;
+}
+
+/* Test case: analysis */
+
+table.testcase-analysis-table {
+	border-width: 0px;
+	border-spacing: 0px;
+	border-style: outset;
+	border-color: gray;
+	border-collapse: collapse;
+}
+
+table.testcase-analysis-table td {
+	padding: 1px;
+	border-width: 0px;
+	padding-right: 10px;
+	vertical-align: top;
+}
+
+table td.time {
+	white-space: nowrap;
+}
+
+/* Detailed log view - the different types of entries */
+
+table .user {
+	font-style: italic;
+}
+
+table .testcase-started {
+	font-weight: bold;
+}
+table .testcase-stopped {
+	font-weight: bold;
+}
+table .template-match {
+	color: lawngreen;
+}
+table .template-mismatch {
+	color: red;
+}
+
+/* payloads and message display in the detailed log view */
+
+div.system-payload {
+	padding: 2px;
+  border: solid 0px;
+	background: #eeeeee;
+	font: normal 11px "courier new";
+  word-wrap: break-word;
+  display: none; /* switched to block via javascript, collapsed by default */
+}
+
+div.message {
+  display: none; /* switched to block via javascript, collapsed by default */
+}
+
+div.message .value {
+	padding: 2px;
+  border: solid 0px;
+	background: #eeeeee;
+	font: normal 11px "courier new";
+}
+
+div.message .record {
+	list-style-type: square;
+	margin: 1px;
+}
+
+div.message .list {
+	margin: 1px;
+}
+
+
+#scrollarea-logs {
+	height: 300px;
+	overflow: auto;
+	background-color: #f9f9f9;
+	border: 1px solid black;
+	resize: vertical;
+	min-height: 200px;
+	max-height: 1000px;
+}

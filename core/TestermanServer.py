@@ -58,6 +58,144 @@ def getLogger():
 
 
 ################################################################################
+# Testerman Web Application
+################################################################################
+
+class TestermanWebApplication(WebServer.WebApplication):
+	"""
+	This application completes the base one with dynamic resources
+	handlers implementations.
+	
+	Used to serve GET requests over the Ws interface, to
+	download installers, component, and offer other
+	server-oriented services.
+	"""
+
+	##
+	# Dynamic resources handlers
+	##
+
+	def handle_teapot(self, args):
+		"""
+		Test function.
+		"""
+		self.request.sendError(418)
+	
+	def handle_qtestermaninstaller(self, args):
+		"""
+		Sends the latest installer script to install QTesterman.
+		Substitute a default server/port on the fly.
+		"""
+		def xform(source):
+			# The Ws connection url could be constructed from multipe sources:
+			# - the HTTP 1.1 host header, if any
+			# - the web connection IP address (self.connection.getsockname())
+			#   but this is an IP address and not very friendly. However, it will always
+			#   work, as the web listener is the same as for the Ws interface.
+			# - from a dedicated configuration variable so that the admin
+			#   can set a valid, resolvable hostname to connect to the server instead of an IP address.
+			# - using the interface.ws.port and the local hostname, but this hostname
+			#   may not be resolved by the client. However, we'll opt for this option as a fallback for now
+			#   (more user friendly, and the chances that the hostname cannot be resolved or
+			#   resolved to an incorrect IP/interfaces are low - let me know if you have the need
+			#   for the second option instead).
+			if "host" in self.request.getHeaders():
+				url = 'http://%s' % self.request.getHeaders()["host"]
+			else:
+				url = 'http://%s:%s' % (socket.gethostname(), cm.get("interface.ws.port"))
+			return source.replace('DEFAULT_SERVER_URL = "http://localhost:8080"', 'DEFAULT_SERVER_URL = %s' % repr(url))
+
+		installerPath = os.path.abspath("%s/qtesterman/Installer.py" % cm.get_transient("testerman.testerman_home"))
+		# We should pre-configure the server Url on the fly
+		self._rawServeFile(installerPath, asFilename = "QTesterman-Installer.py", xform = xform)
+	
+	def handle_pyagentinstaller(self, args):
+		"""
+		Sends the latest installer script to install a PyAgent.
+		Substitute a default server/port on the fly.
+		"""
+		def xform(source):
+			return source.replace('DEFAULT_TACS_IP = "127.0.0.1"', 'DEFAULT_TACS_IP = %s' % repr(cm.get("interface.xa.ip"))).replace(
+			'DEFAULT_TACS_PORT = 40000', 'DEFAULT_TACS_PORT = %s' % repr(int(cm.get("interface.xa.port"))))
+		
+		installerPath = os.path.abspath("%s/pyagent/agent-installer.py" % cm.get_transient("testerman.testerman_home"))
+		# We should pre-configure the server Url on the fly
+		self._rawServeFile(installerPath, asFilename = "agent-installer.py", xform = xform)
+
+	def handle_docroot(self, path):
+		"""
+		Download a file from the testerman (not web) docroot
+		"""
+
+		path = os.path.abspath("%s/%s" % (cm.get('testerman.document_root'), path))
+		
+		getLogger().debug("Requested file: %s" % path)
+		
+		if not path.startswith(cm.get('testerman.document_root')):
+			# The query is outside the testerman docroot. Forbidden.
+			self.request.sendError(403)
+			return
+
+		self._rawServeFile(path, asFilename = os.path.basename(path))
+
+	def handle_components(self, path):
+		"""
+		Displays the various published components on this server.
+		"""
+
+		context = {}
+		# Published components
+		if cm.get('testerman.document_root'):
+			updateFile = '%s/updates.xml' % cm.get('testerman.document_root')
+			um = UpdateMetadataWrapper(updateFile)
+			try:
+				context['components'] = um.getComponentsList()
+			except:
+				if self._getDebug():
+					getLogger().error(Tools.getBacktrace())
+
+		self._serveTemplate("components.vm", context)
+
+
+###############################################################################
+# updates.xml reader
+###############################################################################
+
+import xml.dom.minidom
+
+class UpdateMetadataWrapper:
+	"""
+	A class to manage several actions on the updates.xml
+	"""
+	def __init__(self, filename):
+		self._filename = filename
+		self._docroot = os.path.split(self._filename)[0]
+
+	def getComponentsList(self):
+		"""
+		Returns the currently published components and their status.
+		"""
+		f = open(self._filename, 'r')
+		content = ''.join([x.strip() for x in f.readlines()])
+		f.close()
+
+		ret = []
+		
+		doc = xml.dom.minidom.parseString(content)
+		for e in doc.firstChild.getElementsByTagName('update'):
+			version = e.attributes['version'].value
+			component = e.attributes['component'].value
+			branch = e.attributes['branch'].value
+			url = e.attributes['url'].value
+			ret.append(dict(version = version, component = component, branch = branch, archive = url))
+
+		# Ordered by component, then version
+		ret.sort(lambda x, y: cmp((x.get('component'), x.get('version')), (y.get('component'), y.get('version'))))
+		
+		return ret
+
+
+################################################################################
 # XML-RPC: Ws Interface implementation
 ################################################################################
 
@@ -90,14 +228,16 @@ class XmlRpcServerThread(threading.Thread):
 		client = TestermanClient.Client(name = "Embedded Testerman WebClient", userAgent = "WebClient/%s" % WebClientServer.VERSION, serverUrl = serverUrl)
 		getLogger().info("Embedded WCS using serverUrl: %s" % serverUrl)
 		# Register applications in this server
-		WebServer.WebApplicationDispatcherMixIn.registerApplication("/", WebServer.TestermanWebApplication, 
+		WebServer.WebApplicationDispatcherMixIn.registerApplication("/", TestermanWebApplication, 
 			documentRoot = cm.get("testerman.web.document_root"), 
-			debug = cm.get("ts.debug"))
+			debug = cm.get("ts.debug"),
+			theme = cm.get("ts.webui.theme"))
 		WebServer.WebApplicationDispatcherMixIn.registerApplication("/webclient", WebClientServer.WebClientApplication, 
 			documentRoot = cm.get("testerman.webclient.document_root"), 
 			testermanClient = client, 
 			debug = cm.get("ts.debug"),
-			authenticationRealm = 'Testerman WebClient')
+			authenticationRealm = 'Testerman WebClient',
+			theme = cm.get("wcs.webui.theme"))
 #		The Request handler compatible with websocket & XML-RPC is not ready yet.
 #		WebServer.WebApplicationDispatcherMixIn.registerApplication('/websocket', WebClientServer.XcApplication, 
 #			testermanServerUrl = serverUrl,
@@ -180,6 +320,8 @@ def main():
 	cm.register("testerman.te.python.interpreter", "/usr/bin/python", dynamic = True)
 	cm.register("testerman.te.python.ttcn3module", "TestermanTTCN3", dynamic = True) # TTCN3 adaptation lib (enable the easy use of previous versions to keep script compatibility)
 	cm.register("testerman.te.log.max_payload_size", 64*1024, dynamic = True) # the maximum dumpable payload in log (as a single value). Bigger payloads are truncated to this size, in bytes.
+	cm.register("ts.webui.theme", "default", dynamic = True)
+	cm.register("wcs.webui.theme", "default", dynamic = True)
 
 
 	parser = optparse.OptionParser(version = getVersion())
