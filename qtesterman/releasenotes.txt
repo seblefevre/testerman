@@ -23,6 +23,8 @@ KNOWN BUGS:
 - Added: support for testcase groups selection
 - Added: dedicated icon for jobs successfully completed but containing
   at least one testcase in error (state complete and return code == 4)
+- Added: support for #[[literal content]]# in SimpleReporter plugin
+  (from Velocity 1.7)
 - Modified: finally a dedicated Testerman icon !
 - Modified: the job manager now displays more recent jobs on the top.
   For a campaign, however, older child jobs are displayed at the bottom.
