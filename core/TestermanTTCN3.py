@@ -2894,7 +2894,12 @@ def match(message, template):
 	"""
 	TTCN-3 match function.
 	"""
-	return templateMatch(message, template)[0]
+	ret, decodedMessage = templateMatch(message, template)
+	if not ret:
+		logTemplateMismatch(tc = getLocalContext().getTc(), port = "", message = decodedMessage, template = _expandTemplate(template), encodedMessage = message)
+	else:
+		logTemplateMatch(tc = getLocalContext().getTc(), port = "", message = decodedMessage, template = _expandTemplate(template), encodedMessage = message)
+	return ret
 
 def _templateMatch(message, template, path):
 	"""
