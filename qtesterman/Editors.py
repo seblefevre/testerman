@@ -550,8 +550,8 @@ class WAtsDocumentEditor(WDocumentEditor):
 		self.connect(self.editor, SIGNAL('modificationChanged(bool)'), self.model.onBodyModificationChanged)
 
 		# Split view test
+		self.secondEditor = WPythonCodeEditor(None, self, self.editor.document())
 		"""
-		e = WPythonCodeEditor(None, self, self.editor.document())
 		e.setWindowTitle("Second view")
 		e.setParent(self)
 		e.setWindowFlags(Qt.Window)
@@ -693,7 +693,17 @@ class WAtsDocumentEditor(WDocumentEditor):
 		self.mainSplitter.addWidget(self.parametersEditor)
 		self.mainSplitter.addWidget(self.groupsEditor)
 		self.mainSplitter.addWidget(self.propertiesEditor)
-		self.mainSplitter.addWidget(self.editor)
+		
+		self.editorSplitter = QSplitter(Qt.Vertical)
+		self.editorSplitter.addWidget(self.secondEditor)
+		self.editorSplitter.addWidget(self.editor)
+		self.editorSplitter.setCollapsible(0, True)
+		self.editorSplitter.setCollapsible(1, False)
+		self.editorSplitter.setSizes([0, 100])
+		
+		self.mainSplitter.addWidget(self.editorSplitter)
+#		self.mainSplitter.addWidget(self.editor)
+		
 		self.mainSplitter.addWidget(self.profilesManager)
 		
 		self.mainSplitter.setCollapsible(0, False)
