@@ -742,7 +742,9 @@ class RequestHandler(WebServer.WebApplicationDispatcherMixIn, BaseHTTPServer.Bas
 	rbufsize = 0
 	# and write buffered for explicit flush()
 	wbufsize = -1
-	pass
+	# Disable logging DNS lookups
+	def address_string(self):
+		return str(self.client_address[0])	
 
 class HttpServer(SocketServer.ThreadingMixIn, BaseHTTPServer.HTTPServer):
 	allow_reuse_address = True

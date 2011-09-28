@@ -325,7 +325,7 @@ function logXmlToTableRow(xml) {
 	} else if (n == "tc-stopped") {
 		res = "<span class='" + n + "'>PTC " + e.attributes["id"].value + " stopped, local verdict is " + e.attributes["verdict"].value + "</span>";
 	} else if (n == "verdict-updated") {
-		res = "<span class='" + n + "'>erdict updated to " + e.attributes["verdict"].value + " on TC " + e.attributes["tc"].value + "</span>";
+		res = "<span class='" + n + "'>verdict updated to " + e.attributes["verdict"].value + " on TC " + e.attributes["tc"].value + "</span>";
 	} else if (n == "message-sent") {
 		res = e.attributes["from-tc"].value + "." + e.attributes["from-port"].value + " --> " + e.attributes["to-tc"].value + "." + e.attributes["to-port"].value;
 		res = "<a href=\"javascript:expandCollapse('message-" + cid + "-sent-message')\">" + res + "</a>";

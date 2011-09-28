@@ -348,9 +348,6 @@ class WebApplication:
 							args[k] = None
 						elif len(v) == 1:
 							args[k] = v[0]
-					print 80*"#"
-					print repr(args)
-					print 80*"#"
 					getattr(self, handler)(**args)
 				# or raw string
 				else:
@@ -518,6 +515,23 @@ class WebApplication:
 		return ret
 
 
+class WebSocketFrame:
+	"""
+	A WebSocket Frame (hybi10)
+	"""
+	def __init__(self, opcode, payload, maskingKey):
+		self.opcode = opcode
+		self.payload = ''
+		# automatically apply masking key
+		if maskingKey:
+			index = 0
+			for c in payload:
+				self.payload += chr(ord(maskingKey[index % len(maskingKey)]) ^ ord(c))
+				index += 1
+		else:
+			self.payload = payload
+
+
 class WebSocketApplication:
 	"""
 	Base class to create a WebSocket server that can register into the
@@ -589,40 +603,26 @@ class WebSocketApplication:
 		
 		getLogger().debug("WebSocket handshake handling")
 		
-		# WebSocket Handshake
-		wsKey1 = self.request.getHeaders().get('Sec-WebSocket-Key1')
-		wsKey2 = self.request.getHeaders().get('Sec-WebSocket-Key2')
+		# WebSocket Handshake (version 8+ / draft-ietf-hybi-thewebsocketprotocol-16) [hybi10]
+		wsKey1 = self.request.getHeaders().get('Sec-WebSocket-Key')
 		host = self.request.getHeaders().get('Host')
-		origin = self.request.getHeaders().get('Origin')
+		origin = self.request.getHeaders().get('Sec-WebSocket-Origin')
 		
 		path = self.request.getPath()
-		body = self.request.recv(1024)
 
-#		print "WebSocket handshake handling:"
-#		print wsKey1
-#		print wsKey2
-#		print host
-#		print origin
-#		print "Body:"
-#		print repr(body)
+		wskey = wsKey1.replace(' ', '')
+		GUID = "258EAFA5-E914-47DA-95CA-C5AB0DC85B11"
 		
-		spaces1 = wsKey1.count(" ")
-		spaces2 = wsKey2.count(" ")
-		num1 = int("".join([c for c in wsKey1 if c.isdigit()])) / spaces1
-		num2 = int("".join([c for c in wsKey2 if c.isdigit()])) / spaces2
-
-		token = hashlib.md5(struct.pack('>II8s', num1, num2, body)).digest()
+		token = base64.encodestring(hashlib.sha1(wskey + GUID).digest())
 
 		getLogger().debug("Writing handshake response")
 
-		self.request.sendResponse(101, "WebSocket Protocol Handshake")
-		self.request.sendHeader('Upgrade', 'WebSocket')
+		self.request.sendResponse(101, "Switching Protocols")
+		self.request.sendHeader('Upgrade', 'websocket')
 		self.request.sendHeader('Connection', 'Upgrade')
-		self.request.sendHeader('Sec-WebSocket-Origin', origin)
-		self.request.sendHeader('Sec-WebSocket-Location', 'ws://%s%s%s' % (host, self.request.getContextRoot(), self.request.getPath()))
-		self.request.endHeaders()
-		self.request.write(token)
-		self.request.flush()
+		self.request.sendHeader('Sec-WebSocket-Accept', token)
+#		self.request.endHeaders()
+		self.request.flush() # apparently, this adds a \r\n. So no need to call endHeaders() first which does the same thing too
 		
 		self.request.setCloseCallback(self.onWsClose)
 
@@ -674,22 +674,106 @@ class WebSocketApplication:
 				getLogger().error("WebSocket: Exception in main pool for incoming data: " + str(e))
 				self.wsClose()
 
+
+	def __parseFrames(self):
+		"""
+		Split the incoming raw Ws stream into Ws Frames.
+		"""
+		currentFrames = []
+
+		index = 0
+
+		while self.buf:
+			try:
+				B1 = ord(self.buf[index])
+				fin = B1 & 0x80
+				opcode = B1 & 0x0f
+				B2 = ord(self.buf[index + 1])
+				mask = B2 & 0x80
+				length = B2 & 0x7f
+
+				if length == 126:
+					# length is a 16 bit value
+					length = struct.unpack('>H', self.buf[index+2:index+4])
+					index += 4
+				elif length == 127:
+					# length is a 64 bit value
+					length = struct.unpack('>Q', self.buf[index+2:index+10])
+					index += 10
+				else: # standard length < 127
+					index += 2
+
+				maskingKey = None
+
+				if mask:
+					maskingKey = self.buf[index:index+4]
+					index += 4
+
+#				print 80*"#"
+#				print "Ws Frame:"
+#				print "final: %s" % bool(fin)
+#				print "opcode: %x" % opcode
+#				print "length: %s" % length
+#				print "masked: %s" % bool(mask)
+#				print "maskingKey: %s" % repr(maskingKey)
+
+				# No extension negotiated. What remains is the payload.
+				payload = self.buf[index:index+length]
+				if len(payload) < length:
+					getLogger().debug("Missing bytes in websocket frame (got %s, expected %s)" % (len(payload), length))
+					break
+
+				currentFrames.append(WebSocketFrame(opcode, payload, maskingKey))
+
+				self.buf = self.buf[index+length:]
+			except IndexError:
+				getLogger().debug("Missing data Ws stream into frames")
+				# not enough data yet
+				return currentFrames
+			except Exception, e:
+				getLogger().debug("Exception while splitting Ws stream into frames: %s" % Tools.getBacktrace())
+				return currentFrames
+
+		return currentFrames		
+
+
 	def __on_incoming_data(self):
-		pdus = self.buf.split('\xff')
-		for pdu in pdus[:-1]:
-			if pdu.startswith('\x00'):
-				msg = pdu[1:]
-				if not msg:
-					# According to WebSocket protocol 76, this is a way to request a clean disconnection.
-					getLogger().debug("WebSocket: received empty message, disconnecting")
+		"""
+		In (version 8+ / draft-ietf-hybi-thewebsocketprotocol-16 / hybi10)
+		data framing is no longer as simple as \xff / \x00 separators.
+		
+		Byte 0:
+		FIN, RSV1, RSV2, RSV3, Opcode(4)
+		Byte 1:
+		Mask(1), Length(7), possibly continued on next 16 or 64 bits)
+		"""
+		
+		# TODO: support for fragmented frames
+		# TODO: support for ping frames
+		
+		for frame in self.__parseFrames():
+			if frame.opcode == 8:
+				getLogger().debug("WebSocket: received connection close frame - disconnecting")
+				self.wsClose()
+				return
+			
+			elif frame.opcode in [1, 2]:
+				getLogger().debug("WebSocket: received message:\n%s" % repr(frame.payload))
+				
+				if not frame.payload:
+					getLogger().debug("WebSocket: received empty payload - disconnecting") # This is not WebSocket RFC compliant, I guess...
 					self.wsClose()
 					return
-				getLogger().debug("WebSocket: received message:\n%s" % repr(msg))
+				
 				try:
-					self.onWsMessage(msg)
+					self.onWsMessage(frame.payload)
 				except Exception, e:
 					getLogger().error("WebSocket: userland exception while handling message:\n%s\n%s" % (repr(msg), Tools.getBacktrace()))
-		self.buf = pdus[-1]
+			
+			else:
+				getLogger().warning("WebSocket: received unsupported frame, opcode %s" % frame.opcode)
+
+
 
 	##
 	# To reimplement in subclasses
@@ -710,9 +794,21 @@ class WebSocketApplication:
 	
 	def wsSend(self, msg):
 		"""
-		Create and send a 'WebSocket packet', with the WebSocket PDU delimiters.
+		Create and send a 'WebSocket frame' (hybi10).
 		"""
-		self.request.write('\x00' + msg + '\xff')
+		opcode = 1 # text
+		
+		b1 = 0x80 | (opcode & 0x0f) # FIN + opcode
+		payload_len = len(msg)
+		if payload_len <= 125:
+			header = struct.pack('>BB', b1, payload_len)
+		elif payload_len > 125 and payload_len < 65536:
+			header = struct.pack('>BBH', b1, 126, payload_len)
+		elif payload_len >= 65536:
+			header = struct.pack('>BBQ', b1, 127, payload_len)
+
+		buf = header + msg
+		self.request.write(buf)
 		self.request.flush()
 
 	def wsClose(self):
