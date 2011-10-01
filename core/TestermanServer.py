@@ -238,10 +238,9 @@ class XmlRpcServerThread(threading.Thread):
 			debug = cm.get("ts.debug"),
 			authenticationRealm = 'Testerman WebClient',
 			theme = cm.get("wcs.webui.theme"))
-#		The Request handler compatible with websocket & XML-RPC is not ready yet.
-#		WebServer.WebApplicationDispatcherMixIn.registerApplication('/websocket', WebClientServer.XcApplication, 
-#			testermanServerUrl = serverUrl,
-#			debug = cm.get("ts.debug"))
+		WebServer.WebApplicationDispatcherMixIn.registerApplication('/websocket', WebClientServer.XcApplication, 
+			testermanServerUrl = serverUrl,
+			debug = cm.get("ts.debug"))
 
 		# We should be more selective...
 		self._server.register_instance(WebServices)
