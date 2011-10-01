@@ -88,8 +88,13 @@ function startMonitoringLogs(jobId) {
 	try {
 		xcws = new WebSocket("ws://" + document.location.host + "/websocket/xc");
 	} catch(err) {
-		replaceContent("execution-logs", "<p><b>Disabled</b>. Check that your browser supports websocket (for instance Chrome 11+, Firefox 4.0.1+ with network.websocket.override-security-block set to true).</p>");
-		return;
+		// Fallback to MozWebSocket (Firefox 7)
+		try {
+			xcws = new MozWebSocket("ws://" + document.location.host + "/websocket/xc");
+		} catch(err) {
+			replaceContent("execution-logs", "<p><b>Disabled</b>. Check that your browser supports the HTML5 websockets API (for instance Chrome 14+, Firefox 7.0+).</p>");
+			return;
+		}
 	}
 	xcws.onopen = function(e) { if (xcws != null) { xcws.send(subscribe("job:" + jobId)); onLogMonitoringEnabled(); } }
 	xcws.onclose = function(e) { onLogMonitoringDisabled(); }
