@@ -69,19 +69,21 @@ def mount(mountpoint, backend, prefix = '/repository/'):
 	create the required directory tree to reach the mountpoint)
 	
 	@rtype: bool
-	@returns: True if the mount successes.
+	@returns: True if the mount succeeds.
 	"""
 	# Clean up and normalize the mountpoint relative to the docroot
 	# Notice the trailing /
-	mountpoint = "%s/" % posixpath.normpath("%s%s" % (prefix, mountpoint))
-	
+	mountpoint = posixpath.normpath("%s%s" % (prefix, mountpoint))
+	if not mountpoint.endswith('/'):
+		mountpoint = mountpoint + '/'
+
 	if Mountpoints.has_key(mountpoint):
 		# does not allow mount override
 		getLogger().warning("Not mounting %s with %s: mount point already mounted with %s" % (mountpoint, str(backend), str(Mountpoints[mountpoint])))
 		return False
 	else:
 		Mountpoints[mountpoint] = backend
-		getLogger().info("%s successfully mounted with %s" % (mountpoint, str(backend)))
+		getLogger().info("%s* will be served with backend %s" % (mountpoint, str(backend)))
 		return True
 
 def getBackend(path):
@@ -93,23 +95,34 @@ def getBackend(path):
 	
 	@rtype: tuple (string, backend)
 	"""
+	if not path.startswith('/'):
+		path = '/' + path
+
 	# Clean up and normalize the path relative to the docroot
-	path = posixpath.normpath("/%s" % (path))
-	
+	path = posixpath.normpath(path)
+		
 	# Now, look for the longuest (best) match within the existing mountpoints
 	mountpoints = Mountpoints.keys()
 	mountpoints.sort()
 	mountpoints.reverse() # So that the longuest mountpoints is the first one
-	
+
 	# Let's find the first match
 	for mountpoint in mountpoints:
 		# mountpoint always ends with a /, avoiding incorrect matches in case
 		# where path = "/repository/my/filename"
 		# and mountpoint = "/repository/my/file"
+		
 		if path.startswith(mountpoint):
-			# the adjusted path is then trivial
-			# - still starts with a /
+			# We matched an element under the mountpoint
+			# The adjusted path is the absolute path from this mountpoint
+			# (still starts with a /)
 			adjusted = "/%s" % path[len(mountpoint):]
+			backend = Mountpoints[mountpoint]
+			getLogger().debug('%s: backend %s, adjusted name %s' % (path, str(backend), adjusted))
+			return (adjusted, backend)
+		elif mountpoint == path + '/':
+			# We matched the mountpoint dir exactly
+			adjusted = "/"
 			backend = Mountpoints[mountpoint]
 			getLogger().debug('%s: backend %s, adjusted name %s' % (path, str(backend), adjusted))
 			return (adjusted, backend)
@@ -206,7 +219,6 @@ def mountAll():
 				getLogger().warning("Unable to mount %s with %s" % (mountpoint, str(backend)))
 				continue
 			# OK
-			getLogger().info("%s mounted with %s" % (mountpoint, str(backend)))
 	
 	# Normally we should issue a critical error if we are not able to mount the root backend...
 

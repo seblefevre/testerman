@@ -120,6 +120,23 @@ class FileSystemManager:
 	- rmdir
 	- unlink
 	"""
+
+	def logged(fn, *args, **kw):
+		"""
+		Decorator function to log function calls easily.
+		"""
+		def _decorator(self, *args, **kw):
+			arglist = ', '.join([repr(x) for x in args])
+			if kw:
+				arglist += ', '.join([u'%s=%s' % x for x in kw.items()])
+			desc = "%s(%s)" % (fn.__name__, arglist)
+			getLogger().debug(">>> %s" % desc)
+			ret = fn(self, *args, **kw)
+			getLogger().debug("<<< %s: %s" % (desc, ret))
+			return ret
+		return _decorator
+	
+	
 	def _notify(self, path, backendType, event):
 		"""
 		We notify the filesystem:/directory URI subscribers
@@ -231,7 +248,7 @@ class FileSystemManager:
 			return backend.readprofile(adjusted, vpath.getVirtualValue())
 		else:			
 			return backend.read(adjusted, revision = None)
-	
+
 	def write(self, filename, content, reason = None, notify = True):
 		"""
 		Automatically creates the missing directories up to the file, if needed.
@@ -300,7 +317,8 @@ class FileSystemManager:
 			else:
 				self._notifyFileChanged(resourcepath)
 		return True
-	
+
+	@logged	
 	def unlink(self, filename, reason = None, notify = True):
 		"""
 		Removes a file.
@@ -322,6 +340,7 @@ class FileSystemManager:
 			self._notifyFileDeleted(filename)
 		return ret
 
+	@logged
 	def getdir(self, path):
 		"""
 		Lists the contents of a directory.
@@ -354,6 +373,7 @@ class FileSystemManager:
 				res.append({'name': name, 'type': applicationType})
 		return res
 
+	@logged
 	def mkdir(self, path, notify = True):
 		"""
 		Automatically creates all the directories to create this one.
@@ -388,6 +408,7 @@ class FileSystemManager:
 
 		return True
 
+	@logged
 	def rmdir(self, path, recursive = False, notify = True):
 		"""
 		Removes a directory.
@@ -629,6 +650,7 @@ class FileSystemManager:
 		else:
 			return self._copy(source, destination, False, notify)
 
+	@logged
 	def move(self, source, destination, notify = True):		
 		"""
 		Move source to destination.
@@ -641,6 +663,7 @@ class FileSystemManager:
 		else:
 			return self._copy(source, destination, True, notify)
 
+	@logged
 	def rename(self, source, newName):
 		"""
 		FIXME: support for vpath (to rename a profile)
@@ -667,9 +690,9 @@ class FileSystemManager:
 			return False
 		else:
 			if self.isdir(source):
-				ret = backend.renamedir(source, newName)
+				ret = backend.renamedir(adjusted, newName)
 			else:
-				ret = backend.rename(source, newName)
+				ret = backend.rename(adjusted, newName)
 			if ret:
 				self._notifyFileRenamed(source, newName)
 			return ret
