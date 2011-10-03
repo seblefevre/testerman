@@ -159,12 +159,16 @@ class LocalBackend(FileSystemBackend.FileSystemBackend):
 		newprofilesdir = "%s.profiles" % newn
 		try:
 			os.rename(filename, newn)
-			# rename profiles dir, too
-			os.rename(profilesdir, newprofilesdir)
-			return True
 		except Exception, e:
 			getLogger().warning("Unable to rename %s to %s: %s" % (filename, newname, str(e)))
-		return False
+			return False
+		
+		# rename profiles dir, too - not a problem if the dir did not exist
+		try:
+			os.rename(profilesdir, newprofilesdir)
+		except:
+			pass
+		return True
 
 	def unlink(self, filename, reason = None):
 		filename = self._realpath(filename)
