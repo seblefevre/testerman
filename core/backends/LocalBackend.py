@@ -109,7 +109,7 @@ class LocalBackend(FileSystemBackend.FileSystemBackend):
 			getLogger().warning("Unable to read file %s: %s" % (filename, str(e)))
 			return None
 
-	def write(self, filename, content, baseRevision = None, reason = None):
+	def write(self, filename, content, baseRevision = None, reason = None, username = None):
 		"""
 		Makes sure that we can overwrite the file, if already exists:
 		1 - rename the current one to a filename.backup
@@ -144,7 +144,7 @@ class LocalBackend(FileSystemBackend.FileSystemBackend):
 			getLogger().warning("Unable to write content to %s: %s" % (filename, str(e)))
 			raise(e)
 
-	def rename(self, filename, newname, reason = None):
+	def rename(self, filename, newname, reason = None, username = None):
 		newname = os.path.split(filename)[0] + '/%s' % newname
 		filename = self._realpath(filename)
 		if not filename: 
@@ -152,7 +152,7 @@ class LocalBackend(FileSystemBackend.FileSystemBackend):
 		
 		newn = self._realpath(newname)
 		if not newn: 
-			getLogger().warning("Unable to rename %s to %s: the target name is not in base path" % (filename, newname, str(e)))
+			getLogger().warning("Unable to rename %s to %s: the target name is not in base path" % (filename, newname))
 			return False
 		
 		profilesdir = "%s.profiles" % filename
@@ -170,7 +170,7 @@ class LocalBackend(FileSystemBackend.FileSystemBackend):
 			pass
 		return True
 
-	def unlink(self, filename, reason = None):
+	def unlink(self, filename, reason = None, username = None):
 		filename = self._realpath(filename)
 		if not filename: 
 			return False
@@ -179,7 +179,7 @@ class LocalBackend(FileSystemBackend.FileSystemBackend):
 		profilesdir = "%s.profiles" % filename
 		try:
 			shutil.rmtree(profilesdir, ignore_errors = True)
-		except:
+		except Exception, e:
 			getLogger().warning("Unable to remove profiles associated to %s: %s" % (filename, str(e)))
 
 		try:
@@ -207,7 +207,7 @@ class LocalBackend(FileSystemBackend.FileSystemBackend):
 			getLogger().warning("Unable to list directory %s: %s" % (path, str(e)))
 		return None
 
-	def mkdir(self, path):
+	def mkdir(self, path, username = None):
 		path = self._realpath(path)
 		if not path: 
 			return False
@@ -222,7 +222,7 @@ class LocalBackend(FileSystemBackend.FileSystemBackend):
 			pass
 		return True
 	
-	def rmdir(self, path):
+	def rmdir(self, path, username = None):
 		path = self._realpath(path)
 		if not path: 
 			return False
@@ -237,7 +237,7 @@ class LocalBackend(FileSystemBackend.FileSystemBackend):
 			getLogger().warning("Unable to rmdir %s: %s" % (path, str(e)))
 		return False
 
-	def renamedir(self, path, newname):
+	def renamedir(self, path, newname, reason = None, username = None):
 		path = self._realpath(path)
 		if not path: 
 			return False
@@ -321,7 +321,7 @@ class LocalBackend(FileSystemBackend.FileSystemBackend):
 			getLogger().warning("Unable to read file %s: %s" % (filename, str(e)))
 			return None
 		
-	def writeprofile(self, filename, profilename, content):
+	def writeprofile(self, filename, profilename, content, username = None):
 		filename = self._realpath(filename)
 		if not filename: 
 			raise Exception('Invalid file: not in base path')
@@ -356,7 +356,7 @@ class LocalBackend(FileSystemBackend.FileSystemBackend):
 			getLogger().warning("Unable to write content to %s: %s" % (profilefilename, str(e)))
 			raise(e)
 
-	def unlinkprofile(self, filename, profilename):
+	def unlinkprofile(self, filename, profilename, username = None):
 		filename = self._realpath(filename)
 		if not filename:
 			return None

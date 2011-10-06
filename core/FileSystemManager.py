@@ -85,6 +85,9 @@ class VirtualPath:
 
 	def isProfileRelated(self):
 		return self._vtype == 'profiles'		
+
+	def isRevisionRelated(self):
+		return self._vtype == 'revisions'		
 	
 	def getVirtualValue(self):
 		return self._vvalue
@@ -246,10 +249,12 @@ class FileSystemManager:
 		
 		if vpath.isProfileRelated():
 			return backend.readprofile(adjusted, vpath.getVirtualValue())
+		elif vpath.isRevisionRelated():
+			return backend.read(adjusted, revision = vpath.getVirtualValue())
 		else:			
 			return backend.read(adjusted, revision = None)
 
-	def write(self, filename, content, reason = None, notify = True):
+	def write(self, filename, content, reason = None, notify = True, username = None):
 		"""
 		Automatically creates the missing directories up to the file, if needed.
 		vpath is supported.
@@ -259,14 +264,14 @@ class FileSystemManager:
 		vpath = VirtualPath(filename)
 
 		if not vpath.isVirtual():
-			return self._writeFile(filename, content, reason, notify)
+			return self._writeFile(filename, content, reason, notify, username = username)
 		
 		elif vpath.isProfileRelated():
-			return self._writeProfile(vpath.getBaseValue(), vpath.getVirtualValue(), content, notify)
+			return self._writeProfile(vpath.getBaseValue(), vpath.getVirtualValue(), content, notify, username = username)
 		else:
 			raise Exception("Cannot write this resource (%s)" % filename)
 
-	def _writeFile(self, filename, content, reason, notify):
+	def _writeFile(self, filename, content, reason, notify, username):
 		path = os.path.split(filename)[0]
 		res = self.mkdir(path, notify = notify)
 		if not res:
@@ -281,7 +286,7 @@ class FileSystemManager:
 			newfile = True
 
 		try:
-			backend.write(adjusted, content, baseRevision = None, reason = reason)
+			backend.write(adjusted, content, baseRevision = None, reason = reason, username = username)
 		except Exception, e:
 			getLogger().error("Unable to write %s: %s" % (filename, str(e)))
 			return False
@@ -293,7 +298,7 @@ class FileSystemManager:
 				self._notifyFileChanged(filename) # Well, could be a new revision, too.
 		return True
 
-	def _writeProfile(self, filename, profilename, content, notify):
+	def _writeProfile(self, filename, profilename, content, notify, username):
 		resourcepath = '%s/profiles/%s' % (filename, profilename)
 		(adjusted, backend) = FileSystemBackendManager.getBackend(filename)
 		if not backend:
@@ -306,7 +311,7 @@ class FileSystemManager:
 		print "DEBUG: new profile (%s): %s" % (resourcepath, newfile)
 
 		try:
-			backend.writeprofile(adjusted, profilename, content)
+			backend.writeprofile(adjusted, profilename, content, username = username)
 		except Exception, e:
 			getLogger().error("Unable to profile %s for %s: %s" % (profilename, filename, str(e)))
 			return False
@@ -319,7 +324,7 @@ class FileSystemManager:
 		return True
 
 	@logged	
-	def unlink(self, filename, reason = None, notify = True):
+	def unlink(self, filename, reason = None, notify = True, username = None):
 		"""
 		Removes a file.
 		vpath is supported to remove a profile.
@@ -332,9 +337,9 @@ class FileSystemManager:
 			raise Exception('No backend available to manipulate %s' % filename)
 
 		if vpath.isProfileRelated():
-			ret = backend.unlinkprofile(adjusted, vpath.getVirtualValue())
+			ret = backend.unlinkprofile(adjusted, vpath.getVirtualValue(), username = username)
 		else:
-			ret = backend.unlink(adjusted, reason)
+			ret = backend.unlink(adjusted, reason, username = username)
 
 		if ret and notify:
 			self._notifyFileDeleted(filename)
@@ -356,7 +361,23 @@ class FileSystemManager:
 		if not backend:
 			raise Exception('No backend available to manipulate %s' % baseObject)
 		
-		if vpath.isProfileRelated():
+
+		# Extended dir contents
+		if vpath.isRevisionRelated():
+			dircontents = backend.revisions(adjusted, baseRevision = None, scope = FileSystemBackend.FileSystemBackend.SCOPE_LOCAL)
+			if dircontents is not None:
+				res = []
+				for entry in dircontents:
+					name = entry['id']
+					applicationType = self.getApplicationType(baseObject, path, 'file')
+					if applicationType:			
+						res.append({'name': name, 'type': applicationType, 'revision': entry})
+				return res
+			else:
+				return None
+			
+		# Standard dir contents
+		elif vpath.isProfileRelated():
 			dircontents = backend.getprofiles(adjusted)
 		else:			
 			dircontents = backend.getdir(adjusted)

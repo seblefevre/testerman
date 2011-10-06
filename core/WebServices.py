@@ -52,7 +52,7 @@ import zlib
 #: API versions: major.minor
 #: major += 1 if not backward compatible,
 #: minor += 1 if feature-enriched, backward compatible
-WS_VERSION = '1.6'
+WS_VERSION = '1.7'
 
 
 ################################################################################
@@ -469,7 +469,7 @@ def getFile(path, useCompression = False):
 		getLogger().info("<< getFile(%s): file not found" % (path))
 	return ret
 
-def putFile(content, path, useCompression = False):
+def putFile(content, path, useCompression = False, username = None):
 	"""
 	Writes a file to docroot/path
 	
@@ -481,6 +481,8 @@ def putFile(content, path, useCompression = False):
 	@param path: a complete path, with filename and extension, relative to the document root.
 	@type  useCompression: bool
 	@param useCompression: (since 1.3) if set to True, the content is gziped before being mime64-encoded.
+	@type  username: string
+	@param username: (since 1.7) the committer/writer
 	
 	@rtype: bool
 	@returns: True if OK, False otherwise
@@ -494,7 +496,7 @@ def putFile(content, path, useCompression = False):
 		content = base64.decodestring(content)
 		if useCompression:
 			content = zlib.decompress(content)
-		revision = FileSystemManager.instance().write(path, content)
+		revision = FileSystemManager.instance().write(path, content, username = username)
 		# No revision handling for now
 		# We should return the new filepath in case of a success
 		# /repository/samples/test.ats@1.1.2

@@ -111,7 +111,7 @@ class FileSystemBackend:
 		"""
 		return None
 
-	def write(self, filename, content, baseRevision = None, reason = None):
+	def write(self, filename, content, baseRevision = None, reason = None, username = None):
 		"""
 		Writes content to a file, creating it if needed.
 		The path to the filename should already exist.
@@ -149,7 +149,7 @@ class FileSystemBackend:
 		"""
 		raise Exception('Not implemented')
 
-	def unlink(self, filename, reason = None):
+	def unlink(self, filename, reason = None, username = None):
 		"""
 		Removes a file.
 		Notice that it does not affect its existing revisions, if any.
@@ -159,7 +159,7 @@ class FileSystemBackend:
 		"""
 		return False
 
-	def rename(self, filename, newname, reason = None):
+	def rename(self, filename, newname, reason = None, username = None):
 		"""
 		Renames a file to newname, without changing its directory.
 		Associated profiles must be kept after renaming.
@@ -214,17 +214,28 @@ class FileSystemBackend:
 		"""
 		return None
 
-	def writeprofile(self, filename, profilename, content):
+	def writeprofile(self, filename, profilename, content, username = None):
 		"""
 		Writes a profile associated to filename as profilename,
 		replacing an existing one, if any.
 		TODO: document this.
 		
-		@rtype: None
+		@rtype: string
+		@return: the new profile revision ID if OK, None in case of an error.
+		"""
+		raise Exception('Not implemented')
+
+	def unlinkprofile(self, filename, profilename, username = None):
+		"""
+		Deletes a profile associated to the filename.
+		TODO: document this.
+		
+		@rtype: bool
+		@return: True if the profile was removed, False otherwise.
 		"""
 		raise Exception('Not implemented')
 	
-	def mkdir(self, path):
+	def mkdir(self, path, username = None):
 		"""
 		Creates a directory.
 		
@@ -235,7 +246,7 @@ class FileSystemBackend:
 		"""
 		return False
 	
-	def rmdir(self, path):
+	def rmdir(self, path, username = None):
 		"""
 		Removes an *empty* directory.
 		
@@ -247,7 +258,7 @@ class FileSystemBackend:
 		"""
 		return False
 
-	def renamedir(self, path, newname, reason = None):
+	def renamedir(self, path, newname, reason = None, username = None):
 		"""
 		Renames a directory to newname, without changing its directory.
 

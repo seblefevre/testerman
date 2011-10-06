@@ -62,7 +62,7 @@ class GitBackend(FileSystemBackend.FileSystemBackend):
 		def _decorator(self, *args, **kw):
 			arglist = ', '.join([repr(x) for x in args])
 			if kw:
-				arglist += ', '.join([u'%s=%s' % x for x in kw.items()])
+				arglist += ', ' + ', '.join([u'%s=%s' % x for x in kw.items()])
 			desc = "%s(%s)" % (fn.__name__, arglist)
 			getLogger().debug(":: %s" % desc)
 			return fn(self, *args, **kw)
@@ -107,20 +107,36 @@ class GitBackend(FileSystemBackend.FileSystemBackend):
 			return path
 	
 	def read(self, filename, revision = None):
+		if filename.startswith('/'):
+			filename = filename[1:]
+		
+		localpath = filename
+
 		filename = self._realpath(filename)
 		if not filename: 
 			return None
 		
-		try:
-			f = open(filename)
-			content = f.read()
-			f.close()
-			return content
-		except Exception, e:
-			getLogger().warning("Unable to read file %s: %s" % (filename, str(e)))
-			return None
+		if not revision:
+			# Get the head
+			try:
+				f = open(filename)
+				content = f.read()
+				f.close()
+				return content
+			except Exception, e:
+				getLogger().warning("Unable to read file %s: %s" % (filename, str(e)))
+				return None
+		else:
+			# We need to retrieve the file from the given revision
+			blob = self._repo.get_object(revision)
+			if not blob:
+				getLogger().warning("Unable to read file %s (revision %s)" % (filename, revision))
+				return None
+			else:
+				return self._repo.get_object(revision).data
+		
 
-	def write(self, filename, content, baseRevision = None, reason = None):
+	def write(self, filename, content, baseRevision = None, reason = None, username = None):
 		"""
 		Write the file in the working tree, then autocommit it.
 		"""
@@ -155,12 +171,12 @@ class GitBackend(FileSystemBackend.FileSystemBackend):
 
 		self._repo.stage([localpath])
 
-		ret = self._repo.do_commit(message = "%s %s (reason: %s)" % (backupFile and "Updated" or "Added", localpath, reason), committer = self._defaultCommitter)
+		ret = self._repo.do_commit(message = "%s %s (reason: %s)" % (backupFile and "Updated" or "Added", localpath, reason), committer = (username and username or self._defaultCommitter))
 		getLogger().info("New revision created: %s" % ret)
 		return ret
 
 	@logged
-	def rename(self, filename, newname, reason = None):
+	def rename(self, filename, newname, reason = None, username = None):
 		"""
 		Rename the file locally, then autocommit one deletion / one insertion for the main file,
 		and one deletion/insertion per associated profile.
@@ -210,12 +226,12 @@ class GitBackend(FileSystemBackend.FileSystemBackend):
 			staged.append("%s.profiles/%s" % (newlocalname, os.path.split(profile)[1]))
 		
 		self._repo.stage(staged)
-		ret = self._repo.do_commit(message = "Renamed %s to %s (reason: %s)" % (localname, newname, reason), committer = self._defaultCommitter)
+		ret = self._repo.do_commit(message = "Renamed %s to %s (reason: %s)" % (localname, newname, reason), committer = (username and username or self._defaultCommitter))
 		getLogger().info("New revision created: %s" % ret)
 		return ret
 
 	@logged
-	def unlink(self, filename, reason = None):
+	def unlink(self, filename, reason = None, username = None):
 		"""
 		Remove the file from the working tree, then autocommit the change.
 		
@@ -250,7 +266,7 @@ class GitBackend(FileSystemBackend.FileSystemBackend):
 			return False
 		
 		self._repo.stage(staged)
-		ret = self._repo.do_commit(message = "Deleted %s (reason: %s)" % (localpath, reason), committer = self._defaultCommitter)
+		ret = self._repo.do_commit(message = "Deleted %s (reason: %s)" % (localpath, reason), committer = (username and username or self._defaultCommitter))
 		getLogger().info("New revision created: %s" % ret)
 		return True
 
@@ -277,7 +293,7 @@ class GitBackend(FileSystemBackend.FileSystemBackend):
 		return None
 
 	@logged
-	def mkdir(self, path):
+	def mkdir(self, path, username = None):
 		"""
 		Create a directory in the working tree.
 		No autocommit here - empty directories do not seem to be versioned by GIT.
@@ -322,12 +338,16 @@ class GitBackend(FileSystemBackend.FileSystemBackend):
 		return False
 
 	@logged
-	def renamedir(self, path, newname):
+	def renamedir(self, path, newname, reason = None, username = None):
 		"""
 		Rename a directory, then autocommit removes/adds.
 		
-		# TODO: recursive staging.
+		TODO: recursive staging.
+		Since it's not ready, support for renaming the dir is disabled.
 		"""
+		getLogger().warning("Dir renaming is not supported by this backend")
+		return False
+		
 		# Remove the heading / for the local name
 		if path.startswith('/'):
 			path = path[1:]
@@ -352,7 +372,7 @@ class GitBackend(FileSystemBackend.FileSystemBackend):
 			return False
 		
 		self._repo.stage([localname, newname])
-		ret = self._repo.do_commit(message = "Renamed dir %s to %s (reason: %s)" % (localname, newname, reason), committer = self._defaultCommitter)
+		ret = self._repo.do_commit(message = "Renamed dir %s to %s (reason: %s)" % (localname, newname, reason), committer = (username and username or self._defaultCommitter))
 		getLogger().info("New revision created: %s" % ret)
 		
 		return False
@@ -383,12 +403,50 @@ class GitBackend(FileSystemBackend.FileSystemBackend):
 		
 		localname = filename
 		
-		filename = self._realpath(filename)
-		if not filename: 
-			return None
+		ret = []
 		
-		# Not yet implemented
-		return None
+		# Only get history from the head, not from another branch yet.
+		
+		# Strategy: traverse our commits in chronological order.
+		# For each commit, check if the file is in the tree.
+		# Based on its pushed id, we will then be able to 
+		# see if the file was changed, unchanged, added, or removed, from
+		# one commit to another.
+		# There is no rename detection for now (could be done backward, based on the same sha).
+		commits = self._repo.revision_history(self._repo.head())
+		commits.reverse()
+		
+		lastchange = None
+		for c in commits:
+			# Check if the file was included in this commit
+			tree = self._repo.tree(c.tree)
+			in_this_commit = False
+			for (mode, path, sha) in tree.entries():
+				if path == localname:
+					# The file was in this commit
+					in_this_commit = True
+					
+					if lastchange:
+						if lastchange[1] == sha:
+							# no change
+							continue
+						else:
+							# file updated
+							lastchange = (dict(message = c.message, committer = c.committer, date = c.commit_time, id = sha, change = "updated"), sha)
+							ret.append(lastchange[0])
+					else:
+						# file added (or newborn)
+						lastchange = (dict(message = c.message, committer = c.committer, date = c.commit_time, id = sha, change = "added"), sha)
+						ret.append(lastchange[0])
+					break
+					
+			if not in_this_commit and lastchange:
+				# The file was seen at least once, and was deleted in this commit
+				lastchange = None
+				ret.append(dict(message = c.message, committer = c.committer, date = c.commit_time, id = sha, change = "deleted"))
+
+		return ret
+
 	
 	def isdir(self, path):
 		path = self._realpath(path)
@@ -439,7 +497,7 @@ class GitBackend(FileSystemBackend.FileSystemBackend):
 			getLogger().warning("Unable to read file %s: %s" % (filename, str(e)))
 			return None
 		
-	def writeprofile(self, filename, profilename, content):
+	def writeprofile(self, filename, profilename, content, username = None):
 		"""
 		Create or update a profile, then autocommit.
 		"""
@@ -482,11 +540,11 @@ class GitBackend(FileSystemBackend.FileSystemBackend):
 			raise(e)
 
 		self._repo.stage([profilelocalname])
-		ret = self._repo.do_commit(message = "%s profile %s for %s" % (backupFile and "Updated" or "Added", profilename, localname), committer = self._defaultCommitter)
+		ret = self._repo.do_commit(message = "%s profile %s for %s" % (backupFile and "Updated" or "Added", profilename, localname), committer = (username and username or self._defaultCommitter))
 		getLogger().info("New revision created: %s" % ret)
 		return ret
 
-	def unlinkprofile(self, filename, profilename):
+	def unlinkprofile(self, filename, profilename, username = None):
 		"""
 		Removes a profile, then autocommit the change. 
 		"""
@@ -508,7 +566,7 @@ class GitBackend(FileSystemBackend.FileSystemBackend):
 			return False
 
 		self._repo.stage([profilelocalname])
-		ret = self._repo.do_commit(message = "Removed profile %s for %s" % (profilename, localname), committer = self._defaultCommitter)
+		ret = self._repo.do_commit(message = "Removed profile %s for %s" % (profilename, localname), committer = (username and username or self._defaultCommitter))
 		getLogger().info("New revision created: %s" % ret)
 		return True
 		
