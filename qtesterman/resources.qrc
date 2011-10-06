@@ -104,6 +104,12 @@ pyrcc4 resources.qrc -o Resources.py
 	<file alias="profiles-editor">resources/user-properties.png</file>
 	<file alias="testgroups-selector">resources/document-multiple.png</file>
 
+	<!-- generic stuff -->
+	<file alias="arrow-top">resources/go-top.png</file>
+	<file alias="arrow-up">resources/go-up.png</file>
+	<file alias="arrow-down">resources/go-down.png</file>
+	<file alias="arrow-bottom">resources/go-bottom.png</file>
+
 </qresource>
 
 <qresource prefix="animations">

@@ -527,7 +527,7 @@ class Client(Nodes.ConnectingNode):
 		else:
 			return False
 
-	def putFile(self, content, filename, useCompression = False):
+	def putFile(self, content, filename, useCompression = False, username = None):
 		"""
 		Puts content as a file named filename in the server's document root.
 		
@@ -544,6 +544,9 @@ class Client(Nodes.ConnectingNode):
 		@param filename: the complete path within the docroot of the filename to create/modify
 		@type  useCompression: bool
 		@param useCompression: if set to True, compress the content before sending it (requires Ws 1.3)
+		@type  username: string
+		@param username: if set, the username of the user who is writing this file, for
+		revisions management (requires Ws 1.7)
 		
 		@throws Exception in case of a (technical ?) error
 		
@@ -553,7 +556,7 @@ class Client(Nodes.ConnectingNode):
 		self.getLogger().debug("Putting file %s to repository..." % filename)
 		if useCompression:
 			payload = base64.encodestring(zlib.compress(content))
-			res = self.__proxy.putFile(payload, filename, True)
+			res = self.__proxy.putFile(payload, filename, True, username)
 		else:
 			payload = base64.encodestring(content)
 			res = self.__proxy.putFile(payload, filename)

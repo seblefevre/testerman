@@ -26,6 +26,7 @@ KNOWN BUGS:
 - Added: support for #[[literal content]]# in SimpleReporter plugin
   (from Velocity 1.7)
 - Added: experimental support for split view for module/ats editors
+- Added: initial support for revision browsing (campaign, module, ats)
 - Modified: finally a dedicated Testerman icon !
 - Modified: the job manager now displays more recent jobs on the top.
   For a campaign, however, older child jobs are displayed at the bottom.

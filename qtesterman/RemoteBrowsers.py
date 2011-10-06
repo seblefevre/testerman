@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 ##
 # This file is part of Testerman, a test automation system.
-# Copyright (c) 2008,2009,2010 Sebastien Lefevre and other contributors
+# Copyright (c) 2008-2011 Sebastien Lefevre and other contributors
 #
 # This program is free software; you can redistribute it and/or modify it under
 # the terms of the GNU General Public License as published by the Free Software
@@ -30,6 +30,8 @@ import Resources
 import CommonWidgets
 import LogViewer
 import DocumentModels
+import Compare
+
 
 import os.path
 import re
@@ -60,6 +62,121 @@ TheIconCache = IconCache()
 
 def icon(resource):
 	return TheIconCache.icon(resource)
+
+
+
+################################################################################
+# File Revisions Viewer
+################################################################################
+
+
+
+class RevisionItem(QTreeWidgetItem):
+	def __init__(self, revisionInfo, parent = None):
+		QTreeWidgetItem.__init__(self, parent)
+		self.revisionInfo = revisionInfo
+	
+		self.setData(0, Qt.DisplayRole, QVariant(time.strftime("%Y/%m/%d, %H:%M:%S", time.localtime(self.revisionInfo['date']))))
+		self.setData(1, Qt.DisplayRole, QVariant(self.revisionInfo['committer']))
+		self.setData(2, Qt.DisplayRole, QVariant(self.revisionInfo['change']))
+		self.setData(3, Qt.DisplayRole, QVariant(self.revisionInfo['id']))
+		self.setData(4, Qt.DisplayRole, QVariant(self.revisionInfo['message']))
+
+
+class WRevisionsTreeWidget(QTreeWidget):
+	def __init__(self, parent = None):
+		QTreeWidget.__init__(self, parent)
+		self._labels = [ 'Date', 'By', 'Type', 'Revision ID', 'Reason' ]
+
+		self.setWindowIcon(icon(":/icons/job-queue.png"))
+
+		self.setRootIsDecorated(False)
+		self.setSortingEnabled(True)
+		
+		self.setSelectionMode(self.MultiSelection)
+		
+		self.setHeaderLabels(self._labels)
+		self.header().setResizeMode(0, QHeaderView.ResizeToContents)
+	
+	def setModel(self, revisions):
+		"""
+		Clear the tree and display the revisions.
+		"""
+		self.clear()
+		for revision in revisions:
+			item = RevisionItem(revision, self)
+		
+		self.sortItems(0, Qt.DescendingOrder)
+		
+		
+		
+class WRevisionsDialog(QDialog):
+	def __init__(self, filename, revisions, client, parent = None):
+		QDialog.__init__(self, parent)
+		self._client = client
+		self._filename = filename
+		self.__createWidgets()
+		self._treeview.setModel(revisions)
+	
+	def __createWidgets(self):
+		self.setWindowIcon(icon(':/icons/browser'))
+		self.setWindowTitle('Revisions for %s' % self._filename)
+		self.resize(600, 400)
+		
+		layout = QVBoxLayout()
+		
+		splitter = QSplitter(Qt.Vertical)
+		
+		# Simple treeview to see the various linear revisions
+		self._treeview = WRevisionsTreeWidget()
+		splitter.addWidget(self._treeview)
+		
+		self.connect(self._treeview, SIGNAL("itemSelectionChanged()"), self.onItemSelectionChanged)
+
+		# A comparison/diff viewer
+		self._diffViewer = Compare.WCompareWidget()
+		splitter.addWidget(self._diffViewer)
+		
+		layout.addWidget(splitter)
+
+
+		# Buttons
+		self._closeButton = QPushButton("Close")
+		self.connect(self._closeButton, SIGNAL("clicked()"), self.accept)
+		buttonLayout = QHBoxLayout()
+		buttonLayout.addStretch()
+		buttonLayout.addWidget(self._closeButton)
+		layout.addLayout(buttonLayout)
+
+		self.setLayout(layout)
+
+	def onItemSelectionChanged(self):
+		items = self._treeview.selectedItems()
+		l = len(items)
+		if l > 3:
+			# We should not enter this case, normally
+			self._treeview.clearSelection()
+			return
+
+		if l == 3:
+			# Automatically deselect the 2nd selected item (i.e. the 3rd selection replaces the 2nd one)
+			items[1].setSelected(False)
+		
+		if l == 2:
+			label1 = time.strftime("%Y/%m/%d, %H:%M:%S", time.localtime(items[0].revisionInfo['date']))
+			label2 = time.strftime("%Y/%m/%d, %H:%M:%S", time.localtime(items[1].revisionInfo['date']))
+
+			# try:			
+			buffer1 = self._client.getFile('%s/revisions/%s' % (self._filename, items[0].revisionInfo['id']))
+			buffer2 = self._client.getFile('%s/revisions/%s' % (self._filename, items[1].revisionInfo['id']))
+			# except Exception, e: ...
+			
+			self._diffViewer.doDiff(label1, buffer1, label2, buffer2)
+
+		if l < 2:
+			self._diffViewer.clear()
+		
+		
 
 
 ################################################################################
@@ -827,9 +944,6 @@ class AtsWidgetItem(ExpandableWidgetItem):
 	def addFetchedChildItems(self, data):
 		if not self.isInPackageTree():
 			self.addChild(ProfilesDirWidgetItem(self._path + '/profiles'))
-		# TODO: rea revisions support
-#		if not self.isInPackageTree():
-#			self.addChild(RevisionsWidgetItem(self._path))
 		self.addChild(ExecutionLogsWidgetItem(self._path))
 
 
@@ -845,8 +959,9 @@ class ModuleWidgetItem(ExpandableWidgetItem):
 		self.setFlags(Qt.ItemIsEnabled | Qt.ItemIsSelectable | Qt.ItemIsDragEnabled | Qt.ItemIsEditable)
 
 	def addFetchedChildItems(self, data):
-		if not self.isInPackageTree():
-			self.addChild(RevisionsWidgetItem(self._path))
+		pass
+#		if not self.isInPackageTree():
+#			self.addChild(RevisionsWidgetItem(self._path))
 
 
 class CampaignWidgetItem(ExpandableWidgetItem):
@@ -861,8 +976,8 @@ class CampaignWidgetItem(ExpandableWidgetItem):
 		self.setFlags(Qt.ItemIsEnabled | Qt.ItemIsSelectable | Qt.ItemIsDragEnabled | Qt.ItemIsEditable)
 
 	def addFetchedChildItems(self, data):
-		if not self.isInPackageTree():
-			self.addChild(RevisionsWidgetItem(self._path))
+#		if not self.isInPackageTree():
+#			self.addChild(RevisionsWidgetItem(self._path))
 		self.addChild(ExecutionLogsWidgetItem(self._path))
 
 
@@ -1289,6 +1404,7 @@ class WServerFileSystemTreeWidget(QTreeWidget):
 			# Depending of the node, add several actions
 			if item.isAts():
 				menu.addAction("Edit (head)", lambda: self._open(item))
+				menu.addAction("Show revisions...", lambda: self._showRevisions(item))
 				menu.addAction("Show dependencies...", lambda: self._showDependencies(item))
 				menu.addAction("Delete", lambda: self._deleteAts(item))
 			elif item.isExecutionLog():
@@ -1296,11 +1412,13 @@ class WServerFileSystemTreeWidget(QTreeWidget):
 				menu.addAction("Delete", lambda: self._deleteExecutionLog(item))
 			elif item.isModule():
 				menu.addAction("Edit (head)", lambda: self._open(item))
+				menu.addAction("Show revisions...", lambda: self._showRevisions(item))
 				menu.addAction("Show dependencies...", lambda: self._showDependencies(item))
 				menu.addAction("Show referrer files...", lambda: self._showModuleReferrerFiles(item))
 				menu.addAction("Delete", lambda: self._deleteModule(item))
 			elif item.isCampaign():
 				menu.addAction("Edit (head)", lambda: self._open(item))
+				menu.addAction("Show revisions...", lambda: self._showRevisions(item))
 				menu.addAction("Show dependencies...", lambda: self._showDependencies(item))
 				menu.addAction("Delete", lambda: self._deleteCampaign(item))
 			elif item.isPackageRootDir():
@@ -1518,10 +1636,30 @@ class WServerFileSystemTreeWidget(QTreeWidget):
 		transient = CommonWidgets.WTransientWindow()
 		transient.showTextLabel("Getting dependencies list...")
 		deps = self.getClient().getDependencies(path)
+		deps.sort()
 		transient.dispose()
 		dialog = CommonWidgets.WTextEditDialog('\n'.join(deps), "File dependencies for %s" % os.path.split(path)[1],
 			readOnly = True, parent = self, fixedFont = True)
 		dialog.exec_()
+	
+	def _showRevisions(self, item):
+		path = unicode(item.getUrl().path())
+		transient = CommonWidgets.WTransientWindow()
+		transient.showTextLabel("Getting revisions list...")
+		revisions = None
+		try:
+			revisions = self.getClient().getDirectoryListing(path + '/revisions')
+		except Exception, e:
+			pass
+		transient.dispose()
+		if revisions is None:
+			CommonWidgets.userInformation(self, "No revisions found for this file.")
+			return
+		
+		# Display revisions in a dedicated dialog box that include easy diff management
+		dialog = WRevisionsDialog(filename = path, revisions = [ x['revision'] for x in revisions], client = self.getClient(), parent = self)
+		dialog.exec_()
+		
 
 	def _createDirectory(self, item):
 		path = item.getUrl().path()

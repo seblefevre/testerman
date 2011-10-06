@@ -156,10 +156,12 @@ class WDocumentEditor(QWidget):
 
 		# OK, now we can continue
 		error = None
+		
+		username = QVariant(QSettings().value('connection/username', QVariant(QString()))).toString()
 		try:
 			# Store files as utf8
 			# compress the files on the wire (requires Ws 1.3)
-			ret = getProxy().putFile(self.model.getDocumentSource(), unicode(filename), useCompression = True)
+			ret = getProxy().putFile(self.model.getDocumentSource(), unicode(filename), useCompression = True, username = unicode(username))
 			if not ret:
 				error = "Please check permissions."
 		except Exception, e:
