@@ -69,7 +69,7 @@ class VirtualPath:
 		
 		i = 0
 		for element in velements:
-			if element.endswith('.ats') or element.endswith('.campaign'):
+			if element.endswith('.ats') or element.endswith('.campaign') or element.endswith('.py') or element.endswith('.profile'):
 				if velements[i+1:]:
 					# remaining elements after the script name -> pure virtual path
 					vobject = velements[i+1]
