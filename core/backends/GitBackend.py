@@ -17,7 +17,7 @@
 # A FileSystemBackend implementation that use a GIT repository
 # to store versioned files.
 #
-# Relies on dulwich GIT python implementation.
+# Relies on dulwich (0.7+) GIT python implementation.
 #
 # Files are locally managed into a working dir.
 # Write operations trigger GIT actions.
@@ -421,24 +421,36 @@ class GitBackend(FileSystemBackend.FileSystemBackend):
 			# Check if the file was included in this commit
 			tree = self._repo.tree(c.tree)
 			in_this_commit = False
-			for (mode, path, sha) in tree.entries():
-				if path == localname:
-					# The file was in this commit
-					in_this_commit = True
-					
-					if lastchange:
-						if lastchange[1] == sha:
-							# no change
-							continue
+			
+			# We have to traverse the tree, recursively if needed (if the localname contains directories)
+			# (here this is an iterative implementation)
+			elements = localname.split('/')
+			for i in range(len(elements)):
+				finalElement = (i == len(elements)-1)
+				for (mode, path, sha) in tree.entries():
+					if path == elements[i]:
+						# The element was in this commit
+						
+						if not finalElement:
+							tree = self._repo.tree(sha)
+							break
+						
+						# OK, final element, we have our file
+						in_this_commit = True
+
+						if lastchange:
+							if lastchange[1] == sha:
+								# no change
+								continue
+							else:
+								# file updated
+								lastchange = (dict(message = c.message, committer = c.committer, date = c.commit_time, id = sha, change = "updated"), sha)
+								ret.append(lastchange[0])
 						else:
-							# file updated
-							lastchange = (dict(message = c.message, committer = c.committer, date = c.commit_time, id = sha, change = "updated"), sha)
+							# file added (or newborn)
+							lastchange = (dict(message = c.message, committer = c.committer, date = c.commit_time, id = sha, change = "added"), sha)
 							ret.append(lastchange[0])
-					else:
-						# file added (or newborn)
-						lastchange = (dict(message = c.message, committer = c.committer, date = c.commit_time, id = sha, change = "added"), sha)
-						ret.append(lastchange[0])
-					break
+						break
 					
 			if not in_this_commit and lastchange:
 				# The file was seen at least once, and was deleted in this commit
