@@ -222,7 +222,7 @@ class WCompareWidget(QWidget, Ui_CompareWidget):
 		self.addedLabel.setText(self.trUtf8('Added: %1').arg(0))
 		self.deletedLabel.setText(self.trUtf8('Deleted: %1').arg(0))
 		
-		self.updateInterval = 20	# update every 20 lines
+		self.updateInterval = 1000	# update every 1000 lines
 		
 		self.vsb1 = self.contents_1.verticalScrollBar()
 		self.hsb1 = self.contents_1.horizontalScrollBar()
@@ -295,6 +295,7 @@ class WCompareWidget(QWidget, Ui_CompareWidget):
 					pane.insertPlainText(txt)
 		else:
 			pane.insertPlainText("%s %s" % (linenumber, line))
+#			pane.append("%s %s" % (linenumber, line))
 
 	def clear(self):
 		self.file1Label.setText('')
@@ -312,9 +313,14 @@ class WCompareWidget(QWidget, Ui_CompareWidget):
 		# This normalizes EOL characters to \n for both buffers		
 		lines1 = [x + '\n' for x in buffer1.splitlines()]
 		lines2 = [x + '\n' for x in buffer2.splitlines()]
+
 		
 		self.contents_1.clear()
 		self.contents_2.clear()
+		QApplication.processEvents()
+
+		self.contents_1.setUpdatesEnabled(False)
+		self.contents_2.setUpdatesEnabled(False)
 		
 		# counters for changes
 		added = 0
@@ -359,8 +365,11 @@ class WCompareWidget(QWidget, Ui_CompareWidget):
 			self.__appendText(self.contents_1, ln1, l1, format1, opcode == 'r')
 			self.__appendText(self.contents_2, ln2, l2, format2, opcode == 'r')
 			paras += 1
-			if not (paras % self.updateInterval):
-				QApplication.processEvents()
+#			if not (paras % self.updateInterval):
+#				QApplication.processEvents()
+
+		self.contents_1.setUpdatesEnabled(True)
+		self.contents_2.setUpdatesEnabled(True)
 		
 		self.vsb1.setValue(0)
 		self.vsb2.setValue(0)
