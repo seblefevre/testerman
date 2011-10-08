@@ -976,6 +976,8 @@ class CampaignWidgetItem(ExpandableWidgetItem):
 		self.setFlags(Qt.ItemIsEnabled | Qt.ItemIsSelectable | Qt.ItemIsDragEnabled | Qt.ItemIsEditable)
 
 	def addFetchedChildItems(self, data):
+		if not self.isInPackageTree():
+			self.addChild(ProfilesDirWidgetItem(self._path + '/profiles'))
 #		if not self.isInPackageTree():
 #			self.addChild(RevisionsWidgetItem(self._path))
 		self.addChild(ExecutionLogsWidgetItem(self._path))

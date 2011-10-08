@@ -1093,7 +1093,6 @@ class WMainWindow(QMainWindow):
 			settings = QSettings()
 			ackedTimestamp = settings.value('motd/lastTimestamp', QVariant(0.0)).toDouble()[0]
 			timestamp = info['timestamp']
-			log("DEBUG: acked %s, current MOTD %s" % (ackedTimestamp, timestamp))
 			# Comparing apparently equal floats may cause some problems.
 			# So we turn them into int first.
 			if (int(timestamp*100) > int(ackedTimestamp*100)):

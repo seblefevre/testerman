@@ -727,9 +727,6 @@ class WAtsDocumentEditor(WDocumentEditor):
 		layout.setMargin(0)
 		self.setLayout(layout)
 
-			
-		
-
 	def updateModel(self):
 		self.model.setBodyModel(self.editor.getCode())
 		
@@ -934,6 +931,12 @@ class WCampaignDocumentEditor(WDocumentEditor):
 		else:
 			self.parametersEditor.hide()
 
+	def toggleProfilesEditor(self, checked):
+		if checked:
+			self.profilesManager.show()		
+		else:
+			self.profilesManager.hide()
+	
 	def __createWidgets(self):
 		"""
 		A main WScriptEditor, plus an associated action bar at the bottom with:
@@ -947,6 +950,16 @@ class WCampaignDocumentEditor(WDocumentEditor):
 		# QsciScintilla directly manage the signal
 		self.connect(self.editor, SIGNAL('modificationChanged(bool)'), self.model.onBodyModificationChanged)
 	
+		##
+		# (Initially) Hidden widgets
+		##
+		self.parametersEditor = DocumentPropertyEditor.WParametersEditor()
+		self.parametersEditor.hide()
+		self.parametersEditor.setModel(self.model.getMetadataModel())
+
+		self.profilesManager = WProfilesManager(self.model)
+		self.profilesManager.hide()
+
 		##
 		# The topbar enables to show/hide Campaign metadata editors, and embeds a search widget
 		##
@@ -967,6 +980,18 @@ class WCampaignDocumentEditor(WDocumentEditor):
 		self.find = CommonWidgets.WSciFind(self.editor, self)
 		actionLayout.addWidget(self.find)
 
+		# Profile selector & associated actions
+		# The toggle button to show/hide the profile manager/editor
+		self.showProfilesEditorAction = QAction("Edit", self)
+		self.showProfilesEditorAction.setToolTip("Open/close the profiles editor")
+		self.showProfilesEditorAction.setCheckable(True)
+		self.showProfilesEditorAction.setIcon(icon(':/icons/profiles-editor'))
+		self.showProfilesEditorAction.setStatusTip("Open/close the profiles editor")
+		self.showProfilesEditorButton = QToolButton()
+		self.showProfilesEditorButton.setIconSize(QSize(16, 16))
+		self.showProfilesEditorButton.setDefaultAction(self.showProfilesEditorAction)
+		self.connect(self.showProfilesEditorAction, SIGNAL('toggled(bool)'), self.toggleProfilesEditor)
+
 		# Run actions
 		self.runAction = CommonWidgets.TestermanAction(self, "&Run", self.run, "Run now")
 		self.runAction.setIcon(icon(':/icons/run.png'))
@@ -985,14 +1010,9 @@ class WCampaignDocumentEditor(WDocumentEditor):
 
 		actionLayout.addStretch()
 		actionLayout.addWidget(self.runButton)
+		actionLayout.addWidget(self.profilesManager.getProfileSelector())
+		actionLayout.addWidget(self.showProfilesEditorButton)
 		actionLayout.setMargin(2)
-
-		##
-		# (Initially) Hidden widgets
-		##
-		self.parametersEditor = DocumentPropertyEditor.WParametersEditor()
-		self.parametersEditor.hide()
-		self.parametersEditor.setModel(self.model.getMetadataModel())
 
 		##
 		# Final layout
@@ -1005,6 +1025,7 @@ class WCampaignDocumentEditor(WDocumentEditor):
 		self.mainSplitter.addWidget(self.parametersEditor)
 		self.mainSplitter.addWidget(self.editor)
 		
+		self.mainSplitter.addWidget(self.profilesManager)
 		self.mainSplitter.setCollapsible(0, False)
 		self.mainSplitter.setCollapsible(1, False)
 		self.mainSplitter.setStretchFactor(0, 1)
@@ -1032,7 +1053,12 @@ class WCampaignDocumentEditor(WDocumentEditor):
 		if at is None:
 			at = time.time() + 1.0
 		try:
-			res = getProxy().scheduleCampaign(self.model.getDocumentSource(), unicode(self.model.getName()), unicode(QApplication.instance().username()), session, at)
+			res = getProxy().scheduleCampaign(
+				self.model.getDocumentSource(),
+				unicode(self.model.getName()), 
+				unicode(QApplication.instance().username()), 
+				session = session,
+				at = at)
 		except Exception, e:
 			CommonWidgets.systemError(self, str(e))
 			return None
@@ -1046,7 +1072,15 @@ class WCampaignDocumentEditor(WDocumentEditor):
 	def run(self):
 		# we 'commit' the modified view of the script
 		self.updateModel()
-		self._schedule(session = None)
+
+		session = None
+		profileModel = self.profilesManager.getProfileSelector().getProfileModel()
+		if profileModel:
+			session = profileModel.toSession()
+			if profileModel.getUrl():
+				log("Running with profile %s" % unicode(profileModel.getUrl().path()))
+
+		self._schedule(session = session)
 
 	def runWithParameters(self):
 		# we 'commit' the modified view of the script
