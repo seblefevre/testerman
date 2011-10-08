@@ -390,7 +390,17 @@ class WModuleDocumentEditor(WDocumentEditor):
 		self.editor = WPythonCodeEditor(self.model.getBodyModel(), self)
 		self.connect(self.editor, SIGNAL('modificationChanged(bool)'), self.model.onBodyModificationChanged)
 
-		layout.addWidget(self.editor)
+		# Split view test
+		self.secondEditor = WPythonCodeEditor(None, self, self.editor.document())
+
+		self.editorSplitter = QSplitter(Qt.Vertical)
+		self.editorSplitter.addWidget(self.secondEditor)
+		self.editorSplitter.addWidget(self.editor)
+		self.editorSplitter.setCollapsible(0, True)
+		self.editorSplitter.setCollapsible(1, False)
+		self.editorSplitter.setSizes([0, 100])
+		
+		layout.addWidget(self.editorSplitter)
 
 		# A find widget
 		self.find = CommonWidgets.WSciFind(self.editor, self)
@@ -553,12 +563,6 @@ class WAtsDocumentEditor(WDocumentEditor):
 
 		# Split view test
 		self.secondEditor = WPythonCodeEditor(None, self, self.editor.document())
-		"""
-		e.setWindowTitle("Second view")
-		e.setParent(self)
-		e.setWindowFlags(Qt.Window)
-		e.show()
-		"""
 
 		##
 		# (Initially) Hidden widgets
