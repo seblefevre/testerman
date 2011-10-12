@@ -250,7 +250,7 @@ class GitBackend(FileSystemBackend.FileSystemBackend):
 		staged = [localname]
 		# Reference profiles to remove
 		profilesdir = "%s.profiles" % filename
-		for profile in glob.glob(newprofilesdir + '/*'):
+		for profile in glob.glob(profilesdir + '/*'):
 			staged.append("%s.profiles/%s" % (localname, os.path.split(profile)[1]))
 
 		# Now actually remove associated profiles, if any
@@ -266,7 +266,7 @@ class GitBackend(FileSystemBackend.FileSystemBackend):
 			return False
 		
 		self._repo.stage(staged)
-		ret = self._repo.do_commit(message = "Deleted %s (reason: %s)" % (localpath, reason), committer = (username and username or self._defaultCommitter))
+		ret = self._repo.do_commit(message = "Deleted %s (reason: %s)" % (localname, reason), committer = (username and username or self._defaultCommitter))
 		getLogger().info("New revision created: %s" % ret)
 		return True
 
