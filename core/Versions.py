@@ -19,10 +19,10 @@
 ##
 
 #: Main TS implementation version
-TESTERMAN_SERVER_VERSION = '1.3.3'
+TESTERMAN_SERVER_VERSION = '1.4.0'
 
 #: Main TACS implementation version
-TESTERMAN_AGENT_CONTROLLER_VERSION = '1.1.1'
+TESTERMAN_AGENT_CONTROLLER_VERSION = '1.4.0'
 
 #: API versions: major.minor
 #: major += 1 if not backward compatible,

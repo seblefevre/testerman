@@ -947,21 +947,18 @@ class AtsWidgetItem(ExpandableWidgetItem):
 		self.addChild(ExecutionLogsWidgetItem(self._path))
 
 
-class ModuleWidgetItem(ExpandableWidgetItem):
+class ModuleWidgetItem(BaseWidgetItem):
 	"""
 	Module Document.
+	This node is not expandable as there are no associated profiles,
+	and revisions are managed via a dedicated dialog box.
 	"""
 	def __init__(self, path, parent = None):
-		ExpandableWidgetItem.__init__(self, path, parent)
+		BaseWidgetItem.__init__(self, path, parent)
 		self.setIcon(0, icon(':/icons/item-types/module'))
 
 	def updateFlags(self):
 		self.setFlags(Qt.ItemIsEnabled | Qt.ItemIsSelectable | Qt.ItemIsDragEnabled | Qt.ItemIsEditable)
-
-	def addFetchedChildItems(self, data):
-		pass
-#		if not self.isInPackageTree():
-#			self.addChild(RevisionsWidgetItem(self._path))
 
 
 class CampaignWidgetItem(ExpandableWidgetItem):
@@ -1448,6 +1445,7 @@ class WServerFileSystemTreeWidget(QTreeWidget):
 				menu.addAction("New folder...", lambda: self._createDirectory(item))
 				if not item.isInPackageProfilesTree():
 					menu.addAction("New package...", lambda: self._createPackage(item))
+					menu.addAction("Import package here...", lambda: self._importPackage(item))
 				menu.addAction("Delete", lambda: self._deleteDirectory(item))
 
 			if item.isExpandable():
@@ -1686,7 +1684,7 @@ class WServerFileSystemTreeWidget(QTreeWidget):
 
 		settings = QSettings()
 		directory = settings.value('lastVisitedDirectory', QVariant("")).toString()
-		filename = QFileDialog.getSaveFileName(self, "Extract package...", directory, "Testerman Package (*.tpk)")
+		filename = QFileDialog.getSaveFileName(self, "Export package...", directory, "Testerman Package (*.tpk)")
 		if not filename.isEmpty():
 			directory = os.path.dirname(unicode(filename))
 			settings.setValue('lastVisitedDirectory', QVariant(directory))
@@ -1718,6 +1716,46 @@ class WServerFileSystemTreeWidget(QTreeWidget):
 				self._client.createPackage("%s/%s" % (path, name))
 			except Exception, e:
 				CommonWidgets.systemError(self, 'Unable to create this package here: %s' % str(e))
+
+	def _importPackage(self, item):
+		path = item.getUrl().path()
+
+		# Select the package to open (local filesystem)
+		settings = QSettings()
+		directory = settings.value('lastVisitedDirectory', QVariant("")).toString()
+		filename = QFileDialog.getOpenFileName(self, "Choose a file", directory, "Testerman package (*.tpk);;All (*)")
+		if filename.isEmpty():
+			return
+		
+		directory = os.path.dirname(unicode(filename))
+		settings.setValue('lastVisitedDirectory', QVariant(directory))
+
+		try:		
+			f = open(unicode(filename), 'rb')
+			contents = f.read()
+			f.close()
+		except Exception, e:
+			CommonWidgets.systemError(self, 'Unable to read this package: %s' % str(e))
+			return
+		
+		(name, status) = QInputDialog.getText(self, "Import package", "Package name on the server:")
+		while status and not validateDirectoryName(name):
+			# Display some error message
+			CommonWidgets.userError(self, "The following characters are forbidden in a package name:\n%s" % ', '.join([x for x in RESTRICTED_NAME_CHARACTERS]))
+			(name, status) = QInputDialog.getText(self, "Import package", "Package name on the server:")
+
+		if status and not name.isEmpty():
+			target = "%s/%s" % (path, name)
+			transient = CommonWidgets.WTransientWindow()
+			transient.showTextLabel("Importing package to %s..." % target)
+			try:
+				self._client.importPackageFile(contents, target)
+			except Exception, e:
+				transient.dispose()
+				CommonWidgets.systemError(self, 'Unable to import package: %s' % str(e))
+				return
+			transient.dispose()
+			CommonWidgets.userInformation(self, "Package successfully imported.")
 
 	def _createProfile(self, item):
 		associatedScriptPath = item.parent().getUrl().path()

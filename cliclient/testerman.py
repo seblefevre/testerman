@@ -35,7 +35,7 @@ import urlparse
 
 
 
-VERSION = "0.4.0"
+VERSION = "1.4.0"
 
 # Returned in case of a job submission-related execution error
 RETCODE_EXECUTION_ERROR = 70
