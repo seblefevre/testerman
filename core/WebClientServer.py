@@ -55,7 +55,7 @@ import SocketServer
 
 
 
-VERSION = '0.3.0'
+VERSION = '1.4.0'
 
 
 DEFAULT_PAGE = "/index.vm"
