@@ -55,7 +55,7 @@ import SocketServer
 
 
 
-VERSION = '1.4.0'
+VERSION = '1.4.1'
 
 
 DEFAULT_PAGE = "/index.vm"
@@ -85,6 +85,20 @@ def getLogger():
 
 def formatTimestamp(timestamp):
   return time.strftime("%Y%m%d %H:%M:%S", time.localtime(timestamp))  + ".%3.3d" % int((timestamp * 1000) % 1000)
+
+def escapeXml(s):
+	"""
+	Escape non-ascii characters (<= 1f).
+	Notice that the XMLs we are dealing with are all utf-8 encoded.
+	So no need to escape above 127.
+	"""
+	r = re.compile(ur'[\x00-\x1f]')
+	def replacer(m):
+		c = m.group(0)
+		if c in [ '\n', '\r' ]:
+			return c
+		return "&#x"+('%02x' % ord(c))+";"
+	return re.sub(r, replacer, s)
 
 
 ################################################################################
@@ -458,6 +472,10 @@ class WebClientApplication(WebServer.WebApplication):
 		rlog += '<ats>\n'
 		rlog += rawlog
 		rlog += '</ats>\n'
+
+		# The ESC (27 / 0x1b) character is illegal in XML, even as an entity.
+		# We replace it with the human readable string <ESC>
+		rlog = rlog.replace('\x1b', '&lt;ESC&gt;')
 
 		getLogger().debug("DEBUG: parsing XML...")
 		# Now, let's parse it and move the 'root' elements below new testcase elements

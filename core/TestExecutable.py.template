@@ -241,7 +241,7 @@ def __formatTable(headers = [], rows = [], order = None, notAvailableLabel = "(n
 		line = []
 		for name, label, formatter in headers:
 			if entry.has_key(name):
-				e = str(formatter(entry[name]))
+				e = unicode(formatter(entry[name]))
 			else:
 				e = notAvailableLabel
 			if len(e) > widths[i]: widths[i] = len(e)
