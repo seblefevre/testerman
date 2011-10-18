@@ -43,7 +43,9 @@ import select
 # 1.2:
 # - added TestCase.stop_ats_on_testcase_failure(stop = True),
 # - added control:stop_testcase_on_failure(stop = True)
-API_VERSION = "1.2"
+# 1.3: 
+# - added set_(*args)
+API_VERSION = "1.3"
 
 ################################################################################
 # Some general functions
@@ -2561,6 +2563,67 @@ class subset(ConditionTemplate):
 		return ('(subset)', self._templates)
 	def value(self):
 		return self._templates
+
+class set_(ConditionTemplate):
+	"""
+	Contains the elements from the template, exactly one time each, in any order.
+	
+	This first implementation does not play nice with wildcards or even
+	conditional templates. Static template elements are preferred.
+	"""
+	def __init__(self, *templates):
+		self._templates = list(templates)
+	def match(self, message, path = ''):
+		if not isinstance(message, list):
+			return False
+			
+		# The current implementation does not necessarily associate a matching template with
+		# a message in "both way":
+		# a message M can be matched by a template T, while T may have matched another message too.
+		# This behavior needs fixing.
+
+		matchedElementIndexes = []		
+		# Check that each template have a single (and different)
+		# corresponding value in the message
+		for t in self._templates:
+			satisfied = False
+			for i in range(len(message)):
+				if not i in matchedElementIndexes:
+					(ret, _) = templateMatch(message[i], t, path)
+					if ret:
+						# t is satisfied with element i, which was not used to match another template yet
+						matchedElementIndexes.append(i)
+						satisfied = True
+						break
+			if not satisfied:
+				# One template element is not matched
+				return False
+
+		satisfiedElementIndexes = []		
+		# Now check that each message element have a single (and different)
+		# matching element in the template
+		for e in message:
+			matched = False
+			for i in range(len(self._templates)):
+				if not i in satisfiedElementIndexes:
+					(ret, _) = templateMatch(e, self._templates[i], path)
+					if ret:
+						# t is satisfied with element i, which was not used to match another template yet
+						satisfiedElementIndexes.append(i)
+						matched = True
+						break
+			if not matched:
+				# One message element is not matched
+				return False
+
+		return True
+	def __repr__(self):
+		return "(set of [%s])" % ', '.join([unicode(x) for x in self._templates])
+	def toMessage(self):
+		return ('(set)', self._templates)
+	def value(self):
+		return self._templates
+
 
 class contains(ConditionTemplate):
 	"""

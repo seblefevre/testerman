@@ -6,10 +6,12 @@
 # <api>1</api>
 # <parameters>
 # <parameter name="PX_UNICODE_STRING" default="ça marche" type="string"><![CDATA[Unicode session variable test. Do not change its value.]]></parameter>
-# <parameter name="PX_BOOLEAN" default="true" type="boolean"><![CDATA[Boolean parameter test. Leave it to true.]]></parameter>
-# <parameter name="PX_INTEGER" default="10" type="integer"><![CDATA[Integer parameter. Leave it to 10.]]></parameter>
 # <parameter name="PX_FLOAT" default="19.99" type="float"><![CDATA[Float parameter. Leave it to 19.9 for the test to work.]]></parameter>
+# <parameter name="PX_INTEGER" default="10" type="integer"><![CDATA[Integer parameter. Leave it to 10.]]></parameter>
+# <parameter name="PX_BOOLEAN" default="true" type="boolean"><![CDATA[Boolean parameter test. Leave it to true.]]></parameter>
 # </parameters>
+# <groups>
+# </groups>
 # </metadata>
 # __METADATA__END__
 ##
@@ -1565,6 +1567,111 @@ class TC_SCRIPT_PARAMETERS(TestCase):
 			setverdict(FAIL)
 		setverdict(PASS)
 
+
+class TC_TEMPLATE_TRANSFORMATION(TestCase):
+	def body(self):
+		p01 = self.mtc['port01']
+		p02 = self.mtc['port02']
+		connect(p01, p02)
+		
+		p01.send(with_(lambda x: x*2, 1))
+		t = Timer(1.0)
+		t.start()
+		alt([
+			[ p02.RECEIVE(2),
+				lambda: log("Send transformation applied")
+			],
+			[ t.TIMEOUT,
+				lambda: log("Transformation not applied"),
+				lambda: setverdict(FAIL),
+				lambda: stop(),
+			]
+		])
+		t.stop()
+
+		p01.send("a,b,c")
+		t = Timer(1.0)
+		t.start()
+		alt([
+			[ p02.RECEIVE(with_(lambda x: x.split(','), ["a", "b", any_or_none])),
+				lambda: log("Matching transformation applied")
+			],
+			[ t.TIMEOUT,
+				lambda: log("Matching Transformation not applied"),
+				lambda: setverdict(FAIL),
+				lambda: stop(),
+			]
+		])
+		t.stop()
+		setverdict(PASS)
+
+class TC_MATCH_TEST(TestCase):
+	"""
+	Verifies that a match() operation correctly works (without any alt()).
+	"""
+	def body(self):
+		message = ('choiceName', { 'value1': [ 1, 2, 3], 'value2': "hello" })
+		template = ('choiceName', { 'value1': [ 1, any_or_none() ] })
+		mismatchingTemplate = ('choiceName', { 'value1': [ 3 ] })
+		
+		if match(message, template):
+			log("OK, local matching succeeded")
+		else:
+			setverdict(FAIL)
+			stop()
+		
+		if match(message, mismatchingTemplate):
+			setverdict(FAIL)
+			stop()
+		else:
+			log("OK, local mismatching succeeded")
+		
+		setverdict(PASS)
+
+
+class TC_SET(TestCase):
+	"""
+	Verifies the set_() conditional template.
+	"""
+	def body(self):
+		
+		if not match([], set_()):
+			setverdict(FAIL)
+		if not match([1], set_(1)):
+			setverdict(FAIL)
+		if not match([1, 2], set_(1, 2)):
+			setverdict(FAIL)
+		if not match([2, 1], set_(1, 2)):
+			setverdict(FAIL)
+		if not match(["abc", 45], set_(45, "abc")):
+			setverdict(FAIL)
+		if not match([dict(k1 = 'v1', k2 = 'v2'), dict(k1 = 'v1', k2 = 'v3')], set_(dict(k1 = 'v1'), dict(k1 = 'v1'))):
+			setverdict(FAIL)
+		if not match([dict(k1 = 'v1', k2 = 'v2'), dict(k1 = 'v1', k2 = 'v3')], set_(dict(k2 = 'v3'), dict(k1 = 'v1'))):
+			setverdict(FAIL)
+
+		if match([], set_(1)):
+			setverdict(FAIL)
+		if match([1], set_()):
+			setverdict(FAIL)
+		if match([1], set_(2)):
+			setverdict(FAIL)
+		if match([1], set_(1, 2)):
+			setverdict(FAIL)
+		if match([1, 2], set_(1, 3)):
+			setverdict(FAIL)
+		if match([1, 2, 3], set_(1, 2)):
+			setverdict(FAIL)
+		if match(["abc", 45], set_(45, "ab")):
+			setverdict(FAIL)
+		if match([dict(k1 = 'v1', k2 = 'v2'), dict(k1 = 'v1', k2 = 'v3')], set_(dict(k2 = 'v2'), dict(k1 = 'v1', k2 = 'v2'))):
+			setverdict(FAIL)
+		if match([dict(k1 = 'v1', k2 = 'v2'), dict(k1 = 'v1', k2 = 'v3')], set_(dict(k2 = 'v3'))):
+			setverdict(FAIL)
+
+		setverdict(PASS)
+
+
 ##
 # Control definition
 ##
@@ -1593,9 +1700,6 @@ TC_BINARY_LOGGING("Testerman autotest: binary support in messages (+ logs)").exe
 
 TC_STOP_PTC_DONE_EVENT().execute()
 
-
-
-
 TC_STOP_PTC_DONE().execute()
 TC_STOP_PTC_STOP().execute()
 TC_STOP_PTC_STOP_TESTCASE().execute()
@@ -1617,3 +1721,9 @@ TC_ANY_COMPONENT_DONE_EVENT().execute()
 TC_ANY_COMPONENT_DONE().execute()
 
 TC_SCRIPT_PARAMETERS().execute()
+
+TC_TEMPLATE_TRANSFORMATION().execute()
+
+TC_MATCH_TEST().execute()
+
+TC_SET().execute()
