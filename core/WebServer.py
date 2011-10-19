@@ -28,7 +28,13 @@ import os.path
 import socket
 import base64
 import cgi
-import hashlib
+try:
+	import hashlib
+	shaclass = hashlib.sha1
+except:
+	import sha
+	shaclass = sha.sha 
+
 import struct
 import time
 import threading
@@ -613,7 +619,7 @@ class WebSocketApplication:
 		wskey = wsKey1.replace(' ', '')
 		GUID = "258EAFA5-E914-47DA-95CA-C5AB0DC85B11"
 		
-		token = base64.encodestring(hashlib.sha1(wskey + GUID).digest())
+		token = base64.encodestring(shaclass(wskey + GUID).digest())
 
 		getLogger().debug("Writing handshake response")
 
