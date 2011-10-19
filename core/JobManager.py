@@ -48,6 +48,7 @@ import sys
 import tempfile
 import threading
 import time
+import zipfile
 
 cm = ConfigManager.instance()
 
@@ -701,7 +702,7 @@ class AtsJob(Job):
 		
 		For an ATS, this:
 		- verifies that the dependencies are found.
-		- build the TE and its dependencies into a temporary TE directory tree
+		- build the TE and its dependencies into a temporary TE directory tree, as a Python egg
 		- this temporary TE directory tree will be moved to /archives/ upon run().
 		
 		This avoids the user change any source code after submitting the job.
@@ -717,11 +718,28 @@ class AtsJob(Job):
 			self.setState(self.STATE_ERROR)
 			raise PrepareException(desc)
 		
-		# Build the TE
 
+		# Check the metadata and the language API
+		metadata = TEFactory.getMetadata(self._source)
+		if metadata.api:
+			adapterModuleName = cm.get("testerman.te.python.module.api.%s" % metadata.api)
+			if not adapterModuleName:
+				getLogger().debug("Exception while creating the TE: unsupported language API %s" % metadata.api)
+				return handleError(26, "Unsupported language API %s" % metadata.api)
+			adapterDependencies = cm.get("testerman.te.python.dependencies.api.%s" % metadata.api)
+			if not adapterDependencies:
+				adapterDependencies = []
+			else:
+				adapterDependencies = [x.strip() for x in adapterDependencies.split(',')]
+		else:
+			adapterModuleName = cm.get("testerman.te.python.ttcn3module")
+
+
+		# Build the TE, as a standalone, runnable Python egg
+		
 		getLogger().info("%s: resolving dependencies..." % str(self))
 		try:
-			deps = DependencyResolver.python_getDependencyFilenames(
+			userlandDependencies = DependencyResolver.python_getDependencyFilenames(
 				source = self._source, 
 				recursive = True,
 				sourceFilename = self._path)
@@ -729,7 +747,7 @@ class AtsJob(Job):
 			desc = "unable to resolve dependencies: %s" % str(e)
 			return handleError(25, desc)
 
-		getLogger().info("%s: resolved deps:\n%s" % (str(self), deps))
+		getLogger().info("%s: resolved deps:\n%s" % (str(self), userlandDependencies))
 
 		getLogger().info("%s: creating TE..." % str(self))
 		try:
@@ -758,9 +776,25 @@ class AtsJob(Job):
 		# Now create a TE temporary package directory containing the prepared TE and all its dependencies.
 		# Will be moved to archives/ upon run()
 		self._tePreparedPackageDirectory = tempfile.mkdtemp()
-		tePackageDirectory = self._tePreparedPackageDirectory
+		
+		# We will now create a python egg file containing everything needed to run the TE independently from the server
+		
+		# The egg root dir is self._tePreparedPackageDirectory
+		# From here:
+		# /ats: contains the userland code, and the core Testerman dependencies
+		# __main__.py: contains what is needed to bootstrap the egg for a python file.egg simple run
+		# /EGG-INFO: contains the egg metadata
+		
+		tePackageDirectory = self._tePreparedPackageDirectory + '/ats'
+		eggInfoDirectory = self._tePreparedPackageDirectory + '/EGG-INFO'
+		try:
+			os.mkdir(tePackageDirectory)
+			os.mkdir(eggInfoDirectory)
+		except Exception, e:
+			desc = 'unable to create TE package: %s' % (teFilename, str(e))
+			return handleError(20, desc)
 
-		# The TE bootstrap is in main_te.py
+		# The TE code is in ats/main_te.py
 		teFilename = "%s/main_te.py" % (tePackageDirectory)
 		try:
 			f = open(teFilename, 'w')
@@ -769,18 +803,22 @@ class AtsJob(Job):
 		except Exception, e:
 			desc = 'unable to write TE to "%s": %s' % (teFilename, str(e))
 			return handleError(20, desc)
-		
+
+		# This is the list of source files to include in our egg
+		sources = []
+
 		# Copy dependencies to the TE base dir
-		getLogger().info("%s: preparing dependencies..." % (str(self)))
+		getLogger().info("%s: preparing userland dependencies..." % (str(self)))
 		try:
-			for filename in deps:
+			for filename in userlandDependencies:
 				# filename is a docroot-path
-				# Target, local, absolute filename for the dep
-				targetFilename = '%s/%s' % (tePackageDirectory, filename)
 
 				depContent = FileSystemManager.instance().read(filename)
 				# Alter the content (additional includes, etc)
 				depContent = TEFactory.createDependency(depContent)
+
+				# Target, local, absolute filename for the dep
+				targetFilename = '%s/%s' % (tePackageDirectory, filename)
 
 				# Create required directory structure, with __init__.py file, if needed
 				currentdir = tePackageDirectory
@@ -793,8 +831,14 @@ class AtsJob(Job):
 						pass
 					# Touch a __init__.py file
 					getLogger().debug("Creating __init__.py in %s..." % localdir)
-					f = open('%s/__init__.py' % localdir, 'w')
+					
+					initFilename = '%s/__init__.py' % localdir
+					f = open(initFilename, 'w')
 					f.close()
+					# Register it as being part of our source file in package (relative to the package dir)
+					initRelativeFilename = ('ats/%s/__init__.py' % localdir)[len(tePackageDirectory):]
+					if not initRelativeFilename in sources:
+						sources.append(initRelativeFilename)
 
 				# Now we can dump the module
 				f = open(targetFilename, 'w')
@@ -803,6 +847,124 @@ class AtsJob(Job):
 		except Exception, e:
 			desc = 'unable unable to create dependency %s to "%s": %s' % (filename, targetFilename, str(e))
 			return handleError(20, desc)
+		
+
+		getLogger().info("%s: preparing core dependencies..." % (str(self)))
+		# So, in tePackageDirectory, we have:
+		# - the main test executable (main_te.py)
+		# - all its userland dependencies
+		# Now copy the core dependencies
+		# These dependencies depend on the selected language api / adapter module
+		coreDependencies = adapterDependencies
+		
+		for coreDep in coreDependencies:
+			# Let's copy the dependencies
+			try:
+				shutil.copyfile("%s/%s" % (cm.get_transient('ts.server_root'), coreDep), "%s/%s" % (tePackageDirectory, coreDep))
+			except Exception, e:
+				desc = 'unable unable to copy core dependency %s: %s' % (coreDep, str(e))
+				return handleError(20, desc)
+			
+
+		getLogger().info("%s: preparing egg packaging..." % (str(self)))
+		# Now completing the directory tree to create a Python egg
+		sources.append('__main__.py')
+		sources.append('ats/main_te.py')
+		sources.append('ats/__init__.py')
+
+		for dep in userlandDependencies:
+			sources.append('ats/%s' % dep)
+		for dep in coreDependencies:
+			sources.append('ats/%s' % dep)
+
+		pkgInfo = """Metadata-Version: 1.0
+Name: testerman-te
+Version: 1.0.0
+Summary: Testerman TE
+Author: TBD
+Author-email: TBD
+License: N/A
+Description: 
+              Testerman Test Executable.
+              
+Keywords: testerman
+Platform: UNKNOWN
+"""
+		bootstrapCode = """##
+# This bootstrap code enables to start the main_te.
+# Doing an import ats.main_te (provided the ats folder is turned into a Python package)
+# won't work because, in particular, the CodecManager will be imported as ats.CodecManager
+# by the main_te, then as CodecManager by the codec plugins; thus it won't share the same
+# singleton instance.
+#
+# So we make here the necessary adjustments to make sure that the CodecManager is loaded
+# in a "root" context, not below an ats module.
+
+import sys, os
+home = os.path.realpath(os.path.dirname(sys.modules[globals()['__name__']].__file__))
+sys.path.insert(0, os.path.join(home, 'ats'))
+# userland modules that were in the same folder as the ATS are copied to /repository/path/to/ats.
+# Let's make sure that such modules will be find first
+sys.path.insert(0, os.path.join(home, 'ats%(atsPath)s'))
+# userland modules are copied to a repository subfolder, so add it to the PYTHONPATH
+# so that the ats/TE can find its repository-level userland dependencies
+sys.path.insert(0, os.path.join(home, 'ats/repository'))
+
+import main_te
+""" % dict(atsPath = os.path.split(self._path)[0])
+
+		try:
+			# The Python egg __main__ is in the base dir
+			f = open("%s/__main__.py" % (self._tePreparedPackageDirectory), 'w')
+			f.write(bootstrapCode)
+			f.close()
+			# turns the ats into a python package to make it importable if needed
+			f = open("%s/ats/__init__.py" % (self._tePreparedPackageDirectory), 'w')
+			f.write("import main_te\n")
+			f.close()
+			# The Python egg metadata are in EGG-INFO
+			f = open("%s/EGG-INFO/dependency_links.txt" % (self._tePreparedPackageDirectory), 'w')
+			f.write("\n")
+			f.close()
+			f = open("%s/EGG-INFO/top_level" % (self._tePreparedPackageDirectory), 'w')
+			f.write("ats\n")
+			f.close()
+			f = open("%s/EGG-INFO/PKG-INFO" % (self._tePreparedPackageDirectory), 'w')
+			f.write(pkgInfo)
+			f.close()
+			f = open("%s/EGG-INFO/zip-safe" % (self._tePreparedPackageDirectory), 'w')
+			f.write("\n")
+			f.close()
+			f = open("%s/EGG-INFO/SOURCES.txt" % (self._tePreparedPackageDirectory), 'w')
+			f.write('\n'.join(sources))
+			f.close()
+		except Exception, e:
+			desc = 'unable to write Python egg metadata: %s' % (str(e))
+			return handleError(20, desc)
+		
+		# So now self._tePreparedPackageDirectory
+		# contains everything needed to create an independent, runnable egg.
+		# However, plugins (probes & codecs) are not included in the egg yet.
+		
+		# Create the egg
+		getLogger().info("%s: creating python egg..." % (str(self)))
+		egg = zipfile.ZipFile("%s/ats.egg" % self._tePreparedPackageDirectory, 'w', zipfile.ZIP_DEFLATED)
+		sources.append('EGG-INFO/dependency_links.txt')
+		sources.append('EGG-INFO/top_level')
+		sources.append('EGG-INFO/PKG-INFO')
+		sources.append('EGG-INFO/zip-safe')
+		sources.append('EGG-INFO/SOURCES.txt')
+		for s in sources:
+			egg.write("%s/%s" % (self._tePreparedPackageDirectory, s), s)
+		egg.close()
+		
+		getLogger().info("%s: cleaning up temporary files..." % (str(self)))
+		try:
+			os.unlink("%s/__main__.py" % self._tePreparedPackageDirectory)
+			shutil.rmtree("%s/ats" % self._tePreparedPackageDirectory, ignore_errors = True)
+			shutil.rmtree("%s/EGG-INFO" % self._tePreparedPackageDirectory, ignore_errors = True)
+		except Exception, e:
+			getLogger().warning("%s: unable to clean up temporary files after creating egg: %s" % (str(self), str(e)))
 		
 		# OK, we're ready.
 		self.setState(self.STATE_WAITING)
@@ -918,9 +1080,7 @@ class AtsJob(Job):
 		getLogger().info("%s: building TE command line..." % str(self))
 		# teLogFilename is an absolute local path
 		teLogFilename = "%s/%s.log" % (baseDirectory, basename)
-		teFilename = "%s/main_te.py" % (tePackageDirectory)
-		# module paths relative to the TE package dir
-		modulePaths = [ os.path.split(self._path)[0][1:], 'repository' ] # we strip the leading / of the atspath
+		teFilename = "%s/ats.egg" % (tePackageDirectory)
 		# Get the TE command line options
 		cmd = TEFactory.createCommandLine(
 			jobId = self.getId(), 
@@ -928,7 +1088,6 @@ class AtsJob(Job):
 			logFilename = teLogFilename, 
 			inputSessionFilename = inputSessionFilename, 
 			outputSessionFilename = outputSessionFilename, 
-			modulePaths = modulePaths,
 			selectedGroups = self.getSelectedGroups())
 		executable = cmd['executable']
 		args = cmd['args']

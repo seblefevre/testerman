@@ -186,7 +186,7 @@ def createTestExecutable(name, ats):
 	
 	return te
 	
-def createCommandLine(jobId, teFilename, logFilename, inputSessionFilename, outputSessionFilename, modulePaths, selectedGroups = None):
+def createCommandLine(jobId, teFilename, logFilename, inputSessionFilename, outputSessionFilename, selectedGroups = None):
 	"""
 	@rtype: a dict { 'executable': string, 'env': dict[string] of strings, 'args': list of strings }
 	@returns: the info needed to an execve or the like to execute the TE.
@@ -214,14 +214,15 @@ def createCommandLine(jobId, teFilename, logFilename, inputSessionFilename, outp
 	ret['executable'] = pythonInterpreter
 
 	#	Env
-	# User modules are in the module paths, shared "administrative" modules are in server_root/modules
-	pythonPath = '%(root)s:%(root)s/modules:%(modulepaths)s' % dict(
+	# shared "administrative" modules are in server_root/modules
+	pythonPath = '%(root)s/modules' % dict(
 		root = cm.get_transient("ts.server_root"),
-		modulepaths = ':'.join(modulePaths))
+		egg = teFilename)
 	libraryPath = '%(root)s:$LD_LIBRARY_PATH' % dict(root = cm.get_transient("ts.server_root"))
 	ret['env'] = { 'LD_LIBRARY_PATH': libraryPath, 'PYTHONPATH': pythonPath }
 
-	# Executable arguments
+	# Executable arguments: note: python egg execution by filename requires Python 2.6+
+	# Alternative to support previous Python versions: PYTHONPATH=/path/to/egg python -m ats
 	ret['args'] = [ pythonInterpreter, teFilename ] + cmdOptions
 
 	return ret
