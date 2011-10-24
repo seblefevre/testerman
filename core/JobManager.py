@@ -34,6 +34,7 @@ import TEFactory
 import Tools
 import Versions
 
+import base64
 import compiler
 import cPickle as pickle
 import copy_reg
@@ -449,7 +450,7 @@ class Job(object):
 		EventManager.instance().dispatchNotification(createJobEventNotification(self.getUri(), jobDict))
 		EventManager.instance().dispatchNotification(createJobEventNotification('system:jobs', jobDict))
 
-	def toDict(self):
+	def toDict(self, detailed = False):
 		"""
 		Returns the job info as a dict
 		"""
@@ -469,7 +470,7 @@ class Job(object):
 		'username': self._username, 'scheduled-at': self._scheduledStartTime,
 		'path': self._path, 'log-filename': self._logFilename }
 		return ret
-	
+
 	def __str__(self):
 		return "%s:%s (%s)" % (self._type, self._name, self.getUri())
 	
@@ -635,7 +636,27 @@ class AtsJob(Job):
 		self._tePackageDirectory = None
 		
 		self._selectedGroups = None
-	
+		
+		# For detailed info
+		self._teInputSession = None
+		self._teCommandLine = None
+		self._teFilename = None
+
+	def toDict(self, detailed = False):
+		"""
+		Returns the job info as a dict
+		"""
+		ret = Job.toDict(self, detailed)
+		
+		if detailed:
+			# Add ATS-specific stuff here
+			ret['source'] = base64.encodestring(self._source)
+			ret['te-command-line'] = self._teCommandLine
+			ret['te-filename'] = self._teFilename
+			ret['te-input-parameters'] = self._teInputSession
+			
+		return ret
+
 	def setSelectedGroups(self, selectedGroups):
 		self._selectedGroups = selectedGroups
 	
@@ -776,7 +797,6 @@ class AtsJob(Job):
 		# Now create a TE temporary package directory containing the prepared TE and all its dependencies.
 		# Will be moved to archives/ upon run()
 		self._tePreparedPackageDirectory = tempfile.mkdtemp()
-		
 		# We will now create a python egg file containing everything needed to run the TE independently from the server
 		
 		# The egg root dir is self._tePreparedPackageDirectory
@@ -1030,7 +1050,7 @@ import main_te
 		baseDirectory = self._baseDirectory
 		tePackageDirectory = self._tePackageDirectory
 		basename = self._basename
-
+		
 		# Move the prepared, temporary TE folder tree to its final location in archives
 		try:
 			shutil.move(self._tePreparedPackageDirectory, tePackageDirectory)
@@ -1062,6 +1082,7 @@ import main_te
 		
 		# The merged input session
 		mergedInputSession = mergeSessionParameters(inputSession, scriptSignature, self._sessionParametersMapping)
+		self._teInputSession = mergedInputSession
 		
 		getLogger().info('%s: using merged input session parameters:\n%s' % (str(self), '\n'.join([ '%s = %s (%s)' % (x, y, repr(y)) for x, y in mergedInputSession.items()])))
 		
@@ -1095,6 +1116,8 @@ import main_te
 		
 		# Show a human readable command line for debug purposes
 		cmdLine = '%s %s' % ( ' '.join(['%s=%s' % (x, y) for x, y in env.items()]), ' '.join(args))
+		self._teCommandLine = cmdLine
+		self._teFilename = teFilename[len(cm.get('testerman.document_root')):] # fill a teFilename that is relative to the docroot
 		getLogger().info("%s: executing TE using:\n%s\nEnvironment variables:%s" % (str(self), cmdLine, '\n'.join(['%s=%s' % x for x in env.items()])))
 
 		# Fork and run it
@@ -1749,7 +1772,20 @@ class JobManager:
 				ret.append(job.toDict())
 		self._unlock()
 		return ret
-	
+
+	def getJobDetails(self, id_):
+		"""
+		@type  id_: integer, or None
+		@param id_: the jobId for which we request some info, or None if we want all.
+		
+		@rtype: list of dict
+		@returns: a list of job dict representations. May be empty if the id_ was not found.
+		"""
+		job = self.getJob(id_)
+		if not job:
+			return None
+		return job.toDict(detailed = True)
+
 	def killAll(self):
 		"""
 		Kills all existing jobs.

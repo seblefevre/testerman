@@ -317,6 +317,42 @@ class Client(Nodes.ConnectingNode):
 			self.getLogger().debug("log decompressed")
 		return res
 
+	def getJobDetails(self, jobId):
+		"""
+		Gets a specific job's details.
+
+		@since: 1.8
+
+		@type  jobId: integer
+		@param jobId: the job ID identifying the job whose status should be retrieved.
+
+		@throws Exception: in case of an internal error.
+
+		@rtype: dict
+	      	 {'id': integer, 'parent-id': integer, 'name': string,
+	        	'state': string in ['waiting', 'running', 'stopped', 'cancelled', 'killed', 'paused'],
+	        	'running-time': float or None, 'result': integer or None, 'username': string, 
+						'start-time': float or None, 'stop-time': float or None, 'scheduled-at': float,
+	        	'type': string in ['ats', 'campaign'],
+						'path': string (docroot-based path for jobs whose source is in docroot) or None (client-based source),
+						'te-filename': string or None
+						'te-input-parameters': dict or None
+						'te-command-line': string or None
+						'source': base64-encoded string
+	      	 }
+		@returns: a dict of info for the given job, or None if not found or in case of an error.
+		"""
+		self.getLogger().debug("getJobDetails...")
+		res = None
+		try:
+			res = self.__proxy.getJobDetails(jobId)
+			if res and res.has_key('source'):
+				# Automatically decode the source
+				res['source'] = base64.decodestring(res['source'])
+		except:
+			pass
+		return res
+
 	def getJobLogFilename(self, jobId):
 		"""
 		Returns the job's log filename,

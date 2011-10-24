@@ -9,6 +9,13 @@ KNOWN BUGS:
 - Saving a campaign log with the "expand" option does not work as expected.
 
 
+1.4.0-svn:
+- Added job details for ATS (job manager context menu: show details).
+  This enables to get some server side info, the original ATS source
+  code, execution parameters, and enables to download the test executable
+  for standalone execution (SOON).
+
+
 1.4.0:
 - Stabilized 1.3 version, with adjusted versioning
   to be part of the Testerman 1.4 components series.

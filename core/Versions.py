@@ -19,7 +19,7 @@
 ##
 
 #: Main TS implementation version
-TESTERMAN_SERVER_VERSION = '1.4.2'
+TESTERMAN_SERVER_VERSION = '1.4.3'
 
 #: Main TACS implementation version
 TESTERMAN_AGENT_CONTROLLER_VERSION = '1.4.0'

@@ -52,7 +52,7 @@ import zlib
 #: API versions: major.minor
 #: major += 1 if not backward compatible,
 #: minor += 1 if feature-enriched, backward compatible
-WS_VERSION = '1.7'
+WS_VERSION = '1.8'
 
 
 ################################################################################
@@ -276,10 +276,49 @@ def getJobInfo(jobId = None):
 		res = JobManager.instance().getJobInfo(jobId)
 	except Exception, e:
 		e =  Exception("Unable to complete getJobInfo operation: %s\n%s" % (str(e), Tools.getBacktrace()))
-		getLogger().info("<< getJobStatus(...): Fault:\n%s" % str(e))
+		getLogger().info("<< getJobInfo(...): Fault:\n%s" % str(e))
 		raise(e)
 
 	getLogger().info("<< getJobInfo: %d job info entries returned" % len(res))
+	return res
+
+def getJobDetails(jobId):
+	"""
+	Gets a specific job's details.
+
+	@since: 1.8
+
+	@type  jobId: integer
+	@param jobId: the job ID identifying the job whose status should be retrieved.
+	
+	@throws Exception: in case of an internal error.
+
+	@rtype: dict
+	       {'id': integer, 'parent-id': integer, 'name': string,
+	        'state': string in ['waiting', 'running', 'stopped', 'cancelled', 'killed', 'paused'],
+	        'running-time': float or None, 'result': integer or None, 'username': string, 
+					'start-time': float or None, 'stop-time': float or None, 'scheduled-at': float,
+	        'type': string in ['ats', 'campaign'],
+					'path': string (docroot-based path for jobs whose source is in docroot) or None (client-based source),
+					'te-filename': string or None
+					'te-input-parameters': dict or None
+					'te-command-line': string or None
+					'source': base64-encoded string
+	       }
+	@returns: a dict of info for the given job, or None if not found.
+
+	@throws Exception: when the job was not found, or when the job file was removed.
+	"""
+	getLogger().info(">> getJobDetails(%s)" % str(jobId))
+	res = []
+	try:
+		res = JobManager.instance().getJobDetails(jobId)
+	except Exception, e:
+		e =  Exception("Unable to complete getJobDetails operation: %s\n%s" % (str(e), Tools.getBacktrace()))
+		getLogger().info("<< getJobDetails(...): Fault:\n%s" % str(e))
+		raise(e)
+
+	getLogger().info("<< getJobDetails: job details returned")
 	return res
 
 def getJobLog(jobId, useCompression = True):

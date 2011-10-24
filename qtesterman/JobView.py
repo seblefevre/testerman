@@ -99,6 +99,77 @@ class WRescheduleDialog(QDialog):
 
 
 ################################################################################
+# Job Details dialogs
+################################################################################
+
+
+class WAtsDetailsDialog(QDialog):
+	"""
+	Displays the details about a particular ATS job.
+	Enables to display the source ATS,
+	and save the created test executable.
+	"""
+	def __init__(self, details, parent = None):
+		QDialog.__init__(self, parent)
+		self._details = details
+		self.__createWidget()
+	
+	def __createWidget(self):
+		self.setWindowTitle("ATS Job Details")
+		self.setWindowIcon(icon(':icons/testerman.png'))
+
+		layout = QVBoxLayout()
+		
+		parameters = QTextEdit()
+		source = QTextEdit()
+		source.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
+		
+		form = QFormLayout()
+		form.setMargin(2)
+		form.addRow("Job ID:", QLineEdit(unicode(self._details.get("id"))))
+		form.addRow("Parent ID:", QLineEdit(unicode(self._details.get("parent-id"))))
+		form.addRow("Name ID:", QLineEdit(self._details.get("name")))
+		form.addRow("Type:", QLineEdit(self._details.get("type")))
+		form.addRow("Owner:", QLineEdit(self._details.get("username")))
+		form.addRow("Source path on server:", QLineEdit(self._details.get("path")))
+		form.addRow("Scheduled for:", QLineEdit(time.strftime("%Y-%m-%d %H:%M:%S", time.localtime(self._details.get("scheduled-at")))))
+		form.addRow("Current state:", QLineEdit(self._details.get("state")))
+		# Run info
+		form.addRow("Started at:", QLineEdit(self._details.get("start-time") and time.strftime("%Y-%m-%d %H:%M:%S", time.localtime(self._details.get("start-time"))) or "n/a"))
+		form.addRow("Stopped at:", QLineEdit(self._details.get("stop-time") and time.strftime("%Y-%m-%d %H:%M:%S", time.localtime(self._details.get("stop-time"))) or "n/a"))
+		form.addRow("Run duration:", QLineEdit(self._details.get("running-time") and ("%3.3f s" % self._details.get("running-time")) or "n/a"))
+		form.addRow("Result code:", QLineEdit(unicode(self._details.get("result"))))
+		form.addRow("Test Executable:", QLineEdit(self._details.get("te-filename")))
+		form.addRow("TE execution command line:", QLineEdit(self._details.get("te-command-line")))
+		form.addRow("Execution parameters:", parameters)
+		form.addRow("ATS source:", source)
+		
+		parameters.setReadOnly(True)
+		if self._details.get("te-input-parameters"):
+			p = [u'%s=%s' % item for item in self._details.get("te-input-parameters").items()]
+			p.sort()
+			parameters.setPlainText("\n".join(p))
+		else:
+			parameters.setPlainText("n/a")
+		
+		source.setReadOnly(True)
+		if self._details.get("source"):
+			source.setPlainText(self._details.get("source"))
+		else:
+			source.setPlainText("n/a")
+		
+		layout.addLayout(form)
+
+		buttonLayout = QHBoxLayout()
+		buttonLayout.addStretch()
+		self._closeButton = QPushButton("Close", self)
+		self.connect(self._closeButton, SIGNAL("clicked()"), self.accept)
+		buttonLayout.addWidget(self._closeButton)
+		layout.addLayout(buttonLayout)
+
+		self.setLayout(layout)
+
+################################################################################
 # Tree Widget Items
 ################################################################################
 
@@ -272,7 +343,7 @@ class WJobTreeWidget(QTreeWidget):
 					action = menu.addAction("Start now", lambda: self._client.rescheduleJob(jobId, 0.0))
 					action = menu.addAction("Reschedule...", lambda: self._reschedule(jobId))
 					action = menu.addAction("Cancel", lambda: self._sendSignal(jobId, 'cancel'))
-			else: # ATS
+			elif type_ == 'ats': # ATS
 				if state in [ 'running' ]:			
 					action = menu.addAction("Pause", lambda: self._sendSignal(jobId, 'pause'))
 					action = menu.addAction("Cancel", lambda: self._sendSignal(jobId, 'cancel'))
@@ -286,6 +357,8 @@ class WJobTreeWidget(QTreeWidget):
 					action = menu.addAction("Cancel", lambda: self._sendSignal(jobId, 'cancel'))
 				elif state in [ 'cancelling' ]:
 					action = menu.addAction("Kill", lambda: self._sendSignal(jobId, 'kill'))
+				menu.addSeparator()
+				menu.addAction("Show details", lambda: self._showDetails(jobId))
 
 			menu.addSeparator()
 		
@@ -302,6 +375,12 @@ class WJobTreeWidget(QTreeWidget):
 
 	def _viewLog(self, jobId):
 		self.emit(SIGNAL('showLog(int)'), jobId)	
+
+	def _showDetails(self, jobId):
+		details = self._client.getJobDetails(jobId)
+		if details:
+			dialog = WAtsDetailsDialog(details, self)
+			dialog.show()
 	
 	def _reschedule(self, jobId):
 		"""
