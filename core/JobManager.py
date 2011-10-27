@@ -1400,7 +1400,7 @@ class CampaignJob(Job):
 		its status to execute its selected branch.
 		"""
 		if self.getState() != self.STATE_RUNNING:
-			# We stop our loop/recursion (killed, cancelled, etc).
+			# We stop our recursion (killed, cancelled, etc).
 			return
 		
 		try:
@@ -1419,6 +1419,10 @@ class CampaignJob(Job):
 
 		# Now, the child jobs according to the branch
 		for job in callingJob._childBranches[branch]:
+			if self.getState() != self.STATE_RUNNING:
+				# We stop our loop (killed, cancelled, etc).
+				return
+
 			instance().registerJob(job)
 
 			getLogger().info("%s: preparing child job %s, invoked by %s, on branch %s" % (str(self), str(job), str(callingJob), branch))
