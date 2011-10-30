@@ -975,37 +975,7 @@ class CampaignWidgetItem(ExpandableWidgetItem):
 	def addFetchedChildItems(self, data):
 		if not self.isInPackageTree():
 			self.addChild(ProfilesDirWidgetItem(self._path + '/profiles'))
-#		if not self.isInPackageTree():
-#			self.addChild(RevisionsWidgetItem(self._path))
 		self.addChild(ExecutionLogsWidgetItem(self._path))
-
-
-class RevisionsWidgetItem(ExpandableWidgetItem):
-	"""
-	Revision file virtual folder.
-	"""
-	def __init__(self, path, parent = None):
-		ExpandableWidgetItem.__init__(self, path, parent)
-		self.setIcon(0, icon(':/icons/item-types/folder-virtual'))
-		self.setText(0, 'Revisions')
-
-	def getUrl(self):
-		return None
-
-	def isVirtual(self):
-		return True
-
-
-class RevisionWidgetItem(BaseWidgetItem):
-	"""
-	Revision file (document)
-	"""
-	def __init__(self, path, parent = None):
-		BaseWidgetItem.__init__(self, path, parent)
-		self.setIcon(0, icon(':/icons/item-types/revision'))
-
-	def isVirtual(self):
-		return True
 
 
 class ExecutionLogsWidgetItem(ExpandableWidgetItem):
@@ -1032,6 +1002,8 @@ class ExecutionLogsWidgetItem(ExpandableWidgetItem):
 		return ret
 
 	def addFetchedChildItems(self, data):
+		# More recent executions first
+		data.reverse()
 		for name in data:
 			item = ExecutionLogWidgetItem(name)
 			self.addChild(item)
@@ -1085,6 +1057,10 @@ class ProfilesDirWidgetItem(ExpandableWidgetItem):
 		ExpandableWidgetItem.__init__(self, path, parent)
 		self.setIcon(0, icon(':/icons/item-types/folder-package-profiles'))
 		self.setText(0, 'Profiles')
+
+	def updateFlags(self):
+		# Allow file drop in it (provided this is a profile)
+		self.setFlags(Qt.ItemIsEnabled | Qt.ItemIsSelectable | Qt.ItemIsDropEnabled)
 
 	def fetchChildItems(self):
 		ret = []
@@ -1431,14 +1407,17 @@ class WServerFileSystemTreeWidget(QTreeWidget):
 			elif item.isPackageSrcDir():
 				menu.addAction("New folder...", lambda: self._createDirectory(item))
 			elif item.isProfilesDir():
-				menu.addAction("New profile...", lambda: self._createProfile(item))
+				# Profiles cannot be created from here any more.
+				# You need to first open the script and add a new profile from
+				# its editor's embedded profile editor.
+				pass
 			elif item.isProfile():
-				menu.addAction("Edit", lambda: self._open(item))
-				if item.isInPackageProfilesTree():
-					menu.addAction("Run package with this profile", lambda: self._notYetImplemented())
-				else:
-					menu.addAction("Run script with this profile", lambda: self._notYetImplemented())
-				menu.addAction("Delete", lambda: self._notYetImplemented())
+				# No direct edition: a profile is exclusively edited via its associated script
+#				if item.isInPackageProfilesTree():
+#					menu.addAction("Run package with this profile", lambda: self._notYetImplemented())
+#				else:
+#					menu.addAction("Run script with this profile", lambda: self._notYetImplemented())
+				menu.addAction("Delete", lambda: self._deleteProfile(item))
 			elif item.isPackageDescription():
 				menu.addAction("Edit", lambda: self._open(item))
 			elif item.isDir():
@@ -1628,6 +1607,17 @@ class WServerFileSystemTreeWidget(QTreeWidget):
 					# Local view removal: the server does not notify us for now
 					item.parent().removeChild(item)
 				else:
+					# Display an error message ?
+					pass
+
+	def _deleteProfile(self, item):
+		url = item.getUrl()
+		print "DEBUG: url: %s" % unicode(url.path())
+		if url:
+			dialog = CommonWidgets.WUserQuestion("Delete profile", "Are you sure you want to delete the profile %s ?" % item.getBasename(), parent = self)
+			if dialog.exec_() == QDialog.Accepted:
+				ret = self.getClient().deleteProfile(unicode(url.path()))
+				if not ret:
 					# Display an error message ?
 					pass
 
@@ -2096,20 +2086,33 @@ class WRepositoryBrowsingDock(QDockWidget):
 		self.controller = ViewController(self)
 		
 		self.setWindowTitle("Remote browsing")
-		self.tab = QTabWidget(self)
-		self.repositoryTree = WServerFileSystemTreeWidget('/repository', self.tab)
-		self.repositoryTree.setClient(QApplication.instance().client(), autorefresh = False)
-		self.controller.addView(self.repositoryTree)
-		self.tab.addTab(self.repositoryTree, 'Repository')
-		self.archivesTree = WServerFileSystemTreeWidget('/archives', self.tab)
-		self.archivesTree.setClient(QApplication.instance().client(), autorefresh = False)
-		self.controller.addView(self.archivesTree)
-		self.tab.addTab(self.archivesTree, 'Archives')
-		self.setWidget(self.tab)
+
+		# Only display the Archives browser - and a tab - if a specific configuration is present
+		settings = QSettings()
+		enableArchivesBrowser = settings.value('enableArchiveBrowser', QVariant(False)).toBool()
+		if enableArchivesBrowser:
+			self.tab = QTabWidget(self)
+			self.repositoryTree = WServerFileSystemTreeWidget('/repository', self.tab)
+			self.repositoryTree.setClient(QApplication.instance().client(), autorefresh = False)
+			self.controller.addView(self.repositoryTree)
+			self.tab.addTab(self.repositoryTree, 'Repository')
+			self.archivesTree = WServerFileSystemTreeWidget('/archives', self.tab)
+			self.archivesTree.setClient(QApplication.instance().client(), autorefresh = False)
+			self.controller.addView(self.archivesTree)
+			self.tab.addTab(self.archivesTree, 'Archives')
+			self.setWidget(self.tab)
+		else:
+			# No Tab widget, keep it simple
+			self.repositoryTree = WServerFileSystemTreeWidget('/repository', self)
+			self.repositoryTree.setClient(QApplication.instance().client(), autorefresh = False)
+			self.controller.addView(self.repositoryTree)
+			self.setWidget(self.repositoryTree)
+			self.archivesTree = None
 	
 	def refresh(self):
 		self.repositoryTree.refresh()
-		self.archivesTree.refresh()
+		if self.archivesTree:
+			self.archivesTree.refresh()
 
 
 ################################################################################

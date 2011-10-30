@@ -278,6 +278,7 @@ class WInterfaceSettings(WSettings):
 		settings = QSettings()
 		style = settings.value('style', QVariant(QString('Cleanlooks'))).toString()
 		reopenOnStartup = settings.value('mru/reopenOnStartup', QVariant(True)).toBool()
+		enableArchivesBrowser = settings.value('enableArchiveBrowser', QVariant(False)).toBool()
 
 		vlayout = QVBoxLayout()
 		layout = QGridLayout()
@@ -292,6 +293,10 @@ class WInterfaceSettings(WSettings):
 		self.reopenOnStartupCheckBox = QCheckBox("Re-open last open files on startup")
 		self.reopenOnStartupCheckBox.setChecked(reopenOnStartup)
 		layout.addWidget(self.reopenOnStartupCheckBox, 1, 0, 1, 2, Qt.AlignLeft)
+		# Display the archives browser
+		self.enableArchivesBrowserCheckBox = QCheckBox("Show archives remote browser (requires restart)")
+		self.enableArchivesBrowserCheckBox.setChecked(enableArchivesBrowser)
+		layout.addWidget(self.enableArchivesBrowserCheckBox, 2, 0, 1, 2, Qt.AlignLeft)
 		vlayout.addLayout(layout)
 		vlayout.addStretch()
 		self.setLayout(vlayout)
@@ -304,6 +309,8 @@ class WInterfaceSettings(WSettings):
 		settings.setValue('style', QVariant(style))
 		reopenOnStartup = self.reopenOnStartupCheckBox.isChecked()
 		settings.setValue('mru/reopenOnStartup', QVariant(reopenOnStartup))
+		enableArchivesBrowser = self.enableArchivesBrowserCheckBox.isChecked()
+		settings.setValue('enableArchiveBrowser', QVariant(enableArchivesBrowser))
 
 		QApplication.instance().setStyle(style)
 

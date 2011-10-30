@@ -2876,7 +2876,21 @@ class WProfilesManager(QWidget):
 				# TODO: We should propose to overwrite it.
 	
 	def deleteProfile(self):
-		pass
+		ret = QMessageBox.warning(self, "Delete profile", "Are you sure you want to delete the profile %s ?" % self.model.getFriendlyName(),
+			QMessageBox.Yes | QMessageBox.No, QMessageBox.No)
+		if ret != QMessageBox.Yes:
+			return False
+
+		filename = self.model.getUrl().path()
+		if getProxy().deleteProfile(unicode(filename)):
+			# Remove the profile from the local view
+			try:
+				del self._profileModels[self.model.getFriendlyName()]
+			except:
+				pass
+			# Select the default profile - index 0
+			self.getProfileSelector().setCurrentIndex(0)
+		
 
 	def reapplyProfileTemplate(self):
 		"""

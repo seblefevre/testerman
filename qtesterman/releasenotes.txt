@@ -2,7 +2,7 @@ This is QTesterman, a PyQt4-based Ritch Client for Testerman.
 =============================================================
 
 KNOWN BUGS:
-- Profiles management is minimal for now: no way to delete/rename one,
+- Profiles management is minimal for now: no way to rename one,
   and it is not possible to remove parameters in a profile.
 - The script properties editor does not reselect the parameter you just
   updated.
@@ -14,6 +14,14 @@ KNOWN BUGS:
   This enables to get some server side info, the original ATS source
   code, execution parameters, and enables to download the test executable
   for standalone execution (SOON).
+- Added: support for profile copy from one script/profiles folder
+  to another one.
+- Added: support for profile deletion, from the remote browser or
+  from the profile editor.
+- Modified: execution logs in the remote browser are now displayed
+  more recent run first.
+- Modified: the "archives" remote browser is now disabled by default.
+  You may re-enable it in the QTesterman preferences.
 
 
 1.4.0:
