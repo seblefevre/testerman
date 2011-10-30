@@ -16,13 +16,7 @@
 ##
 # A FileSystemBackend implementation for local files management.
 # 
-# Will also provide a basic, non-optimized revision management system, 
-# prefixing filenames with @<rev>
-# samples/file.ats
-# samples/file.ats@1.1
-# samples/file.ats@1.2
-# samples/file.ats@1.1.1
-#
+# No revision management.
 ##
 
 import FileSystemBackend

@@ -332,7 +332,7 @@ class FileSystemManager:
 		vpath = VirtualPath(filename)
 		baseObject = vpath.getBaseValue()
 
-		(adjusted, backend) = FileSystemBackendManager.getBackend(filename)
+		(adjusted, backend) = FileSystemBackendManager.getBackend(baseObject)
 		if not backend:
 			raise Exception('No backend available to manipulate %s' % filename)
 
