@@ -864,6 +864,17 @@ class Client(Nodes.ConnectingNode):
 			self.removeDirectory(tePath, True)
 		return ret
 
+	def deleteProfile(self, filename):
+		"""
+		Deletes a profile associated to a script.
+
+		@type  filename: string
+		@param filename: the docroot-path of the file to delete
+		"""
+		assert(filename.endswith('.profile'))
+		ret = self.removeFile(filename)
+		return ret
+
 	##
 	# Update management
 	##
