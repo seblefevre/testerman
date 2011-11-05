@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 ##
 # This file is part of Testerman, a test automation system.
-# Copyright (c) 2009 QTesterman contributors
+# Copyright (c) 2009-2011 QTesterman contributors
 #
 # This program is free software; you can redistribute it and/or modify it under
 # the terms of the GNU General Public License as published by the Free Software
@@ -599,7 +599,12 @@ class WMainWindow(QMainWindow):
 
 		QApplication.instance().notifyInitializationProgress("Ready")
 
-	def onShow(self):
+	def showEvent(self, event):
+		"""
+		Reimplemlented from QWidget/QMainWindow.
+		"""
+		QMainWindow.showEvent(self, event)
+
 		# Refresh browsers
 		self.repositoryBrowserDock.refresh()
 	
@@ -1195,8 +1200,7 @@ Please install the appropriate package for your Linux/Unix distribution or downl
 	log("Main Window created.")
 	app.connect(app, SIGNAL("lastWindowClosed()"), mainWindow.quit)
 	mainWindow.show()
-
-	mainWindow.onShow()
+	
 	return app.exec_()
 
 def runLogAnalyzer(logFilename, shouldConnect = False):

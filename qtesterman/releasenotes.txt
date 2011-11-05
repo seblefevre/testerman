@@ -6,10 +6,12 @@ KNOWN BUGS:
   and it is not possible to remove parameters in a profile.
 - The script properties editor does not reselect the parameter you just
   updated.
-- Saving a campaign log with the "expand" option does not work as expected.
 
 
-1.4.0-svn:
+1.4.1:
+- Fixed: saving campaign logs with unicode characters now works correctly
+  (with the "expand" function).
+- Fixed: random crash at startup (hopefully).
 - Added job details for ATS (job manager context menu: show details).
   This enables to get some server side info, the original ATS source
   code, execution parameters, and enables to download the test executable
@@ -22,6 +24,7 @@ KNOWN BUGS:
   more recent run first.
 - Modified: the "archives" remote browser is now disabled by default.
   You may re-enable it in the QTesterman preferences.
+- Modified: refreshed splash screen.
 
 
 1.4.0:

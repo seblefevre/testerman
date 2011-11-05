@@ -32,6 +32,49 @@ import zlib
 
 import StringIO
 
+WsLock = threading.RLock()
+
+class _SafeThreadMethod:
+	# some magic to bind an XML-RPC method to an RPC server.
+	# supports "nested" methods (e.g. examples.getStateName)
+	def __init__(self, send, name):
+		self.__send = send
+		self.__name = name
+		self.__lock = WsLock
+	def __getattr__(self, name):
+		return _SafeThreadMethod(self.__send, "%s.%s" % (self.__name, name))
+	def __call__(self, *args):
+		self.__lock.acquire()
+		try:
+			ret = self.__send(self.__name, args)
+		except Exception, e:
+			self.__lock.release()
+			raise e
+		self.__lock.release()
+		return ret
+
+xmlrpclib._Method = _SafeThreadMethod
+
+
+class ThreadSafeServerProxy(xmlrpclib.ServerProxy):
+	"""
+	This reimplemented class protects each remote call
+	with a mutex.
+	This renders the proxy basically thread-safe for
+	concurrent requests to the server.
+	"""
+	def __init__(self, uri, transport=None, encoding=None, verbose=0, allow_none=0, use_datetime=0):
+		xmlrpclib.ServerProxy.__init__(self, uri, transport, encoding, verbose, allow_none, use_datetime)
+		self.__lock = threading.RLock()
+
+	def __getattr__(self, name):
+		# magic method dispatcher
+#		print self.__request
+		return _SafeThreadMethod(lambda methodname, params: xmlrpclib.ServerProxy.__request(self, methodname, params), name, self.__lock)
+	
+
+
+
 class DummyLogger:
 	"""
 	A Defaut logging.Logger-like implementation.

@@ -123,6 +123,10 @@ class LogSaver:
 		f.close()
 
 	def _save(self, f, rawLogs, prefix = None):
+		"""
+		If self._mode is not MODE_RAW, rawLogs is actually a unicode
+		string that requires an utf-8 encoding.
+		"""
 		if self._mode == self.MODE_RAW:
 			f.write(rawLogs)
 			return
@@ -138,6 +142,7 @@ class LogSaver:
 					if self._mode == self.MODE_EXPAND:
 						includedLogs = self.fetchUrl(url)
 						if includedLogs is not None:
+							includedLogs = includedLogs.decode('utf-8')
 							self._save(f, includedLogs)
 						else:
 							# Warning
@@ -146,6 +151,7 @@ class LogSaver:
 					elif self._mode == self.MODE_REWRITE: # Untested code (for now)
 						includedLogs = self.fetchUrl(url)
 						if includedLogs is not None:
+							includedLogs = includedLogs.decode('utf-8')
 							# new file in a new folder
 							dirname = prefix
 							name = url.split('/')[-1]
@@ -157,7 +163,7 @@ class LogSaver:
 							except:
 								pass
 							subf = open(filename, 'w')
-							self._save(subf, prefix = '.'.join(name.split('.')[-1]))
+							self._save(subf, includedLogs, prefix = '.'.join(name.split('.')[-1]))
 							subf.close()
 
 	def fetchUrl(self, url):

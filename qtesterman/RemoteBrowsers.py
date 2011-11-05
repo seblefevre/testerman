@@ -692,13 +692,7 @@ class AsyncFetchingThread(QThread):
 			self._asyncExpander._fetchedChildItemData = self._asyncExpander._fetcher()
 		except Exception, e:
 			pass
-		# Normally, it should be enough to let the QThread finish, send its finished() signal,
-		# then consider that child items are ready at this moment.
-		# However, randomly (?), I got a "QThread: Destroyed while thread is still running" segfault
-		# with this model, not even executing the slot connected to the finished() signal.
-		#
-		# With this application signal (requiring the exec_() to be sent), it just runs fine.
-		self.emit(SIGNAL("childItemsFetched"))
+		self.emit(SIGNAL("fetched"))
 		self.exec_()
 
 class AsyncExpander(QObject):
@@ -746,7 +740,7 @@ class AsyncExpander(QObject):
 		self._loading()
 		# Call our item feeder in a worker thread
 		self.fetchingThread = AsyncFetchingThread(self)
-		self.fetchingThread.connect(self.fetchingThread, SIGNAL("childItemsFetched"), self._childItemsFetched)
+		self.connect(self.fetchingThread, SIGNAL("fetched"), self._childItemsFetched)
 		self.fetchingThread.start()
 	
 	def _loading(self):
