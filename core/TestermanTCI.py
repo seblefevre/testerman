@@ -53,6 +53,10 @@ import sys
 import time
 import threading
 
+import traceback
+import StringIO
+
+
 # These global variables are set during the TE initialization,
 # through initialize()
 TheIlClient = None
@@ -67,8 +71,6 @@ def getBacktrace():
 	"""
 	Returns the current backtrace.
 	"""
-	import traceback
-	import StringIO
 	backtrace = StringIO.StringIO()
 	traceback.print_exc(None, backtrace)
 	ret = backtrace.getvalue()
