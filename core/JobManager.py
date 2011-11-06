@@ -1001,10 +1001,11 @@ import main_te
 		# docroot-path for all TE packages for this ATS
 		self._baseDocRootDirectory = os.path.normpath("/%s/%s" % (cm.get_transient("constants.archives"), self.getName()))
 		# Base name for execution log and TE package dir
-		# FIXME: possible name collisions if the same user schedules 2 same ATSes at the same time... even if ms are included
+		# The basename is unique per execution: datetime+ms+jobid, formatted so that the jobid looks to be part of the timestamp ms (and more) precision.
+		# This enables old QTesterman clients to parse the log filename to display a visually meaningful date for it.
 		timestamp = time.time()
-		datetimems = time.strftime("%Y%m%d %H:%M:%S", time.localtime(timestamp))  + "-%3.3d" % int((timestamp * 1000) % 1000)
-		self._basename = "%s_%s" % (datetimems, self.getUsername())
+		datetimems = time.strftime("%Y%m%d-%H%M%S", time.localtime(timestamp))  + "-%3.3d" % int((timestamp * 1000) % 1000)
+		self._basename = "%s%s_%s" % (datetimems, self.getId(), self.getUsername())
 		# Corresponding absolute local path
 		self._baseDirectory = os.path.normpath("%s%s" % (cm.get("testerman.document_root"), self._baseDocRootDirectory))
 		# final TE package dir (absolute local path)
@@ -1383,8 +1384,11 @@ class CampaignJob(Job):
 		baseDocRootDirectory = os.path.normpath("/%s/%s" % (cm.get_transient("constants.archives"), self.getName()))
 		# Corresponding absolute local path
 		baseDirectory = os.path.normpath("%s%s" % (cm.get("testerman.document_root"), baseDocRootDirectory))
-		# FIXME: possible name collisions if the same user schedules 2 same ATSes at the same time...
-		basename = "%s_%s" % (time.strftime("%Y%m%d-%H%M%S", time.localtime(time.time())), self.getUsername())
+		# The basename is unique per execution: datetime+ms+jobid, formatted so that the jobid looks to be part of the timestamp ms (and more) precision.
+		# This enables old QTesterman clients to parse the log filename to display a visually meaningful date for it.
+		timestamp = time.time()
+		datetimems = time.strftime("%Y%m%d-%H%M%S", time.localtime(timestamp))  + "-%3.3d" % int((timestamp * 1000) % 1000)
+		basename = "%s%s_%s" % (datetimems, self.getId(), self.getUsername())
 		self._logFilename = "%s/%s.log" % (baseDocRootDirectory, basename)
 		self._absoluteLogFilename = "%s/%s.log" % (baseDirectory, basename)
 
@@ -1491,16 +1495,16 @@ class CampaignJob(Job):
 				return
 
 			if isinstance(job, GroupJob):
-				getLogger().info("%s: executing parallel group, invoked by %s, on branch %s" % (str(self), str(callingJob), branch))
+				getLogger().info("%s: executing parallel group %s, invoked by %s, on branch %s" % (str(self), str(job), str(callingJob), branch))
 				# Parallel group
 				session = mergeSessionParameters(inputSession, scriptSignature, job._sessionParametersMapping)
-				jobThread = threading.Thread(target = lambda: self._run(job, session, branch = Job.BRANCH_UNCONDITIONAL))
+				jobThread = threading.Thread(target = lambda j = job, s = session: self._run(j, s, branch = Job.BRANCH_UNCONDITIONAL))
 				self._groupThreads.append(jobThread)
 				jobThread.start()
 				# Do not wait for the thread to end now
 				# Do not insert any <include> statement in the campaign's logs
 				# Go to next sibling after starting
-				getLogger().info("%s: parallel group run, invoked by %s, on branch %s" % (str(self), str(callingJob), branch))
+				getLogger().info("%s: parallel group %s run, invoked by %s, on branch %s" % (str(self), str(job), str(callingJob), branch))
 				continue
 
 			# "Normal" job - synchronous execution
