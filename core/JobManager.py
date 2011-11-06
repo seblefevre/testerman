@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 ##
 # This file is part of Testerman, a test automation system.
-# Copyright (c) 2008,2009,2010 Sebastien Lefevre and other contributors
+# Copyright (c) 2008-2011 Sebastien Lefevre and other contributors
 #
 # This program is free software; you can redistribute it and/or modify it under
 # the terms of the GNU General Public License as published by the Free Software
@@ -811,7 +811,7 @@ class AtsJob(Job):
 			os.mkdir(tePackageDirectory)
 			os.mkdir(eggInfoDirectory)
 		except Exception, e:
-			desc = 'unable to create TE package: %s' % (teFilename, str(e))
+			desc = 'unable to create TE package: %s' % (str(e))
 			return handleError(20, desc)
 
 		# The TE code is in ats/main_te.py
@@ -1001,8 +1001,10 @@ import main_te
 		# docroot-path for all TE packages for this ATS
 		self._baseDocRootDirectory = os.path.normpath("/%s/%s" % (cm.get_transient("constants.archives"), self.getName()))
 		# Base name for execution log and TE package dir
-		# FIXME: possible name collisions if the same user schedules 2 same ATSes at the same time...
-		self._basename = "%s_%s" % (time.strftime("%Y%m%d-%H%M%S", time.localtime(time.time())), self.getUsername())
+		# FIXME: possible name collisions if the same user schedules 2 same ATSes at the same time... even if ms are included
+		timestamp = time.time()
+		datetimems = time.strftime("%Y%m%d %H:%M:%S", time.localtime(timestamp))  + "-%3.3d" % int((timestamp * 1000) % 1000)
+		self._basename = "%s_%s" % (datetimems, self.getUsername())
 		# Corresponding absolute local path
 		self._baseDirectory = os.path.normpath("%s%s" % (cm.get("testerman.document_root"), self._baseDocRootDirectory))
 		# final TE package dir (absolute local path)
@@ -1218,11 +1220,70 @@ import main_te
 		else:
 			# The log file has not been initialized yet.
 			return '<?xml version="1.0" encoding="utf-8" ?>\n<ats>\n</ats>'
-	
+
+
+################################################################################
+# Job subclass: Campaign Group for parallel execution
+################################################################################
+
+class GroupJob(Job):
+	"""
+	This is a pseudo-job: 
+	it is not registered into our job queue, cannot be monitored, cannot
+	receive signals,
+	this is just a container that references the jobs to be executed
+	in a dedicated thread.
+	"""
+	_type = "group"
+
+	def __init__(self, name):
+		"""
+		@type  name: string
+		"""
+		Job.__init__(self, "<<group:%s>>" % name)
+
+	def addChild(self, job, branch):
+		"""
+		Adds a job as a child to this group job, in the unconditional branch, always.
+		
+		The parent of the added job will be the first ancestor that is NOT a parallel group.
+		
+		@type  job: a Job instance
+		@param job: the job to add as a child
+		@type  branch: integer in self.BRANCHES
+		@param branch: the child branch
+		"""
+		self._childBranches[Job.BRANCH_UNCONDITIONAL].append(job)
+		ancestor = self
+		while isinstance(ancestor, GroupJob): 
+			ancestor = ancestor._parent
+		job._parent = ancestor
 
 ################################################################################
 # Job subclass: Campaign
 ################################################################################
+
+class GroupThreads:
+	def __init__(self):
+		self._list = []
+		self._mutex = threading.RLock()
+	
+	def append(self, groupThread):
+		self._mutex.acquire()
+		self._list.append(groupThread)
+		self._mutex.release()
+	
+	def getList(self):
+		self._mutex.acquire()
+		ret = [ x for x in self._list ]
+		self._mutex.release()
+		return ret
+	
+	def __getstate__(self):
+		return None
+	
+	def __setstate__(self, state):
+		self._mutex = threading.RLock()
 
 class CampaignJob(Job):
 	"""
@@ -1262,6 +1323,11 @@ class CampaignJob(Job):
 			self._path = '/%s' % self._path
 		
 		self._absoluteLogFilename = None
+		
+		# The list of parallel groups that this campaign started - we have to wait for all of them to complete
+		# to complete the campaign
+		# Must be mutex protected
+		self._groupThreads = GroupThreads()
 	
 	def handleSignal(self, sig):
 		"""
@@ -1360,6 +1426,7 @@ class CampaignJob(Job):
 		self._logEvent('event', 'campaign-started', {'id': self._name})
 		self.setState(self.STATE_RUNNING)
 		self._run(callingJob = self, inputSession = inputSession)
+		self._waitForGroupsCompletion()
 		if self.getState() == self.STATE_RUNNING:
 			self.setResult(0) # a campaign always returns OK for now. Unless cancelled, etc ?
 			self.setState(self.STATE_COMPLETE)
@@ -1414,7 +1481,7 @@ class CampaignJob(Job):
 			self.setState(self.STATE_ERROR)
 			return self.getResult()
 
-		mergedInputSession = mergeSessionParameters(inputSession, scriptSignature, self._sessionParametersMapping)
+		mergedInputSession = mergeSessionParameters(inputSession, scriptSignature, callingJob._sessionParametersMapping)
 		getLogger().info('%s: using merged input session parameters:\n%s' % (str(self), '\n'.join([ '%s = %s (%s)' % (x, y, repr(y)) for x, y in mergedInputSession.items()])))
 
 		# Now, the child jobs according to the branch
@@ -1423,6 +1490,21 @@ class CampaignJob(Job):
 				# We stop our loop (killed, cancelled, etc).
 				return
 
+			if isinstance(job, GroupJob):
+				getLogger().info("%s: executing parallel group, invoked by %s, on branch %s" % (str(self), str(callingJob), branch))
+				# Parallel group
+				session = mergeSessionParameters(inputSession, scriptSignature, job._sessionParametersMapping)
+				jobThread = threading.Thread(target = lambda: self._run(job, session, branch = Job.BRANCH_UNCONDITIONAL))
+				self._groupThreads.append(jobThread)
+				jobThread.start()
+				# Do not wait for the thread to end now
+				# Do not insert any <include> statement in the campaign's logs
+				# Go to next sibling after starting
+				getLogger().info("%s: parallel group run, invoked by %s, on branch %s" % (str(self), str(callingJob), branch))
+				continue
+
+			# "Normal" job - synchronous execution
+			# The job appears in the queue
 			instance().registerJob(job)
 
 			getLogger().info("%s: preparing child job %s, invoked by %s, on branch %s" % (str(self), str(job), str(callingJob), branch))
@@ -1435,7 +1517,6 @@ class CampaignJob(Job):
 
 			if prepared:
 				getLogger().info("%s: starting child job %s, invoked by %s, on branch %s" % (str(self), str(job), str(callingJob), branch))
-				# Prepare a new thread, execute the job
 				job.preRun()
 				jobThread = threading.Thread(target = lambda: job.run(mergedInputSession))
 				jobThread.start()
@@ -1461,6 +1542,14 @@ class CampaignJob(Job):
 
 			self._run(job, nextInputSession, nextBranch)
 
+
+	def _waitForGroupsCompletion(self):
+		"""
+		Waits for all parallel groups to complete.
+		"""
+		for t in self._groupThreads.getList():
+			t.join()
+			
 	def _parse(self):
 		"""
 		Parses the source file, check that all referenced sources exist.
@@ -1477,12 +1566,13 @@ class CampaignJob(Job):
 		Validindent characters are \t and ' '.
 		
 		a job line is formatted as:
-		[<branch> ]<type> <path> [with <mapping>]
+		[<branch> ]<type> [<path>] [with <mapping>]
 		where:
 		<branch>, if present, is a keyword in *, on_error, on_success
-		<type> is a keyword in 'ats', 'campaign' (for now)
+		<type> is a keyword in 'ats', 'campaign', group (for now)
 		<path> is a relative (not starting with a /) or 
 		       absolute path (/-starting) within the repository.
+		       path is required for type == ats and campaign only. group does not take any path			 
 		<mapping>, if present, is formatted as KEY=value[,KEY=value]*
 		Branch values '*', 'on_error' indicate that the job should be
 		executed if its parent returns a non-0 result ('on error' branch).
@@ -1504,27 +1594,19 @@ class CampaignJob(Job):
 			line = line.split('#', 1)[0].rstrip()
 			if not line:
 				continue # empty line
-			m = re.match(r'(?P<indent>\s*)((?P<branch>\w+|\*)\s+)?(?P<type>\w+)\s+(?P<filename>[^\s]+)(\s+with\s+(?P<mapping>.*)\s*)?', line)
+			m = re.match(r'(?P<indent>\s*)((?P<branch>on_error|\*)\s+)?(?P<type>\w+)\s+(?P<filename>[^\s]+)(\s+with\s+(?P<mapping>.*)\s*)?', line)
 			if not m:
 				raise Exception('Parse error at line %s: invalid line format' % lc)
 			
 			type_ = m.group('type')
-			filename = m.group('filename')
+			filename = m.group('filename') # also used to name a group
 			branch = m.group('branch') # may be None
 			mapping = m.group('mapping') # may be None
 			indentDiff = len(m.group('indent')) - indent
 			indent = indent + indentDiff
 			
-			# Filename creation within the docroot
-			if filename.startswith('/'):
-				# absolute path within the *repository*
-				filename = '/%s%s' % (cm.get_transient('constants.repository'), filename)
-			else:
-				# just add the local campaign path
-				filename = '%s/%s' % (path, filename)               
-
 			# Type validation
-			if not type_ in [ 'ats', 'campaign' ]:
+			if not type_ in [ 'ats', 'campaign', 'group' ]:
 				raise Exception('Error at line %s: invalid job type (%s)' % (lc, type_))
 
 			# Indentation validation, parent selection
@@ -1546,7 +1628,7 @@ class CampaignJob(Job):
 					currentParent = currentParent.getParent()
 
 			# Branch validation
-			if currentParent == self:
+			if currentParent == self or isinstance(currentParent, GroupJob):
 				# Actually, this is the "native" branch containing root campaign jobs
 				branch = self.BRANCH_UNCONDITIONAL
 			elif branch in [ '*', 'on_error' ]: # * is an alias for the error branch
@@ -1556,22 +1638,41 @@ class CampaignJob(Job):
 			else:
 				raise Exception('Error at line %s: invalid branch (%s)' % (lc, branch))
 			
-			# Now we can create our job.
-			getLogger().debug('%s: creating child job based on file docroot:%s' % (str(self), filename))
-			source = FileSystemManager.instance().read(filename)
-			name = filename[len('/repository/'):] # TODO: find a way to compute a "job name" from a docroot path
-			jobpath = '/'.join(filename.split('/')[:-1])
-			if source is None:
-				raise Exception('File %s is not in the repository.' % name)
-			if type_ == 'ats':
-				job = AtsJob(name = name, source = source, path = jobpath)
-			else: # campaign
-				job = CampaignJob(name = name, source = source, path = jobpath)
-			job.setUsername(self.getUsername())
-			job.setSessionParametersMapping(parseParameters(mapping))
-			currentParent.addChild(job, branch)
-			getLogger().info('%s: child job %s has been created, branch %s' % (str(self), str(job), branch))
-			lastCreatedJob = job
+			if type_ in [ 'ats', 'campaign' ]:
+				# Filename creation within the docroot
+				if filename.startswith('/'):
+					# absolute path within the *repository*
+					filename = '/%s%s' % (cm.get_transient('constants.repository'), filename)
+				else:
+					# just add the local campaign path
+					filename = '%s/%s' % (path, filename)
+			
+				# Now we can create our job.
+				getLogger().debug('%s: creating child job based on file docroot:%s' % (str(self), filename))
+				source = FileSystemManager.instance().read(filename)
+				name = filename[len('/repository/'):] # TODO: find a way to compute a "job name" from a docroot path
+				jobpath = '/'.join(filename.split('/')[:-1])
+				if source is None:
+					raise Exception('File %s is not in the repository.' % name)
+				if type_ == 'ats':
+					job = AtsJob(name = name, source = source, path = jobpath)
+				else: # campaign
+					job = CampaignJob(name = name, source = source, path = jobpath)
+				job.setUsername(self.getUsername())
+				job.setSessionParametersMapping(parseParameters(mapping))
+				currentParent.addChild(job, branch)
+				getLogger().info('%s: child job %s has been created, branch %s' % (str(self), str(job), branch))
+				lastCreatedJob = job
+			
+			else:
+				# 'group' type - for parallel execution
+				job = GroupJob(name = filename) # The filename token is used to optionally name the group
+				job.setUsername(self.getUsername())
+				job.setSessionParametersMapping(parseParameters(mapping))
+				currentParent.addChild(job, branch)
+				getLogger().info('%s: child pseudo group job %s has been created, branch %s' % (str(self), str(job), branch))
+				lastCreatedJob = job
+				
 
 		# OK, we're done with parsing and job preparation.
 		getLogger().info('%s: fully prepared, all children found and created.' % str(self))
