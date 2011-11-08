@@ -578,6 +578,8 @@ class WMainWindow(QMainWindow):
 	def __init__(self, parent = None):
 		QMainWindow.__init__(self, parent)
 		QApplication.instance().set('gui.mainwindow', self)
+		
+		self._firstShow = True
 
 		QApplication.instance().notifyInitializationProgress("Initializing widgets...")
 		self.__createWidgets()
@@ -604,20 +606,23 @@ class WMainWindow(QMainWindow):
 		Reimplemlented from QWidget/QMainWindow.
 		"""
 		QMainWindow.showEvent(self, event)
-
-		# Refresh browsers
-		self.repositoryBrowserDock.refresh()
-	
-		# Re-open files
-		if not self.reopenLastUrls():
-			# No file re-opened, create a default document (ATS)
-			self.documentManager.newAts()
-
-		self.saveOpenUrls()
-		self.connect(self.documentManager, SIGNAL("documentUrlsUpdated()"), self.saveOpenUrls)
 		
-		# Then MOTD
-		self.showMessageOfTheDay()
+		if self._firstShow:
+			self._firstShow = False
+			# Refresh browsers
+			self.repositoryBrowserDock.refresh()
+
+			# Re-open files
+			if not self.reopenLastUrls():
+				# No file re-opened, create a default document (ATS)
+				self.documentManager.newAts()
+
+			self.saveOpenUrls()
+			self.connect(self.documentManager, SIGNAL("documentUrlsUpdated()"), self.saveOpenUrls)
+
+			# Then MOTD
+			self.showMessageOfTheDay()
+			
 
 	def focusInEvent(self, event):
 		"""

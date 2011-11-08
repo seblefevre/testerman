@@ -997,7 +997,7 @@ class ExecutionLogsWidgetItem(ExpandableWidgetItem):
 
 	def addFetchedChildItems(self, data):
 		# More recent executions first
-		data.reverse()
+		data.sort(reverse = True)
 		for name in data:
 			item = ExecutionLogWidgetItem(name)
 			self.addChild(item)

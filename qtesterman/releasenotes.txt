@@ -7,6 +7,10 @@ KNOWN BUGS:
 - The script properties editor does not reselect the parameter you just
   updated.
 
+1.4.2:
+- Fixed: documents are no longer re-opened automatically on
+  window restore/show.
+
 
 1.4.1:
 - Fixed: saving campaign logs with unicode characters now works correctly
