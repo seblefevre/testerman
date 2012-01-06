@@ -724,11 +724,11 @@ class AtsJob(Job):
 		For an ATS, this:
 		- verifies that the dependencies are found.
 		- build the TE and its dependencies into a temporary TE directory tree, as a Python egg
-		- this temporary TE directory tree will be moved to /archives/ upon run().
+		- this temporary TE directory tree will be moved to $docroot/archives/ upon run().
 		
 		This avoids the user change any source code after submitting the job.
 		
-		@raises Exception: in case of any preparation error.
+		@raises PrepareException: in case of any preparation error.
 		
 		@rtype: None
 		"""
@@ -760,10 +760,17 @@ class AtsJob(Job):
 		
 		getLogger().info("%s: resolving dependencies..." % str(self))
 		try:
+			# Check if we should constraint our dependencies search to a package directory
+			packagePath = FileSystemManager.instance().getPackageFor(self._path)
+			if not packagePath:
+				moduleRootDir = '/repository'
+			else:
+				moduleRootDir = packagePath + '/src'
 			userlandDependencies = DependencyResolver.python_getDependencyFilenames(
 				source = self._source, 
 				recursive = True,
-				sourceFilename = self._path)
+				sourceFilename = self._path,
+				moduleRootDir = moduleRootDir)
 		except Exception, e:
 			desc = "unable to resolve dependencies: %s" % str(e)
 			return handleError(25, desc)
@@ -829,6 +836,7 @@ class AtsJob(Job):
 
 		# Copy dependencies to the TE base dir
 		getLogger().info("%s: preparing userland dependencies..." % (str(self)))
+		adjustedUserlandDependencies = []
 		try:
 			for filename in userlandDependencies:
 				# filename is a docroot-path
@@ -838,6 +846,12 @@ class AtsJob(Job):
 				depContent = TEFactory.createDependency(depContent)
 
 				# Target, local, absolute filename for the dep
+				# If we are in a package, we need to strip the package dir (until src)
+				# specific part.
+				if packagePath:
+					filename = 'repository/%s' % filename[len(packagePath+'/src/'):]
+				adjustedUserlandDependencies.append(filename)
+
 				targetFilename = '%s/%s' % (tePackageDirectory, filename)
 
 				# Create required directory structure, with __init__.py file, if needed
@@ -892,7 +906,7 @@ class AtsJob(Job):
 		sources.append('ats/main_te.py')
 		sources.append('ats/__init__.py')
 
-		for dep in userlandDependencies:
+		for dep in adjustedUserlandDependencies:
 			sources.append('ats/%s' % dep)
 		for dep in coreDependencies:
 			sources.append('ats/%s' % dep)

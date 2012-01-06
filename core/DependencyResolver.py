@@ -47,7 +47,7 @@ def getLogger():
 # Python source management
 ################################################################################
 
-def python_getDependencyFilenames(source, sourceFilename, recursive = True):
+def python_getDependencyFilenames(source, sourceFilename, recursive = True, moduleRootDir = '/repository'):
 	"""
 	Returns a list of userland module filenames
 	(including their own dependencies) the ATS/module depends on.
@@ -66,6 +66,9 @@ def python_getDependencyFilenames(source, sourceFilename, recursive = True):
 	so that we can deduce the docroot "working dir" dependencies should be searched from.
 	@type  recursive: bool
 	@param recursive: if True, search recursively for dependencies in imported modules.
+	@type  moduleRootDir: string
+	@param moduleRootDir: the docroot directory we should start looking modules from.
+	For a normal file, this is /repository. For a file contained in a package, this is the package src dir.
 	
 	@rtype: list of strings
 	@returns: a list of docroot-path to dependencies (no duplicate).
@@ -109,9 +112,11 @@ def python_getDependencyFilenames(source, sourceFilename, recursive = True):
 		# First, try a local module (relative path) (same dir as the currently analyzed file)
 		sourcePath = os.path.split(fromFilename)[0] 
 		modulePaths.append(sourcePath)
-		# Then fall back to standard "testerman userland paths" (for now, hardcoded to /repository)
-		for modulePath in [ '/repository' ]:
-			if not modulePath in modulePaths:
+		# Then fall back to standard "testerman userland paths"
+		# If the filename was in a package, look from the package's root dir
+		# Otherwise this the repository root.
+		for modulePath in [ moduleRootDir ]:
+			if modulePath and not modulePath in modulePaths:
 				modulePaths.append(modulePath)
 
 		getLogger().debug("Resolving import %s from %s: searching in paths:\n%s" % (dep, fromFilename, "\n".join(modulePaths)))
@@ -185,7 +190,7 @@ def python_getImportedUserlandModules(source, sourceFilename):
 # Campaign source management
 ################################################################################
 
-def campaign_getDependencyFilenames(source, sourcePath = None, recursive = False, sourceFilename = "<local>"):
+def campaign_getDependencyFilenames(source, sourcePath = None, recursive = False, sourceFilename = "<local>", moduleRootDir = '/repository'):
 	"""
 	Returns a list of userland module filenames
 	(including their own dependencies) the campaign depends on.
@@ -206,6 +211,9 @@ def campaign_getDependencyFilenames(source, sourcePath = None, recursive = False
 	@type  sourceFilename: string
 	@param sourceFilename: a string to help identify the file that yielded the source. 
 	For non-repository files, use <local>, by convention.
+	@type  moduleRootDir: string
+	@param moduleRootDir: the docroot directory we should start looking modules from.
+	For a normal file, this is /repository. For a file contained in a package, this is the package src dir.
 	
 	@rtype: list of strings
 	@returns: a list of docroot-path to dependencies (no duplicate).
@@ -283,9 +291,9 @@ def campaign_getDependencyFilenames(source, sourcePath = None, recursive = False
 				if nextSource is None:
 					raise Exception('%s: missing dependency: file %s is not in the repository' % (sourceFilename, filename))
 				if type_ == 'campaign':
-					nextDependencies = campaign_getDependencyFilenames(nextSource, nextPath, True, filename)
+					nextDependencies = campaign_getDependencyFilenames(nextSource, nextPath, True, filename, moduleRootDir = moduleRootDir)
 				elif type_ == 'ats':
-					nextDependencies = python_getDependencyFilenames(nextSource, sourceFilename = filename, recursive = True)
+					nextDependencies = python_getDependencyFilenames(nextSource, sourceFilename = filename, recursive = True, moduleRootDir = moduleRootDir)
 				
 				for dep in nextDependencies:
 					if not dep in currentDependencies:

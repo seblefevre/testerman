@@ -31,6 +31,7 @@ import Versions
 
 import logging
 import os
+import os.path
 
 
 # Application-type for returned objects in dir lists (sort of mime-types)
@@ -232,6 +233,23 @@ class FileSystemManager:
 			else:
 				applicationType = APPTYPE_DIR
 		return applicationType
+	
+	@logged
+	def getPackageFor(self, filename):
+		"""
+		Returns the docroot path to the package filename belongs to.
+		Returns None if the file is not in a package.
+		"""
+		# We search for a package.xml file in filename's parent directories.
+		# This is technically not sufficient.
+		# We should also check that the filename is below a src/ or profiles/ dir
+		# below the parent dir that contains this package.xml file.
+		currentdir = ''
+		for dirname in os.path.split(filename)[0].split('/'):
+			currentdir = os.path.join(currentdir, dirname)
+			if self.isfile(os.path.join(currentdir, 'package.xml')):
+				return currentdir
+		return None
 	
 	def read(self, filename):
 		"""
