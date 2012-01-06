@@ -7,6 +7,14 @@ KNOWN BUGS:
 - The script properties editor does not reselect the parameter you just
   updated.
 
+1.4.3:
+- Fixed: login window has now a fixed width.
+- Fixed: no more false positive changesets in revisions due to reordered
+  groups/parameters in script metadata.
+- Added: you can now save the Test Executable egg from the job details
+  dialog box.
+
+
 1.4.2:
 - Fixed: documents are no longer re-opened automatically on
   window restore/show.

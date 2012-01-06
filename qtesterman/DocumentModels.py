@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 ##
 # This file is part of Testerman, a test automation system.
-# Copyright (c) 2009,2010 QTesterman contributors
+# Copyright (c) 2009-2012 QTesterman contributors
 #
 # This program is free software; you can redistribute it and/or modify it under
 # the terms of the GNU General Public License as published by the Free Software
@@ -240,14 +240,14 @@ class MetadataModel(QObject):
 		<metadata version="1.0">
 			<description><![CDATA[description]]></description>
 			<prerequisites><![CDATA[prerequisites]]></prerequisites>
-			<language-mode></language-mode>
+			<api>XXX</api>
 			<parameters>
 				<parameter name="PX_PARAM1" default="defaultValue01" type="string"><![CDATA[description]]></parameter>
 			</parameters>
 			<groups>
 				<group name="GX_GROUP1"><![CDATA[description]]></group>
 			</groups>
-		</meta>'
+		</metadata>'
 
 		@rtype: buffer string
 		@returns: the metadata serialized as a utf-8 encoded XML string
@@ -259,13 +259,17 @@ class MetadataModel(QObject):
 		res += u'<prerequisites>%s</prerequisites>\n' % Qt.escape(self.prerequisites)
 		res += u'<api>%s</api>\n' % Qt.escape(self.languageApi)
 		res += u'<parameters>\n'
-		for (name, p) in self.parameters.items():
-			# We must escape the values (to avoid ", etc)
+		# Parametrs and groups are sorted to have deterministic serializations across multiple saves.
+		# This avoids "false positive" changesets in file revisions.
+		parameters = self.parameters.items()
+		parameters.sort()
+		for (name, p) in parameters:
 			res += u'<parameter name="%s" default="%s" type="%s"><![CDATA[%s]]></parameter>\n' % (Qt.escape(name), Qt.escape(p['default']), Qt.escape(p['type']), p['description'].replace('\n', '&cr;'))
 		res += u'</parameters>\n'
 		res += u'<groups>\n'
-		for (name, p) in self.groups.items():
-			# We must escape the values (to avoid ", etc)
+		groups = self.groups.items()
+		groups.sort()
+		for (name, p) in groups:
 			res += u'<group name="%s"><![CDATA[%s]]></group>\n' % (Qt.escape(name), p['description'].replace('\n', '&cr;'))
 		res += u'</groups>\n'
 		res += u'</metadata>\n'

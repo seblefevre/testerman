@@ -29,8 +29,10 @@
 import Resources
 
 import time
+import os.path
 
 from PyQt4.Qt import *
+from Base import *
 
 import CommonWidgets
 
@@ -109,9 +111,10 @@ class WAtsDetailsDialog(QDialog):
 	Enables to display the source ATS,
 	and save the created test executable.
 	"""
-	def __init__(self, details, parent = None):
+	def __init__(self, details, client, parent = None):
 		QDialog.__init__(self, parent)
 		self._details = details
+		self._client = client
 		self.__createWidget()
 	
 	def __createWidget(self):
@@ -123,6 +126,12 @@ class WAtsDetailsDialog(QDialog):
 		parameters = QTextEdit()
 		source = QTextEdit()
 		source.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
+		
+		teLayout = QHBoxLayout()
+		teLayout.addWidget(QLineEdit(self._details.get("te-filename")))
+		self._saveTeButton = QPushButton("Save as...")
+		self.connect(self._saveTeButton, SIGNAL("clicked()"), self.saveTeAs)
+		teLayout.addWidget(self._saveTeButton)
 		
 		form = QFormLayout()
 		form.setMargin(2)
@@ -139,7 +148,7 @@ class WAtsDetailsDialog(QDialog):
 		form.addRow("Stopped at:", QLineEdit(self._details.get("stop-time") and time.strftime("%Y-%m-%d %H:%M:%S", time.localtime(self._details.get("stop-time"))) or "n/a"))
 		form.addRow("Run duration:", QLineEdit(self._details.get("running-time") and ("%3.3f s" % self._details.get("running-time")) or "n/a"))
 		form.addRow("Result code:", QLineEdit(unicode(self._details.get("result"))))
-		form.addRow("Test Executable:", QLineEdit(self._details.get("te-filename")))
+		form.addRow("Test Executable:", teLayout)
 		form.addRow("TE execution command line:", QLineEdit(self._details.get("te-command-line")))
 		form.addRow("Execution parameters:", parameters)
 		form.addRow("ATS source:", source)
@@ -168,6 +177,34 @@ class WAtsDetailsDialog(QDialog):
 		layout.addLayout(buttonLayout)
 
 		self.setLayout(layout)
+	
+	def saveTeAs(self):
+		"""
+		Open a save dialog box to save the TE egg file locally.
+		"""
+		teRemoteFilename = self._details.get("te-filename")
+
+		# Open a browser
+		settings = QSettings()
+		directory = settings.value('lastVisitedDirectory', QVariant("")).toString()
+		filename = QFileDialog.getSaveFileName(self, "Save Test Executable as...", directory, "Testerman Test Executable (*.egg)")
+		if filename.isEmpty():
+			return False
+		directory = os.path.dirname(unicode(filename))
+		settings.setValue('lastVisitedDirectory', QVariant(directory))
+
+		try:
+			te = self._client.getFile(teRemoteFilename)
+			f = open(unicode(filename), 'w')
+			# Store files as utf8
+			f.write(te)
+			f.close()
+			QMessageBox.information(self, getClientName(), "Test Executable successfully saved.", QMessageBox.Ok)
+		except Exception, e:
+			CommonWidgets.systemError(self, "Unable to save file as %s: %s" % (filename, str(e)))
+			return False		
+
+
 
 ################################################################################
 # Tree Widget Items
@@ -379,7 +416,7 @@ class WJobTreeWidget(QTreeWidget):
 	def _showDetails(self, jobId):
 		details = self._client.getJobDetails(jobId)
 		if details:
-			dialog = WAtsDetailsDialog(details, self)
+			dialog = WAtsDetailsDialog(details, self._client, self)
 			dialog.show()
 	
 	def _reschedule(self, jobId):

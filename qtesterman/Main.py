@@ -496,6 +496,7 @@ class WConnectionDialog(QDialog):
 		pixmap = QPixmap(":images/splash-banner.png")#.scaled(QSize(500, 300), Qt.IgnoreAspectRatio, Qt.SmoothTransformation)
 		splash.setPixmap(pixmap)
 		layout.addWidget(splash)
+		self.setMaximumWidth(pixmap.width())
 
 		# WConnectionSetting part
 		self.connectionSettings = Preferences.WConnectionSettings()
