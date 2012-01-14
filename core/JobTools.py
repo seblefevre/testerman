@@ -206,8 +206,12 @@ def parseMetadata(xmlMetadata):
 		for group in doc.getElementsByTagName('group'):
 			try:
 				name = group.attributes['name'].value
-				description = group.childNodes[0].data
-				metadata.groups[name] = description
+				# description may be empty
+				if len(group.childNodes):
+					description = group.childNodes[0].data
+					metadata.groups[name] = description
+				else:
+					metadata.groups[name] = ''
 			except Exception, e:
 				getLogger().warning("Unable to parse a group in metadata: %s" % str(e))
 	

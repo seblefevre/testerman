@@ -209,6 +209,7 @@ class RequestHandler(WebServer.WebApplicationDispatcherMixIn, SimpleXMLRPCServer
 
 class XmlRpcServer(SocketServer.ThreadingMixIn, SimpleXMLRPCServer.SimpleXMLRPCServer):
 	allow_reuse_address = True
+	allow_none = True
 	def handle_request_with_timeout(self, timeout):
 		"""
 		A handle_request reimplementation, with a timeout support
