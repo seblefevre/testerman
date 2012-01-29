@@ -57,7 +57,7 @@ class FileWatcherProbe(ProbeImplementationManager.ProbeImplementation):
 	On start watching, the probe checks for new lines in the monitored files each second (by default). The interval
 	between two checks can be configured via the `interval` startWatchingFiles field. The probe is aware of reset/recreated
 	or new born files (when monitoring a file that has not been created yet). In case of a file reset, you may miss some
-	matching lines if new lines are created and the file reset before the next file check, but this should not be a show-stopper
+	matching lines if new lines are created and the file is reset before the next file check, but this should not be a show-stopper
 	considering the typical use cases for this probe.
 	
 	When you do not need to watch these files anymore, send a stopWatchingFiles command. 
