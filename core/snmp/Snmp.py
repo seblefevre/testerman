@@ -145,7 +145,10 @@ class SnmpServer(threading.Thread):
 		self._transportDispatcher.registerTransport(udp.domainName, udp.UdpSocketTransport().openServerMode(self._address))
 		getLogger().info("Now listening on %s:%s" % self._address)
 		self._transportDispatcher.jobStarted(1)
-		self._transportDispatcher.runDispatcher(timeout = 1)
+		try:
+			self._transportDispatcher.runDispatcher(timeout = 1)
+		except Exception, e:
+			getLogger().error(u"Error while handling an SNMP message: %s" % unicode(e))
 	
 	def stop(self):
 		self._transportDispatcher.jobFinished(1)
@@ -211,7 +214,7 @@ TheSnmpServer = None
 
 # SnmpServer singleton initialization
 
-def initialize(address = None):
+def initialize(address):
 	global TheSnmpServer
 	if address is None:
 		address = (ConfigManager.get("snmp.ip", ""), int(ConfigManager.get("snmp.port", "1161")))
@@ -230,9 +233,9 @@ def finalize():
 
 if __name__ == '__main__':
 	logging.basicConfig(level = logging.DEBUG, format = '%(asctime)s.%(msecs)03d %(thread)d %(levelname)-8s %(name)-20s %(message)s', datefmt = '%Y%m%d %H:%M:%S')
-	registerGauge(TESTERMAN_BASE_OID + ".1", lambda: 314)
-	registerCounter(TESTERMAN_BASE_OID + ".2", lambda: int(time.time()))
-	registerString(TESTERMAN_BASE_OID + ".3", lambda: "this is a random version.")
+	registerGauge(TESTERMAN_BASE_OID + ".1.0", lambda: 314)
+	registerCounter(TESTERMAN_BASE_OID + ".2.0", lambda: int(time.time()))
+	registerString(TESTERMAN_BASE_OID + ".3.0", lambda: "this is a random version.")
 	initialize(('', 1161))
 	try:
 		while 1:

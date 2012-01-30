@@ -205,11 +205,11 @@ class RequestHandler(WebServer.WebApplicationDispatcherMixIn, SimpleXMLRPCServer
 	but also supports file serving via GET.
 	The do_GET implementation is provided by WebServer.WebApplicationDispatcherMixIn
 	"""
+	protocol_version = "HTTP/1.1" # Support for keep alive 
 	pass
 
 class XmlRpcServer(SocketServer.ThreadingMixIn, SimpleXMLRPCServer.SimpleXMLRPCServer):
 	allow_reuse_address = True
-	allow_none = True
 	def handle_request_with_timeout(self, timeout):
 		"""
 		A handle_request reimplementation, with a timeout support
@@ -224,7 +224,7 @@ class XmlRpcServerThread(threading.Thread):
 		threading.Thread.__init__(self)
 		self._stopEvent = threading.Event()
 		address = (cm.get("interface.ws.ip"), cm.get("interface.ws.port"))
-		self._server = XmlRpcServer(address, RequestHandler)
+		self._server = XmlRpcServer(address, RequestHandler, allow_none = True)
 		serverUrl = "http://%s:%s" % ((cm.get("interface.ws.ip") in ['', "0.0.0.0"] and "localhost") or cm.get("interface.ws.ip") , cm.get("interface.ws.port"))
 		client = TestermanClient.Client(name = "Embedded Testerman WebClient", userAgent = "WebClient/%s" % WebClientServer.VERSION, serverUrl = serverUrl)
 		getLogger().info("Embedded WCS using serverUrl: %s" % serverUrl)

@@ -24,8 +24,8 @@
 # To get a property value, use CounterManager.get("path.to.counter") or CounterManager.get("path.to.counter._max"), etc.
 # The counter native value is acutally stored in a property named "default".
 #
-# Counters are naturally ordered in a tree, and retrieving a property for a non-terminal counter returns the sum
-# of the property for the descendent terminal counters.
+# Counters are naturally ordered in a tree, and retrieving a property for a non-leaf counter returns the sum
+# of the property for the descendent leaf counters.
 #
 # Properties can only be retrieved through get(), and not inc()'d or dec()'d (or reset()'d) - i.e. Properties are Read Only.
 # Counters can only be inc()'d and dec()'d (and reset()'d), and cannot be get()'d (you get the 'default' property, in fact).
@@ -151,7 +151,7 @@ class CounterNode:
 		"""
 		name is a local name within the counter tree.
 		"""
-		# This is not optimised: the counter is actually used only if terminal.
+		# This is not optimised: the counter is actually used only if leaf.
 		# If we have children, is ignored.
 		self.counter = Counter(name)
 		# Optional child counters, indexed by their local name.
@@ -172,7 +172,7 @@ class CounterNode:
 			return self.counter.get(propertyName)
 	
 	def reset(self):
-		# Maybe we are a terminal node
+		# Maybe we are a leaf node
 		self.counter.reset()
 		# Maybe not
 		for k, v in self.children.items():
@@ -238,7 +238,7 @@ class CounterManager:
 		path is a wildcard-less and property-less string (otherwise do nothing)
 		If the counter does not exist, create it on the fly.
 		
-		NB: incrementing or decrementing a non-terminal node is useless, since when we'll get a value, only children values will be used.
+		NB: incrementing or decrementing a non-leaf node is useless, since when we'll get a value, only children values will be used.
 		"""
 		self.mutex.acquire()
 		node = self.__getNodeByPath(path)
@@ -344,9 +344,9 @@ class CounterManager:
 		self.mutex.release()
 		return ret
 		
-	def __getTerminalValues(self, baseNode, basename):	
+	def __getLeafValues(self, baseNode, basename):	
 		"""
-		Return a dict of { path: value } for all terminal counters.
+		Return a dict of { path: value } for all leaf counters.
 		Useful for debug.
 		"""
 		ret = {}
@@ -360,13 +360,13 @@ class CounterManager:
 				ret[path] = node.counter.get()
 			else:
 				# Merge dict with the one from the recursive call
-				for k, v in self.__getTerminalValues(baseNode = node, basename = path).items():
+				for k, v in self.__getLeafValues(baseNode = node, basename = path).items():
 					ret[k] = v
 		return ret
 
-	def getAllTerminalValues(self):
+	def getAllLeafValues(self):
 		self.mutex.acquire()
-		ret = self.__getTerminalValues(baseNode = self.root, basename = None)
+		ret = self.__getLeafValues(baseNode = self.root, basename = None)
 		self.mutex.release()
 		return ret
 
@@ -387,24 +387,24 @@ def instance():
 
 def autotest():
 	cm = CounterManager()
-	finalCounters = [ 'server.requests.fail', 'server.requests.pass', 'server.requests.timeout', 'server.uptime', 'maxclients' ]
-	nonFinalCounters = [ 'server', 'server.requests', 'maxclients' ]
+	leafCounters = [ 'server.requests.fail', 'server.requests.pass', 'server.requests.timeout', 'server.uptime', 'maxclients' ]
+	nonLeafCounters = [ 'server', 'server.requests', 'maxclients' ]
 	
-	for c in finalCounters:
+	for c in leafCounters:
 		print "%s: %s" % (c, str(cm.get(c)))
 		
-	for c in finalCounters:
+	for c in leafCounters:
 		cm.inc(c)
 
 	print		
-	for c in finalCounters:
+	for c in leafCounters:
 		print "%s: %s" % (c, str(cm.get(c)))
 
 	print		
-	for c in nonFinalCounters:
+	for c in nonLeafCounters:
 		print "%s: %s" % (c, str(cm.get(c)))
 
-	for c in finalCounters:
+	for c in leafCounters:
 		cm.dec(c)
 	
 	cm.inc('server.requests.pass')
@@ -414,11 +414,11 @@ def autotest():
 	cm.inc('server.requests.newstate')
 
 	print		
-	for c in finalCounters:
+	for c in leafCounters:
 		print "%s: %s" % (c, str(cm.get(c)))
 
 	print		
-	for c in nonFinalCounters:
+	for c in nonLeafCounters:
 		print "%s: %s" % (c, str(cm.get(c)))
 	
 
@@ -441,9 +441,9 @@ def autotest():
 
 	# A complete summary
 	print
-	allCounters = cm.getAllTerminalValues().items()
+	allCounters = cm.getAllLeafValues().items()
 	allCounters.sort()
-	for e in all:
+	for e in allCounters:
 		print "%s: %d" % e
 
 	print

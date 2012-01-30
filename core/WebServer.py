@@ -322,6 +322,7 @@ class WebApplication:
 		except AuthenticationError, e:
 			self.request.sendResponse(401)
 			self.request.sendHeader('WWW-Authenticate', 'Basic realm="%s"' % self._authenticationRealm)
+			self.request.sendHeader('Connection', 'Close')
 			self.request.endHeaders()
 			self.request.write('Authentication failure')
 			self.request.flush()
@@ -418,6 +419,7 @@ class WebApplication:
 				self.request.sendHeader('Content-Type', contentType)
 				if asFilename:
 					self.request.sendHeader('Content-Disposition', 'attachment; filename="%s"' % asFilename)
+				self.request.sendHeader('Content-Length', len(contents))
 				self.request.endHeaders()
 				self.request.write(contents)
 				self.request.flush()
@@ -441,6 +443,7 @@ class WebApplication:
 		self.request.sendHeader('Content-Type', contentType)
 		if asFilename:
 			self.request.sendHeader('Content-Disposition', 'attachment; filename="%s"' % asFilename)
+		self.request.sendHeader('Content-Length', len(txt))
 		self.request.endHeaders()
 		self.request.write(txt)
 		self.request.flush()
@@ -496,11 +499,12 @@ class WebApplication:
 				context[k] = defaultContext[k]
 		
 		# Apply the template
-		output = template.merge(context)
+		output = template.merge(context).encode('utf-8')
 		self.request.sendResponse(200)
 		self.request.sendHeader('Content-Type', contentType + ';charset=utf-8')
+		self.request.sendHeader('Content-Length', len(output))
 		self.request.endHeaders()
-		self.request.write(output.encode('utf-8'))
+		self.request.write(output)
 		self.request.flush()
 	
 	def _getDefaultTemplateContext(self):
@@ -602,6 +606,7 @@ class WebSocketApplication:
 		except AuthenticationError, e:
 			self.request.sendResponse(401)
 			self.request.sendHeader('WWW-Authenticate', 'Basic realm="%s"' % self._authenticationRealm)
+			self.request.sendHeader('Connection', 'Close')
 			self.request.endHeaders()
 			self.request.write('Authentication failure')
 			self.request.flush()

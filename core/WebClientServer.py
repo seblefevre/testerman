@@ -419,10 +419,12 @@ class WebClientApplication(WebServer.WebApplication):
 			# ATS started - let's monitor it
 			self.request.sendResponse(302)
 			self.request.sendHeader('Location', 'monitor_ats?%s' % jobId)
+			self.request.sendHeader('Connection', 'Close')
 			self.request.endHeaders()
 		else:
 			self.request.sendResponse(302)
 			self.request.sendHeader('Location', 'ats?%s' % path)
+			self.request.sendHeader('Connection', 'Close')
 			self.request.endHeaders()
 
 	def handle_monitor_ats(self, jobId):
