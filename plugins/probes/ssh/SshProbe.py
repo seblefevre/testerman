@@ -24,6 +24,18 @@ import sys
 import os
 import pexpect.pxssh
 import threading
+import os.path
+import fcntl
+import base64
+
+import hmac
+try:
+	import hashlib
+	SHA1 = hashlib.sha1
+except ImportError:
+	import sha
+	SHA1 = sha.sha
+
 
 # Some terminal / pseudo terminal does not seem to support
 # more than a relatively small number of characters in a line.
@@ -47,7 +59,9 @@ class SshProbe(ProbeImplementationManager.ProbeImplementation):
 	|| `password` || string || (none) || the `username`'s password on `host`. ||
 	|| `timeout` || float || `5.0` || the maximum amount of time, in s, allowed to __start__ executing the command on `host`. Includes the SSH login sequence. ||
 	|| `convert_eol`|| boolean || `True` || if set to True, convert `\\r\\n` in output to `\\n`. This way, the templates are compatible with ProbeExec. ||
-	|| `working_dir`|| string || (none) || the direction to go to before executing the command line. By default, the working dir is the login directory (usually the home dir). ||
+	|| `working_dir`|| string || (none) || the diretory to go to before executing the command line. By default, the working dir is the login directory (usually the home dir). ||
+	|| `strict_host`|| boolean || `True` || if set to False, the probe removes the target host from $HOME/.ssh/known_hosts to avoid failing when connecting to an updated host. Otherwise, the connection fails if the SSH key changed. ||
+	|| `max_line_length`|| integer || `150` || the max number of characters before splitting a line over multiple lines with a \\-based continuation. Currently the splitting algorithm is pretty dumb and may split your command line in the middle of a quoted argument, possibly changing its actual value. Increasing this size may be a workaround in such cases.||
 
 
 	= Overview =
@@ -123,6 +137,14 @@ class SshProbe(ProbeImplementationManager.ProbeImplementation):
 		self.setDefaultProperty('host', 'localhost')
 		self.setDefaultProperty('convert_eol', True)
 		self.setDefaultProperty('working_dir', None)
+		self.setDefaultProperty('strict_host', True)
+		self.setDefaultProperty('max_line_length', 150)
+
+		self._known_hosts = None
+		try:
+			self._known_hosts = os.path.join(os.environ['HOME'], ".ssh", "known_hosts")
+		except Exception, e:
+			pass
 
 	# ProbeImplementation reimplementation
 
@@ -224,6 +246,49 @@ class SshProbe(ProbeImplementationManager.ProbeImplementation):
 			sshThread = self._sshThread
 			if sshThread:
 				raise Exception("Another command is currently being executed. Please cancel it first.")
+	
+			# Remove possible known host
+			if not self['strict_host'] and self._known_hosts:
+				try:
+					f = open(self._known_hosts)
+					lines = f.readlines()
+					f.close()
+					adjustedlines = []
+					for l in lines:
+						# SSH >= 4.0 versions used hashed host names
+						# format: |1|<salt>|<hash>= <keytype> <...>
+						# <hash> is a HMAC-SHA1 in Base64 of ( unbase64(<salt>), <hostname> )
+						if l.startswith('|1|'):
+							try:
+								_, _, salt, hashedhostname = l.split(' ')[0].split('|')
+								h = hmac.new(base64.decodestring(salt), host, SHA1)
+								computedhash = base64.encodestring(h.digest()).strip()
+								if not (hashedhostname == computedhash):
+									# Keep the entry
+									adjustedlines.append(l)
+								else:
+									# Discard the entry, this is our hostname
+									pass
+							except Exception, e:
+								# In case of an error, let's keep the entry
+								adjustedlines.append(l)
+							
+						# SSH < 4.0 uses plain text host names
+						elif not l.startswith(host + ' '):
+							adjustedlines.append(l)
+					
+					# Should be file locked. But apparently on Solaris flock() does not work
+					# as expected, so possible race conditions if running this probe under Solaris.
+					f = open(self._known_hosts, 'w')
+					fcntl.flock(f.fileno(), fcntl.LOCK_EX)
+					f.write(''.join(adjustedlines))
+					f.close()
+				except Exception, e:
+					# Just proceed. It may still work.
+					try:
+						f.close()
+					except:
+						pass
 
 			# Make sure no askpass will be displayed
 			if os.environ.has_key('DISPLAY'):
@@ -284,15 +349,20 @@ class SshThread(threading.Thread):
 		output = None
 		status = None
 		try:
-			# Split the command on multiple lines - the pseudo terminal may limit it ??
-			i = 0
-			size = MAX_TERMINAL_LINE_LENGTH
+			# Split the command on multiple "technical" lines - the pseudo terminal may limit the max line length
+			size = self._probe['max_line_length']
 			splitcmd = []
+
+			i = 0
 			while i < len(self._command):
-				splitcmd.append(self._command[i:i+size])
+				chunk = self._command[i:i+size]
+				splitcmd.append(chunk)
 				i += size
-	
-			self._ssh.sendline('\\\n'.join(splitcmd))
+			
+			actualCommandLine = '\\\n'.join(splitcmd)
+			self._probe.logSentPayload("SSH Command line", actualCommandLine, "%s@%s" % (self._probe['username'], self._probe['host']))
+			self._ssh.sendline(actualCommandLine)
+
 			# Wait for a command completion
 			while not self._stopEvent.isSet():
 				if self._ssh.prompt(0.1):
