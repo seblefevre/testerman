@@ -1938,7 +1938,7 @@ def alt(alternatives):
 							# Standard system message matches - consumed if matched
 							else:
 								# Ignore the decoded message: must be the same as encoded for internal events.
-								(match, _) = templateMatch(message, condition.template)
+								(match, _, _) = templateMatch(message, condition.template)
 								if match:
 									matchedInfo = (guard, condition, actions, message, None) # None: decodedMessage
 									# Consume the message
@@ -2026,11 +2026,11 @@ def alt(alternatives):
 								# In this case, we don't even attempt to decode the message. So we assign a default decoded one for logging purpose
 								decodedMessage = message
 							else:
-								(match, decodedMessage) = templateMatch(message, condition.template)
+								(match, decodedMessage, mismatchedPath) = templateMatch(message, condition.template)
 							# Now handle the matching result
 							if not match:
 								# 2.3 - Mismatch, we should log it.
-								logTemplateMismatch(tc = port._tc, port = port._name, message = decodedMessage, template = _expandTemplate(condition.template), encodedMessage = message)
+								logTemplateMismatch(tc = port._tc, port = port._name, message = decodedMessage, template = _expandTemplate(condition.template), encodedMessage = message, mismatchedPath = mismatchedPath)
 							else:
 								# 2.3 - Match
 								matchedInfo = (guard, condition, actions, message, decodedMessage)
@@ -2481,7 +2481,7 @@ class not_(ConditionTemplate):
 	def __init__(self, template):
 		self._template = template
 	def match(self, message, path = ''):
-		(m, _) = templateMatch(message, self._template, path)
+		(m, _, _) = templateMatch(message, self._template, path)
 		return not m
 	def toMessage(self):
 		return ('(not)', self._template)
@@ -2492,7 +2492,7 @@ class ifpresent(ConditionTemplate):
 	def __init__(self, template):
 		self._template = template
 	def match(self, message, path = ''):
-		(m, _) = templateMatch(message, self._template, path)
+		(m, _, _) = templateMatch(message, self._template, path)
 		return m
 	def __repr__(self):
 		return "(%s, if present)" % unicode(self._template)
@@ -2504,7 +2504,7 @@ class length(ConditionTemplate):
 	def __init__(self, template):
 		self._template = template
 	def match(self, message, path = ''):
-		(m, _) = templateMatch(len(message), self._template, path)
+		(m, _, _) = templateMatch(len(message), self._template, path)
 		return m
 	def __repr__(self):
 		return "(length %s)" % unicode(self._template)
@@ -2522,7 +2522,7 @@ class superset(ConditionTemplate):
 		for tmplt in self._templates:
 			ret = False
 			for e in message:
-				(ret, _) = templateMatch(e, tmplt, path)
+				(ret, _, _) = templateMatch(e, tmplt, path)
 				if ret: 
 					# ok, tmplt is in message. Next template?
 					break
@@ -2551,7 +2551,7 @@ class subset(ConditionTemplate):
 		for e in message:
 			ret = False
 			for tmplt in self._templates:
-				(ret, _) = templateMatch(e, tmplt, path)
+				(ret, _, _) = templateMatch(e, tmplt, path)
 				if ret: 
 					break
 			if not ret:
@@ -2589,7 +2589,7 @@ class set_(ConditionTemplate):
 			satisfied = False
 			for i in range(len(message)):
 				if not i in matchedElementIndexes:
-					(ret, _) = templateMatch(message[i], t, path)
+					(ret, _, _) = templateMatch(message[i], t, path)
 					if ret:
 						# t is satisfied with element i, which was not used to match another template yet
 						matchedElementIndexes.append(i)
@@ -2606,7 +2606,7 @@ class set_(ConditionTemplate):
 			matched = False
 			for i in range(len(self._templates)):
 				if not i in satisfiedElementIndexes:
-					(ret, _) = templateMatch(e, self._templates[i], path)
+					(ret, _, _) = templateMatch(e, self._templates[i], path)
 					if ret:
 						# t is satisfied with element i, which was not used to match another template yet
 						satisfiedElementIndexes.append(i)
@@ -2637,7 +2637,7 @@ class contains(ConditionTemplate):
 			return False
 		# At least one match
 		for element in message:
-			(m, _) = templateMatch(element, self._template, path)
+			(m, _, _) = templateMatch(element, self._template, path)
 			if m:
 				return True
 		return False
@@ -2657,7 +2657,7 @@ class in_(ConditionTemplate):
 		self._template = template
 	def match(self, message, path = ''):
 		for element in self._template:
-			(m, _) = templateMatch(message, element, path)
+			(m, _, _) = templateMatch(message, element, path)
 			if m:
 				return True
 		return False
@@ -2675,7 +2675,7 @@ class complement(ConditionTemplate):
 		self._templates = templates
 	def match(self, message, path = ''):
 		for element in self._templates:
-			(m, _) = templateMatch(message, element, path)
+			(m, _, _) = templateMatch(message, element, path)
 			if m:
 				return False
 		return True
@@ -2691,7 +2691,7 @@ class and_(ConditionTemplate):
 		self._templateA = templateA
 		self._templateB = templateB
 	def match(self, message, path = ''):
-		(m, _) = templateMatch(message, self._templateA, path)
+		(m, _, _) = templateMatch(message, self._templateA, path)
 		if m:
 			return templateMatch(message, self._templateB, path)[0]
 		return False
@@ -2707,7 +2707,7 @@ class or_(ConditionTemplate):
 		self._templateA = templateA
 		self._templateB = templateB
 	def match(self, message, path = ''):
-		(m, _) = templateMatch(message, self._templateA, path)
+		(m, _, _) = templateMatch(message, self._templateA, path)
 		if not m:
 			return templateMatch(message, self._templateB, path)[0]
 		else:
@@ -2728,7 +2728,7 @@ class extract(ConditionTemplate):
 		self._template = template
 		self._name = value
 	def match(self, message, path):
-		(matched, decodedMessage) = templateMatch(message, self._template, path)
+		(matched, decodedMessage, _) = templateMatch(message, self._template, path)
 		if matched:
 			_setValue(self._name, decodedMessage)
 			return True
@@ -2945,21 +2945,22 @@ def templateMatch(message, template, initialPath = u'template'):
 	@rtype: (bool, object)
 	@returns: (a, b) where a is True if match, False otherwise, b is the decoded message (partially decoded in case of decoding error ?)
 	"""
+	mismatchedPath = initialPath
 	try:
-		(ret, decodedMessage) = _templateMatch(message, template, initialPath)
+		(ret, decodedMessage, mismatchedPath) = _templateMatch(message, template, initialPath)
 	except Exception:
 		# Actually, this is for debug purposes
 		logUser("Exception while trying to match a template:\n%s" % getBacktrace())
-		return (False, message)
-	return (ret, decodedMessage)
+		return (False, message, mismatchedPath)
+	return (ret, decodedMessage, mismatchedPath)
 
 def match(message, template):
 	"""
 	TTCN-3 match function.
 	"""
-	ret, decodedMessage = templateMatch(message, template)
+	ret, decodedMessage, mismatchedPath = templateMatch(message, template)
 	if not ret:
-		logTemplateMismatch(tc = getLocalContext().getTc(), port = "", message = decodedMessage, template = _expandTemplate(template), encodedMessage = message)
+		logTemplateMismatch(tc = getLocalContext().getTc(), port = "", message = decodedMessage, template = _expandTemplate(template), encodedMessage = message, mismatchedPath = mismatchedPath)
 	else:
 		logTemplateMatch(tc = getLocalContext().getTc(), port = "", message = decodedMessage, template = _expandTemplate(template), encodedMessage = message)
 	return ret
@@ -2977,8 +2978,10 @@ def _templateMatch(message, template, path):
 	@param path: this is a human readable path of the object in the template that we try to match.
 	This parameter greatly helps in understanding why a complex template mismatched.
 	
-	@rtype: tuple (bool, object)
-	@returns: (a, b) where a is the matching status (True/False), and b the decoded message (same type as @param message)
+	@rtype: tuple (bool, object, string)
+	@returns: (a, b, path) where a is the matching status (True/False),
+	          b the decoded message (same type as @param message),
+	          path is the last attempted template path before a mismatch. Undetermined if a == True.
 	"""
 	# Support for dynamic templates
 	if callable(template):
@@ -2986,7 +2989,7 @@ def _templateMatch(message, template, path):
 
 	# Match all
 	if template is None:
-		return (True, message)
+		return (True, message, path)
 	
 	# CodecTemplate proxy template
 	if isinstance(template, CodecTemplate):
@@ -2995,7 +2998,7 @@ def _templateMatch(message, template, path):
 			decodedMessage = template.decode(message)
 		except Exception, e:
 			logInternal("mismatch: unable to decode message part with codec %s: %s" % (template._codec, str(e) + getBacktrace()))
-			return (False, message)
+			return (False, message, path)
 		# TODO: handle decoding error here ?
 		logInternal("_templateMatch: message part %s decoded with codec %s: %s" % (path, template._codec, repr(decodedMessage)))
 		# Now match the decoded message against the proxied template (not expanded, because it should contain other proxies, if any)
@@ -3006,20 +3009,22 @@ def _templateMatch(message, template, path):
 	if isinstance(template, dict):
 		if not isinstance(message, dict):
 			logInternal("mismatch: %s: expected a dict << %s >>, got << %s >>" % (path, repr(template), repr(message)))
-			return (False, message)
+			return (False, message, path)
 		# Existing entries in template dict must be matched (excepting 'omit' entries, which must not be present...)
 		decodedDict = {}
 		result = True
+		mismatchedPath = None
 		for key, tmplt in template.items():
 			# any value or none, ie '*'
 			if tmplt is None:
 				continue
 			if message.has_key(key):
-				(ret, decodedField) = _templateMatch(message[key], tmplt, u"%s.{%s}" % (path, unicode(key)))
+				(ret, decodedField, p) = _templateMatch(message[key], tmplt, u"%s.{%s}" % (path, unicode(key)))
 				decodedDict[key] = decodedField
 				if not ret:
 					logInternal("mismatch: %s: mismatched dict entry %s" % (path, unicode(key)))
 					result = False
+					mismatchedPath = p
 					# continue to traverse the dict to perform "maximum" message decoding
 			elif isinstance(tmplt, (omit, any_or_none, ifpresent)) or (isinstance(tmplt, extract) and isinstance(tmplt._template, (omit, any_or_none, ifpresent))):
 				# if the missing keys are omit(), that's ok.
@@ -3029,25 +3034,26 @@ def _templateMatch(message, template, path):
 				# if it's something else, missing key, so no match.
 				logInternal("mismatch: %s: missing dict entry %s" % (path, repr(key)))
 				result = False
+				mismatchedPath = path
 		# Now, add message keys that were not in template to the decoded dict
 		for key, m in message.items():
 			if not key in template:
 				decodedDict[key] = m
-		return (result, decodedDict)
+		return (result, decodedDict, mismatchedPath)
 	
 	# Structured type: tuple (choice, value)
 	# Must be the same choice name (ie tupe[0]) and matching value
 	if isinstance(template, tuple):
 		if not isinstance(message, tuple):
 			logInternal("mismatch: %s: expected a tuple << %s >>, got << %s >>" % (path, repr(template), repr(message)))
-			return (False, message)
+			return (False, message, path)
 		# Check choice
 		if not message[0] == template[0]:
 			logInternal("mismatch: %s: tuple choices differ (message: %s, template %s)" % (path, repr(message[0]), repr(template[0])))
-			return (False, message)
+			return (False, message, path)
 		# Check value
-		(ret, decoded) = _templateMatch(message[1], template[1], u"%s.(%s)" % (path, unicode(message[0])))
-		return (ret, (message[0], decoded))
+		(ret, decoded, path) = _templateMatch(message[1], template[1], u"%s.(%s)" % (path, unicode(message[0])))
+		return (ret, (message[0], decoded), path)
 
 	# Structured type: list
 	# This is a one-to-one exact match, ordered.
@@ -3056,7 +3062,7 @@ def _templateMatch(message, template, path):
 	if isinstance(template, list):
 		if not isinstance(message, list):
 			logInternal("mismatch: %s: expected a list" % path)
-			return (False, message)
+			return (False, message, path)
 		
 		# Wildcard (*) support:
 		# match(message, *|template) =
@@ -3064,16 +3070,16 @@ def _templateMatch(message, template, path):
 		#  i = 0
 		#  while not matched and message[i:]:
 		#   matched = match(message[i:], template)
-		(result, decodedList) = _templateMatch_list(message, template, path)
-		return (result, decodedList)
+		(result, decodedList, path) = _templateMatch_list(message, template, path)
+		return (result, decodedList, path)
 
 	# conditions: proxied templates	
 	if isinstance(template, ConditionTemplate):
 		# TODO: ConditionTemplate.match() should returns a decoded message, too
-		return (template.match(message, path), message)
+		return (template.match(message, path), message, path)
 	
 	# Simple types
-	return (message == template, message)
+	return (message == template, message, path)
 
 def _is_any_or_none(template):
 	"""
@@ -3105,9 +3111,9 @@ def _templateMatch_list(message, template, path):
 	# An empty template can only match an empty message
 	if not template:
 		if not message:
-			return (True, [])
+			return (True, [], path)
 		else:
-			return (False, [])
+			return (False, [], path)
 
 	# The contrary is false. A non-empty template
 	# may match an empty message (wilcards, ifpresent elements, etc)
@@ -3119,14 +3125,14 @@ def _templateMatch_list(message, template, path):
 		if _is_any_or_none(th):
 			# matched
 			logInternal("_templateMatch_list matched: [] against [*]")
-			return (True, [])
+			return (True, [], path)
 		elif isinstance(th, ifpresent):
 			# discard the optional element, check with the others
-			ret, decoded = _templateMatch_list(message, tt, path)
-			return (ret, decoded)
+			ret, decoded, path = _templateMatch_list(message, tt, path)
+			return (ret, decoded, path)
 		else:
 			# Other templates: no match, missing mandatory elements to match
-			return (False, [])
+			return (False, [], path)
 	
 	# message header|trail
 	mh, mt = (message[0], message[1:])
@@ -3134,27 +3140,29 @@ def _templateMatch_list(message, template, path):
 	if _is_any_or_none(th):
 		if not tt:
 			logInternal("_templateMatch_list matched: %s against %s ([*])" % (repr(message), repr(template)))
-			return (True, message)
+			return (True, message, path)
 		matched = False
 		decodedList = []
 		trailingDecodedList = []
 		i = 0
+		mismatchedPath = path
 		while not matched and message[i:]:
-			(matched, trailingDecodedList) = _templateMatch_list(message[i:], tt, path)
+			(matched, trailingDecodedList, p) = _templateMatch_list(message[i:], tt, path)
 			if not matched:
+				mismatchedPath = p
 				decodedList.append(message[i])
 			i += 1
 		logInternal("_templateMatch_list res %s: %s against %s ([*])" % (matched, repr(message), repr(template)))
 		# decodedList += trailingDecodedList
 		for e in trailingDecodedList:
 			decodedList.append(e)
-		return (matched, decodedList)
+		return (matched, decodedList, mismatchedPath)
 	else:
 		# Recursive approach:
 		# we match the same element first element, and the trailing list should match, too
 		decodedList = []
 		result = True
-		(ret, decodedAttemptedElement) = _templateMatch(mh, th, u'%s.*' % path)
+		(ret, decodedAttemptedElement, mismatchedPath) = _templateMatch(mh, th, u'%s.*' % path)
 
 		if not ret and not isinstance(th, ifpresent):
 			# mismatch on non-optional/if present element
@@ -3182,19 +3190,19 @@ def _templateMatch_list(message, template, path):
 			decodedList.append(decodedAttemptedElement)
 
 			logInternal("_templateMatch_list mismatched on first optional element: %s against %s " % (repr(message), repr(template)))
-			(ret, decoded) = _templateMatch_list(message, tt, path)
+			(ret, decoded, mismatchedPath) = _templateMatch_list(message, tt, path)
 			result = ret
 			decodedList += decoded
 		else:
 			# Display why we didn't match our element
 			decodedList.append(decodedAttemptedElement)
 			logInternal("_templateMatch_list matched on first element: %s against %s " % (repr(message), repr(template)))
-			(ret, decoded) = _templateMatch_list(mt, tt, path)
+			(ret, decoded, mismatchedPath) = _templateMatch_list(mt, tt, path)
 			result = ret
 			decodedList += decoded
 
 #		logInternal("_templateMatch_list res %s: %s against %s ([*])" % (result, repr(message), repr(template)))
-		return (result, decodedList)
+		return (result, decodedList, mismatchedPath)
 
 
 ################################################################################

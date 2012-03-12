@@ -278,13 +278,16 @@ def logTemplateMatch(tc, port, message, template, encodedMessage = None):
 		ret = getBacktrace()
 		logUser(unicode(e) + u'\n' + unicode(ret))
 
-def logTemplateMismatch(tc, port, message, template, encodedMessage = None):
+def logTemplateMismatch(tc, port, message, template, encodedMessage = None, mismatchedPath = None):
+	attributes = { 'class': 'event', 'timestamp': time.time(), 'tc': tc, 'port': port }
+	if mismatchedPath:
+		attributes['path'] = mismatchedPath 
 	try:
 		# Should we call a tliMatch/tliMisMatch ?
 		if encodedMessage:
-			tliLog('mismatch', toXml('template-mismatch', { 'class': 'event', 'timestamp': time.time(), 'tc': tc, 'port': port }, '%s%s%s' % (testermanToXml(message, 'message'), testermanToXml(template, 'template'), testermanToXml(encodedMessage, 'encoded-message'))))
+			tliLog('mismatch', toXml('template-mismatch', attributes, '%s%s%s' % (testermanToXml(message, 'message'), testermanToXml(template, 'template'), testermanToXml(encodedMessage, 'encoded-message'))))
 		else:
-			tliLog('mismatch', toXml('template-mismatch', { 'class': 'event', 'timestamp': time.time(), 'tc': tc, 'port': port }, '%s%s' % (testermanToXml(message, 'message'), testermanToXml(template, 'template'))))
+			tliLog('mismatch', toXml('template-mismatch', attributes, '%s%s' % (testermanToXml(message, 'message'), testermanToXml(template, 'template'))))
 	except Exception, e:
 		ret = getBacktrace()
 		logUser(unicode(e) + u'\n' + unicode(ret))
