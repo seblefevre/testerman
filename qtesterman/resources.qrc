@@ -110,6 +110,8 @@ pyrcc4 resources.qrc -o Resources.py
 	<file alias="arrow-down">resources/go-down.png</file>
 	<file alias="arrow-bottom">resources/go-bottom.png</file>
 
+	<file alias="line-clear">resources/cancel.png</file>
+
 </qresource>
 
 <qresource prefix="animations">

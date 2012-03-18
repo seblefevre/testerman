@@ -1365,7 +1365,10 @@ class TextualLogItem(QTreeWidgetItem):
 			template = self._domElement.firstChildElement('template')
 			self.setForeground(2, QBrush(QColor(Qt.green)))
 		elif self._element == "template-mismatch":
-			self._message = "Template mismatch on port %s.%s" % (self._domElement.attribute('tc'), self._domElement.attribute('port'))
+			if self._domElement.attribute('path'):
+				self._message = "Template mismatch on port %s.%s (unsatisfied template path: %s)" % (self._domElement.attribute('tc'), self._domElement.attribute('port'), self._domElement.attribute('path'))
+			else:
+				self._message = "Template mismatch on port %s.%s" % (self._domElement.attribute('tc'), self._domElement.attribute('port'))
 			message = self._domElement.firstChildElement('message')
 			template = self._domElement.firstChildElement('template')
 			self.setForeground(2, QBrush(QColor(Qt.red)))

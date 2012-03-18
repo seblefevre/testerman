@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 ##
 # This file is part of Testerman, a test automation system.
-# Copyright (c) 2008,2009,2010 Sebastien Lefevre and other contributors
+# Copyright (c) 2008-2012 Sebastien Lefevre and other contributors
 #
 # This program is free software; you can redistribute it and/or modify it under
 # the terms of the GNU General Public License as published by the Free Software
@@ -17,8 +17,6 @@
 # A Job Queue widget, displaying the server's job queue,
 # enabling basic interaction with it:
 # - signal management (send them to a job)
-#
-# Implemented as a model/view Qt Tree.
 #
 # Emits some signals to integrate additional logic
 # (such as viewing logs)
@@ -271,14 +269,76 @@ class JobItem(QTreeWidgetItem):
 	def getType(self):
 		return self._data['type']
 
+
+################################################################################
+# Some contextual actions
+################################################################################
+
+class ClearableLineEdit(QLineEdit):
+	"""
+	A Line edit widget with a 'clear' icon on its right.
+	Adapted from http://labs.qt.nokia.com/2007/06/06/lineedit-with-a-clear-button/
+	"""
+	def __init__(self, parent = None):
+		QLineEdit.__init__(self, parent)
+		self.clearButton = QToolButton(self)
+		self.clearButton.setIcon(icon(":/icons/line-clear"))
+		minSize = self.minimumSizeHint()
+		frameWidth = self.style().pixelMetric(QStyle.PM_DefaultFrameWidth)
+		self.clearButton.setIconSize(QSize(12, 12))
+		self.clearButton.setCursor(Qt.ArrowCursor)
+		self.clearButton.setStyleSheet("QToolButton { border: none; padding: 0px; }")
+		self.clearButton.hide()
+		self.connect(self.clearButton, SIGNAL('clicked()'), self.clear)
+		self.connect(self, SIGNAL('textChanged(const QString&)'), self.updateCloseButton)
+		self.setStyleSheet("QLineEdit { padding-right: %ipx; } " % (self.clearButton.sizeHint().width() + frameWidth + 1))
+		self.setMinimumSize(max(minSize.width(), self.clearButton.sizeHint().width() + frameWidth * 2 + 2),
+			max(minSize.height(), self.clearButton.sizeHint().height() + frameWidth * 2 + 2))
+
+	def resizeEvent(self, event):
+		size = self.clearButton.sizeHint()
+		frameWidth = self.style().pixelMetric(QStyle.PM_DefaultFrameWidth)
+		self.clearButton.move(self.rect().right() - frameWidth - size.width(), (self.rect().bottom() + 1 - size.height())/2)
+	
+	def updateCloseButton(self):
+		self.clearButton.setVisible(not self.text().isEmpty())
+		
+
+class FilteringAction(QWidgetAction):
+	"""
+	Emit a 'filter' signal with the text to filter.
+	"""
+	def __init__(self, label, currentValue = None, parent = None):
+		QWidgetAction.__init__(self, parent)
+		self._lineEdit = ClearableLineEdit(parent)
+		self._lineEdit.setPlaceholderText(label)
+		self._lineEdit.setText(currentValue)
+		self.setDefaultWidget(self._lineEdit)
+		self.setText("Filtering")
+		self.connect(self._lineEdit, SIGNAL('editingFinished()'), lambda: self.emit(SIGNAL('filter'), self._lineEdit.text()))
+		
+
 ################################################################################
 # Tree Widget
 ################################################################################
 
 class WJobTreeWidget(QTreeWidget):
+	"""
+	The main widget displaying the server's job queue.
+	
+	The widget emits:
+	- SIGNAL('showLog(int)', jobId): a job log should be displayed
+	
+	The widget manages several local operations on its own:
+	- getting/saving job details
+	- view filtering
+	- automatic refresh via Xc subscription
+	"""
 	def __init__(self, parent = None):
 		QTreeWidget.__init__(self, parent)
 		self._client = None
+		
+		self._filters = { 'name': '', 'state': '' }
 
 		self.setWindowIcon(icon(":/icons/job-queue.png"))
 		self.setWindowTitle('Job queue')
@@ -332,6 +392,8 @@ class WJobTreeWidget(QTreeWidget):
 		for jobInfo in queue:
 			self.updateFromServer(jobInfo)
 
+		self._applyFilters()
+		
 	def updateFromServer(self, jobInfo):
 		"""
 		Updates or creates an item corresponding to jobInfo.
@@ -400,9 +462,51 @@ class WJobTreeWidget(QTreeWidget):
 			menu.addSeparator()
 		
 		# In any case, general action
+		# Filtering
+		nameFilterAction = FilteringAction("Filter on name", self._filters['name'], self)
+		self.connect(nameFilterAction, SIGNAL('filter'), self._filterOnName)
+		menu.addAction(nameFilterAction)
+		stateFilterAction = FilteringAction("Filter on state", self._filters['state'], self)
+		self.connect(stateFilterAction, SIGNAL('filter'), self._filterOnState)
+		menu.addAction(stateFilterAction)
+		menu.addSeparator()
 		menu.addAction("Refresh all", self.refresh)
 		
 		menu.popup(event.globalPos())
+
+	def _filterOnName(self, name):
+		self._filters['name'] = name
+		self._filters['state'] = ''
+		self._applyFilters()
+
+	def _filterOnState(self, state):
+		self._filters['name'] = ''
+		self._filters['state'] = state
+		self._applyFilters()
+	
+	def _applyFilters(self):
+		"""
+		Select items according to the currently set self._filters.
+		For now, only supported for 'name'.
+		"""
+		# I don't like this approach, a Model Proxy should be better... but needs migrating to
+		# ItemView first
+		if self._filters.get('name'):
+			items = self.findItems(QString(self._filters.get('name')), Qt.MatchContains, SECTIONS.index('name'))
+			filtered = True
+		elif self._filters.get('state'):
+			items = self.findItems(QString(self._filters.get('state')), Qt.MatchContains, SECTIONS.index('state'))
+			filtered = True
+		else:
+			# No filter - display everything
+			filtered = False
+
+		for i in range(self.invisibleRootItem().childCount()):
+			item = self.invisibleRootItem().child(i)
+			if filtered:
+				item.setHidden(not item in items)
+			else:
+				item.setHidden(False)
 
 	def _sendSignal(self, jobId, signal):
 		try:
@@ -433,14 +537,23 @@ class WJobTreeWidget(QTreeWidget):
 		if item:
 			self._viewLog(item.getId())
 
-# Basic test
+
+################################################################################
+# Standalone viewer / for testing
+################################################################################
+
 if __name__ == "__main__":
 	import sys
 	import TestermanClient
+	
+	if len(sys.argv) < 2:
+		serverUrl = "http://localhost:8080"
+	else:
+		serverUrl = sys.argv[1]
 
 	app = QApplication([])
 
-	client = TestermanClient.Client("test", "JobQueue/1.0.0", serverUrl = "http://localhost:8080")
+	client = TestermanClient.Client("test", "JobQueue/1.0.0", serverUrl = serverUrl)
 	client.startXc()
 	
 	w = WJobTreeWidget()

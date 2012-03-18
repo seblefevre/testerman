@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 ##
 # This file is part of Testerman, a test automation system.
-# Copyright (c) 2009,2010,2011 QTesterman contributors
+# Copyright (c) 2009-2012 QTesterman contributors
 #
 # This program is free software; you can redistribute it and/or modify it under
 # the terms of the GNU General Public License as published by the Free Software
@@ -370,15 +370,43 @@ class WModuleDocumentEditor(WDocumentEditor):
 	"""
 	def __init__(self, moduleModel, parent = None):
 		WDocumentEditor.__init__(self, moduleModel, parent)
-
 		self.__createWidgets()
 		self.filenameTemplate = "Testerman Module (*.py)"
 		self.connect(self.model, SIGNAL('modificationChanged(bool)'), self.onModelModificationChanged)
 		self.connect(self.model, SIGNAL('documentReplaced()'), self.onModelDocumentReplaced)
 
 	def onModelDocumentReplaced(self):
-		self.editor.setPlainText(self.model.getBodyModel())
+		self.primaryEditor.setPlainText(self.model.getBodyModel())
 
+	def setActiveEditor(self, editor):
+		self.activeEditor = editor
+		self.find.setScintillaWidget(editor)
+	
+	def splitView(self):
+		"""
+		Add another editor view.
+		"""
+		editor = WPythonCodeEditor(None, self, self.primaryEditor.document(), documentEditor = self)
+		self.connect(editor, SIGNAL("focused"), self.setActiveEditor)
+		self.editors.append(editor)
+
+		self.editorSplitter.addWidget(editor)
+		
+		# Not collapsible for now
+		self.editorSplitter.setCollapsible(len(self.editors), False)
+
+	def closeView(self):
+		if self.activeEditor is not self.primaryEditor:
+			index = self.editors.index(self.activeEditor)
+			w = self.editorSplitter.widget(index+1) # +1 because it includes the primaryEditor (index 0 in the splitter), and it is not in self.editors
+			# Remove the widget from the QSplitter
+			w.hide()
+			w.setParent(None)
+			del self.editors[index]
+			del w
+			# Focus on the previous widget - that's (index+1)-1, so always >= 0, i.e. the widget always exists.
+			self.editorSplitter.widget(index).setFocus(Qt.OtherFocusReason)
+		
 	def __createWidgets(self):
 		"""
 		A main WScriptEditor, plus an associated action bar at the bottom with:
@@ -387,28 +415,33 @@ class WModuleDocumentEditor(WDocumentEditor):
 		"""
 
 		layout = QVBoxLayout()
-		self.editor = WPythonCodeEditor(self.model.getBodyModel(), self)
-		self.connect(self.editor, SIGNAL('modificationChanged(bool)'), self.model.onBodyModificationChanged)
 
-		# Split view test
-		self.secondEditor = WPythonCodeEditor(None, self, self.editor.document())
+		# The primary editor view
+		self.primaryEditor = WPythonCodeEditor(self.model.getBodyModel(), self, documentEditor = self)
+		self.connect(self.primaryEditor, SIGNAL("focused"), self.setActiveEditor)
+		# QsciScintilla directly manage the signal
+		self.connect(self.primaryEditor, SIGNAL('modificationChanged(bool)'), self.model.onBodyModificationChanged)
+
+		self.activeEditor = self.primaryEditor
+		
+		# Split views
+		self.editors = []
 
 		self.editorSplitter = QSplitter(Qt.Vertical)
-		self.editorSplitter.addWidget(self.secondEditor)
-		self.editorSplitter.addWidget(self.editor)
-		self.editorSplitter.setCollapsible(0, True)
-		self.editorSplitter.setCollapsible(1, False)
-		self.editorSplitter.setSizes([0, 100])
+		self.editorSplitter.addWidget(self.primaryEditor)
+		self.editorSplitter.setCollapsible(0, False)
 		
 		layout.addWidget(self.editorSplitter)
 
-		# A find widget
-		self.find = CommonWidgets.WSciFind(self.editor, self)
-
-		# The action bar below
+		##
+		# The action bar, bottom bar
+		##
 		actionLayout = QHBoxLayout()
-		actionLayout.addWidget(self.find)
 
+		# A find widget
+		self.find = CommonWidgets.WSciFind(self.primaryEditor, self)
+		actionLayout.addWidget(self.find)
+		
 		# Actions associated with Module edition:
 		# syntax check,
 		# documentation via Module documentation plugins,
@@ -444,21 +477,21 @@ class WModuleDocumentEditor(WDocumentEditor):
 		return self.verify(False)
 
 	def updateModel(self):
-		self.model.setBodyModel(self.editor.getCode())
+		self.model.setBodyModel(self.activeEditor.getCode())
 
 	def goTo(self, line, col = 0):
-		self.editor.goTo(line, col)
+		self.activeEditor.goTo(line, col)
 
 	def replace(self):
 		"""
 		replace function
 		"""
-		replaceBox = CommonWidgets.WSciReplace(self.editor, self)
+		replaceBox = CommonWidgets.WSciReplace(self.activeEditor, self)
 		replaceBox.show()
 
 	def verify(self, displayNoError = True):
 		self.updateModel()
-		self.editor.clearHighlight()
+		self.activeEditor.clearHighlight()
 		try:
 			body = unicode(self.model.getBodyModel()).encode('utf-8')
 			parser.suite(body).compile()
@@ -467,10 +500,10 @@ class WModuleDocumentEditor(WDocumentEditor):
 				QMessageBox.information(self, getClientName(), "No syntax problem was found in this module.", QMessageBox.Ok)
 			return True
 		except SyntaxError, e:
-			self.editor.highlight(e.lineno - 1)
-			self.editor.goTo(e.lineno - 1, e.offset)
+			self.activeEditor.highlight(e.lineno - 1)
+			self.activeEditor.goTo(e.lineno - 1, e.offset)
 			CommonWidgets.userError(self, "Syntax error on line %s: <br />%s" % (str(e.lineno), e.msg))
-			self.editor.setFocus(Qt.OtherFocusReason)
+			self.activeEditor.setFocus(Qt.OtherFocusReason)
 		return False
 
 	def prepareDocumentationPluginsMenu(self):
@@ -514,7 +547,7 @@ class WAtsDocumentEditor(WDocumentEditor):
 		self._deselectedGroups = []
 
 	def onModelDocumentReplaced(self):
-		self.editor.setPlainText(self.model.getBodyModel())
+		self.primaryEditor.setPlainText(self.model.getBodyModel())
 		self.parametersEditor.setModel(self.model.getMetadataModel())
 		self.groupsEditor.setModel(self.model.getMetadataModel())
 
@@ -547,7 +580,35 @@ class WAtsDocumentEditor(WDocumentEditor):
 			self.testGroupsSelector.show()
 		else:
 			self.testGroupsSelector.hide()
-			
+	
+	def setActiveEditor(self, editor):
+		self.activeEditor = editor
+		self.find.setScintillaWidget(editor)
+	
+	def splitView(self):
+		"""
+		Add another editor view.
+		"""
+		editor = WPythonCodeEditor(None, self, self.primaryEditor.document(), documentEditor = self)
+		self.connect(editor, SIGNAL("focused"), self.setActiveEditor)
+		self.editors.append(editor)
+
+		self.editorSplitter.addWidget(editor)
+		
+		# Not collapsible for now
+		self.editorSplitter.setCollapsible(len(self.editors), False)
+
+	def closeView(self):
+		if self.activeEditor is not self.primaryEditor:
+			index = self.editors.index(self.activeEditor)
+			w = self.editorSplitter.widget(index+1) # +1 because it includes the primaryEditor (index 0 in the splitter), and it is not in self.editors
+			# Remove the widget from the QSplitter
+			w.hide()
+			w.setParent(None)
+			del self.editors[index]
+			del w
+			# Focus on the previous widget - that's (index+1)-1, so always >= 0, i.e. the widget always exists.
+			self.editorSplitter.widget(index).setFocus(Qt.OtherFocusReason)
 		
 	def __createWidgets(self):
 		"""
@@ -556,13 +617,16 @@ class WAtsDocumentEditor(WDocumentEditor):
 		- a button to check syntax
 		"""
 
-		# The code editor
-		self.editor = WPythonCodeEditor(self.model.getBodyModel(), self)
+		# The primary editor view
+		self.primaryEditor = WPythonCodeEditor(self.model.getBodyModel(), self, documentEditor = self)
+		self.connect(self.primaryEditor, SIGNAL("focused"), self.setActiveEditor)
 		# QsciScintilla directly manage the signal
-		self.connect(self.editor, SIGNAL('modificationChanged(bool)'), self.model.onBodyModificationChanged)
+		self.connect(self.primaryEditor, SIGNAL('modificationChanged(bool)'), self.model.onBodyModificationChanged)
 
-		# Split view test
-		self.secondEditor = WPythonCodeEditor(None, self, self.editor.document())
+		self.activeEditor = self.primaryEditor
+		
+		# Split views
+		self.editors = []
 
 		##
 		# (Initially) Hidden widgets
@@ -610,7 +674,7 @@ class WAtsDocumentEditor(WDocumentEditor):
 		actionLayout = QHBoxLayout()
 
 		# A find widget
-		self.find = CommonWidgets.WSciFind(self.editor, self)
+		self.find = CommonWidgets.WSciFind(self.primaryEditor, self)
 		actionLayout.addWidget(self.find)
 		
 		# Actions associated with ATS edition:
@@ -701,14 +765,10 @@ class WAtsDocumentEditor(WDocumentEditor):
 		self.mainSplitter.addWidget(self.propertiesEditor)
 		
 		self.editorSplitter = QSplitter(Qt.Vertical)
-		self.editorSplitter.addWidget(self.secondEditor)
-		self.editorSplitter.addWidget(self.editor)
-		self.editorSplitter.setCollapsible(0, True)
-		self.editorSplitter.setCollapsible(1, False)
-		self.editorSplitter.setSizes([0, 100])
+		self.editorSplitter.addWidget(self.primaryEditor)
+		self.editorSplitter.setCollapsible(0, False)
 		
 		self.mainSplitter.addWidget(self.editorSplitter)
-#		self.mainSplitter.addWidget(self.editor)
 		
 		self.mainSplitter.addWidget(self.profilesManager)
 		
@@ -728,21 +788,21 @@ class WAtsDocumentEditor(WDocumentEditor):
 		self.setLayout(layout)
 
 	def updateModel(self):
-		self.model.setBodyModel(self.editor.getCode())
+		self.model.setBodyModel(self.activeEditor.getCode())
 		
 	def goTo(self, line, col = 0):
-		self.editor.goTo(line, col)
+		self.activeEditor.goTo(line, col)
 
 	def replace(self):
 		"""
 		replace function
 		"""
-		replaceBox = CommonWidgets.WSciReplace(self.editor, self)
+		replaceBox = CommonWidgets.WSciReplace(self.activeEditor, self)
 		replaceBox.show()
 
 	def verify(self, displayNoError = 1):
 		self.updateModel()
-		self.editor.clearHighlight()
+		self.activeEditor.clearHighlight()
 		try:
 			body = unicode(self.model.getBodyModel()).encode('utf-8')
 			parser.suite(body).compile()
@@ -751,10 +811,10 @@ class WAtsDocumentEditor(WDocumentEditor):
 				QMessageBox.information(self, getClientName(), "No syntax problem was found in this ATS.", QMessageBox.Ok)
 			return 1
 		except SyntaxError, e:
-			self.editor.highlight(e.lineno - 1)
-			self.editor.goTo(e.lineno - 1, e.offset)
+			self.activeEditor.highlight(e.lineno - 1)
+			self.activeEditor.goTo(e.lineno - 1, e.offset)
 			CommonWidgets.userError(self, "Syntax error on line %s: <br />%s" % (str(e.lineno), e.msg))
-			self.editor.setFocus(Qt.OtherFocusReason)
+			self.activeEditor.setFocus(Qt.OtherFocusReason)
 		return 0
 
 	def _schedule(self, session, at = None, selectedGroups = None):
@@ -1223,8 +1283,11 @@ class PythonLexer(sci.QsciLexerPython):
 #			return sci.QSciLexerPython.keywords(setIndex)
 
 class WPythonCodeEditor(sci.QsciScintilla):
-	def __init__(self, text = None, parent = None, scintillaDocument = None):
+	def __init__(self, text = None, parent = None, scintillaDocument = None, documentEditor = None):
 		sci.QsciScintilla.__init__(self, parent)
+		
+		# Being attached to a documentEditor enables some additional features/contextual actions
+		self._documentEditor = documentEditor
 		
 		self._outlineUpdateTimer = QTimer()
 		self.connect(self._outlineUpdateTimer, SIGNAL('timeout()'), lambda: QApplication.instance().get('gui.outlineview').updateModel(str(self.text().toUtf8())))
@@ -1282,15 +1345,18 @@ class WPythonCodeEditor(sci.QsciScintilla):
 		self.setMarginWidth(1, "10")
 		self.setMarginsBackgroundColor(Qt.white)
 		self.setMarginsForegroundColor(Qt.gray)
-
+		
 		# Markers
 		self.LINE_MARKER = self.markerDefine(self.Background)
 		self.ERROR_MARKER = self.markerDefine(self.Background) # FFS
 		self.BOOKMARK_MARKER = self.markerDefine(self.Background) # FFS
-		self.setMarkerBackgroundColor(Qt.yellow, self.ERROR_MARKER)
+		errorColor = QColor(Qt.red)
+		errorColor.setAlpha(128)
+		self.setMarkerBackgroundColor(errorColor, self.ERROR_MARKER)
 		self.setMarkerBackgroundColor(Qt.yellow, self.LINE_MARKER)
 		# No marker margin
-		self.setMarginWidth(0, 0)
+		self.setMarginLineNumbers(0, False)
+		self.setMarginWidth(0, 10)
 
 		self.lastHighlight = None
 
@@ -1466,9 +1532,26 @@ class WPythonCodeEditor(sci.QsciScintilla):
 		self.menu.addSeparator()
 		self.menu.addAction(self.learnKeystrokesAction)
 		self.menu.addAction(self.replayKeystrokesAction)
-		# WARNING: Adding this sub-menu makes the PythonCodeEditor not suitable for integration in any 
-		# widget, but only in WDocument.
-		if hasattr(self.parent(), "getCategorizedPluginActions"):
+
+		# Let's check if we are embedded in a widget that allows splitting/closing views
+		if self._documentEditor:
+			# Split views
+			self.splitViewAction = CommonWidgets.TestermanAction(self, "Split view", self.splitView)
+			self.splitViewAction.setShortcut(Qt.CTRL + Qt.SHIFT + Qt.Key_H)
+			self.splitViewAction.setShortcutContext(Qt.WidgetShortcut)
+			self.addAction(self.splitViewAction)
+			self.closeViewAction = CommonWidgets.TestermanAction(self, "Close view", self.closeView)
+			self.closeViewAction.setShortcut(Qt.CTRL + Qt.SHIFT + Qt.Key_J)
+			self.closeViewAction.setShortcutContext(Qt.WidgetShortcut)
+			self.addAction(self.closeViewAction)
+
+			self.menu.addSeparator()
+			self.menu.addAction(self.splitViewAction)
+			self.menu.addAction(self.closeViewAction)
+
+		# Adding this sub-menu makes the PythonCodeEditor not suitable for integration in any 
+		# widget, but only in WDocument. So we check that the parent has the required features
+		if self._documentEditor:
 			self.menu.addSeparator()
 			self.pluginsMenu = QMenu("Plugins")
 			self.menu.addMenu(self.pluginsMenu)
@@ -1511,7 +1594,7 @@ class WPythonCodeEditor(sci.QsciScintilla):
 
 	def preparePluginsMenu(self):
 		self.pluginsMenu.clear()
-		for (label, actions) in self.parent().getCategorizedPluginActions():
+		for (label, actions) in self._documentEditor.getCategorizedPluginActions():
 			menu = self.pluginsMenu.addMenu(label)
 			for action in actions:
 				menu.addAction(action)
@@ -1657,6 +1740,12 @@ class WPythonCodeEditor(sci.QsciScintilla):
 
 	def uncomment(self):
 		self.multiLineUninsert('#')
+
+	def splitView(self):
+		self._documentEditor.splitView()
+
+	def closeView(self):
+		self._documentEditor.closeView()
 
 	def toggleLearnKeystrokes(self):
 		if self.learningKeystrokes:
@@ -1807,6 +1896,15 @@ class WPythonCodeEditor(sci.QsciScintilla):
 		autocompletion = QSettings().value('editor/autocompletion', QVariant(False)).toBool()
 		if autocompletion:
 			self._autoCompletionTimer.start(500)
+	
+	def focusInEvent(self, event):
+		"""
+		Overriden from QWidget.
+		Emit a signal when focused so that the world can know which editor
+		is the active one (useful for multiview document editor).
+		"""
+		self.emit(SIGNAL("focused"), self)
+		return sci.QsciScintilla.focusInEvent(self, event)
 
 ################################################################################
 # Session Variable Management

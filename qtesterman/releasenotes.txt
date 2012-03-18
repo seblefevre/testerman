@@ -7,6 +7,15 @@ KNOWN BUGS:
 - The script properties editor does not reselect the parameter you just
   updated.
 
+
+1.4.4:
+- Added: preliminary support for template mismatch element display (requires server 1.4.6+)
+  This does not highlight the mismatched template element yet.
+- Fixed: multiview editor, with fixed find function and shortcuts to split/close
+  views (Ctrl+Shift+H/J).
+- Added: multiview editor for Module editing.
+
+
 1.4.3:
 - Fixed: login window has now a fixed width.
 - Fixed: no more false positive changesets in revisions due to reordered

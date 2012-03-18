@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 ##
 # This file is part of Testerman, a test automation system.
-# Copyright (c) 2008-2009 Sebastien Lefevre and other contributors
+# Copyright (c) 2008-2012 Sebastien Lefevre and other contributors
 #
 # This program is free software; you can redistribute it and/or modify it under
 # the terms of the GNU General Public License as published by the Free Software
@@ -431,16 +431,24 @@ class WSciFind(QWidget):
 	"""
 	def __init__(self, scintilla, parent = None):
 		QWidget.__init__(self, parent)
-		self.scintilla = scintilla
+		self.scintilla = None
+		self.registeredScintillas = []
+		self.setScintillaWidget(scintilla)
 		self.__createWidgets()
-		# This does not work...
-		self.action = TestermanAction(self.scintilla, "Find", self.getFocus)
-		self.action.setShortcut(Qt.CTRL + Qt.Key_F)
-		self.action.setShortcutContext(Qt.WidgetShortcut)
-		self.scintilla.addAction(self.action)
 		self.isCopyAvailable = False
 		self.firstSearch = False
 		self.forwardSearch = True
+
+	def setScintillaWidget(self, s):
+		self.scintilla = s
+		# Automatically register an action on the QScintilla widget,
+		# if this is the first time we register on it
+		if not s in self.registeredScintillas:
+			action = TestermanAction(self.scintilla, "Find", self.getFocus)
+			action.setShortcut(Qt.CTRL + Qt.Key_F)
+			action.setShortcutContext(Qt.WidgetShortcut)
+			self.scintilla.addAction(action)
+			self.registeredScintillas.append(s)
 
 	def __createWidgets(self):
 		layout = QHBoxLayout()
