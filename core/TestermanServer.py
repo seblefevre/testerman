@@ -2,7 +2,7 @@
 # -*- coding: utf-8 -*-
 ##
 # This file is part of Testerman, a test automation system.
-# Copyright (c) 2008,2009,2010 Sebastien Lefevre and other contributors
+# Copyright (c) 2008-2012 Sebastien Lefevre and other contributors
 #
 # This program is free software; you can redistribute it and/or modify it under
 # the terms of the GNU General Public License as published by the Free Software
@@ -39,11 +39,16 @@ import socket
 import sys
 import threading
 import time
-# XML-RPC support: locally modified SimpleXMLRPCServer
-# to workaround a bug in the one distribued with Python < 2.5
-# (allow_none=1 not taken into account to enable marshalling of None values).
-# So the SimpleXMLRPCServer.dumps() has been overriden here.
-import SimpleXMLRPCServer
+
+if sys.version_info < (2, 7):
+	# XML-RPC support: locally modified SimpleXMLRPCServer
+	# to workaround a bug in the one distribued with Python <= 2.6
+	# (allow_none=1 not taken into account to enable marshalling of None values).
+	# So the SimpleXMLRPCServer.dumps() has been overriden here.
+	import FixedSimpleXMLRPCServer as SimpleXMLRPCServer
+else:
+	import SimpleXMLRPCServer
+
 import SocketServer
 
 
