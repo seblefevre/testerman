@@ -378,6 +378,21 @@ class WModuleDocumentEditor(WDocumentEditor):
 	def onModelDocumentReplaced(self):
 		self.primaryEditor.setPlainText(self.model.getBodyModel())
 
+	def getEditorPluginActions(self):
+		"""
+		Overriden to provide the correct parent to the plugin actions.
+		"""
+		# For now, we just have code writer plugins.
+		ret = getCodeWriterPluginActions(self.activeEditor, self.model.getDocumentType(), self.activeEditor)
+		return ret
+	
+	def getDocumentationPluginActions(self):
+		"""
+		Overriden to provide the correct parent to the plugin actions.
+		"""
+		ret = getDocumentationPluginActions(self.model, self.model.getDocumentType(), self.activeEditor)
+		return ret
+
 	def setActiveEditor(self, editor):
 		self.activeEditor = editor
 		self.find.setScintillaWidget(editor)
@@ -508,8 +523,9 @@ class WModuleDocumentEditor(WDocumentEditor):
 
 	def prepareDocumentationPluginsMenu(self):
 		self.documentationPluginsMenu.clear()
+		print "DEBUG: yoyo"
 		for action in getDocumentationPluginActions(self.model, self.model.getDocumentType(), self):
-			print "DEBUG: adding action in plugin contextual menu..." + unicode(action.text())
+			log("adding action in plugin contextual menu..." + unicode(action.text()))
 			self.documentationPluginsMenu.addAction(action)
 
 	def aboutToDocument(self):
@@ -545,6 +561,21 @@ class WAtsDocumentEditor(WDocumentEditor):
 		self.connect(self.model, SIGNAL('documentReplaced()'), self.onModelDocumentReplaced)
 		# deselected groups are "persisted" across runs
 		self._deselectedGroups = []
+
+	def getEditorPluginActions(self):
+		"""
+		Overriden to provide the correct parent to the plugin actions.
+		"""
+		# For now, we just have code writer plugins.
+		ret = getCodeWriterPluginActions(self.activeEditor, self.model.getDocumentType(), self.activeEditor)
+		return ret
+	
+	def getDocumentationPluginActions(self):
+		"""
+		Overriden to provide the correct parent to the plugin actions.
+		"""
+		ret = getDocumentationPluginActions(self.model, self.model.getDocumentType(), self.activeEditor)
+		return ret
 
 	def onModelDocumentReplaced(self):
 		self.primaryEditor.setPlainText(self.model.getBodyModel())
@@ -952,7 +983,7 @@ class WAtsDocumentEditor(WDocumentEditor):
 	def prepareDocumentationPluginsMenu(self):
 		self.documentationPluginsMenu.clear()
 		for action in getDocumentationPluginActions(self.model, self.model.getDocumentType(), self):
-			print "DEBUG: adding action in plugin contextual menu..." + unicode(action.text())
+			log("adding action in plugin contextual menu..." + unicode(action.text()))
 			self.documentationPluginsMenu.addAction(action)
 
 	def aboutToDocument(self):
@@ -1205,7 +1236,7 @@ def getCodeWriterPluginActions(editor, documentType, parent):
 
 	codeType in module/ats/campaign (for now)
 	"""
-	print "DEBUG: getting code writer plugins for " + str(documentType)
+	log("getting code writer plugins for " + str(documentType))
 	ret = []
 	for p in PluginManager.getPluginClasses(Plugin.TYPE_CODE_WRITER):
 		if p['activated'] and p['class']:
@@ -1237,7 +1268,7 @@ def getDocumentationPluginActions(model, documentType, parent):
 
 	documentType in module/ats/campaign (for now)
 	"""
-	print "DEBUG: getting documentation plugins for " + str(documentType)
+	log("getting documentation plugins for " + str(documentType))
 	ret = []
 	for p in PluginManager.getPluginClasses(Plugin.TYPE_DOCUMENTATION_GENERATOR):
 		if p['activated'] and p['class']:
@@ -2443,7 +2474,7 @@ class WPackageDescriptionDocumentEditor(WDocumentEditor):
 	def prepareDocumentationPluginsMenu(self):
 		self.documentationPluginsMenu.clear()
 		for action in getDocumentationPluginActions(self.model, self.model.getDocumentType(), self):
-			print "DEBUG: adding action in plugin contextual menu..." + unicode(action.text())
+			log("adding action in plugin contextual menu..." + unicode(action.text()))
 			self.documentationPluginsMenu.addAction(action)
 
 	def aboutToDocument(self):
@@ -3147,7 +3178,7 @@ class WProfileDocumentEditor(WDocumentEditor):
 	def prepareDocumentationPluginsMenu(self):
 		self.documentationPluginsMenu.clear()
 		for action in getDocumentationPluginActions(self.model, self.model.getDocumentType(), self):
-			print "DEBUG: adding action in plugin contextual menu..." + unicode(action.text())
+			log("adding action in plugin contextual menu..." + unicode(action.text()))
 			self.documentationPluginsMenu.addAction(action)
 
 	def aboutToDocument(self):

@@ -8,6 +8,10 @@ KNOWN BUGS:
   updated.
 
 
+1.4.5:
+- Fixed: plugin discovery regression.
+
+
 1.4.4:
 - Added: preliminary support for template mismatch element display (requires server 1.4.6+)
   This does not highlight the mismatched template element yet.
