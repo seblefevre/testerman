@@ -463,12 +463,14 @@ class WJobTreeWidget(QTreeWidget):
 		
 		# In any case, general action
 		# Filtering
-		nameFilterAction = FilteringAction("Filter on name", self._filters['name'], self)
+		filterMenu = menu.addMenu("Filter")
+		nameFilterAction = FilteringAction("name", self._filters['name'], self)
 		self.connect(nameFilterAction, SIGNAL('filter'), self._filterOnName)
-		menu.addAction(nameFilterAction)
-		stateFilterAction = FilteringAction("Filter on state", self._filters['state'], self)
+		filterMenu.addAction(nameFilterAction)
+		stateFilterAction = FilteringAction("state", self._filters['state'], self)
 		self.connect(stateFilterAction, SIGNAL('filter'), self._filterOnState)
-		menu.addAction(stateFilterAction)
+		filterMenu.addAction(stateFilterAction)
+		
 		menu.addSeparator()
 		menu.addAction("Refresh all", self.refresh)
 		

@@ -534,12 +534,17 @@ class WAboutPluginDialog(QDialog):
 		layout = QVBoxLayout()
 		self.setWindowTitle("About plugin: %s" % pluginInfo["label"])
 
-		txt = "<p>Plugin ID: %s</p><p>Name: %s</p><p>Version: %s</p><p>Author: %s</p><p>Description:<br />%s</p>" % (pluginInfo["plugin-id"],
-			pluginInfo["label"], pluginInfo["version"], pluginInfo["author"], pluginInfo["description"])
+		txt = "<p>Plugin ID: %s</p><p>Name: %s</p><p>Version: %s</p><p>Author: %s</p><p>Description:<br /></p>" % (pluginInfo["plugin-id"],
+			pluginInfo["label"], pluginInfo["version"], pluginInfo["author"])
 
 		label = QLabel(txt)
 		label.setAlignment(Qt.AlignLeft)
 		layout.addWidget(label)
+		
+		description = QTextEdit()
+		description.setReadOnly(True)
+		description.setHtml(pluginInfo["description"])
+		layout.addWidget(description)
 
 		# Buttons
 		buttonLayout = QHBoxLayout()

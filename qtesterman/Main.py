@@ -19,6 +19,7 @@
 ##
 
 from PyQt4.Qt import *
+from PyQt4 import QtXml
 
 import sys
 import os
@@ -37,6 +38,7 @@ import JobManager
 import RemoteBrowsers
 import DocumentPropertyEditor
 import PluginManager
+import Plugin
 import OutlineView
 import ChatView
 import Preferences
@@ -1119,8 +1121,9 @@ class WMainWindow(QMainWindow):
 		self._logWindow.show()
 		self._logWindow.raise_()
 
+
 ################################################################################
-# The runner
+# The runners
 ################################################################################
 
 def usage(txt = None):
@@ -1139,6 +1142,13 @@ Full Testerman client mode:
 Standalone log analyzer mode:
 -l, --log FILENAME    start the log analyzer on FILENAME, not the full client
     --online          still connect to a server to retrieve included log files
+    --export-with PLUGIN
+                      do not show the log analyzer window, but directly
+                      export the log with the exporter plugin type PLUGIN
+    --export-parameters PARAMETERS
+                      use PARAMETERS as export parameters. The format is
+                      key=value[,key=value]*, where the possible keys and
+                      values depend on the selected PLUGIN type
 """
 
 def showVersion():
@@ -1247,6 +1257,80 @@ def runLogAnalyzer(logFilename, shouldConnect = False):
 
 	return app.exec_()
 
+def exportLog(logFilename, pluginName, **pluginParameters):
+	"""
+	CLI only/no GUI.
+	
+	Loads a file and exports it through an instance of the exporter plugin
+	named pluginName, using the pluginParameters.
+	
+	@type  logFilename: unicode
+	@param logFilename: the filename of the log file to open
+	"""
+	logFilename = os.path.normpath(os.path.realpath(logFilename))
+
+	# OK, now we can create some Qt objects.
+	app = QApplication.instance()
+	# These names enables the use of QSettings() without any additional parameters.
+	app.setOrganizationName("Testerman")
+	app.setApplicationName(getClientName())
+
+	PluginManager.scanPlugins()
+	
+	# Make sure the plugin to use actually exists, create an instance.
+	# ...
+	plugin = None
+	
+	pclasses = PluginManager.getPluginClasses(pluginType = Plugin.TYPE_REPORT_EXPORTER)
+	for pc in pclasses:
+		if pc['label'] == pluginName:
+			plugin = pc['class']()
+			break
+	if not plugin:
+		log("Unable to find a report exporter plugin named '%s'" % pluginName)
+		return 1
+	
+	# Inject the parameters
+	for k, v in pluginParameters.items():
+		plugin._setProperty(k, v)
+	
+	# Load the XML file and turns it into a LogModel object suitable for the plugin
+	try:
+		f = open(logFilename, 'r')
+		xmlLog = f.read()
+		f.close()
+	except Exception, e:
+		log("Unable to load log file: %s" % unicode(e))
+		return 1
+	
+	logModel = LogViewer.LogModel()	
+
+	xmlDoc = QtXml.QDomDocument()
+	(res, errormessage, errorline, errorcol) = xmlDoc.setContent(xmlLog, 0)
+	log("Logs parsed, DOM constructed")
+	if res:
+		root = xmlDoc.documentElement()
+		element = root.firstChildElement()
+		while not element.isNull():
+			logModel.feedEvent(element)
+			element = element.nextSiblingElement()
+	else:
+		log("Parsing error: " + str(errormessage) + 'at line ' + str(errorline) + ' col ' + str(errorcol))
+		return 1
+
+	log("Log model constructed, exporting using %s..." % pluginName)
+	
+	plugin._setModel(logModel)
+	
+	ret = plugin.export()
+	if ret:
+		log("Log file correctly exported.")
+		return 0
+	else:
+		log("Unspecified error during export.")
+		return 1
+
+
 def run():
 	"""
 	Main function.
@@ -1263,11 +1347,13 @@ def run():
 	app.set('basepath', os.path.normpath(os.path.realpath(app.get('qtestermanpath') + "/..")))
 
 	logFilename = None
+	exportPluginParameters = ""
+	exportPluginName = None
 	shouldConnect = False
 
 	# Let's parse the command line.
 	try:
-		opts, args = getopt.getopt(sys.argv[1:], "hvs:l:", ["help", "version", "log=", "debug", "force-update", "online"])
+		opts, args = getopt.getopt(sys.argv[1:], "hvs:l:", ["help", "version", "log=", "debug", "force-update", "online", "export-with=", "export-parameters="])
 	except Exception, e:
 		usage(str(e))
 		sys.exit(2)
@@ -1283,6 +1369,10 @@ def run():
 			app.set('interface.ex.sourceip', arg)
 		if opt in ['-l', '--log']:
 			logFilename = arg
+		if opt in ['--export-with']:
+			exportPluginName = arg
+		if opt in ['--export-parameters']:
+			exportPluginParameters = arg
 		if opt in ['--force-update']:
 			app.set('autoupdate.force', 1)
 		if opt in ['--online']:
@@ -1295,8 +1385,22 @@ def run():
 			gc.set_threshold(10, 1, 1)
 			print "Current GC state: " + str(gc.isenabled())
 
+	# Export mode
+	if logFilename and exportPluginName:
+		parameters = {}
+		for p in exportPluginParameters.split(','):
+			try:
+				key, val = p.split('=', 2)
+				parameters[key] = val
+			except:
+				pass
+		return exportLog(logFilename, exportPluginName, **parameters)
+
+	# Log analyzer only mode
 	if logFilename:
 		return runLogAnalyzer(logFilename, shouldConnect)
+
+	# Full client mode
 	else:
 		log("Starting %s %s..." % (getClientName(), getClientVersion()))
 		return runClient()

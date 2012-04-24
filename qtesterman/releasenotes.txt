@@ -1,5 +1,5 @@
-This is QTesterman, a PyQt4-based Ritch Client for Testerman.
-=============================================================
+This is QTesterman, a PyQt4-based Rich Client for Testerman.
+============================================================
 
 KNOWN BUGS:
 - Profiles management is minimal for now: no way to rename one,
@@ -8,8 +8,19 @@ KNOWN BUGS:
   updated.
 
 
+1.4.6:
+- Added: support for command-line log export (--export-with PLUGIN and
+  --export-parameters PLUGIN_PARAMETERS). This enables to export
+  a log file to a transformed file or an external system without opening
+  the log analyzer or the full QTesterman client.
+  Example:
+  ./qtesterman --log mylog.xml --export-with "Simple Exporter" --export-parameters template=plugins/template/default-simple-report.vm,output=/tmp/file.html,html=true
+	generates an HTML file through the SimpleExporter exporter plugin, 
+  which is a new plugin using the same templating engine as SimpleReporter.
+
+
 1.4.5:
-- Fixed: plugin discovery regression.
+- Fixed: plugins discovery regression.
 
 
 1.4.4:

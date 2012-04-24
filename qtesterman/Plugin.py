@@ -24,6 +24,7 @@ from PyQt4.Qt import *
 TYPE_CODE_WRITER = "code-writer"
 TYPE_REPORT_VIEW = "report-view"
 TYPE_DOCUMENTATION_GENERATOR = "documentation"
+TYPE_REPORT_EXPORTER = "report-exporter"
 
 ###############################################################################
 # Base plugin configuration widget. The same for all plugin types.
@@ -86,7 +87,7 @@ class WPluginConfiguration(QWidget):
 
 
 ###############################################################################
-# ReportView: ideal to develop log exporters
+# ReportView: ideal to develop log exporters/viewers with GUI
 ###############################################################################
 
 class WReportView(QWidget):
@@ -156,7 +157,66 @@ class WReportView(QWidget):
 		@returns: None
 		"""
 		pass
+
+###############################################################################
+# ReportExport: ideal to develop log transformers/exporters (no GUI)
+# Could be a way to save a file locally, or inject results into 
+# a test management system, etc.
+###############################################################################
+
+class ReportExporter:
+	pluginType = TYPE_REPORT_EXPORTER
+	def __init__(self):
+		self.__model = None
+		self.__defaultProperties = {}
+		self.__properties = {}
 	
+	def _setModel(self, model):
+		self.__model = model
+	
+	def _setProperty(self, name, value):
+		self.__properties[name] = value
+	
+	def _getProperty(self, name):
+		"""
+		Returns a plugin parameter, or a default value if not set.
+		
+		@type  name: string
+		@param name: the name of the property
+		@type  defaultValue: object
+		@param defaultValue: the default value if the parameter is not set
+		
+		@rtype: object
+		@returns: the parameter value, or the default value if not set
+		"""
+		return self.__properties.get(name, self.__defaultProperties.get(name, None))
+
+	def __getitem__(self, name):
+		return self._getProperty(name)
+	
+	##
+	# Functions to help create new Exporter plugins
+	##
+	def getModel(self):
+		return self.__model
+	
+	def setDefaultProperty(self, name, value):
+		self.__defaultProperties[name] = value
+
+	##
+	# Functions to implement in your plugin
+	##
+	def export(self):
+		"""
+		Called when a model needs to be exported.
+		
+		The LogModel to export and the export parameters
+		are already injected and available via getModel() and self["parameterName"].
+		
+		@rtype: boolean
+		@returns: True if OK, False/exception otherwise
+		"""
+		return False
 
 ###############################################################################
 # CodeWriter: ideal to develop code snippet managers, resource importers, 
