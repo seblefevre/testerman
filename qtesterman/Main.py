@@ -1305,17 +1305,21 @@ def exportLog(logFilename, pluginName, **pluginParameters):
 	
 	logModel = LogViewer.LogModel()	
 
+	if not xmlLog.startswith("<?"):
+		# This is not a full XML file but a xml-element based raw logs
+		# from Testerman client
+		xmlLog = u'<?xml version="1.0" encoding="utf-8"?><ats>' + xmlLog + '</ats>'
 	xmlDoc = QtXml.QDomDocument()
 	(res, errormessage, errorline, errorcol) = xmlDoc.setContent(xmlLog, 0)
-	log("Logs parsed, DOM constructed")
 	if res:
+		log("Logs parsed, DOM constructed")
 		root = xmlDoc.documentElement()
 		element = root.firstChildElement()
 		while not element.isNull():
 			logModel.feedEvent(element)
 			element = element.nextSiblingElement()
 	else:
-		log("Parsing error: " + str(errormessage) + 'at line ' + str(errorline) + ' col ' + str(errorcol))
+		log("Parsing error: " + str(errormessage) + ' at line ' + str(errorline) + ' col ' + str(errorcol))
 		return 1
 
 	log("Log model constructed, exporting using %s..." % pluginName)
