@@ -7,7 +7,12 @@ KNOWN BUGS:
 - The script properties editor does not reselect the parameter you just
   updated.
 
-1.4.6-git:
+
+1.4.7:
+- Fixed: support for loading raw (non-xml compliant) log files, as
+  output by the testerman CLI client. This is useful when transforming
+  an execution log file from testerman CLI into a html report (or 
+  anything else) using the QTesterman's Export plugins.
 - Added: support for autologin on startup (if both --username and --server
   parameters are set).
 - Fixed: --export-with now correctly expand <include> elements if
@@ -21,7 +26,7 @@ KNOWN BUGS:
   the log analyzer or the full QTesterman client.
   Example:
   ./qtesterman --log mylog.xml --export-with "Simple Exporter" --export-parameters template=plugins/template/default-simple-report.vm,output=/tmp/file.html,html=true
-	generates an HTML file through the SimpleExporter exporter plugin, 
+  generates an HTML file through the SimpleExporter exporter plugin, 
   which is a new plugin using the same templating engine as SimpleReporter.
 
 
