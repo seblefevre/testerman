@@ -195,11 +195,11 @@ class WSettings(QWidget):
 ###############################################################################
 
 class WConnectionSettings(WSettings):
-	def __init__(self, parent = None):
+	def __init__(self, defaultUrl = None, defaultUsername = None, parent = None):
 		WSettings.__init__(self, parent)
-		self.__createWidgets()
+		self.__createWidgets(defaultUrl, defaultUsername)
 
-	def __createWidgets(self):
+	def __createWidgets(self, defaultUrl, defaultUsername):
 		"""
 		The model is in the saved settings.
 		"""
@@ -209,11 +209,20 @@ class WConnectionSettings(WSettings):
 		lasturl = settings.value('connection/lasturl', QVariant(QString('http://localhost:8080'))).toString()
 		username = settings.value('connection/username', QVariant(QString())).toString()
 
+		if defaultUrl:
+			defaultUrl = QString(defaultUrl)
+			if not defaultUrl in urllist:
+				urllist.append(defaultUrl)
+			lasturl = defaultUrl
+		
+		if defaultUsername:
+			username = QString(defaultUsername)
+
 		self.urlComboBox = QComboBox()
 		self.urlComboBox.setEditable(1)
 		self.urlComboBox.addItems(urllist)
 		self.urlComboBox.setEditText(lasturl)
-		self.urlComboBox.setMaxCount(5)
+		self.urlComboBox.setMaxCount(10)
 		self.urlComboBox.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
 		self.usernameLineEdit = QLineEdit(username)
 		self.usernameLineEdit.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)

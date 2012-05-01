@@ -7,6 +7,12 @@ KNOWN BUGS:
 - The script properties editor does not reselect the parameter you just
   updated.
 
+1.4.6-git:
+- Added: support for autologin on startup (if both --username and --server
+  parameters are set).
+- Fixed: --export-with now correctly expand <include> elements if
+  started with --online/--username/--server.
+
 
 1.4.6:
 - Added: support for command-line log export (--export-with PLUGIN and

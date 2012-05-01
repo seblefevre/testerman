@@ -96,6 +96,7 @@ pyrcc4 resources.qrc -o Resources.py
 	<file alias="method">resources/arrow-right-double.png</file>
 	<file alias="class">resources/view-process-all-tree.png</file>
 	<file alias="outline-view">resources/view-sidetree.png</file>
+	<file alias="import">resources/semn.png</file>
 
 	<!-- chat-room -->
 	<file alias="chat-room">resources/view-process-users.png</file>

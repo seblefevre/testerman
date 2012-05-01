@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 ##
 # This file is part of Testerman, a test automation system.
-# Copyright (c) 2009-2011 QTesterman contributors
+# Copyright (c) 2009-2012 QTesterman contributors
 #
 # This program is free software; you can redistribute it and/or modify it under
 # the terms of the GNU General Public License as published by the Free Software
@@ -481,11 +481,11 @@ class WConnectionDialog(QDialog):
 	"""
 	Displayed on startup: banner + prompt to enter a server url + login
 	"""
-	def __init__(self, parent): # the parent is the main window
+	def __init__(self, defaultUrl = None, defaultUsername = None, parent = None): # the parent is the main window
 		QDialog.__init__(self, parent)
-		self.__createWidgets()
+		self.__createWidgets(defaultUrl, defaultUsername)
 
-	def __createWidgets(self):
+	def __createWidgets(self, defaultUrl, defaultUsername):
 		self.setWindowTitle("Testerman login")
 		self.setWindowIcon(icon(':icons/testerman-icon'))
 		self.setSizePolicy(QSizePolicy.Preferred, QSizePolicy.Preferred)
@@ -501,7 +501,7 @@ class WConnectionDialog(QDialog):
 		self.setMaximumWidth(pixmap.width())
 
 		# WConnectionSetting part
-		self.connectionSettings = Preferences.WConnectionSettings()
+		self.connectionSettings = Preferences.WConnectionSettings(defaultUrl, defaultUsername)
 		layout.addWidget(self.connectionSettings)
 		
 		# Buttons
@@ -606,7 +606,7 @@ class WMainWindow(QMainWindow):
 
 	def showEvent(self, event):
 		"""
-		Reimplemlented from QWidget/QMainWindow.
+		Reimplemented from QWidget/QMainWindow.
 		"""
 		QMainWindow.showEvent(self, event)
 		
@@ -1133,6 +1133,8 @@ def usage(txt = None):
 -v, --version         display version info and exit
 -h, --help            display this help and exit
     --debug           debug mode
+    --username USER   set the default username to USER
+    --server URL      set the default server URL to URL
 
 Full Testerman client mode:
 -s ADDRESS            use ADDRESS as source IP address to subscribe on Xc
@@ -1141,7 +1143,9 @@ Full Testerman client mode:
 
 Standalone log analyzer mode:
 -l, --log FILENAME    start the log analyzer on FILENAME, not the full client
-    --online          still connect to a server to retrieve included log files
+    --online          still connect to a server to retrieve included log files.
+                      If used with --username and --server, won't display
+                      the connection dialog box.
     --export-with PLUGIN
                       do not show the log analyzer window, but directly
                       export the log with the exporter plugin type PLUGIN
@@ -1154,7 +1158,7 @@ Standalone log analyzer mode:
 def showVersion():
 	print "This is %s %s" % (getClientName(), getClientVersion())
 
-def runClient():
+def runFullClient(defaultUrl, defaultUsername):
 	"""
 	Runs the full client.
 	"""
@@ -1185,12 +1189,16 @@ Please install the appropriate package for your Linux/Unix distribution or downl
 		dialog.exec_()
 		return 1
 
-	# Display a connection dialog.
-	connectionDialog = WConnectionDialog(None)
-
-	# We continue only if accepted
-	if connectionDialog.exec_() != QDialog.Accepted:
-		sys.exit(0)
+	if not defaultUrl or not defaultUsername:
+		# Display a connection dialog.
+		# We continue only if accepted
+		connectionDialog = WConnectionDialog(defaultUrl, defaultUsername, parent = None)
+		if connectionDialog.exec_() != QDialog.Accepted:
+			sys.exit(0)
+	else:
+		# Autologin, no dialog box.
+		QApplication.instance().setUsername(QString(defaultUsername))
+		QApplication.instance().setServerUrl(QUrl(defaultUrl))
 
 	QApplication.instance().showSplashScreen()
 
@@ -1219,7 +1227,7 @@ Please install the appropriate package for your Linux/Unix distribution or downl
 	
 	return app.exec_()
 
-def runLogAnalyzer(logFilename, shouldConnect = False):
+def runLogAnalyzer(logFilename, shouldConnect = False, defaultUrl = None, defaultUsername = None):
 	"""
 	Runs the log analyzer as a standalone application
 	to analyze logFilename.
@@ -1243,9 +1251,15 @@ def runLogAnalyzer(logFilename, shouldConnect = False):
 	
 	# Optional login (to retrieve included files on the server)
 	if shouldConnect:
-		connectionDialog = WConnectionDialog(None)
-		if connectionDialog.exec_() != QDialog.Accepted:
-			sys.exit(0)
+		if not defaultUrl or not defaultUsername:
+			connectionDialog = WConnectionDialog(defaultUrl, defaultUsername, parent = None)
+			if connectionDialog.exec_() != QDialog.Accepted:
+				sys.exit(0)
+		else:
+			# Autologin, no dialog box.
+			QApplication.instance().setUsername(QString(defaultUsername))
+			QApplication.instance().setServerUrl(QUrl(defaultUrl))
+			
 		# No Xc for log analysis
 		QApplication.instance().client().stopXc()
 
@@ -1257,7 +1271,7 @@ def runLogAnalyzer(logFilename, shouldConnect = False):
 
 	return app.exec_()
 
-def exportLog(logFilename, pluginName, **pluginParameters):
+def exportLog(logFilename, shouldConnect, defaultUrl, defaultUsername, pluginName, **pluginParameters):
 	"""
 	CLI only/no GUI.
 	
@@ -1278,7 +1292,6 @@ def exportLog(logFilename, pluginName, **pluginParameters):
 	PluginManager.scanPlugins()
 	
 	# Make sure the plugin to use actually exists, create an instance.
-	# ...
 	plugin = None
 	
 	pclasses = PluginManager.getPluginClasses(pluginType = Plugin.TYPE_REPORT_EXPORTER)
@@ -1303,6 +1316,19 @@ def exportLog(logFilename, pluginName, **pluginParameters):
 		log("Unable to load log file: %s" % unicode(e))
 		return 1
 	
+	if shouldConnect:
+		if not defaultUrl or not defaultUsername:
+			connectionDialog = WConnectionDialog(defaultUrl, defaultUsername, parent = None)
+			if connectionDialog.exec_() != QDialog.Accepted:
+				sys.exit(0)
+		else:
+			# Autologin, no dialog box.
+			QApplication.instance().setUsername(QString(defaultUsername))
+			QApplication.instance().setServerUrl(QUrl(defaultUrl))
+			
+		# No Xc for log analysis
+		QApplication.instance().client().stopXc()
+	
 	logModel = LogViewer.LogModel()	
 
 	xmlDoc = QtXml.QDomDocument()
@@ -1318,7 +1344,9 @@ def exportLog(logFilename, pluginName, **pluginParameters):
 		log("Parsing error: " + str(errormessage) + 'at line ' + str(errorline) + ' col ' + str(errorcol))
 		return 1
 
-	log("Log model constructed, exporting using %s..." % pluginName)
+	log("Log model constructed")
+
+	log("Exporting log using %s..." % pluginName)
 	
 	plugin._setModel(logModel)
 	
@@ -1350,10 +1378,15 @@ def run():
 	exportPluginParameters = ""
 	exportPluginName = None
 	shouldConnect = False
+	defaultUrl = None
+	defaultUsername = None
 
 	# Let's parse the command line.
 	try:
-		opts, args = getopt.getopt(sys.argv[1:], "hvs:l:", ["help", "version", "log=", "debug", "force-update", "online", "export-with=", "export-parameters="])
+		opts, args = getopt.getopt(sys.argv[1:], "hvs:l:", 
+			["help", "version", "log=", "debug", "force-update", "online",
+			 "export-with=", "export-parameters=", "server=", "username=",
+			])
 	except Exception, e:
 		usage(str(e))
 		sys.exit(2)
@@ -1377,6 +1410,10 @@ def run():
 			app.set('autoupdate.force', 1)
 		if opt in ['--online']:
 			shouldConnect = True
+		if opt in ['--server']:
+			defaultUrl = arg
+		if opt in ['--username']:
+			defaultUsername = arg
 		if opt in ['--debug']:
 			import gc
 			gc.set_debug(gc.DEBUG_STATS)
@@ -1394,16 +1431,16 @@ def run():
 				parameters[key] = val
 			except:
 				pass
-		return exportLog(logFilename, exportPluginName, **parameters)
+		return exportLog(logFilename, shouldConnect, defaultUrl, defaultUsername, exportPluginName, **parameters)
 
 	# Log analyzer only mode
 	if logFilename:
-		return runLogAnalyzer(logFilename, shouldConnect)
+		return runLogAnalyzer(logFilename, shouldConnect, defaultUrl, defaultUsername)
 
 	# Full client mode
 	else:
 		log("Starting %s %s..." % (getClientName(), getClientVersion()))
-		return runClient()
+		return runFullClient(defaultUrl, defaultUsername)
 
 
 

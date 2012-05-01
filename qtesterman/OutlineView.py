@@ -93,6 +93,12 @@ class TestCaseOutlineWidgetItem(OutlineWidgetItem):
 		self.setIcon(0, icon(':/icons/testcase'))
 		self.setToolTip(0, "TestCase %s at line %s to %s" % (label, fromLine, toLine))
 
+class ImportOutlineWidgetItem(OutlineWidgetItem):
+	def __init__(self, label, line, parent = None):
+		OutlineWidgetItem.__init__(self, label, line, line, parent)
+		self.setIcon(0, icon(':/icons/import'))
+		self.setToolTip(0, "Import %s at line %s" % (label, line))
+
 
 class OutlineAstVisitor(compiler.visitor.ASTVisitor):
 	def __init__(self, treeWidget):
@@ -143,6 +149,17 @@ class OutlineAstVisitor(compiler.visitor.ASTVisitor):
 		self._treeWidget.registerItem(item)
 		# Search for inner functions/classes
 		self.walkChildren(node.code, item)
+
+	def visitImport(self, node, parent = None):
+		if not parent:
+			parent = self._treeWidget
+		for name in node.names:
+			if name[1] is None:
+				label = name[0]
+			else:
+				label = "%s = %s" % name
+			item = ImportOutlineWidgetItem(label, node.lineno, parent)
+			self._treeWidget.registerItem(item)
 
 	def endCurrentVisitedItem(self, line = None):
 		"""
