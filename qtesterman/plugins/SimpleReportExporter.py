@@ -91,6 +91,9 @@ type record Testcase {
 	charstring duration,
 	charstring start_time,
 	charstring stop_time,
+	charstring as_jpg_image, // rendered visual view as a Base64 JPG image
+	charstring as_gif_image, // rendered visual view as a Base64 GIF image
+	charstring as_png_image, // rendered visual view as a Base64 PNG image
 }
 
 type record Log {
@@ -267,6 +270,12 @@ class TestCaseVariables:
 				ret.append(entry)
 				
 			return ret
+		elif name == "as_jpg_image":
+			return self._model.getVisualRender(format = "JPG")
+		elif name == "as_gif_image":
+			return self._model.getVisualRender(format = "GIF")
+		elif name == "as_png_image":
+			return self._model.getVisualRender(format = "PNG")
 		else:
 			raise KeyError(name)
 

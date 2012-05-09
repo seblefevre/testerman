@@ -260,6 +260,18 @@ class TestCaseLogModel:
 	
 	def getAts(self):
 		return self._atsLogModel
+	
+	def getVisualRender(self, format = "PNG"):
+		"""
+		Generates a Visual View of the test case, and provides the result
+		as a Base64-encoded image according to the format.
+		
+		The generated image is NOT cached.
+		"""
+		s = VisualLogView.TestCaseScene()
+		for e in self._domElements:
+			s.onEvent(e)
+		return s.toBase64Image(format)
 
 class AtsLogModel:
 	def __init__(self, id_):

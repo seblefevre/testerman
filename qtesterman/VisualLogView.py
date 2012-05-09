@@ -1177,11 +1177,33 @@ class TestCaseScene(QGraphicsScene):
 		painter = QPainter(img)
 		painter.setRenderHints(QPainter.Antialiasing | QPainter.TextAntialiasing)
 		painter.setBrush(QBrush(Qt.white))
+		painter.setPen(Qt.white)
 		painter.drawRect(0, 0, self.width(), self.height())
 		self.render(painter)
 		painter.end()
 		img.save(filename)
 
+	def toBase64Image(self, format = "PNG"):
+		"""
+		Returns a base64 representation of an image containing the
+		rendered scene.
+		
+		Valid format depends on the Qt libraries.
+		PNG and JPG are known to work on all Qt systems.
+		GIF may be available if its support is compiled with the Qt library.
+		"""
+		img = QImage(self.width(), self.height(), QImage.Format_ARGB32)
+		painter = QPainter(img)
+		painter.setRenderHints(QPainter.Antialiasing | QPainter.TextAntialiasing)
+		painter.setBrush(QBrush(Qt.white))
+		painter.setPen(Qt.white)
+		painter.drawRect(0, 0, self.width(), self.height())
+		self.render(painter)
+		painter.end()
+		ba = QByteArray()
+		buf = QBuffer(ba)
+		img.save(buf, format)
+		return str(QString(ba.toBase64()))
 
 class WClickableGraphicsView(QGraphicsView):
 	"""

@@ -448,7 +448,7 @@ class TemplateEditDialog(QDialog):
 				self._save()
 			except Exception, e:
 				ret = QMessageBox.warning(self, "Error",
-					"Unable to save template file '%s':\n%s\nContinue anyway ?" % (unicode(filename), str(e)),
+					"Unable to save template file:\n%s\nContinue anyway ?" % (str(e)),
 					QMessageBox.Yes | QMessageBox.No)
 				if ret == QMessageBox.No:
 					return

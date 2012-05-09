@@ -9,6 +9,11 @@ KNOWN BUGS:
 
 1.4.8 (git):
 - Added: support for image (png) export from visual log view.
+- Added: support for embedding images in Simple Reporter and Exporter
+  templates. Use $testcase.as_jpg_image or .as_png_image to
+  get a Base64-representation of a visual view render in your templates.
+  You may see templates/simple-report-with-images.vm
+  for an exemple with data-url based image embedding in HTML.
 
 
 1.4.7:

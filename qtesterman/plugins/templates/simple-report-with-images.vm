@@ -1,0 +1,136 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01//EN" "http://www.w3.org/TR/html4/strict.dtd">
+<!-- Default Test Execution report template for SimpleReportView plugin -->
+<html>
+<head>
+	<meta http-equiv="Content-Type" content="text/html;charset=utf-8" >
+	<style type="text/css">
+
+body {
+	font-family: arial, sans-serif;
+}
+
+table {
+	border-width: 0px;
+	border-spacing: 0px;
+	border-style: outset;
+	border-color: gray;
+	border-collapse: collapse;
+	background-color: \#eeeeee;
+	width: 600px;
+}
+table th {
+	border-width: 1px 1px 1px 1px;
+	padding: 3px;
+	border-style: inset;
+	border-color: gray;
+}
+table.summary .pass {
+	color: \#0DCE07;
+}
+table.summary .fail {
+	color: \#bb0000;
+	font-weight: bold;
+}
+table td {
+	border-width: 1px 1px 1px 1px;
+	padding: 3px;
+	border-style: inset;
+	border-color: gray;
+}
+
+table.testcase {
+	background-color: \#eeeeee;
+}
+table.postamble {
+	background-color: \#ffffff;
+}
+table.preamble {
+	background-color: \#ffffff;
+}
+
+h1, h2 {
+	color: \#A0A0A0;
+	font-family: 'Century Gothic','Trebuchet MS','Arial Narrow',arial,verdana,'Bitstream Vera Sans',helvetica,sans-serif;
+	font-weight: normal;
+}
+h1 {
+	border-color: \#eeeeee;
+	border-style: solid;
+	border-width: 0 0 1px;
+	font-size: 34px;
+	margin-top: 30px;
+	color: \#4D87CE;
+	font-weight: bold;
+}
+h2 {
+	font-size: 30px;
+}
+img {
+	border: 0px solid;
+	padding: 10px
+}
+
+	</style>
+</head>
+
+
+
+<body>
+<h1>Results Overview</h1>
+
+<h2>Test Cases Summary</h2>
+<table>
+<tr><td>Pass:</td><td><b>#set($pass = $summary.pass_count) $pass (${summary.pass_ratio}%)</b></td></tr>
+<tr><td>Fail:</td><td><b>${summary.fail_count} (${summary.fail_ratio}%)</b></td></tr>
+<tr><td>Inconclusive:</td><td><b>${summary.inconc_count} (${summary.inconc_ratio}%)</b></td></tr>
+</table>
+
+<!--
+<h2>Test Cases Overview</h2>
+<table class="summary">
+<tr><th>TestCase ID</th><th>Verdict</th><th>Role</th><th>ATS</th></tr>
+#foreach ($testcase in $testcases)
+	<tr class="$testcase.verdict"><td><a href="\#${testcase.id}">${testcase.id}</a></td><td>$testcase.verdict</td><td>$testcase.role</td><td>${testcase.ats.id}</td></tr>
+#end
+</table>
+-->
+<h1>Test Case Execution Details</h1>
+
+#foreach ($ats in $atses)
+
+<h2>ATS ${ats.id}</h2>
+<p>Started on $ats.start_time, duration: $ats.duration s</p>
+
+#foreach ($testcase in $ats.testcases)
+
+<p>
+&nbsp;
+</p>
+
+<p>
+<a name="${testcase.id}"></a>
+<h3>$testcase.id</h3>
+<p>Started on $testcase.start_time, duration: $testcase.duration s</p>
+<table class="${testcase.role}">
+<tr><td>ID: ${testcase.id}</td><td>Title: ${testcase.title}</td></tr>
+<tr><td>Verdict: $testcase.verdict</td><td></td></tr>
+<tr><td colspan="2">Description:</td></tr>
+<tr><td colspan="2">#if ($testcase.description) $testcase.description #else &nbsp; #end</td></tr>
+<tr><td colspan="2">User logs:</td></tr>
+<tr><td colspan="2">
+#foreach ($log in $testcase.userlogs)
+${log.timestamp} ${log.message}<br />
+#end
+</td></tr>
+</table>
+</p>
+<p>Visual view:</p>
+<img src="data:image/png;base64,$testcase.as_png_image" />
+
+
+#end
+#end
+
+</body>
+
+</html>
