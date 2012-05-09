@@ -7,6 +7,9 @@ KNOWN BUGS:
 - The script properties editor does not reselect the parameter you just
   updated.
 
+1.4.8 (git):
+- Added: support for image (png) export from visual log view.
+
 
 1.4.7:
 - Fixed: support for loading raw (non-xml compliant) log files, as

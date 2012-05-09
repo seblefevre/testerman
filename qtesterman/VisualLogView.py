@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 ##
 # This file is part of Testerman, a test automation system.
-# Copyright (c) 2009 QTesterman contributors
+# Copyright (c) 2009-2012 QTesterman contributors
 #
 # This program is free software; you can redistribute it and/or modify it under
 # the terms of the GNU General Public License as published by the Free Software
@@ -24,6 +24,7 @@
 from PyQt4.Qt import *
 
 import time
+import os.path
 
 from CommonWidgets import *
 
@@ -1167,6 +1168,19 @@ class TestCaseScene(QGraphicsScene):
 		arrow = MessageArrow(encodedMessage, None, a.getSceneXAnchor(), b.getSceneXAnchor(), fromLabel, toLabel) # no port label for readability
 		arrow.translate(a.getSceneXAnchor(), yPos)
 		return arrow
+	
+	def saveToImage(self, filename):
+		"""
+		Save the current scene to an image file.
+		"""
+		img = QImage(self.width(), self.height(), QImage.Format_ARGB32)
+		painter = QPainter(img)
+		painter.setRenderHints(QPainter.Antialiasing | QPainter.TextAntialiasing)
+		painter.setBrush(QBrush(Qt.white))
+		painter.drawRect(0, 0, self.width(), self.height())
+		self.render(painter)
+		painter.end()
+		img.save(filename)
 
 
 class WClickableGraphicsView(QGraphicsView):
@@ -1211,6 +1225,7 @@ class WVisualTestCaseView(WClickableGraphicsView):
 		WClickableGraphicsView.__init__(self, parent)
 		self.__createWidgets()
 		self.trackingActivated = False
+		self.setContextMenuPolicy(Qt.DefaultContextMenu)
 
 	def setTracking(self, tracking):
 		self.trackingActivated = tracking
@@ -1271,5 +1286,32 @@ class WVisualTestCaseView(WClickableGraphicsView):
 		if item and self.trackingActivated:
 			item.ensureVisible()
 
+	def contextMenuEvent(self, event):
+		menu = QMenu(self)
+		menu.addAction("Save as image...", self._save)
+		menu.popup(event.globalPos())
+	
+	def _save(self):
+		"""
+		Open a dialog box and same the image.
+		"""
+		settings = QSettings()
+		directory = settings.value('lastVisitedDirectory', QVariant("")).toString()
+		filename = QFileDialog.getSaveFileName(self, "Save visual view as...", directory, "PNG file (*.png)")
+		extension = 'png'
+		if filename.isEmpty():
+			return False
+		elif not filename.split('.')[-1] == extension:
+			filename = filename + '.' + extension
+
+		filename = unicode(filename)
+		directory = os.path.dirname(filename)
+		settings.setValue('lastVisitedDirectory', QVariant(directory))
+
+		try:
+			self.scene().saveToImage(filename)
+			QMessageBox.information(self, getClientName(), "Visual view saved successfully.", QMessageBox.Ok)
+		except Exception, e:
+			systemError(self, "Unable to save image as %s: %s" % (filename, unicode(e)))
 
 
