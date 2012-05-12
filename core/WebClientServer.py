@@ -392,9 +392,6 @@ class WebClientApplication(WebServer.WebApplication):
 		getLogger().info("Running %s with selected groups:\n%s" % (path, repr(groups)))
 
 
-		# Reconstruct the server path the file is located into
-		dirpath = '/'.join(path.split('/')[:-1])
-
 		jobId = None
 		try:
 			source = self._getClient().getFile(path).decode('utf-8')
@@ -409,7 +406,7 @@ class WebClientApplication(WebServer.WebApplication):
 			at = None
 			username = '%s@%s' % (self.username, self.request.getClientAddress()[0])
 
-			ret = self._getClient().scheduleAts(source, label, username, session, at, path = dirpath, groups = groups)
+			ret = self._getClient().scheduleAts(source, label, username, session, at, path = path, groups = groups)
 			jobId = ret['job-id']
 		except Exception, e:
 			getLogger().error("Error in run_ats: %s" % str(e))
