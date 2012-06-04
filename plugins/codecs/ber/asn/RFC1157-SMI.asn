@@ -1,0 +1,274 @@
+--------------------------------------------------------------------------------
+-- RFC1157-SMI (SNMP v1) adapted for Testerman.
+--------------------------------------------------------------------------------
+
+RFC1157-SNMP
+
+DEFINITIONS ::=
+
+BEGIN
+
+--------------------------------------------------------------------------------
+--
+-- IMPORTS
+--    ObjectName, ObjectSyntax, NetworkAddress, IpAddress, TimeTicks
+--        FROM RFC1155-SMI;
+--------------------------------------------------------------------------------
+
+
+--          RFC1155-SMI DEFINITIONS ::= BEGIN
+--
+--           EXPORTS // EVERYTHING
+--                   internet, directory, mgmt,
+--                   experimental, private, enterprises,
+--                   ObjectName, ObjectSyntax, SimpleSyntax,
+--                   ApplicationSyntax, NetworkAddress, IpAddress,
+--                   Counter, Gauge, TimeTicks, Opaque;
+
+-- the path to the root
+
+-- internet      OBJECT IDENTIFIER ::= { iso org(3) dod(6) 1 }
+
+-- directory     OBJECT IDENTIFIER ::= { internet 1 }
+
+-- mgmt          OBJECT IDENTIFIER ::= { internet 2 }
+
+-- experimental  OBJECT IDENTIFIER ::= { internet 3 }
+
+-- private       OBJECT IDENTIFIER ::= { internet 4 }
+-- enterprises   OBJECT IDENTIFIER ::= { private 1 }
+
+
+-- definition of object types
+-- names of objects in the MIB
+
+ObjectName ::= OBJECT IDENTIFIER
+
+
+   -- syntax of objects in the MIB
+
+   ObjectSyntax ::=
+       CHOICE {
+           simple
+               SimpleSyntax,
+
+   -- note that simple SEQUENCEs are not directly
+   -- mentioned here to keep things simple (i.e.,
+   -- prevent mis-use).  However, application-wide
+   -- types which are IMPLICITly encoded simple
+   -- SEQUENCEs may appear in the following CHOICE
+
+           application-wide
+               ApplicationSyntax
+       }
+
+      SimpleSyntax ::=
+          CHOICE {
+              number
+                  INTEGER,
+
+              string
+                  OCTET STRING,
+
+              object
+                  OBJECT IDENTIFIER,
+
+              empty
+                  NULL
+          }
+
+      ApplicationSyntax ::=
+          CHOICE {
+              address
+                  NetworkAddress,
+
+              counter
+                  Counter,
+
+              gauge
+                  Gauge,
+
+              ticks
+                  TimeTicks,
+
+              arbitrary
+                  Opaque
+
+
+
+      -- other application-wide types, as they are
+      -- defined, will be added here
+          }
+
+
+      -- application-wide types
+
+      NetworkAddress ::=
+          CHOICE {
+              internet
+                  IpAddress
+          }
+
+      IpAddress ::=
+          [APPLICATION 0]          -- in network-byte order
+              IMPLICIT OCTET STRING (SIZE (4))
+
+      Counter ::=
+          [APPLICATION 1]
+              IMPLICIT INTEGER (0..4294967295)
+
+      Gauge ::=
+          [APPLICATION 2]
+              IMPLICIT INTEGER (0..4294967295)
+
+      TimeTicks ::=
+          [APPLICATION 3]
+              IMPLICIT INTEGER (0..4294967295)
+
+      Opaque ::=
+          [APPLICATION 4]          -- arbitrary ASN.1 value,
+              IMPLICIT OCTET STRING   --   "double-wrapped"
+
+
+
+--------------------------------------------------------------------------------
+-- Back to "standard" RFC1157 ASN.1 definition
+--------------------------------------------------------------------------------
+
+
+    -- top-level message
+
+    Message ::=
+            SEQUENCE {
+                version          -- version-1 for this RFC
+                    INTEGER {
+                        version-1(0)
+                    },
+
+                community        -- community name
+                    OCTET STRING,
+
+                data             -- e.g., PDUs if trivial
+    --                ANY        // authentication is being used
+                      PDUs       -- Adapted for Testerman: ANY is replaced with PDUs
+            }
+
+
+    -- protocol data units
+
+    PDUs ::=
+            CHOICE {
+                        get-request
+                            GetRequest-PDU,
+
+                        get-next-request
+                            GetNextRequest-PDU,
+
+                        get-response
+                            GetResponse-PDU,
+
+                        set-request
+                            SetRequest-PDU,
+
+                        trap
+                            Trap-PDU
+                    }
+
+
+
+
+    -- PDUs
+
+    GetRequest-PDU ::=
+        [0]
+            IMPLICIT PDU
+
+    GetNextRequest-PDU ::=
+        [1]
+            IMPLICIT PDU
+
+    GetResponse-PDU ::=
+        [2]
+            IMPLICIT PDU
+
+    SetRequest-PDU ::=
+        [3]
+            IMPLICIT PDU
+
+    PDU ::=
+            SEQUENCE {
+               request-id
+                    INTEGER,
+
+                error-status      -- sometimes ignored
+                    INTEGER {
+                        noError(0),
+                        tooBig(1),
+                        noSuchName(2),
+                        badValue(3),
+                        readOnly(4),
+                        genErr(5)
+                    },
+
+                error-index       -- sometimes ignored
+                   INTEGER,
+
+                variable-bindings -- values are sometimes ignored
+                    VarBindList
+            }
+
+    Trap-PDU ::=
+        [4]
+           IMPLICIT SEQUENCE {
+                enterprise        -- type of object generating
+                                  -- trap, see sysObjectID in [5]
+
+
+                    OBJECT IDENTIFIER,
+
+
+
+                agent-addr        -- address of object generating
+                    NetworkAddress, -- trap
+
+                generic-trap      -- generic trap type
+                    INTEGER {
+                        coldStart(0),
+                        warmStart(1),
+                        linkDown(2),
+                        linkUp(3),
+                        authenticationFailure(4),
+                        egpNeighborLoss(5),
+                        enterpriseSpecific(6)
+                    },
+
+                specific-trap  -- specific code, present even
+                    INTEGER,   -- if generic-trap is not
+                               -- enterpriseSpecific
+
+                time-stamp     -- time elapsed between the last
+                    TimeTicks, -- (re)initialization of the network
+                               -- entity and the generation of the trap
+
+                 variable-bindings -- "interesting" information
+                    VarBindList
+            }
+
+
+    -- variable bindings
+
+    VarBind ::=
+            SEQUENCE {
+                name
+                    ObjectName,
+
+                value
+                    ObjectSyntax
+            }
+
+   VarBindList ::=
+            SEQUENCE OF
+               VarBind
+
+   END
+
