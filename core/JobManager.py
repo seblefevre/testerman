@@ -41,6 +41,7 @@ import copy_reg
 import fcntl
 import logging
 import os
+import os.path
 import parser
 import re
 import shutil
@@ -604,7 +605,7 @@ class AtsJob(Job):
 		@type  source: string (utf-8)
 		@param source: the complete ats file (containing metadata)
 		
-		@type  path: string (docroot path, for server-based source, or None (client-based source)
+		@type  path: string (docroot path, for server-based source, or None (client-based source))
 		"""
 		Job.__init__(self, name)
 		# string (as utf-8)
@@ -758,7 +759,7 @@ class AtsJob(Job):
 
 		# Build the TE, as a standalone, runnable Python egg
 		
-		getLogger().info("%s: resolving dependencies..." % str(self))
+		getLogger().info("%s: resolving dependencies for source filename %s..." % (str(self), self._path))
 		try:
 			# Check if we should constraint our dependencies search to a package directory
 			packagePath = FileSystemManager.instance().getPackageFor(self._path)
@@ -1673,9 +1674,9 @@ class CampaignJob(Job):
 				if source is None:
 					raise Exception('File %s is not in the repository.' % name)
 				if type_ == 'ats':
-					job = AtsJob(name = name, source = source, path = jobpath)
+					job = AtsJob(name = name, source = source, path = filename)
 				else: # campaign
-					job = CampaignJob(name = name, source = source, path = jobpath)
+					job = CampaignJob(name = name, source = source, path = filename)
 				job.setUsername(self.getUsername())
 				job.setSessionParametersMapping(parseParameters(mapping))
 				currentParent.addChild(job, branch)
