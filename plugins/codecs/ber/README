@@ -42,6 +42,9 @@ limitations. In particular, module OIDs must always contains numbers:
   OK:
     TCAPMessages {itu-t(0) recommendation(0) q(17) 773 modules(2) messages(1) version3(3)}	
 
+Comments (started with --) should not contain any '--' either.
+
+
 2. You can now use the generated encoder/decodec using:
 
 import asn1

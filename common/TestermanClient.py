@@ -255,7 +255,7 @@ class Client(Nodes.ConnectingNode):
 		@param path: the complete docroot-path to the file associated to the source,
 	            	 if any. For source files not located on the server, set to None.
 	            	 For the other ones, enables to know where to search dependencies
-	            	 from.
+	            	 from. This path contains the filename.
 		@type  groups: list os unicode strings, or None
 		@param groups: a list of groups selected for this run. If set to None, all groups are considered
 		               (no particular selection)
