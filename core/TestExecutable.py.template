@@ -91,6 +91,7 @@ def __parseArgs():
 	global __IlServerIp, __IlServerPort, __TacsIp, __TacsPort
 	global __LogFilename, __JobId, __InputSessionFilename, __OutputSessionFilename
 	global __SelectedGroups
+	global __ProbePaths, __CodecPaths
 	parser = optparse.OptionParser(version = __getVersion())
 
 	group = optparse.OptionGroup(parser, "General Options")
@@ -106,6 +107,8 @@ def __parseArgs():
 	group.add_option("--log-filename", dest = "logFilename", metavar = "FILE", help = "generate output logs to FILE. Set to to - for stdout.", default = None)
 	group.add_option("--info", dest = "showInfo", action = "store_true", help = "display various information about this test executable and exit", default = False)
 	group.add_option("--groups", dest = "groups", metavar = "GROUPS", help = "only run specific testcase groups (coma-separated list of groups)", default = None)
+	group.add_option("--codec-paths", dest = "codecPaths", metavar = "PATH[,PATH]", help = "custom codec plugins paths", default = None)
+	group.add_option("--probe-paths", dest = "probePaths", metavar = "PATHi[,PATH]", help = "custom probe plugins paths", default = None)
 	parser.add_option_group(group)
 	
 	group = optparse.OptionGroup(parser, "Server-backed Execution Options (For information only, you should not use these options)")
@@ -136,6 +139,10 @@ def __parseArgs():
 		__IlServerPort = None
 		# Optional (local) log filename
 		__LogFilename = options.logFilename
+		if options.codecPaths:
+			__CodecPaths = options.codecPaths.split(',')
+		if options.probePaths:
+			__ProbePaths = options.probePaths.split(',')
 		# Optional session parameter management
 		__InputSessionFilename = options.inputSessionFilename
 		__OutputSessionFilename = options.outputSessionFilename
