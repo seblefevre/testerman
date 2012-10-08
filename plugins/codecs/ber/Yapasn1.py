@@ -101,8 +101,8 @@ import math
 import binascii
 
 # Traces
-trace_extraction = True
-trace_debug = True
+trace_extraction = False
+trace_debug = False
 trace_decoding = False
 trace_encoding = False
 
