@@ -101,8 +101,8 @@ import math
 import binascii
 
 # Traces
-trace_extraction = False
-trace_debug = False
+trace_extraction = True
+trace_debug = True
 trace_decoding = False
 trace_encoding = False
 
@@ -458,7 +458,7 @@ class SyntaxNode:
 			else:
 				content = content[:f]
 				lenbytes += 2 # the EOC bytes are consumed, too
-		elif length > len(content):
+		elif length > len(buf):
 			raise BerDecodingError("%s: Missing bytes when decoding tag %s: expected %s, available %s" % (str(self), tag_str(tag), length, len(buf)))
 		else:
 			content = content[:length]
