@@ -264,7 +264,7 @@ VarBind ::=
        name
            ObjectName,
 
-       CHOICE {
+       choice CHOICE { -- the 'choice' name is added for Testerman
            value
                ObjectSyntax,
 

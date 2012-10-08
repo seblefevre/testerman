@@ -1,6 +1,6 @@
-# Auto-generated at Mon, 04 Jun 2012 17:27:40 +0000
+# Auto-generated at Mon, 08 Oct 2012 15:04:21 +0000
 # with the following command line:
-# ./py_output.py --implicit asn/RFC1157-SMI.asn
+# ./py_output.py --explicit asn/RFC1157-SMI.asn
 import Yapasn1 as asn1
 #module RFC1157-SNMP None
 Counter=asn1.TYPE(asn1.IMPLICIT(1,cls=asn1.APPLICATION_FLAG),asn1.INTEGER_class ([],0,4294967295))
