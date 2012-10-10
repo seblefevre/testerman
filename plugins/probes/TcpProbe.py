@@ -100,6 +100,7 @@ class TcpProbe(ProbeImplementationManager.ProbeImplementation):
 	|| `ssl_key` || string || `None` || The SSL key to use if `use_ssl`is set to `True`. Contains a private key associated to `ssl_certificate`, in base64 format. If not provided, a default sample private key is used. ||
 	|| `ssl_certificate` || string || `None` || The SSL certificate to use if `use_ssl`is set to `True`. Contains a certificate in PEM format that will be used when a certificate is needed by the probe connection(s). If not provided, a default one that matches the default private key, is used. ||
 	|| `connection_timeout` || float || `5.0` || The connection timeout, in s, when trying to connect to a remote party. ||
+	|| `auto_connect` || boolean || `True` || When sending a message, autoconnect to the provided address if there is no existing connections with this peer yet. ||
 
 	= Overview =
 	
@@ -166,6 +167,8 @@ class TcpProbe(ProbeImplementationManager.ProbeImplementation):
 	{
 		any connectionRequest, // request a new tcp-connection
 		any disconnectionRequest, // request a disconnection. Except a disconnectionNotification later
+		any stopListening, // stop listening on listening port
+		any startListening, // resume listening on listening port. Keep in mind that the probe is already listening on initialization
 	}
 	
 	type TransportProbePortType
@@ -200,7 +203,8 @@ class TcpProbe(ProbeImplementationManager.ProbeImplementation):
 		self.setDefaultProperty('ssl_key', DEFAULT_SSL_PRIVATE_KEY)
 		self.setDefaultProperty('ssl_certificate', DEFAULT_SSL_CERTIFICATE)
 		self.setDefaultProperty('connection_timeout', 5.0)
-
+		self.setDefaultProperty('auto_connect', True)
+	
 	# ProbeImplementation reimplementation
 	def onTriMap(self):
 		self._reset()
@@ -260,9 +264,13 @@ class TcpProbe(ProbeImplementationManager.ProbeImplementation):
 				conn = self._connect(addr)
 			elif cmd == "disconnectionRequest":
 				self._disconnect(addr, "disconnected by local user")
+			elif cmd == "stopListening":
+				self._stopListening()
+			elif cmd == "startListening":
+				self._startListening()
 			elif self['default_encoder']:
 				# send the message
-				if not conn:
+				if not conn and self['auto_connect']:
 					conn = self._connect(addr)
 				if conn:
 					# Now we can send our payload
@@ -271,7 +279,7 @@ class TcpProbe(ProbeImplementationManager.ProbeImplementation):
 				raise Exception("Unsupported request (%s)" % cmd)
 		
 		elif isinstance(message, basestring) or self['default_encoder']:
-			if not conn:
+			if not conn and self['auto_connect']:
 				conn = self._connect(addr)
 			if conn:
 				# Now we can send our payload
@@ -418,7 +426,10 @@ class TcpProbe(ProbeImplementationManager.ProbeImplementation):
 		self._unlock()
 
 		if conn:
-			conn.socket.close()
+			try:
+				conn.socket.close()
+			except Exception, e:
+				self.getLogger().warning("Unable to close socket from %s: %s" % (addr, str(e)))
 		# Disconnection notification
 		if self['enable_notifications']:
 			self.triEnqueueMsg(('disconnectionNotification', reason), "%s:%s" % addr)
