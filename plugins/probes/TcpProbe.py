@@ -166,9 +166,10 @@ class TcpProbe(ProbeImplementationManager.ProbeImplementation):
 	type union RequestType
 	{
 		any connectionRequest, // request a new tcp-connection
-		any disconnectionRequest, // request a disconnection. Except a disconnectionNotification later
+		any disconnectionRequest, // request a disconnection. Expect a disconnectionNotification later
 		any stopListening, // stop listening on listening port
 		any startListening, // resume listening on listening port. Keep in mind that the probe is already listening on initialization
+		any disconnectAll, // close all existing incoming and outgoing connections.  Expect disconnectionNotifications afterwards
 	}
 	
 	type TransportProbePortType
@@ -229,6 +230,15 @@ class TcpProbe(ProbeImplementationManager.ProbeImplementation):
 		self._stopListening()
 		self._disconnectOutgoingConnections()
 
+	def _checkSutAddress(self, sutAddress):
+		try:
+			# Split a ip:port to a (ip, port)
+			t = sutAddress.split(':')
+			addr = (socket.gethostbyname(t[0]), int(t[1]))
+			return addr
+		except:
+			raise Exception("Invalid, unresolvable, or missing SUT Address when sending a message")
+
 	def onTriSend(self, message, sutAddress):
 		# First implementation level: no notification/connection explicit management.
 		# We send a message. If not connected yet, connect first.
@@ -247,28 +257,24 @@ class TcpProbe(ProbeImplementationManager.ProbeImplementation):
 				sutAddress = "%s:%s" % conns[0].peerAddress
 			self._unlock()
 
-		try:
-			# Split a ip:port to a (ip, port)
-			t = sutAddress.split(':')
-			addr = (socket.gethostbyname(t[0]), int(t[1]))
-		except:
-			raise Exception("Invalid, unresolvable, or missing SUT Address when sending a message")
-
-
-		# First look for an existing connection
-		conn = self._getConnection(addr)
-
 		if (isinstance(message, tuple) or isinstance(message, list)) and len(message) == 2:
 			cmd, _ = message
 			if cmd == "connectionRequest":
+				addr = self._checkSutAddress(sutAddress)
 				conn = self._connect(addr)
 			elif cmd == "disconnectionRequest":
+				addr = self._checkSutAddress(sutAddress)
 				self._disconnect(addr, "disconnected by local user")
 			elif cmd == "stopListening":
 				self._stopListening()
 			elif cmd == "startListening":
 				self._startListening()
+			elif cmd == "disconnectAll":
+				self._disconnectOutgoingConnections()
+				self._disconnectIncomingConnections()
 			elif self['default_encoder']:
+				addr = self._checkSutAddress(sutAddress)
+				conn = self._getConnection(addr)
 				# send the message
 				if not conn and self['auto_connect']:
 					conn = self._connect(addr)
@@ -279,6 +285,8 @@ class TcpProbe(ProbeImplementationManager.ProbeImplementation):
 				raise Exception("Unsupported request (%s)" % cmd)
 		
 		elif isinstance(message, basestring) or self['default_encoder']:
+			addr = self._checkSutAddress(sutAddress)
+			conn = self._getConnection(addr)
 			if not conn and self['auto_connect']:
 				conn = self._connect(addr)
 			if conn:
