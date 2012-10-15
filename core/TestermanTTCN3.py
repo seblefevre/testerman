@@ -270,6 +270,8 @@ def _clearLocalContexts():
 	Clears the existing local contexts.
 	"""
 	_ContextMapMutex.acquire()
+	for context in _ContextMap.values():
+		context.cleanSystemQueueNotifier()
 	_ContextMap.clear()
 	_ContextMapMutex.release()
 
@@ -1857,6 +1859,8 @@ def alt(alternatives):
 	# Now add default alternatives from altstep activations
 	for a in getLocalContext().getDefaultAlternatives():
 		alternatives.append(a)
+
+	logInternal("Number of alternatives for this alt: %s" % str(len(alternatives)))
 	
 #	logInternal("Entering alt():\n%s" % alternatives)
 	
