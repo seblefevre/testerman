@@ -271,7 +271,7 @@ def _clearLocalContexts():
 	"""
 	_ContextMapMutex.acquire()
 	for context in _ContextMap.values():
-		context.cleanSystemQueueNotifier()
+		context.cleanSystemQueueNotifier(force = True)
 	_ContextMap.clear()
 	_ContextMapMutex.release()
 
