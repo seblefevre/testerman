@@ -1877,7 +1877,11 @@ class JobManager:
 		@returns: the list of waiting jobs.
 		"""
 		self._lock()
-		ret = filter(lambda x: (x.getParent() is None) and (x.getState() == Job.STATE_WAITING), self._jobQueue)
+		try:
+			ret = filter(lambda x: (x.getParent() is None) and (x.getState() == Job.STATE_WAITING), self._jobQueue)
+		except Exception, e:
+			ret = []
+			getLogger().error("JobManager: unable to get jobs waiting for execution: %s" % str(e))	
 		self._unlock()
 		return ret
 	
@@ -1891,9 +1895,12 @@ class JobManager:
 		"""
 		ret = []
 		self._lock()
-		for job in self._jobQueue:
-			if id_ is None or job.getId() == id_:
-				ret.append(job.toDict())
+		try:
+			for job in self._jobQueue:
+				if id_ is None or job.getId() == id_:
+					ret.append(job.toDict())
+		except:
+			pass
 		self._unlock()
 		return ret
 
