@@ -5,10 +5,10 @@
 # <prerequisites></prerequisites>
 # <api>1</api>
 # <parameters>
-# <parameter name="PX_UNICODE_STRING" default="ça marche" type="string"><![CDATA[Unicode session variable test. Do not change its value.]]></parameter>
+# <parameter name="PX_BOOLEAN" default="true" type="boolean"><![CDATA[Boolean parameter test. Leave it to true.]]></parameter>
 # <parameter name="PX_FLOAT" default="19.99" type="float"><![CDATA[Float parameter. Leave it to 19.9 for the test to work.]]></parameter>
 # <parameter name="PX_INTEGER" default="10" type="integer"><![CDATA[Integer parameter. Leave it to 10.]]></parameter>
-# <parameter name="PX_BOOLEAN" default="true" type="boolean"><![CDATA[Boolean parameter test. Leave it to true.]]></parameter>
+# <parameter name="PX_UNICODE_STRING" default="ça marche" type="string"><![CDATA[Unicode session variable test. Do not change its value.]]></parameter>
 # </parameters>
 # <groups>
 # </groups>
@@ -1671,6 +1671,340 @@ class TC_SET(TestCase):
 
 		setverdict(PASS)
 
+class TC_TEMPLATE_IFPRESENT_DICT_ELEMENT_MATCHING(TestCase):
+	"""
+	Verifies that we can match an optional entry in a dict,
+	i.e. matching both a dict without an entry,
+	or only with a specific value if the entry is present.
+	"""
+	def body(self):
+		log("Testing if_present in dict...")
+		p01 = self.mtc['port1']
+		p02 = self.mtc['port2']
+		connect(p01, p02)
+		
+		t = Timer(name = "watchdog", duration = 1.0)
+		t.start()
+
+		mw_template = { 'value': any(), 'optionalValue': ifpresent(greater_than(4)) }
+		# First attempt without the optional value
+		p01.send({ 'value': 1234 })
+		alt([
+			[ p02.RECEIVE(mw_template),
+				lambda: log("ifpresent element was actually optional - good"),
+			],
+			[ p02.RECEIVE(),
+				lambda: log("ifpresent element was actually required"),
+				lambda: setverdict(FAIL),
+				lambda: stop(),
+			],
+			[ t.TIMEOUT,
+				lambda: setverdict(FAIL),
+				lambda: stop(),
+			],
+		])
+		
+		# Second attempt with a matching optional value
+		p01.send({ 'value': 1234, 'optionalValue': 5 })
+		alt([
+			[ p02.RECEIVE(mw_template),
+				lambda: log("ifpresent element probably tested, waiting for next test to be sure of that"),
+			],
+			[ p02.RECEIVE(),
+				lambda: log("ifpresent element not correctly tested"),
+				lambda: setverdict(FAIL),
+				lambda: stop(),
+			],
+			[ t.TIMEOUT,
+				lambda: setverdict(FAIL),
+				lambda: stop(),
+			],
+		])
+
+		# Third attempt with an unexpected optional value
+		p01.send({ 'value': 1234, 'optionalValue': 3 })
+		alt([
+			[ p02.RECEIVE(mw_template),
+				lambda: log("matched an optional value with an mismatching condition"),
+				lambda: setverdict(FAIL),
+				lambda: stop(),
+			],
+			[ p02.RECEIVE(),
+				lambda: log("ok"),
+			],
+			[ t.TIMEOUT,
+				lambda: setverdict(FAIL),
+				lambda: stop(),
+			],
+		])
+		
+		setverdict(PASS)
+
+class TC_TEMPLATE_IFPRESENT_LIST_ELEMENT_MATCHING(TestCase):
+	"""
+	Verifies that we can match an optional element in a list,
+	i.e. matching both a list without a specific entry,
+	or only with a specific value if the entry is present.
+	"""
+	def body(self):
+		log("Testing if_present in list...")
+		p01 = self.mtc['port1']
+		p02 = self.mtc['port2']
+		connect(p01, p02)
+		
+		t = Timer(name = "watchdog", duration = 5.0)
+		t.start()
+		
+		activate([
+			[ t.TIMEOUT,
+				lambda: setverdict(FAIL),
+				lambda: stop(),
+			],
+		])
+
+		mw_template = [ 'value1', ifpresent(greater_than(4)), 'value2' ]
+		# First attempt without the optional value
+		p01.send([ 'value1', 'value2' ])
+		alt([
+			[ p02.RECEIVE(mw_template),
+				lambda: log("ifpresent element was actually optional - good"),
+			],
+			[ p02.RECEIVE(),
+				lambda: log("ifpresent element was actually required"),
+				lambda: setverdict(FAIL),
+				lambda: stop(),
+			],
+		])
+		
+		# Second attempt with a matching optional value
+		p01.send([ 'value1', 5, 'value2' ])
+		alt([
+			[ p02.RECEIVE(mw_template),
+				lambda: log("ifpresent element probably tested, waiting for next test to be sure of that"),
+			],
+			[ p02.RECEIVE(),
+				lambda: log("ifpresent element not correctly tested"),
+				lambda: setverdict(FAIL),
+				lambda: stop(),
+			],
+		])
+
+		# Third attempt with an unexpected optional value
+		p01.send([ 'value1', 3, 'value2' ])
+		alt([
+			[ p02.RECEIVE(mw_template),
+				lambda: log("matched an optional value with an mismatching condition"),
+				lambda: setverdict(FAIL),
+				lambda: stop(),
+			],
+			[ p02.RECEIVE(),
+				lambda: log("mistmatching condition detected on optional element"),
+			]
+		])
+		
+		# World-wide example:
+		# SOAP header optional matching (xml codec output)
+		mw_soap_envelope = ('Envelope', { 'ns': 'soap', 'children': [
+			# If an element is present before the Body, must be the optional Header
+			ifpresent( ('Header', { 'ns': 'soap' } ) ),
+			('Body', { 'ns': 'soap' })
+			]})
+		
+		# Must match a basic Envelope without any header
+		p01.send( ('Envelope', { 'ns': 'soap', 'children': [
+			('Body', {'ns': 'soap'})
+		]}))
+		p02.receive(mw_soap_envelope)
+
+		# Must match an Envelope with a header
+		p01.send( ('Envelope', { 'ns': 'soap', 'children': [
+			('Header', { 'ns': 'soap' }),
+			('Body', { 'ns': 'soap' })
+		]}))
+		p02.receive(mw_soap_envelope)
+		
+		# Must not match an Envelope with some strange elements
+		p01.send( ('Envelope', { 'ns': 'soap', 'children': [
+			('Header', { 'ns': 'not/soap' }),
+			('Body', { 'ns': 'soap' })
+		]}))
+		alt([
+			[ p02.RECEIVE(mw_soap_envelope),
+				lambda: log("Invalid SOAP envelope matched"),	
+				lambda: setverdict(FAIL),
+				lambda: stop(),
+			],
+			[ p02.RECEIVE(),
+				lambda: log("Invalid SOAP envelope detected"),
+			]
+		])
+
+		# Additional elements
+		p01.send( ('Envelope', { 'ns': 'soap', 'children': [
+			('Header', { 'ns': 'soap' }),
+			('Header', { 'ns': 'soap' }),
+			('Body', { 'ns': 'soap' })
+		]}))
+		alt([
+			[ p02.RECEIVE(mw_soap_envelope),
+				lambda: log("Invalid SOAP envelope matched"),	
+				lambda: setverdict(FAIL),
+				lambda: stop(),
+			],
+			[ p02.RECEIVE(),
+				lambda: log("Invalid SOAP envelope detected"),
+			]
+		])
+
+		# Additional elements
+		p01.send( ('Envelope', { 'ns': 'soap', 'children': [
+			('Header', { 'ns': 'soap' }),
+			('Post-Header', { 'ns': 'soap' }),
+			('Body', { 'ns': 'soap' })
+		]}))
+		alt([
+			[ p02.RECEIVE(mw_soap_envelope),
+				lambda: log("Invalid SOAP envelope matched"),	
+				lambda: setverdict(FAIL),
+				lambda: stop(),
+			],
+			[ p02.RECEIVE(),
+				lambda: log("Invalid SOAP envelope detected"),
+			]
+		])
+
+		# Additional elements
+		p01.send( ('Envelope', { 'ns': 'soap', 'children': [
+			('Pre-Header', { 'ns': 'soap' }),
+			('Header', { 'ns': 'soap' }),
+			('Body', { 'ns': 'soap' })
+		]}))
+		alt([
+			[ p02.RECEIVE(mw_soap_envelope),
+				lambda: log("Invalid SOAP envelope matched"),	
+				lambda: setverdict(FAIL),
+				lambda: stop(),
+			],
+			[ p02.RECEIVE(),
+				lambda: log("Invalid SOAP envelope detected"),
+			]
+		])
+		
+		# Another real-world example: XML optional elements
+		# matching.
+		mw_xml = [ 
+			('mandatory-element', {'ns': 'ns1', 'value': 'value1'}),
+			ifpresent( ('optional-element1', {'ns': 'ns1', 'value': 'optional value'}) ),
+			ifpresent( ('optional-element2', {'ns': 'ns1', 'value': any_or_none() }) ),
+			ifpresent( ('optional-element3', {'ns': 'ns2', 'value': any() }) ),
+		]
+
+		# A collection of matching tests
+		p01.send([ 
+			('mandatory-element', {'ns': 'ns1', 'value': 'value1'}),
+		])
+		p02.receive(mw_xml)
+
+		p01.send([ 
+			('mandatory-element', {'ns': 'ns1', 'value': 'value1'}),
+			('optional-element1', {'ns': 'ns1', 'value': 'optional value'}),
+		])
+		p02.receive(mw_xml)
+
+		p01.send([ 
+			('mandatory-element', {'ns': 'ns1', 'value': 'value1'}),
+			('optional-element1', {'ns': 'ns1', 'value': 'optional value'}),
+			('optional-element2', {'ns': 'ns1', 'value': '' }),
+		])
+		p02.receive(mw_xml)
+
+		p01.send([ 
+			('mandatory-element', {'ns': 'ns1', 'value': 'value1'}),
+			('optional-element1', {'ns': 'ns1', 'value': 'optional value'}),
+			('optional-element2', {'ns': 'ns1', 'value': '' }),
+			('optional-element3', {'ns': 'ns2', 'value': 'something' }),
+		])
+		p02.receive(mw_xml)
+
+		p01.send([ 
+			('mandatory-element', {'ns': 'ns1', 'value': 'value1'}),
+			('optional-element3', {'ns': 'ns2', 'value': 'something' }),
+		])
+		p02.receive(mw_xml)
+
+		p01.send([ 
+			('mandatory-element', {'ns': 'ns1', 'value': 'value1'}),
+			('optional-element1', {'ns': 'ns1', 'value': 'optional value'}),
+			('optional-element3', {'ns': 'ns2', 'value': 'something' }),
+		])
+		p02.receive(mw_xml)
+
+
+		# And some non-matching tests
+		p01.send([ 
+			('mandatory-element', {'ns': 'ns1', 'value': 'value1'}),
+			('optional-element2', {'ns': 'ns1', 'value': '' }),
+			('optional-element1', {'ns': 'ns1', 'value': 'optional value'}),
+			('optional-element3', {'ns': 'ns2', 'value': 'something' }),
+		])
+		alt([
+			[ p02.RECEIVE(mw_xml),
+				lambda: setverdict(FAIL),
+				lambda: stop(),
+			],
+			[ p02.RECEIVE(),
+				lambda: log("Mismatching optional elements detected"),
+			]
+		])
+
+		p01.send([ 
+			('mandatory-element', {'ns': 'ns1', 'value': 'value1'}),
+			('unexpected-element', {'ns': 'ns1', 'value': '' }),
+			('optional-element3', {'ns': 'ns2', 'value': 'something' }),
+		])
+		alt([
+			[ p02.RECEIVE(mw_xml),
+				lambda: setverdict(FAIL),
+				lambda: stop(),
+			],
+			[ p02.RECEIVE(),
+				lambda: log("Mismatching optional elements detected"),
+			]
+		])
+
+		p01.send([ 
+			('optional-element1', {'ns': 'ns1', 'value': 'optional value'}),
+			('optional-element2', {'ns': 'ns1', 'value': '' }),
+			('optional-element3', {'ns': 'ns2', 'value': 'something' }),
+			('mandatory-element', {'ns': 'ns1', 'value': 'value1'}),
+		])
+		alt([
+			[ p02.RECEIVE(mw_xml),
+				lambda: setverdict(FAIL),
+				lambda: stop(),
+			],
+			[ p02.RECEIVE(),
+				lambda: log("Mismatching optional elements detected"),
+			]
+		])
+
+		p01.send([ 
+			('mandatory-element', {'ns': 'ns1', 'value': 'value1'}),
+			('optional-element1', {'ns': 'ns1', 'value': 'optional value'}),
+			('optional-element2', {'ns': 'ns1', 'value': '' }),
+			('unexpected-element3', {'ns': 'ns2', 'value': 'something' }),
+		])
+		alt([
+			[ p02.RECEIVE(mw_xml),
+				lambda: setverdict(FAIL),
+				lambda: stop(),
+			],
+			[ p02.RECEIVE(),
+				lambda: log("Mismatching optional elements detected"),
+			]
+		])
+		
+		setverdict(PASS)
 
 ##
 # Control definition
@@ -1727,3 +2061,6 @@ TC_TEMPLATE_TRANSFORMATION().execute()
 TC_MATCH_TEST().execute()
 
 TC_SET().execute()
+
+TC_TEMPLATE_IFPRESENT_DICT_ELEMENT_MATCHING().execute()
+TC_TEMPLATE_IFPRESENT_LIST_ELEMENT_MATCHING().execute()

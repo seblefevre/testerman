@@ -438,7 +438,7 @@ class Timer:
 		Immediately returns if the timer is not started.
 		"""
 		if self._timerId:
-			alt([[self.TIMEOUT]])
+			alt([[self.TIMEOUT, lambda: RETURN]])
 		else:
 			return
 
@@ -897,7 +897,7 @@ class TestComponent:
 		# Immediately returns if the TC is not running (i.e. already 'done')
 		if not self._getState() == self.STATE_RUNNING:
 			return
-		alt([[self.DONE]])
+		alt([[self.DONE, lambda: RETURN]])
 
 	def killed(self):
 		"""
@@ -911,7 +911,7 @@ class TestComponent:
 		# Immediately returns if the TC is not alive (i.e. already 'killed')
 		if self._getState() == self.STATE_KILLED:
 			return
-		alt([[self.KILLED]])
+		alt([[self.KILLED, lambda: RETURN]])
 
 
 ###############################################################################
@@ -1912,47 +1912,52 @@ def alt(alternatives):
 				# in the current TC).
 				if port is _getSystemQueue():
 					port._lock()
-					# Make sure that we don't loop forever here because we did not remove our notification
-					# from the notification pipe.
-					port._acknowledgeNotification()
-					for (message, from_) in port._messageQueue:
-						# We ignore the 'from' in systemQueue
-						for (guard, condition, actions) in alternatives:
-							# Guard is ignored for internal messages (we shouldn't have one, anyway)
+					try:
+						# Make sure that we don't loop forever here because we did not remove our notification
+						# from the notification pipe.
+						port._acknowledgeNotification()
+						for (message, from_) in port._messageQueue:
+							# We ignore the 'from' in systemQueue
+							for (guard, condition, actions) in alternatives:
+								# Guard is ignored for internal messages (we shouldn't have one, anyway)
+	
+								# Special message matches (NB: we're suppose to have only dict messages in the system queue)
+								if isinstance(message, dict) and condition.template['event'].startswith('any.'):
+									# "Wildcard"-based match: we do not expect this exact event in the queue.
+									# Instead, we match any 'ressembling' event.
+									if condition.template['event'] == 'any.c.done':
+										# We match is we have any 'done' in our queue
+										if message.get('event') == 'done':
+											match = True
+									elif condition.template['event'] == 'any.c.killed':
+										# We match is we have any 'killed' in our queue
+										if message.get('event') == 'killed':
+											match = True
+	
+									if match:
+										matchedInfo = (guard, condition, actions, message, None) # None: decodedMessage
+										# In this case, we do NOT consume the message: left for
+										# other ptc.KILLED, or other any component killed, ...
+										break
 
-							# Special message matches (NB: we're suppose to have only dict messages in the system queue)
-							if isinstance(message, dict) and condition.template['event'].startswith('any.'):
-								# "Wildcard"-based match: we do not expect this exact event in the queue.
-								# Instead, we match any 'ressembling' event.
-								if condition.template['event'] == 'any.c.done':
-									# We match is we have any 'done' in our queue
-									if message.get('event') == 'done':
-										match = True
-								elif condition.template['event'] == 'any.c.killed':
-									# We match is we have any 'killed' in our queue
-									if message.get('event') == 'killed':
-										match = True
-
-								if match:
-									matchedInfo = (guard, condition, actions, message, None) # None: decodedMessage
-									# In this case, we do NOT consume the message: left for
-									# other ptc.KILLED, or other any component killed, ...
-									break
-
-							# Standard system message matches - consumed if matched
-							else:
-								# Ignore the decoded message: must be the same as encoded for internal events.
-								(match, _, _) = templateMatch(message, condition.template)
-								if match:
-									matchedInfo = (guard, condition, actions, message, None) # None: decodedMessage
-									# Consume the message
-									port._remove(message, from_)
-									# Exit the port alternative loop, with matchedInfo
-									break
-
-						if matchedInfo:
-							# Exit the loop on messages directly.
-							break
+								# Standard system message matches - consumed if matched
+								else:
+									# Ignore the decoded message: must be the same as encoded for internal events.
+									(match, _, _) = templateMatch(message, condition.template)
+									if match:
+										matchedInfo = (guard, condition, actions, message, None) # None: decodedMessage
+										# Consume the message
+										port._remove(message, from_)
+										# Exit the port alternative loop, with matchedInfo
+										break
+	
+							if matchedInfo:
+								# Exit the loop on messages directly.
+								break
+					except Exception, e:
+						port._unlock()
+						logInternal("Exception while analyzing system events: %s" % str(e))
+						raise
 					port._unlock()
 					if matchedInfo:
 						(guard, condition, actions, message, _) = matchedInfo
@@ -2007,18 +2012,22 @@ def alt(alternatives):
 					# support for RETURN and REPEAT "keywords" in actions, etc.
 					message = None
 					port._lock()
-					if port._messageQueue:
-						# 2.1 Let's pop the first message in the queue (will be consumed whatever happens since not kept in queue)
-						# FIXME: flawn implementation: we shoud not consume only one message per port per pass.
-						# We should really take a "snapshot" (ie freezing ports) and considering timestamped messages...
-						(message, from_) = port._messageQueue[0]
-						port._messageQueue = port._messageQueue[1:]
-						# FIXME - must be hidden in the port class
-						try:
-							os.read(port._notifier[0], 1)
-						except:
-							pass
-
+					try:
+						if port._messageQueue:
+							# 2.1 Let's pop the first message in the queue (will be consumed whatever happens since not kept in queue)
+							# FIXME: flawn implementation: we shoud not consume only one message per port per pass.
+							# We should really take a "snapshot" (ie freezing ports) and considering timestamped messages...
+							(message, from_) = port._messageQueue[0]
+							port._messageQueue = port._messageQueue[1:]
+							# FIXME - must be hidden in the port class
+							try:
+								os.read(port._notifier[0], 1)
+							except:
+								pass
+					except Exception, e:
+						port._unlock()
+						logInternal("Exception while consuming standard port message: %s" % str(e))
+						raise e
 					port._unlock()
 					if message is not None: # And what is we want to send "None" ? should be considered as a non-message, ie a non-send ?
 						# 2.2: For each existing satisfied conditions for this port (x[0] is the guard)
@@ -2070,7 +2079,7 @@ def alt(alternatives):
 			if (not matchedInfo) or repeat:
 				try:
 					logInternal("alt: tc %s is renewing its subscription on the following fds: %s" % (getLocalContext().getTc(), watchedPortsFds))
-					r, w, e = select.select(watchedPortsFds, [], [])
+					r, w, e = select.select(watchedPortsFds, [], [], 1)
 				except select.error, e:
 					if e.args[0] == 4:
 						# Interrupted system call -> SIGINT, stop() the TC
