@@ -247,7 +247,7 @@ def encode_base128(val):
 		l.append(b | 0x80) # by default, consider this is the last coding byte
 		val = a
 	if l:
-		l[0] = l[0] & 0x1f # adjust what will become the last byte within its extension bit
+		l[0] = l[0] & 0x7f # adjust what will become the last byte within its extension bit
 	l.reverse()
 	return ''.join(map(chr, l))
 
