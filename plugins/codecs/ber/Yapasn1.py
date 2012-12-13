@@ -598,7 +598,7 @@ class IntegerSyntaxNode(SyntaxNode):
 		return val
 
 	def encode_content_ber(self, content, context):
-		if not isinstance(content, int):
+		if not isinstance(content, (int, long)):
 			raise BerEncodingError('%s: Expected an integer, got something else' % str(self))
 		val = content
 		if not self._match_constraint(val):
