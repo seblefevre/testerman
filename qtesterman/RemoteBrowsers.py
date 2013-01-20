@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 ##
 # This file is part of Testerman, a test automation system.
-# Copyright (c) 2008-2011 Sebastien Lefevre and other contributors
+# Copyright (c) 2008-2013 Sebastien Lefevre and other contributors
 #
 # This program is free software; you can redistribute it and/or modify it under
 # the terms of the GNU General Public License as published by the Free Software
@@ -69,8 +69,6 @@ def icon(resource):
 # File Revisions Viewer
 ################################################################################
 
-
-
 class RevisionItem(QTreeWidgetItem):
 	def __init__(self, revisionInfo, parent = None):
 		QTreeWidgetItem.__init__(self, parent)
@@ -109,7 +107,6 @@ class WRevisionsTreeWidget(QTreeWidget):
 		self.sortItems(0, Qt.DescendingOrder)
 		
 		
-		
 class WRevisionsDialog(QDialog):
 	def __init__(self, filename, revisions, client, parent = None):
 		QDialog.__init__(self, parent)
@@ -138,7 +135,6 @@ class WRevisionsDialog(QDialog):
 		splitter.addWidget(self._diffViewer)
 		
 		layout.addWidget(splitter)
-
 
 		# Buttons
 		self._closeButton = QPushButton("Close")
@@ -575,6 +571,13 @@ class BaseWidgetItem(QTreeWidgetItem):
 	def shouldRetainExtensionOnRename(self):
 		return True
 
+	def onDropMimeData(self, data, action):
+		"""
+		Called when some mime data are dropped on the item,
+		with the specified action.
+		"""
+		pass
+
 	def getUrl(self):
 		"""
 		Overridable.
@@ -922,6 +925,18 @@ class DirWidgetItem(ExpandableWidgetItem):
 
 	def shouldRetainExtensionOnRename(self):
 		return False
+
+	def onDropMimeData(self, data, action):
+		"""
+		Accept file copy in this folder.
+		"""
+		if data.hasUrls() and action == Qt.CopyAction:
+			destination = self.getUrl().path()
+			sources = data.urls()
+			if self.isInPackageTree():
+				self.treeWidget()._importItems(sources, destination)
+			else:
+				self.treeWidget()._copyItems(sources, destination)
 	
 
 class AtsWidgetItem(ExpandableWidgetItem):
@@ -933,12 +948,36 @@ class AtsWidgetItem(ExpandableWidgetItem):
 		self.setIcon(0, icon(':/icons/item-types/ats'))
 
 	def updateFlags(self):
-		self.setFlags(Qt.ItemIsEnabled | Qt.ItemIsSelectable | Qt.ItemIsDragEnabled | Qt.ItemIsEditable)
+		# You can drag a file on an ATS to do a diff
+		self.setFlags(Qt.ItemIsEnabled | Qt.ItemIsSelectable | Qt.ItemIsDragEnabled | Qt.ItemIsEditable | Qt.ItemIsDropEnabled)
 
 	def addFetchedChildItems(self, data):
 		if not self.isInPackageTree():
 			self.addChild(ProfilesDirWidgetItem(self._path + '/profiles'))
 		self.addChild(ExecutionLogsWidgetItem(self._path))
+
+	def onDropMimeData(self, data, action):
+		"""
+		Accept copy action to display a diff between the dropped file and the current one.
+		"""
+		if data.hasUrls() and action == Qt.CopyAction:
+			file1 = unicode(self.getUrl().path())
+			file2 = unicode(data.urls()[0].path())
+		
+			transient = CommonWidgets.WTransientWindow()
+			transient.showTextLabel("Preparing diff between\n%s\nand\n%s..." % (file1, file2))
+			try:
+				buffer1 = self.treeWidget().getClient().getFile(file1)
+				buffer2 = self.treeWidget().getClient().getFile(file2)
+			except Exception, e:
+				CommonWidgets.systemError(self.treeWidget(), "Unable to get at least one file for file comparison:\n%s" % str(e))
+				return
+			finally:
+				transient.dispose()
+			diffViewer = Compare.WCompareWidget(self.treeWidget())
+			diffViewer.doDiff(file1, buffer1, file2, buffer2)
+			diffViewer.setWindowFlags(Qt.Window)
+			diffViewer.show()
 
 
 class ModuleWidgetItem(BaseWidgetItem):
@@ -952,8 +991,31 @@ class ModuleWidgetItem(BaseWidgetItem):
 		self.setIcon(0, icon(':/icons/item-types/module'))
 
 	def updateFlags(self):
-		self.setFlags(Qt.ItemIsEnabled | Qt.ItemIsSelectable | Qt.ItemIsDragEnabled | Qt.ItemIsEditable)
+		# You can drag a file on a Module to do a diff
+		self.setFlags(Qt.ItemIsEnabled | Qt.ItemIsSelectable | Qt.ItemIsDragEnabled | Qt.ItemIsEditable | Qt.ItemIsDropEnabled)
 
+	def onDropMimeData(self, data, action):
+		"""
+		Accept copy action to display a diff between the dropped file and the current one.
+		"""
+		if data.hasUrls() and action == Qt.CopyAction:
+			file1 = unicode(self.getUrl().path())
+			file2 = unicode(data.urls()[0].path())
+		
+			transient = CommonWidgets.WTransientWindow()
+			transient.showTextLabel("Preparing diff between\n%s\nand\n%s..." % (file1, file2))
+			try:
+				buffer1 = self.treeWidget().getClient().getFile(file1)
+				buffer2 = self.treeWidget().getClient().getFile(file2)
+			except Exception, e:
+				CommonWidgets.systemError(self.treeWidget(), "Unable to get at least one file for file comparison:\n%s" % str(e))
+				return
+			finally:
+				transient.dispose()
+			diffViewer = Compare.WCompareWidget(self.treeWidget())
+			diffViewer.doDiff(file1, buffer1, file2, buffer2)
+			diffViewer.setWindowFlags(Qt.Window)
+			diffViewer.show()
 
 class CampaignWidgetItem(ExpandableWidgetItem):
 	"""
@@ -964,13 +1026,36 @@ class CampaignWidgetItem(ExpandableWidgetItem):
 		self.setIcon(0, icon(':/icons/item-types/campaign'))
 
 	def updateFlags(self):
-		self.setFlags(Qt.ItemIsEnabled | Qt.ItemIsSelectable | Qt.ItemIsDragEnabled | Qt.ItemIsEditable)
+		# You can drag a file on a Campaign to do a diff
+		self.setFlags(Qt.ItemIsEnabled | Qt.ItemIsSelectable | Qt.ItemIsDragEnabled | Qt.ItemIsEditable | Qt.ItemIsDropEnabled)
 
 	def addFetchedChildItems(self, data):
 		if not self.isInPackageTree():
 			self.addChild(ProfilesDirWidgetItem(self._path + '/profiles'))
 		self.addChild(ExecutionLogsWidgetItem(self._path))
 
+	def onDropMimeData(self, data, action):
+		"""
+		Accept copy action to display a diff between the dropped file and the current one.
+		"""
+		if data.hasUrls() and action == Qt.CopyAction:
+			file1 = unicode(self.getUrl().path())
+			file2 = unicode(data.urls()[0].path())
+		
+			transient = CommonWidgets.WTransientWindow()
+			transient.showTextLabel("Preparing diff between\n%s\nand\n%s..." % (file1, file2))
+			try:
+				buffer1 = self.treeWidget().getClient().getFile(file1)
+				buffer2 = self.treeWidget().getClient().getFile(file2)
+			except Exception, e:
+				CommonWidgets.systemError(self.treeWidget(), "Unable to get at least one file for file comparison:\n%s" % str(e))
+				return
+			finally:
+				transient.dispose()
+			diffViewer = Compare.WCompareWidget(self.treeWidget())
+			diffViewer.doDiff(file1, buffer1, file2, buffer2)
+			diffViewer.setWindowFlags(Qt.Window)
+			diffViewer.show()
 
 class ExecutionLogsWidgetItem(ExpandableWidgetItem):
 	"""
@@ -1068,6 +1153,7 @@ class ProfilesDirWidgetItem(ExpandableWidgetItem):
 		return ret
 
 	def addFetchedChildItems(self, data):
+		data.sort()
 		for name in data:
 			item = ProfileWidgetItem(name)
 			self.addChild(item)
@@ -1127,6 +1213,17 @@ class ProfilesDirWidgetItem(ExpandableWidgetItem):
 					item = self.child(i)
 					if item.getBasename() == name:
 						item.setBasename(newname)
+
+	def onDropMimeData(self, data, action):
+		"""
+		Accept file copy in this folder.
+		
+		TODO: only copy profile files here
+		"""
+		if data.hasUrls() and action == Qt.CopyAction:
+			destination = self.getUrl().path()
+			sources = data.urls()
+			self.treeWidget()._copyItems(sources, destination)
 
 
 class ProfileWidgetItem(BaseWidgetItem):
@@ -1318,7 +1415,7 @@ class WServerFileSystemTreeWidget(QTreeWidget):
 
 		self.setHeaderLabels([ 'Name' ])
 
-		# Experiment: hidde the header, only one section ('name')
+		# Experiment: hide the header, only one section ('name')
 #		self.setHeaderHidden(True)
 
 		self.setContextMenuPolicy(Qt.DefaultContextMenu)
@@ -1383,7 +1480,7 @@ class WServerFileSystemTreeWidget(QTreeWidget):
 				menu.addAction("Edit (head)", lambda: self._open(item))
 				menu.addAction("Show revisions...", lambda: self._showRevisions(item))
 				menu.addAction("Show dependencies...", lambda: self._showDependencies(item))
-				menu.addAction("Show referrer files...", lambda: self._showModuleReferrerFiles(item))
+				menu.addAction("Show referrer files...", lambda: self._showModuleReverseDependencies(item))
 				menu.addAction("Delete", lambda: self._deleteModule(item))
 			elif item.isCampaign():
 				menu.addAction("Edit (head)", lambda: self._open(item))
@@ -1538,15 +1635,22 @@ class WServerFileSystemTreeWidget(QTreeWidget):
 		self.collapseItem(item)
 		self.expandItem(item)
 
-	def _showModuleReferrerFiles(self, item):
+	def _showModuleReverseDependencies(self, item):
 		"""
 		Displays the files referencing the module.
 		"""
-		url = item.getUrl()
-		path = unicode(url.path().toString())
-		ret = self._client.getReferencingFiles(path)
-		ret.sort()
-		dialog = CommonWidgets.WTextEditDialog(text = '\n'.join(ret), readOnly = True, title = "Files referencing module %s: %d file(s)" % (path, len(ret)), fixedFont = True, parent = self)
+		path = unicode(item.getUrl().path())
+		transient = CommonWidgets.WTransientWindow()
+		transient.showTextLabel("Getting reverse dependencies...")
+		try:
+			deps = self.getClient().getReverseDependencies(path)
+			deps.sort()
+		except Exception, e:
+			CommonWidgets.systemError(self, "Unable to get reverse dependencies for this file:\n%s" % str(e))
+			return
+		transient.dispose()
+		dialog = CommonWidgets.WTextEditDialog('\n'.join(deps), "Files referencing module %s: %d files(s)" % (os.path.split(path)[1], len(ret)), 
+			readOnly = True, parent = self, fixedFont = True)
 		dialog.exec_()
 
 	def _deleteAts(self, item):
@@ -1619,8 +1723,12 @@ class WServerFileSystemTreeWidget(QTreeWidget):
 		path = unicode(item.getUrl().path())
 		transient = CommonWidgets.WTransientWindow()
 		transient.showTextLabel("Getting dependencies list...")
-		deps = self.getClient().getDependencies(path)
-		deps.sort()
+		try:
+			deps = self.getClient().getDependencies(path)
+			deps.sort()
+		except Exception, e:
+			CommonWidgets.systemError(self, "Unable to get dependencies for this file:\n%s" % str(e))
+			return
 		transient.dispose()
 		dialog = CommonWidgets.WTextEditDialog('\n'.join(deps), "File dependencies for %s" % os.path.split(path)[1],
 			readOnly = True, parent = self, fixedFont = True)
@@ -1642,7 +1750,8 @@ class WServerFileSystemTreeWidget(QTreeWidget):
 		
 		# Display revisions in a dedicated dialog box that include easy diff management
 		dialog = WRevisionsDialog(filename = path, revisions = [ x['revision'] for x in revisions], client = self.getClient(), parent = self)
-		dialog.exec_()
+		# This dialog is not modal, enabling to integrate some changes in existing code
+		dialog.show()
 		
 
 	def _createDirectory(self, item):
@@ -1770,32 +1879,38 @@ class WServerFileSystemTreeWidget(QTreeWidget):
 		@rtype: bool
 		@returns: True if the copy was OK. False otherwise.
 		"""
-		# We assume a source list containing only one URL (single selection only)
-		# Will require some clean up one day.
-		for url in sources:
-#			print "DEBUG: copying %s to %s..." % (url.path(), destination)
-			src = unicode(url.path())
-			srcBasename = os.path.split(src)[1]
-			dst = unicode(destination)
-			dstBasename = os.path.split(dst)[1]
-			# Minimal checks to avoid self/recursive copy, etc
-			if os.path.split(src)[0] == dst:
-				# copy a file/folder to its own folder
-				CommonWidgets.userInformation(self, "Cannot copy %s to itself" % srcBasename)
-				return False
-			elif dst.startswith('%s/' % src) or src == dst:
-				# copy a folder to one of its sub-folders (or itself)
-				# NB: this is not possible due to the current copy implementation on the server:
-				# it will not create a list of files to copy before starting the copy, leading
-				# to some infinite recursion operations. To fix on server side.
-				CommonWidgets.userInformation(self, "Cannot copy %s to itself or to one of its sub-folders" % srcBasename)
-				return False
-			else:
-				if QMessageBox.question(self, "Copy", "Are you sure you want to copy %s to %s (existing files will be overwritten) ?" % (srcBasename, dstBasename), 
-					QMessageBox.Yes|QMessageBox.No, QMessageBox.Yes) == QMessageBox.Yes:
-					return self.getClient().copy(src, dst)
-				else:
+		QApplication.instance().setOverrideCursor(QCursor(Qt.ArrowCursor))
+		try:
+			# We assume a source list containing only one URL (single selection only)
+			# Will require some clean up one day.
+			for url in sources:
+		#			print "DEBUG: copying %s to %s..." % (url.path(), destination)
+				src = unicode(url.path())
+				srcBasename = os.path.split(src)[1]
+				dst = unicode(destination)
+				dstBasename = os.path.split(dst)[1]
+				# Minimal checks to avoid self/recursive copy, etc
+				if os.path.split(src)[0] == dst:
+					# copy a file/folder to its own folder
+					CommonWidgets.userInformation(self, "Cannot copy %s to itself" % srcBasename)
 					return False
+				elif dst.startswith('%s/' % src) or src == dst:
+					# copy a folder to one of its sub-folders (or itself)
+					# NB: this is not possible due to the current copy implementation on the server:
+					# it will not create a list of files to copy before starting the copy, leading
+					# to some infinite recursion operations. To fix on server side.
+					CommonWidgets.userInformation(self, "Cannot copy %s to itself or to one of its sub-folders" % srcBasename)
+					return False
+				else:
+					if QMessageBox.question(self, "Copy", "Are you sure you want to copy %s to %s (existing files will be overwritten) ?" % (srcBasename, dstBasename), 
+						QMessageBox.Yes|QMessageBox.No, QMessageBox.Yes) == QMessageBox.Yes:
+						return self.getClient().copy(src, dst)
+					else:
+						return False
+		except Exception, e:
+			pass
+		finally:
+			QApplication.instance().restoreOverrideCursor()
 
 	def _importItems(self, sources, destination):
 		"""
@@ -1816,67 +1931,73 @@ class WServerFileSystemTreeWidget(QTreeWidget):
 		"""
 		if not sources:
 			return False
-		
-		# We assume a source list containing only one URL (single selection only)
-		# Will require some clean up one day.
-		url = sources[0]
 
-#		print "DEBUG: importing %s to %s..." % (url.path(), destination)
-		src = unicode(url.path())
-		srcBasename = os.path.split(src)[1]
-		dst = unicode(destination)
-
-		# Minimal checks to avoid self/recursive copy, etc
-		if os.path.split(src)[0] == dst:
-			# copy a file/folder to its own folder
-			CommonWidgets.userInformation(self, "Cannot import %s to itself" % srcBasename)
-			return False
-
-		if dst.startswith('%s/' % src) or src == dst:
-			# copy a folder to one of its sub-folders (or itself)
-			# NB: this is not possible due to the current copy implementation on the server:
-			# it will not create a list of files to copy before starting the copy, leading
-			# to some infinite recursion operations. To fix on server side.
-			CommonWidgets.userInformation(self, "Cannot import %s to itself or to one of its sub-folders" % srcBasename)
-			return False
-
-		# TODO: check if we are importing a file or a folder.
-		# If it's a folder, no dependency management. Just propose to copy the folder as is.
-
-		# We assume this is a file.
-		# Compute the list of dependencies, and show it to the user for import confirmation.
-		transient = CommonWidgets.WTransientWindow()
-		transient.showTextLabel("Computing dependencies...")
-		ex = None
+		QApplication.instance().setOverrideCursor(QCursor(Qt.ArrowCursor))
 		try:
-			deps = self.getClient().getDependencies(src)
+			# We assume a source list containing only one URL (single selection only)
+			# Will require some clean up one day.
+			url = sources[0]
+
+		#		print "DEBUG: importing %s to %s..." % (url.path(), destination)
+			src = unicode(url.path())
+			srcBasename = os.path.split(src)[1]
+			dst = unicode(destination)
+
+			# Minimal checks to avoid self/recursive copy, etc
+			if os.path.split(src)[0] == dst:
+				# copy a file/folder to its own folder
+				CommonWidgets.userInformation(self, "Cannot import %s to itself" % srcBasename)
+				return False
+
+			if dst.startswith('%s/' % src) or src == dst:
+				# copy a folder to one of its sub-folders (or itself)
+				# NB: this is not possible due to the current copy implementation on the server:
+				# it will not create a list of files to copy before starting the copy, leading
+				# to some infinite recursion operations. To fix on server side.
+				CommonWidgets.userInformation(self, "Cannot import %s to itself or to one of its sub-folders" % srcBasename)
+				return False
+
+			# TODO: check if we are importing a file or a folder.
+			# If it's a folder, no dependency management. Just propose to copy the folder as is.
+
+			# We assume this is a file.
+			# Compute the list of dependencies, and show it to the user for import confirmation.
+			transient = CommonWidgets.WTransientWindow()
+			transient.showTextLabel("Computing dependencies...")
+			ex = None
+			try:
+				deps = self.getClient().getDependencies(src)
+			except Exception, e:
+				ex = e
+			transient.dispose()
+			if ex:
+				CommonWidgets.userInformation(self, "Unable to compute dependencies: %s" % str(ex))
+				return False
+
+			# Everything was OK, display a list of deps to copy
+			# filesToImport is a list of unicode docroot paths to src files to copy.
+			filesToImport = [ src ]
+			filesToImport += deps
+
+			# filesToCreate are a list of target filenames relative to the package/src folder
+			# Used to notify the user about what we'll do
+			filesToCreate = [ x[len('/repository/'):] for x in filesToImport ]
+
+			dlg = WImportConfirmation(filesToCreate, title = "Import to package", parent = self)
+			if dlg.exec_() == QDialog.Accepted:
+				# Copy files
+				targets = []
+				for f in filesToImport:
+					# Compute the dest path - replace the '/repository/' prefix with the dst folder
+					targets.append("%s/%s" % (dst, f[len('/repository/'):]))
+				self.copy(filesToImport, targets)
+				return True
+			else:
+				return False
 		except Exception, e:
-			ex = e
-		transient.dispose()
-		if ex:
-			CommonWidgets.userInformation(self, "Unable to compute dependencies: %s" % str(ex))
-			return False
-
-		# Everything was OK, display a list of deps to copy
-		# filesToImport is a list of unicode docroot paths to src files to copy.
-		filesToImport = [ src ]
-		filesToImport += deps
-
-		# filesToCreate are a list of target filenames relative to the package/src folder
-		# Used to notify the user about what we'll do
-		filesToCreate = [ x[len('/repository/'):] for x in filesToImport ]
-
-		dlg = WImportConfirmation(filesToCreate, title = "Import to package", parent = self)
-		if dlg.exec_() == QDialog.Accepted:
-			# Copy files
-			targets = []
-			for f in filesToImport:
-				# Compute the dest path - replace the '/repository/' prefix with the dst folder
-				targets.append("%s/%s" % (dst, f[len('/repository/'):]))
-			self.copy(filesToImport, targets)
-			return True
-		else:
-			return False
+			pass
+		finally:
+			QApplication.instance().restoreOverrideCursor()
 
 	def copy(self, sources, destinations):
 		"""
@@ -1942,12 +2063,6 @@ class WServerFileSystemTreeWidget(QTreeWidget):
 		if not self.getClient().rename(path, unicode(newName)):
 			raise Exception("An object with the same name already exists in this folder")
 
-	def onCopyUrls(self, parent, sources, destination):
-		if parent and parent.isInPackageTree():
-			ret = self._importItems(sources, destination)
-		else:
-			ret = self._copyItems(sources, destination)
-
 	def onItemChanged(self, item, col):
 		if hasattr(item, "isVirtual") and item.isVirtual():
 			# No renaming check for virtual items - they can be renamed "administratively"
@@ -1995,25 +2110,25 @@ class WServerFileSystemTreeWidget(QTreeWidget):
 			dragMoveEvent.accept()
 	
 	def dropMimeData(self, parent, index, data, action):
-		if data.hasUrls() and action == Qt.CopyAction:
-			if parent is None:
-				# root
+		"""
+		Implement drag support, depending on the drop target type.
+		"""
+		if parent is None:
+			# We're dropping into the widget itself, not an item
+			if data.hasUrls() and action == Qt.CopyAction:
+				# Valid drop action here: copy urls to the "root" folder the tree
+				# is displaying
+				sources = data.urls()
 				destination = self._path
-			elif parent.getUrl():
-				destination = parent.getUrl().path()
+				self._copyItems(sources, destination)
 			else:
-#				print "DEBUG: cannot copy/move to this node: no associated URL"
-				return False
-
-			# Tried to emit a signal so that the drop op is complete when
-			# displaying message boxes, hence restoring the standard cursor
-			# instead of the drag one.
-			# Unfortunately, this is the same problem as when called synchronously...
-			# self.emit(SIGNAL('copyUrls'), parent, data.urls(), destination)
-			QApplication.instance().setOverrideCursor(QCursor(Qt.ArrowCursor))
-			self.onCopyUrls(parent, data.urls(), destination)
-			QApplication.instance().restoreOverrideCursor()
-
+				# No supported drop action
+				pass
+		else:
+			# We have a node, parent, we drop something into.
+			# Delegate the action to the node.
+			parent.onDropMimeData(data, action)
+		
 		# We always return False so that the widget does not add an item by
 		# itself, but wait for the server to notify the change.
 		return False

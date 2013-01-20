@@ -851,6 +851,33 @@ class Client(Nodes.ConnectingNode):
 		self.getLogger().debug("Dependencies for %s:\n%s" % (path, ret))
 		return ret
 
+	def getReverseDependencies(self, path):
+		"""
+		Computes the reverse file dependencies of the file referenced by path,
+		i.e. the list of files in the repository that reference this path (which
+		is typically a module - campaigns referencing an ats or a campaign won't
+		be retrieved for now).
+
+		A reverse dependency for a module is another module or ATS that imports it.
+
+		This method may be used by a client to check if a module is currently in use
+		or not.
+		
+		Only reverse dependencies at call time are searched - if older revisions
+		of files reference this module, it won't be checked.
+
+		@type  path: string
+		@param path: a docroot path to a module
+
+		@rtype: list of strings
+		@returns: a list of reverse dependencies as docroot-path to filenames.
+		A dependency is only listed once (no duplicate).
+		"""
+		self.getLogger().debug("Getting reverse dependencies for %s..." % (path))
+		ret = self.__proxy.getReverseDependencies(path)
+		self.getLogger().debug("Reverse dependencies for %s:\n%s" % (path, ret))
+		return ret
+
 	##
 	# High-level file management: convenience functions to manage dependencies between files
 	##

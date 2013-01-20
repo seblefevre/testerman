@@ -148,7 +148,7 @@ class Ui_CompareWidget(object):
 
 
 
-def sbsdiff(a, b, linenumberwidth = 4):
+def sbsdiff(a, b, linenumberwidth = 5):
 	"""
 	Compare two sequences of lines; generate the delta for display side by side.
 	
