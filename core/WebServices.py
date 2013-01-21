@@ -878,6 +878,60 @@ def getDependencies(path, recursive = False):
 	getLogger().info("<< getDependencies(): %s" % str(res))
 	return res
 	
+def getReverseDependencies(path):
+	"""
+	Computes the reverse file dependencies of the file referenced by path,
+	i.e. the list of files in the repository that reference this path (which
+	is typically a module - campaigns referencing an ats or a campaign won't
+	be retrieved for now).
+
+	A reverse dependency for a module is another module or ATS that imports it.
+
+	This method may be used by a client to check if a module is currently in use
+	or not.
+
+	Only reverse dependencies at call time are searched - if older revisions
+	of files reference this module, it won't be checked.
+
+	@type  path: string
+	@param path: a docroot path to a module
+
+	@rtype: list of strings
+	@returns: a list of reverse dependencies as docroot-path to filenames.
+	A dependency is only listed once (no duplicate).
+	"""
+	getLogger().info(">> getReverseDependencies(%s)" % (path))
+	if not path.startswith('/'): path = '/' + path
+
+	res = []
+	try:
+		source = FileSystemManager.instance().read(path)
+		if source is None:
+			raise Exception('Cannot find %s' % path)
+		
+		if path.endswith('.py'):
+			# Well, we need to scan all our python and ATS files into our repository (the candidate)
+			# do a:
+			# candidateSource = getFile(candidatePath)
+			# try:
+			# 	deps = DependencyResolver.python_getDependencyFilenames(candidateSource, candidatePath, recursive = False)
+			# except:
+			#		deps = []
+			# if path in deps and candidatePath not in res:
+			#  res.append(candidatePath)
+			res = []
+		else:
+			# Reverse dependencies is not supported on something that is not a module
+			res = []
+		
+	except Exception, e:
+		e =  Exception("Unable to perform operation: %s\n%s" % (str(e), Tools.getBacktrace()))
+		getLogger().info("<< getReverseDependencies(...): Fault:\n" + str(e))
+		raise(e)
+
+	getLogger().info("<< getReverseDependencies(): %s" % str(res))
+	return res
+	
 
 ################################################################################
 # service: package (package management)

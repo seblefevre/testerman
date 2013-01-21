@@ -7,13 +7,16 @@ KNOWN BUGS:
 - The script properties editor does not reselect the parameter you just
   updated.
 
-1.4.8 (git):
+1.4.8:
+- Fixed: error handling when getting dependencies.
 - Added: support for image (png) export from visual log view.
 - Added: support for embedding images in Simple Reporter and Exporter
   templates. Use $testcase.as_jpg_image or .as_png_image to
   get a Base64-representation of a visual view render in your templates.
   You may see templates/simple-report-with-images.vm
   for an exemple with data-url based image embedding in HTML.
+- Added: diff files when drag & dropping ats/modules/campaigns
+  between them in the remote viewer.
 
 
 1.4.7:
