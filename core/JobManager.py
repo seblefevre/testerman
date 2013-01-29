@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 ##
 # This file is part of Testerman, a test automation system.
-# Copyright (c) 2008-2011 Sebastien Lefevre and other contributors
+# Copyright (c) 2008-2013 Sebastien Lefevre and other contributors
 #
 # This program is free software; you can redistribute it and/or modify it under
 # the terms of the GNU General Public License as published by the Free Software
@@ -1585,7 +1585,7 @@ class CampaignJob(Job):
 		Validindent characters are \t and ' '.
 		
 		a job line is formatted as:
-		[<branch> ]<type> [<path>] [with <mapping>]
+		[<branch> ]<type> [<path>] [groups <groups>] [with <mapping>]
 		where:
 		<branch>, if present, is a keyword in *, on_error, on_success
 		<type> is a keyword in 'ats', 'campaign', group (for now)
@@ -1593,6 +1593,7 @@ class CampaignJob(Job):
 		       absolute path (/-starting) within the repository.
 		       path is required for type == ats and campaign only. group does not take any path			 
 		<mapping>, if present, is formatted as KEY=value[,KEY=value]*
+		<groups>, if present, is formatted as GROUP[,GROUP]*
 		Branch values '*', 'on_error' indicate that the job should be
 		executed if its parent returns a non-0 result ('on error' branch).
 		
@@ -1613,7 +1614,7 @@ class CampaignJob(Job):
 			line = line.split('#', 1)[0].rstrip()
 			if not line:
 				continue # empty line
-			m = re.match(r'(?P<indent>\s*)((?P<branch>on_error|\*)\s+)?(?P<type>\w+)\s+(?P<filename>[^\s]+)(\s+with\s+(?P<mapping>.*)\s*)?', line)
+			m = re.match(r'(?P<indent>\s*)((?P<branch>on_error|\*)\s+)?(?P<type>\w+)\s+(?P<filename>[^\s]+)(\s+groups\s+(?P<groups>[^\s]+))?(\s+with\s+(?P<mapping>.*)\s*)?', line)
 			if not m:
 				raise Exception('Parse error at line %s: invalid line format' % lc)
 			
@@ -1621,8 +1622,11 @@ class CampaignJob(Job):
 			filename = m.group('filename') # also used to name a group
 			branch = m.group('branch') # may be None
 			mapping = m.group('mapping') # may be None
+			groups = m.group('groups') # may be None
 			indentDiff = len(m.group('indent')) - indent
 			indent = indent + indentDiff
+			
+			getLogger().info("Parsed line:\nfilename: %s\njob type: %s\nbranch: %s\nmapping: %s\ngroups: %s\n" % (filename, type_, branch, mapping, groups))
 			
 			# Type validation
 			if not type_ in [ 'ats', 'campaign', 'group' ]:
@@ -1675,6 +1679,9 @@ class CampaignJob(Job):
 					raise Exception('File %s is not in the repository.' % name)
 				if type_ == 'ats':
 					job = AtsJob(name = name, source = source, path = filename)
+					# Groups are only supported in ATS jobs for now
+					if groups:
+						job.setSelectedGroups(groups.split(','))
 				else: # campaign
 					job = CampaignJob(name = name, source = source, path = filename)
 				job.setUsername(self.getUsername())
