@@ -161,12 +161,15 @@ class HttpRequestCodec(CodecManager.IncrementalCodec):
 		- able to decode Transfer-Encoding: chunked
 		"""
 		ret = {}
+		# Make sure we have a complete request line before continuing
+		if not '\r\n' in data:
+			return self.needMoreData()
 		lines = data.split('\r\n')
 		
 		# Request line
 		m = REQUESTLINE_REGEXP.match(lines[0])
 		if not m:
-			raise Exception("Invalid request line")
+			raise Exception("Invalid request line (%s)"% lines[0])
 		ret['method'] = m.group('method')
 		ret['url'] = m.group('url')
 		ret['version'] = m.group('version')
