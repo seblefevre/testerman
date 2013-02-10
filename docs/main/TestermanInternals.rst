@@ -1,0 +1,275 @@
+Testerman Internals
+===================
+
+This document provide some entry points if you want
+to contribute to the Testerman core code.
+
+
+Source Tree Organization
+------------------------
+
+The source tree contains the following folders:
+
+-  ``cliclient/``: the testerman command line client, useful to
+   integrate tests execution from a Makefile or a continuous integration
+   system
+-  ``core/``: the core modules and binaries: the Testerman Server,
+   the TACS, and all TTCN-3 related librairies used to create the TE
+-  ``common/``: common modules used to create a Testerman Node
+   (messages format, testerman protocol handling, etc), including a
+   Testerman client
+-  ``doc/``: diagram and drawing sources, plus some slideware
+-  ``plugins/probes/``: shared probes implementations, as plugins,
+   both usable by a TE (as a local probe) or by a pyagent (as a remote
+   probe)
+-  ``plugins/codecs/``: shared codecs implementations, as plugins,
+   usable by any shared probes or any ATS
+-  ``pyagent/``: a python-based agent implementation, able to use
+   the shared probes above
+-  ``qtesterman/``: the QTesterman rich client, in python + PyQt4
+-  ``samples/``: default samples ATSes and campaigns, to copy to the
+   ``$docroot/repository/samples/`` during a nominal server installation.
+   They should be maintained as carefully as the other files.
+-  ``docs/``: the whole project documentation, based on Sphinx, in 
+   reStructuredText (rst) format. Also includes some tools to extract
+   probe and plugins documentation from their code.
+
+Notice the source tree is not exactly the same as the server's runtime
+tree (cf TestermanAdministrationGuide), even if you should be able to
+run the different components directly from it during their development.
+
+Core Files
+~~~~~~~~~~~~~~~
+
+The ``core/`` folder contains:
+
+-  ``backends/``: FileSystemBackend implementations, as plugins.
+-  ``CodecManager``: main file for codec plugins: contains codec
+   plugins interfaces, base classes, factories, and registration
+   facilities. This module is adapted by ``TestermanCD`` when used by an
+   ATS/TE, or by ``PyTestermanAgent`` when used from the pyagent.
+-  ``ConfigManager``: server config, as singleton. One instance used
+   by the Testerman Server process, another one for the TACS.
+-  ``CounterManager``: for future usage. Will maintain statistics
+   counters to expose through Ws, and maybe through SNMP one day.
+-  ``EventManager``: server-side Xc stub, server-side Il stub.
+-  ``FileSystemBackendManager``: main backend dispatcher, according
+   to registered backend plugins.
+-  ``FileSystemBackend``: base class for backend plugins
+   implementation.
+-  ``FileSystemManager``: the main entry point to any read/write
+   access to the repository. Transforms Ws-like file path to something
+   lower level, and calls the correct backend to manage these files.
+-  ``JobManager``: the main job queue and job state manager.
+-  ``ProbeImplementationManager``: main file for probe
+   implementation plugins: contains probe implementation plugins
+   interfaces, base classes, factories, and registration facilities.
+   This module is adapted by ``TestermanSA`` when used by an ATS/TE (to
+   create local probes), or by ``PyTestermanAgent`` when used from the
+   pyagent (to create remote probes).
+-  ``ProbeManager``: the server-side module responsible for probe
+   management functions, using the TACC (server-side Ia client).
+-  ``SimpleXMLRPCServer``: fixed XML-RPC server, for Python < 2.4.
+-  ``TEFactory``: the TE creator, called from the job manager. One
+   day, maybe, we'll implement a TE factory taking a real TTCN-3 script
+   as input.
+-  ``TestermanAgentControllerClient`` (or TACC for short): the
+   client stub to access the TACS. Used by the TEs, but also by the
+   server itself to get an access to the TACS for agent/probe management
+   purposes. Client-side Ia client stub.
+-  ``TestermanAgentControllerServer``: the TACS process. Server-side
+   Ia server, server-side Xa server, and TACS business logic.
+-  ``TestermanCD``: Codec management part. Manages codecs as
+   plugins, and interfaces them when the TTCN3 adaptation module needs
+   to call them.
+-  ``TestermanPA``: Platform adapter part: through a TRI-like
+   interface, implements a timer library.
+-  ``TestermanSA``: SUT Adapter part: through a TRI-like interface,
+   interfaces the probes (via TACC) for the mapped test system interface
+   ports. Also provides super classes to create local probes and remote
+   probe stubs as plugins.
+-  ``TestermanServer``: the server's main module. Initializes
+   everything, starts the different components of the server.
+-  ``TestermanTCI``: logging facilities for the TE. Partially
+   implements the TCI TTCN-3 interface, in particular the TLI subset
+   (Test Logging Interface). Generates log events sent to the TL module
+   implemented by EventManager. Client-side Il stub.
+-  ``TestermanTTCN3``: the main TTCN-3 adaptation module, providing
+   TTCN-3 features to ATSes. It relies on Testerman{TCI,CD,SA,PA} to
+   implement them, though TLI- and TRI-like interfaces.
+-  ``Tools``: some low level tools.
+-  ``Versions``: interfaces and implementations versions.
+-  ``WebServices``: the functions of this module are exposed as
+   being part of the WsInterface API.
+
+Sequence Diagrams
+-----------------
+
+These sequence diagrams are limited to remote interactions; they do not
+detail every internal calls within a module.
+
+Starting a Job with Event Subscriptions
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+(including job states till its completion)
+
+
+Testerman Internal Protocol
+---------------------------
+
+Most internal interfaces in Testerman, including Xa, uses the same kind
+of protocol and in particular encodes messages the same way.
+
+Message Format
+~~~~~~~~~~~~~~
+
+They are text-based, human-readable messages heavily inspired by
+HTTP-like protocols:
+
+::
+
+    METHOD testerman:probe@agent XA/1.0
+    Type: request
+    Seq: 1
+    Content-Type: application/json
+
+    ...body...
+
+Messages are \\x00 separated, thus not read based on a content-length.
+As a consequence, you should make sure that \\x00 is never transmitted
+as a part of your message. Some classes, such the one as provided by
+source:trunk/common/TestermanNodes.py and
+source:trunk/common/TestermanMessages.py make you sure to use preferred
+methods to encode payloads (using JSON or python pickle) so that the
+problem does not happen.
+
+The following headers are mandatory:
+
+-  Type: "request" or "notify"
+-  Seq: an integer, should be unique (in the system ?)
+-  Content-Type: indicates what the body deals with.
+
+Response format:
+
+::
+
+    XA/1.0 200 OK
+    Seq: 1
+    Content-Type: application/json
+
+    ...body...
+
+Just like HTTP (for instance). Notice the Seq header that must match the
+request's one.
+
+The message line separator is a single \\n (and not a \\r\\n).
+
+Testerman Log Format
+--------------------
+
+Testerman logs, as generated by the server, are formatted as XML file.
+
+However, they do not use the full feature of the description language,
+in particular they are not structured, and only consist in a series of
+basic "events", where each event is mapped to a particular XML element
+(this is mostly due to the fact that real-time logs send these elements,
+so that the analyzer code for real-time or offline log parsing can be
+the same).
+
+The following events are managed:
+
++-------------------------------------------------------------------+---------------------+--------------------------------------+---------------------------------------------------------+------------+
+| event                                                             | element             | attributes                           | sub-elements                                            | class      |
++===================================================================+=====================+======================================+=========================================================+============+
+| User log                                                          | user                | tc (optional)                        | CDATA                                                   | user       |
++-------------------------------------------------------------------+---------------------+--------------------------------------+---------------------------------------------------------+------------+
+| Internal log (for debug)                                          | internal            |                                      | CDATA                                                   | internal   |
++-------------------------------------------------------------------+---------------------+--------------------------------------+---------------------------------------------------------+------------+
+| Message sent between two test component ports                     | message-sent        | from-tc, from-port, to-tc, to-port   | message                                                 | event      |
++-------------------------------------------------------------------+---------------------+--------------------------------------+---------------------------------------------------------+------------+
+| Test Case created                                                 | testcase-started    | id                                   |                                                         | event      |
++-------------------------------------------------------------------+---------------------+--------------------------------------+---------------------------------------------------------+------------+
+| Test Case started                                                 | testcase-started    | id                                   | CDATA (title)                                           | event      |
++-------------------------------------------------------------------+---------------------+--------------------------------------+---------------------------------------------------------+------------+
+| Test Case stopped                                                 | testcase-stopped    | id, verdict                          | CDATA (description, as it can be modified on runtime)   | event      |
++-------------------------------------------------------------------+---------------------+--------------------------------------+---------------------------------------------------------+------------+
+| Timer started                                                     | timer-created       | id, tc, duration                     |                                                         | event      |
++-------------------------------------------------------------------+---------------------+--------------------------------------+---------------------------------------------------------+------------+
+| Timer stopped                                                     | timer-stopped       | id, tc, running-time (float, in s)   |                                                         | event      |
++-------------------------------------------------------------------+---------------------+--------------------------------------+---------------------------------------------------------+------------+
+| Timer expiry                                                      | timer-expiry        | id, tc                               |                                                         | event      |
++-------------------------------------------------------------------+---------------------+--------------------------------------+---------------------------------------------------------+------------+
+| Test Component created                                            | tc-created          | id                                   |                                                         | event      |
++-------------------------------------------------------------------+---------------------+--------------------------------------+---------------------------------------------------------+------------+
+| Test Component started                                            | tc-started          | id, behavior (id as string)          |                                                         | event      |
++-------------------------------------------------------------------+---------------------+--------------------------------------+---------------------------------------------------------+------------+
+| Test Component stopped                                            | tc-stopped          | id, verdict                          |                                                         | event      |
++-------------------------------------------------------------------+---------------------+--------------------------------------+---------------------------------------------------------+------------+
+| Test Component killed                                             | tc-killed           | id                                   |                                                         | event      |
++-------------------------------------------------------------------+---------------------+--------------------------------------+---------------------------------------------------------+------------+
+| Verdict updated                                                   | verdict-updated     | tc, verdict                          |                                                         | event      |
++-------------------------------------------------------------------+---------------------+--------------------------------------+---------------------------------------------------------+------------+
+| Template match                                                    | template-match      | tc, port                             | message, template                                       | event      |
++-------------------------------------------------------------------+---------------------+--------------------------------------+---------------------------------------------------------+------------+
+| Template mismatch                                                 | template-mismatch   | tc, port                             | message, template                                       | event      |
++-------------------------------------------------------------------+---------------------+--------------------------------------+---------------------------------------------------------+------------+
+| Timeout branch selected                                           | timeout-branch      | id (the timer id)                    |                                                         | event      |
++-------------------------------------------------------------------+---------------------+--------------------------------------+---------------------------------------------------------+------------+
+| Done branch selected                                              | done-branch         | id (the tc id)                       |                                                         | event      |
++-------------------------------------------------------------------+---------------------+--------------------------------------+---------------------------------------------------------+------------+
+| Killed branch selected                                            | killed-branch       | id (the tc id)                       |                                                         | event      |
++-------------------------------------------------------------------+---------------------+--------------------------------------+---------------------------------------------------------+------------+
+| Message sent to the SUT (i.e. completely encoded payload)         | system-sent         | tsi-port                             | label (string), payload (string)                        | system     |
++-------------------------------------------------------------------+---------------------+--------------------------------------+---------------------------------------------------------+------------+
+| Message received from the SUT (i.e. completely encoded payload)   | system-received     | tsi-port                             | label (string), payload (string)                        | system     |
++-------------------------------------------------------------------+---------------------+--------------------------------------+---------------------------------------------------------+------------+
+
+Additionally, all elements have a timestamp element, indicating the time
+of the event as a float unix timestamp, in s.
+
+``<message>`` and ``<template>`` sub-elements are encoded as the XML
+representation of any valid Testerman message structure:
+
+-  tuples ``(a, b)``, corresponding to a TTCN-3 ``union``, are encoded
+   as an element:
+
+.. code-block:: xml
+
+    <c name="a">b'</c>
+
+where ``b'`` is the XML serialization of ``b`` (the tag ``c`` is a
+shortcut for ``choice``).
+
+-  dict ``{a: b, c: d}``, corresponding to a TTCN-3 ``record``, are
+   encoded as an element:
+
+.. code-block:: xml
+
+    <r>
+      <f name="a">b'</f>
+      <f name="c">d'</f>
+    </r>
+
+where ``b'``, ``c'`` are the XML serializations of ``b``, ``c`` (the tag
+``f`` is a shortcut for ``field``, ``r`` is a shortcut for ``record``).
+
+-  lists ``[ a, b, ...]``, corresponding to a TTCN-3 ``record of``, are
+   encoded as an element:
+
+.. code-block:: xml
+
+    <l>
+      <i>a'</i>
+      <i>b'</i>
+    </l>
+
+where ``a'``, ``b'`` are the XML serializations of ``a``, ``b`` (the tag
+``l`` is a shortcut for ``list``, ``i`` is a shortcut for ``item``).
+
+
+Ws Interface
+------------
+
+For now, you can directly browse the [source:/trunk/core/WebServices.py
+WebServices] file that contains, normally, all the required
+documentation for the Ws interface.

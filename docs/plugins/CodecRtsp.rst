@@ -1,0 +1,59 @@
+Identification and Properties
+-----------------------------
+
+Codec ID: ``rtsp.request`` and ``rtsp.response``
+
+Properties:
+
++------------------+-----------+-----------------+---------------------------------------------------------------------------------------------------------------------------------------+
+| name             | type      | default value   | description                                                                                                                           |
++==================+===========+=================+=======================================================================================================================================+
+| ``lower_case``   | boolean   | ``False``       | decoding: transforms header names to lower case, making header name matching easier (when performing non-protocol oriented testing)   |
++------------------+-----------+-----------------+---------------------------------------------------------------------------------------------------------------------------------------+
+| ``version``      | string    | ``RTSP/1.0``    | encoding: the version to set in the request or response line, if not provided by the user                                             |
++------------------+-----------+-----------------+---------------------------------------------------------------------------------------------------------------------------------------+
+
+Overview
+--------
+
+These two codecs encode/decode RTSP requests and responses respectively
+from/to the following TTCN-3 equivalence types (optional fields are
+always provided when decoding):
+
+::
+
+    type record RtspRequest
+    {
+        charstring method,
+        charstring uri,
+        charstring version optional, // default: RTSP/1.0
+        record { charstring <header name>* } headers optional, // default: {}
+        charstring body optional, // default: ''
+    }
+
+    type record RtspResponse
+    {
+        charstring version optional, // default: RSTP/1.0
+        integer status,
+        charstring reason,
+        record { charstring <header name>* } headers optional, // default: {}
+        charstring body optional, // default: ''
+    }
+
+During encoding, they automatically compute the content-length if not
+provided as a header, and add it only if a body is present.
+
+Content-Length verification is also performed on decoding
+automatically. If the length is not valid, the decoding attempt fails.
+
+Encoding
+~~~~~~~~
+
+...
+
+Decoding
+~~~~~~~~
+
+...
+
+
