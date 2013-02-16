@@ -76,20 +76,46 @@ def toRstTable(table, header = True):
 	return "\n".join(res)
 	
 
+def toRstCsvTable(table, header = True):
+	"""
+	Convert a table model to a reST table using the csv-table directive.
+	table is a list of entries, and the first entry is a header if header == True.
+	"""
+	# Now we can format everything. We add a space before and after the value in a cell.
+	if not table:
+		return
+
+	res = []
+	
+	def toCsv(row):
+	 return ','.join([ ('"%s"' % x.replace('"', '""').replace("\\", "\\\\")) for x in row])
+	
+	res.append('.. csv-table::')
+	if header:
+		res.append('   :header: ' + toCsv(table[0]))
+		res.append('')
+		table = table[1:]
+	for row in table:
+		res.append('   ' + toCsv(row))
+	
+	return "\n".join(res)
+	
+
 test = """
-|| *message* || *template* || *matched ?* || *comments* ||
-|| `[ 1, 2, 3, 4, 5, 6 ]` || ``|| no || ||
-|| `[ 1, 2, 3, 4, 5, 6  <]`>`_` || `[ 1, 2, 3, 4, 5, 6, 7 ]` || no || ||
-|| `[ 1, 2, 3, 4, 5, 6 ]` || `[ 6, 5, 4, 3, 2, 1 ]` || no || not in the correct order ||
-|| `[ 1, 2, 3, 4, 5, 6 ]` || `[ 1, 2, 3, 4, 5, 6 ]` || yes || ||
-|| `[ 1, 2, 3, 4, 5, 6 ]` || `[ 1, 2, any(), 4, 5, 6 ]` || yes || `any()` can replace any single element... ||
-|| `[ 1, 2, 3, 4, 5, 6 ]` || `[ 1, 2, 3, any(), 4, 5, 6 ]` || no || ...but this element must be present ||
-|| `[ 1, 2, 3, 4, 5, 6 ]` || `[ 1, 2, any_or_none(), 5, 6 ]` || yes || `any_or_none()` can replace any number of elements... ||
-|| `[ 1, 2, 3, 4, 5, 6 ]` || `[ 1, 2, 3, any_or_none(), 4, 5, 6 ]` || yes || ...even zero ||
-|| `[ 1, 2, 3, 4, 5, 6 ]` || `[ any_or_none(), 3, any(), 5, 6 ]` || yes || you may combine `any()` and `any_or_none()` ||
-|| `[ 1, 2, 3, 4, 5, 6 ]` || `[ any_or_none(), 3, any_or_none() ]` || yes || equivalent to `superset(3)`, which may be more readable ||
+|| Name || Type || Default value || Description ||
+|| ``local_ip`` || string || (empty - system assigned) || Local IP address to use when sending packets ||
+|| ``local_port`` || integer || ``0`` (system assigned) || Local port to use when sending packets ||
+|| ``listening_ip`` || string || ``0.0.0.0`` || Listening IP address, if listening mode is activated (see below) ||
+|| ``listening_port`` || integer || ``0`` || Set it to a non-zero port to start listening on mapping ||
+|| ``style`` || string in ``'tcp'``, ``'udp'`` || ``'tcp'`` || SCTP style: UDP or TCP (stream) ||
+|| ``enable_notifications`` || boolean || ``False`` || If set, you may get connection/disconnection notification and connectionConfirm/Error notification messages ||
+|| ``default_sut_address`` || string (ip:port) || ``None`` || If set, used as a default SUT address if none provided by the user ||
 """		
 
 
-print toRstTable(parseTWTable(test))
+table = parseTWTable(test)
+print toRstTable(table)
+print
+print toRstCsvTable(table)
+
 			

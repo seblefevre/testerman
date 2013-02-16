@@ -1174,7 +1174,7 @@ matched a template, using the ``->`` syntax and ``value`` (and
 ``sender``) keywords.
 For instance:
 
-.. code-block:: ttcn3
+::
 
     port.receive(my_template) -> value m, sender s;
 
@@ -1187,7 +1187,7 @@ structured value to find the field of interest. For instance, if we
 assumed we received a SIP request to which we should reply with a
 response using the same call-id, we may use:
 
-.. code-block:: ttcn3
+::
 
     type record SipRequestType {
       charstring method,

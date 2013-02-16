@@ -64,7 +64,7 @@ Multimedia and VoIP Oriented Codecs
 +----------------+----------------------------------------------------------------+
 | Codec ID       | Description                                                    |
 +================+================================================================+
-| ``rtsp``       | CodecRtsp, a RTSP codec                                        |
+| ``rtsp.*``     | :doc:`a RTSP codecs <autogen/CodecsRtsp>`                      |
 +----------------+----------------------------------------------------------------+
 | ``sdp``        | CodecSdp, a RFC4566 SDP (Session Description Protocol) codec   |
 +----------------+----------------------------------------------------------------+
@@ -95,10 +95,11 @@ Test Adapters (Probes)
 Protocol Oriented Probes
 ~~~~~~~~~~~~~~~~~~~~~~~~
 
--  General purpose probes: transport over IP probes: [ProbeTcp TCP],
-   [ProbeUdp UDP], [ProbeSctp SCTP], for protocols whose APDUs can be
-   easily detected at transport level without parsing the packets (SIP,
-   SUA, ...)
+These probes are useful to test a SUT at protocol level.
+
+-  General purpose probes: transport over IP probes: :doc:`TCP <autogen/ProbeTcp>`,
+   :doc:`UCP <autogen/ProbeUdp>`, :doc:`STCP <autogen/ProbeSctp>` (could be used as
+   a base for implementing SIP testing, SUA, HTTP, ... most protocols)
 -  ProbeHttpClient, a simple, dummy HTTP client probe without any
    automated behaviours (no redirect following, etc)
 -  ProbeRtspClient, a simple RTSP client probe
@@ -106,6 +107,12 @@ Protocol Oriented Probes
 
 Tools Probes
 ~~~~~~~~~~~~
+
+These probes are mainly useful to interfact with a SUT at high-level.
+They are mainly convenience tools to develop the glue between several
+domain testing, and are meant to integrate usual actions associated
+with testing: connecting to remote machines, checking files, running
+commands, changing configuration files, checking an SQL database, etc.
 
 -  ProbeSsh, a probe to execute non-interactive commands remotely
    through SSH, ProbeExec to execute them locally, ProbeExecInteractive
@@ -137,7 +144,7 @@ Codecs and Probes References
 This section provides the reference documentation for each codec and probes.
 
 .. toctree::
-   :maxdepth: 2
+   :maxdepth: 1
 
    autogen/toc.rst
 
