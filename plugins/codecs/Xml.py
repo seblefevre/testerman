@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 ##
 # This file is part of Testerman, a test automation system.
-# Copyright (c) 2008-2009 Sebastien Lefevre and other contributors
+# Copyright (c) 2008-2013 Sebastien Lefevre and other contributors
 #
 # This program is free software; you can redistribute it and/or modify it under
 # the terms of the GNU General Public License as published by the Free Software
@@ -24,21 +24,134 @@ import libxml2
 
 class XmlCodec(CodecManager.Codec):
 	"""
-	('element', { 'attributes': { ... }, 'children': [ ... ], 'ns': ...)
-	if no child:
-	('element', { 'attributes': { ... }, 'value': <unicode>, 'cdata': bool, 'ns': ...)
-	
-	ns is optional.
-	
-	This codec is NOT SUITABLE to parse XHTML, since it won't create dedicated nodes
-	for text-node (as a consequence: <h1>hello <b>dolly</b></h1> 
-	will only return ('h1', { 'value': 'hello dolly'}).
-	
-	Valid properties:
-	
-	prettyprint  || boolean || `False` || encoding: pretty xml print ||
-	encoding     || string  || `'utf-8'` || encoding: encoding format. decoding: decoding format if no prolog is present ||
-	write_prolog || boolean || `True` || encoding: write the <?xml version="1.0" encoding="..." ?> prolog or not ||
+	Identification and Properties
+	-----------------------------
+
+	Codec ID: ``xml``
+
+	Properties:
+
+	+--------------------+-----------+-----------------+--------------------------------------------------------------------------------------------------------------------------------------------------+
+	| name               | type      | default value   | description                                                                                                                                      |
+	+====================+===========+=================+==================================================================================================================================================+
+	| ``encoding``       | string    | ``utf-8``       | encoding: use this to encode the payload. Decoding: assumes the payload follows this encoding if the xml prolog encoding attribute is missing.   |
+	+--------------------+-----------+-----------------+--------------------------------------------------------------------------------------------------------------------------------------------------+
+	| ``write_prolog``   | boolean   | ``True``        | encoding: if True, write the ``<?xml version="1.0" encoding="..."?>`` prolog.                                                                    |
+	+--------------------+-----------+-----------------+--------------------------------------------------------------------------------------------------------------------------------------------------+
+	| ``prettyprint``    | boolean   | ``False``       | encoding: if True, pretty print the XML (carriage returns, hard tabs)                                                                            |
+	+--------------------+-----------+-----------------+--------------------------------------------------------------------------------------------------------------------------------------------------+
+
+	Overview
+	--------
+
+	This codec enables to encode/decode XML strings from/to Testerman
+	message structures.
+
+	Limitations:
+
+	-  comments, entity nodes are not decoded (nor can be encoded)
+	-  nested elements are only reported if not preceded by a text. In
+	   particular, this makes this codec unsuitable for full XHTML parsing,
+	   but should make it more convenient in most testing cases
+
+	Something like
+
+	.. code-block:: html
+
+	   <p>In this text, <i>some elements</i> are nested</p>
+
+	will be decoded to:
+
+	.. code-block:: python
+
+	   ('p', { 'value': u"In this text, <i>some elements</i> are nested" })
+
+
+	I.e. the nested element won't be constructed; whereas:
+
+	.. code-block:: html
+
+	   <p><i>nested element</i></p>
+
+	will be decoded to
+
+	.. code-block:: python
+
+	   ('p', { 'children': [ ('i', 'value': u"nested element") ] })
+
+	If you don't need to manage attributes and CDATA sections, you may
+	consider CodecXerLite.
+
+	Decoding
+	~~~~~~~~
+
+	Input:
+
+	.. code-block:: html
+
+	  <element attr="attrval">
+	    <subelement>subvalue</subelement>
+	    <subelement2><![CDATA[cdata value]]></subelement2>
+	  </element>
+
+	Decoded message:
+
+	.. code-block:: python
+
+	   ('element', { 'attributes': { 'attr': 'attrval' }, 'children': [
+	     ('subelement', { 'value': 'subvalue', 'cdata': False }),
+	       ('subelement2', { 'value': 'cdata value', 'cdata': True }),
+	     ]}
+	   )
+
+	``cdata`` is always provided during decoding.
+
+	Encoding
+	~~~~~~~~
+
+	Input:
+
+	.. code-block:: python
+
+	  ('element', { 'attributes': { 'attr': 'attrval' }, 'children': [
+	    ('subelement', { 'value': 'subvalue' }),
+	    ('subelement2', { 'value': 'cdata value', 'cdata': True }),
+	  ]})
+
+	Encoded message:
+
+	.. code-block:: html
+
+	  <element attr="attrval">
+	    <subelement>subvalue</subelement>
+	    <subelement2><![CDATA[cdata value]]></subelement2>
+	  </element>
+
+	If ``cdata`` is not present during a value element encoding, it is assumed to be ``False``.
+
+	If both ``children`` and ``value`` are provided, ``children`` has a greater precedence and ``value`` will be ignored.
+
+	TTCN-3 Types Equivalence
+	------------------------
+
+	::
+
+	  type record Element
+	  {
+  	  Attributes attributes,
+  	  // if children is present, cdata and value are not present.
+  	  // if cdata and value are present, children it not present.
+  	  boolean cdata optional,
+  	  universal charstring value optional,
+  	  record of Element children optional
+	  }
+  
+  	type record Attributes
+  	{
+    	// field name depends on the available attributes. All types are universal charstring
+    	universal charstring name
+  	}
+
 	"""
 
 	def encode(self, template):

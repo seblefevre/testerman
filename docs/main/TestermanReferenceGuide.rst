@@ -428,7 +428,7 @@ Job Lifecycle
 The following diagram exposes the basic job state machine, from its
 birth to its multiple death possibilities:
 
-Image(job-state-machine.png)
+.. image:: img/job-state-machine.png
 
 Some state explanations:
 
@@ -613,7 +613,7 @@ Tag Value Format
 ~~~~~~~~~~~~~~~~
 
 A tag value can be written over multiple lines. Actually, the current
-tag’s value only stops when another tag is started or when the docstring
+tags value only stops when another tag is started or when the docstring
 ends:
 
 ::
