@@ -179,8 +179,8 @@ No interaction is possible during the command execution.
 
 Notes:
 
- * when starting daemons from this probe, make sure that your daemon correctly closes standard output, otherwise
-   the probe never detects the command as being complete.
+* when starting daemons from this probe, make sure that your daemon correctly closes standard output, otherwise
+  the probe never detects the command as being complete.
 
 Availability
 ~~~~~~~~~~~~
@@ -195,9 +195,9 @@ None.
 See Also
 ~~~~~~~~
 
- * :doc:`ProbeSsh`, implementing the same port type for execution through SSH (avoiding the installation of an agent
-   on the target machine)
- * :doc:`ProbeExecInteractive`, to run a command line program and interact with it (CLI testing, etc)
+* :doc:`ProbeSsh`, implementing the same port type for execution through SSH (avoiding the installation of an agent
+  on the target machine)
+* :doc:`ProbeExecInteractive`, to run a command line program and interact with it (CLI testing, etc)
 
 TTCN-3 Types Equivalence
 ------------------------

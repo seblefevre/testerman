@@ -179,10 +179,11 @@ prompts).
 This probe does not require the started program to use unbuffered stdout.
 
 Typical use cases include:
- * CLI testing
- * Program output watching, for instance something that can dump real-time traces to stdout, avoiding the use of
-   combined ``exec`` (that executes a blocking program whose output is redirected to a temp file) and ``file.watcher``
-   (that watches the temp file created by the program we should watch the output from) probes.
+
+* CLI testing
+* Program output watching, for instance something that can dump real-time traces to stdout, avoiding the use of
+  combined ``exec`` (that executes a blocking program whose output is redirected to a temp file) and ``file.watcher``
+  (that watches the temp file created by the program we should watch the output from) probes.
 
 Basically you just specify a command to start that will be executed within a shell, providing an optional
 list of regular expressions the output must match before being sent to userland (a ``egrep`` equivalent).[[BR]]
@@ -200,8 +201,8 @@ as a shell executing the command would have provided.
 
 Limitations:
 
- * stderr output is currently reported within the stdout stream
- * interleaved stdout/stderr output are not garanteed to be delivered in the correct order
+* stderr output is currently reported within the stdout stream
+* interleaved stdout/stderr output are not garanteed to be delivered in the correct order
 
 Availability
 ~~~~~~~~~~~~
@@ -216,7 +217,7 @@ None.
 See Also
 ~~~~~~~~
 
- * :doc:`ProbeExec`, a single shoot command, non-interactive execution.
+* :doc:`ProbeExec`, a single shoot command, non-interactive execution.
 
 
 TTCN-3 Types Equivalence

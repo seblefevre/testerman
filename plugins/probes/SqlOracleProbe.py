@@ -41,101 +41,111 @@ def getBacktrace():
 
 class OracleProbe(ProbeImplementationManager.ProbeImplementation):
 	"""
-	= Identification and Properties =
+= Identification and Properties =
 
-	Probe Type ID: `sql.oracle`
+Probe Type ID: ``sql.oracle``
 
-	Properties:
-	|| '''Name''' || '''Type''' || '''Default value''' || '''Description''' ||
-	|| `host` || string || `'localhost'` || The Oracle server IP address or hostname. Must be the same as defined in the TSN on the server's connector. ||
-	|| `port`|| integer || `1521` || The Oracle TCP listening port on `host` ||
-	|| `sid` || string || (empty) || The Oracle System ID corresponding to your instance ||
-	|| `user` || string || (empty) || The user to use to connect to the database `db` above ||
-	|| `password` || string || (empty) || The password to use, if required to connect to the database `db` above for user `user` ||
+Properties:
 
+.. csv-table::
+   :header: "Name","Type","Default value","Description"
 
-	= Overview =
+   "``host``","string","``'localhost'``","The Oracle server IP address or hostname. Must be the same as defined in the TSN on the server's connector."
+   "``port``","integer","``1521``","The Oracle TCP listening port on ``host``"
+   "``sid``","string","(empty)","The Oracle System ID corresponding to your instance"
+   "``user``","string","(empty)","The user to use to connect to the database ``db`` above"
+   "``password``","string","(empty)","The password to use, if required to connect to the database ``db`` above for user ``user``"
 
-	This probes allows to connect to an Oracle database and perform any valid SQL command
-	that are valid for this DBS. Just send the SQL request as a string through a port bound
-	to the probe.
-	
-	As a result, you should expect a `SqlResult` choice structure, whose `'error'` arm is a simple
-	charstring indicating an error (connection- or SQL- related), and `result` indicates a
-	successful query. [[BR]]
-	In case of a non-SELECT query, `result` is an empty list. In case of a SELECT query, 
-	it contains a list of dictionaries corresponding to the selected entries, whose keys are the
-	names of the returned columns. The associated values are natural Python equivalent to
-	SQL types. However, the following types have not been tested yet:
-	 * `NULL`
-	 * blobs
-	 * date/time
-	
-	(If you encounter any problem with these SQL types or other ones, please contact us or
-	create a ticket).
-	
-	These structures and mechanisms are common to all `sql.*` probe types.
+Overview
+--------
 
-	The supported Oracle versions depend on the underlying Oracle libs you are using, and are
-	independent from the probe.[[BR]]
-	It has been tested successfully against a Oracle 10g R2 server.
+This probes allows to connect to an Oracle database and perform any valid SQL command
+that are valid for this DBS. Just send the SQL request as a string through a port bound
+to the probe.
 
-	== Availability ==
+As a result, you should expect a ``SqlResult`` choice structure, whose ``'error'`` arm is a simple
+charstring indicating an error (connection- or SQL- related), and ``result`` indicates a
+successful query.
 
-	All platforms.
+In case of a non-SELECT query, ``result`` is an empty list. In case of a SELECT query, 
+it contains a list of dictionaries corresponding to the selected entries, whose keys are the
+names of the returned columns. The associated values are natural Python equivalent to
+SQL types. However, the following types have not been tested yet:
 
-	== Dependencies ==
+* ``NULL``
+* blobs
+* date/time
 
-	This probe requires the cx_Oracle Python module, than can be found at [http://cx-oracle.sourceforge.net/].
-	Several 
-	
-	The cx_Oracle module is a wrapper that requires Oracle librairies.
-	
-	Here is a possible path to a working probe:
-	 * Get the Oracle Instant Client from the [http://www.oracle.com/technology/tech/oci/instantclient/index.html Oracle site]
-	(requires free registration) for the platform that will run the probe (the Basic Lite version is sufficient)
-	 * Decompress it wherever you want
-	 * Under Windows, copy `oraociicus11.dll` and `oci.dll` to a directory included in the PYTHONPATH of the agent
-	(in particular, you may put them into its `plugins/probes/` directory)
-	 * Under Linux, copy `?.so` and `oci.so` to `plugins/probes/` under your agent tree, but be sure to
-	add a LD_LIBRARY_PATH to this path before restarting your agent. To make the probe work from the TE (i.e. not
-	hosted on a agent), you should copy them to the `core/` Testerman directory, since it is automatically included
-	in all TE's LD_LIBRARY_PATH (should be configurable one day
-	
-	Make sure to download Oracle Instant Client and a cx_Oracle module that are compatible with each other and
-	with your Oracle database version.[[BR]]
-	As far as it has been tested, using libs for Oracle 11g correctly works with a Oracle 10g server.
+(If you encounter any problem with these SQL types or other ones, please contact us or
+create a ticket).
 
-	== See Also ==
+These structures and mechanisms are common to all ``sql.*`` probe types.
 
-	 * ProbeSqlMysql, a probe to access a MySQL database.
+The supported Oracle versions depend on the underlying Oracle libs you are using, and are
+independent from the probe.
 
+It has been tested successfully against a Oracle 10g R2 and 11g R2 servers.
 
-	= TTCN-3 Types Equivalence =
+Availability
+~~~~~~~~~~~~
 
-	The test system interface port bound to such a probe complies with the `SqlPortType` port type as specified below:
-	{{{
-	type charstring SqlRequest;
-	
-	type union Result
-	{
-		charstring error,
-		record of SqlResult result
-	}
-	
-	type record SqlResult
-	{
-		any <field name>* // according to your request 
-	}
-	
-	type port SqlPortType message
-	{
-		in SqlRequest,
-		out SqlResult
-	}
-	}}}
-	
-	"""
+All platforms.
+
+Dependencies
+~~~~~~~~~~~~
+
+This probe requires the cx_Oracle Python module, than can be found at http://cx-oracle.sourceforge.net.
+
+The cx_Oracle module is a wrapper that requires Oracle librairies.
+
+Here is a possible path to a working probe:
+
+* Get the Oracle Instant Client from the `Oracle site <http://www.oracle.com/technology/tech/oci/instantclient/index.html>`_
+  (requires free registration) for the platform that will run the probe (the Basic Lite version is sufficient)
+* Decompress it wherever you want
+* Under Windows, copy ``oraociicus11.dll`` and ``oci.dll`` to a directory included in the ``PYTHONPATH`` of the agent
+  (in particular, you may put them into its ``plugins/probes/`` directory)
+* Under Linux, copy ``?.so`` and ``oci.so`` to ``plugins/probes/`` under your agent tree, but be sure to
+  add a LD_LIBRARY_PATH to this path before restarting your agent. To make the probe work from the TE (i.e. not
+  hosted on a agent), you should copy them to the ``core/`` Testerman directory, since it is automatically included
+  in all TE's ``LD_LIBRARY_PATH``.
+
+Make sure to download Oracle Instant Client and a cx_Oracle module that are compatible with each other and
+with your Oracle database version.
+
+As far as it has been tested, using libs for Oracle 11g correctly works with a Oracle 10g server.
+
+See Also
+~~~~~~~~
+
+* :doc:`ProbeSqlMysql`, a probe to access a MySQL database.
+
+TTCN-3 Types Equivalence
+------------------------
+
+The test system interface port bound to such a probe complies with the ``SqlPortType`` port type as specified below:
+
+::
+
+  type charstring SqlRequest;
+
+  type union Result
+  {
+    charstring error,
+    record of SqlResult result
+  }
+  
+  type record SqlResult
+  {
+    any <field name>* // according to your request 
+  }
+  
+  type port SqlPortType message
+  {
+    in SqlRequest,
+    out SqlResult
+  }
+"""
 	def __init__(self):
 		ProbeImplementationManager.ProbeImplementation.__init__(self)
 		self.setDefaultProperty('host', 'localhost')

@@ -18,7 +18,7 @@ language.
 
 The Testerman ATS Formatter let's you export your recorded interactions
 directly to a Testerman test script (\*.ats). The generated code will
-use the ProbeSelenium to control the browser.
+use the :doc:`autogen/ProbeSelenium` to control the browser.
 
 Install
 ~~~~~~~
@@ -56,7 +56,7 @@ Understanding Selenium
 Selenium is a suite of different tools. We will use Selenium IDE
 (recording user interactions with a web interface) and Selenium RC
 (remote executing of "simulated" user actions on a web interface,
-acutally, this is done by the ProbeSelenium).
+acutally, this is done by the :doc:`autogen/ProbeSelenium`).
 
 Selenium RC has a set of different type of commands. There are commands
 like click(myButton), type(myInput, blablub), getText(myElement),
@@ -93,7 +93,7 @@ something like this:
 
 ::
 
-    commands        target      value
+    commands        target          value
     type            id=input_pw     1234
     click           id=login
 
@@ -156,7 +156,7 @@ Example:
 
 ::
 
-    commands        target      value
+    commands        target          value
     type            id=input_pw     1234
 
 The above command generates:
@@ -169,7 +169,7 @@ Now consider the following
 
 ::
 
-    commands        target      value
+    commands        target          value
     type            id=input_pw     ${PX_PASSWORD:1234} ** define parameter name and default value before export **
 
 generates:
@@ -209,9 +209,9 @@ new:
 
 ::
 
-    commands        target      value
+    commands        target          value
     type            id=input_pw     ${PX_PASSWORD:1234}
-    assertValue     id=blub     ${PX_PASSWORD}
+    assertValue     id=blub         ${PX_PASSWORD}
 
 generates:
 
@@ -333,13 +333,13 @@ to an ats file, change the following:
 
 ::
 
-    commands        target      value
-    storeValue      name=port   PX_DEFAULT_PORT
-    type            name=port   ${PX_NEW_PORT:12345}
-    clickAndWait        id=submit_button 
-    assertValue     name=port   ${PX_NEW_PORT}
-    type            name=port   ${PX_DEFAULT_PORT}
-    clickAndWait        id=submit_button 
+    commands        target            value
+    storeValue      name=port         PX_DEFAULT_PORT
+    type            name=port         ${PX_NEW_PORT:12345}
+    clickAndWait    id=submit_button 
+    assertValue     name=port         ${PX_NEW_PORT}
+    type            name=port         ${PX_DEFAULT_PORT}
+    clickAndWait    id=submit_button 
 
 Just save the value before changing it, then, during "cleanup" reuse the
 given name. The above example will produce the following code:
@@ -389,10 +389,10 @@ questions:
 
 ::
 
-    commands        target      value
-    assertValue     name=search blub
-    assertValue     name=search regexp:^[A-Z]?$
-    assertValue     name=search regexp:${PX_MYPATTERN}
+    commands            target         value
+    assertValue         name=search    blub
+    assertValue         name=search    regexp:^[A-Z]?$
+    assertValue         name=search    regexp:${PX_MYPATTERN}
     assertTextPresent   regexp:[a-z].?
 
 generates:
@@ -489,7 +489,7 @@ When using stuff like waitForCondition (e.g. functions with a timeout),
 you could consider to set up a high timeout and use a Testerman timer as
 watchdog with a lower timeout instead. If the selenium call fails
 (=condition didn't become true until the given timeout), the
-ProbeSelenium will throw an exception; whereas if the Testerman timer
+:doc:`autogen/ProbeSelenium` will throw an exception; whereas if the Testerman timer
 times out, the test can "fail correctly"
 
 Make sure you use [assert\|verify\|storte]Value() when checking the text

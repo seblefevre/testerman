@@ -76,10 +76,10 @@ to the Testerman Test Executable, saturating the whole system.
 
 Possible use cases for this probe:
 
- * Checking a log file, verifying that the application logs what we expect according to external stimuli
- * Using a log file to check the application behaviour; for instance, when testing an IVR (Interactive Voice Response) server, it could be convenient to check in log files the file that is assumed to be played instead of using voice recognition or RTP pattern analysis.
- * Applied to telecom systems, could be used to check CDR (Call Detail Reports) files, possibly in conjunction with a custom codec to apply to the notified lines
- * Checking that no error is dumped in a log file during a test. In this case, the probe is probably controlled by a background, dedicated behaviour, setting its verdict to fail as soon as it received an error line notification.
+* Checking a log file, verifying that the application logs what we expect according to external stimuli
+* Using a log file to check the application behaviour; for instance, when testing an IVR (Interactive Voice Response) server, it could be convenient to check in log files the file that is assumed to be played instead of using voice recognition or RTP pattern analysis.
+* Applied to telecom systems, could be used to check CDR (Call Detail Reports) files, possibly in conjunction with a custom codec to apply to the notified lines
+* Checking that no error is dumped in a log file during a test. In this case, the probe is probably controlled by a background, dedicated behaviour, setting its verdict to fail as soon as it received an error line notification.
 
 Known Bugs
 ~~~~~~~~~~
@@ -87,8 +87,8 @@ Known Bugs
 This probe may not detect a file recreation on some file systems such as ext3,
 in the following case:
 
- * the file is recreated/replaced with a larger file than the initial one,
- * AND the file's inode is not changed (which is the case with ext3, apparently).
+* the file is recreated/replaced with a larger file than the initial one,
+* AND the file's inode is not changed (which is the case with ext3, apparently).
 
 In this case, only the delta lines between the old file and the new ones are
 reported, instead of reporting all the lines of the file.
@@ -106,7 +106,7 @@ None.
 See Also
 ~~~~~~~~
 
- * :doc:`ProbeDirWatcher`, a probe that watches a directory for added/removed entries.
+* :doc:`ProbeDirWatcher`, a probe that watches a directory for added/removed entries.
 
 TTCN-3 Types Equivalence
 ------------------------

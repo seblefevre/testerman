@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 ##
 # This file is part of Testerman, a test automation system.
-# Copyright (c) 2008-2009 Sebastien Lefevre and other contributors
+# Copyright (c) 2008-2013 Sebastien Lefevre and other contributors
 #
 # This program is free software; you can redistribute it and/or modify it under
 # the terms of the GNU General Public License as published by the Free Software
@@ -22,7 +22,7 @@
 # .xml (using xpath)
 # 
 # These supports are based on plugins.
-# These plugins does not actively register as probes/codecs
+# These plugins do not actively register as probes/codecs
 # but are detected by this probe automatically. 
 # Constraint: only one file support per plugin.
 #
@@ -45,45 +45,145 @@ import ProbeImplementationManager
 
 class ConfigFileProbe(ProbeImplementationManager.ProbeImplementation):
 	"""
-	type union Command
-	{
-		SetKeyCommand set,
-		GetKeyCommand get,
-	}
-	
-	type record SetKeyCommand
-	{
-		charstring filename,
-		charstring keypath,
-		charstring value,
-		charstring format optional, // default: autodetect based on extension
-	}
-	
-	type record GetKeyCommand
-	{
-		charstring filename,
-		charstring keypath,
-		charstring format optional, // default: autodetect based on extension
-	}
-	
-	type union Result
-	{
-		charstring errorResult, // contains a human readable error string
-		charstring getResult, // empty string if not found
-		bool setResult, // True if OK, False otherwise 
-	}
-	
-	type port ConfigFileProbeType
-	{
-		in Command;
-		out Result
-	}
-	
-	Properties:
-	|| `plugin_properties`|| dict[string] of dict || `{}` || properties to pass to plugins, indexed by the format they support ||
+Identification and Properties
+-----------------------------
 
-	Properties for the `ini` plugin:
-	|| `comments` || list of strings || `['#', ';']` || List of characters or strings that identify a comment in a .ini file ||
+Probe Type ID: ``configurationfile``
+
+Properties:
+
+.. csv-table::
+   :header: "Name","Type","Default value","Description"
+
+   "``plugin_properties``","dict[string] of dict","``{}``","properties to pass to sub-plugins, indexed by the format they support"
+
+Properties for the ``ini`` plugin:
+
+.. csv-table::
+   :header: "Name","Type","Default value","Description"
+
+   "``comments``","list of strings","``['#', ';']``","List of characters or strings that identify a comment in a .ini file"
+
+There are no properties for the other ``xml`` and ``conf`` plugins.
+
+Overview
+--------
+
+This probe is specialized in updating configuration files, so that you can easily integrate small configuration changes
+prior to running a particular test (and rollback this change after).
+
+In can only work with files located on the system the probe is running on (i.e. you cannot update a file remotely via this probe,
+but you can still deploy your probe on a remote agent, so technically you can still update a configuration file anywhere on your
+distributed SUT).
+
+This implementation relies on probe-specific plugins (yes, nested plugins ! where this over-engineering spree will end ?)
+to update the files. These plugins simply provide ``get`` and ``set`` operations for a specific key, and the way the key
+is identified is plugin-specific.
+
+Currently the following configuration file formats are supported:
+
+* XML files (extension: ``.xml``): the key format is a XPath request, so you can change an element value or attribute.
+* Shell sourceable configuration files (extension: ``.conf``): the typical key=value configuration file that
+  can be read by ``sh``, using ``#`` for comments, and a flat structure (no sections).
+* INI files (extension: ``.ini``): Windows-like configuration files, with sections. The key format is "section/key".
+  The characters used for comments in such a file are configurable (see the ``comments`` property) so that
+  it could adapt to some custom INI file formats.
+
+The plugin to use to handle a configuration file is automatically detected based on the file extension, unless you force one
+(which is convenient to support INI files named ``something.conf``).
+
+To get the value of a key in a file (here, the value of the key name ``key`` in section ``[section]`` in the INI configuration file ``/pat/to/my/config.ini``), simply send the following message:
+
+.. code-block: python
+
+  configPort.send( ('get', { 'keypath': 'section/key', 'filename': '/path/to/my/config.ini' }) )
+
+Then, expect a result message:
+
+.. code-block: python
+
+  configPort.receive( ('getResult', extract('myvalue', any_or_none()) )
+	
+	myvalue = value('myvalue')
+	log("Read value for key: " + myvalue)
+
+If the key or the configuration file was not found or not readable, the returned value is an empty string.
+
+To set the previous key to a given value:
+
+.. code-block: python
+
+  configPort.send( ('set', { 'keypath': 'section/key', 'filename': '/path/to/my/config.ini', 'value': 'my value' }) )
+
+Then, optionally expect a result message (if you don't mind if the operation succeeded, don't expect anything):
+
+.. code-block: python
+
+  configPort.receive( ('setResult', True )
+	
+Other received messages indicate a set error.
+
+As usual, it may be convenient to embed these message-based calls into a convenience function to use in your ATSes.
+
+Availability
+~~~~~~~~~~~~
+
+All platforms.
+
+Dependencies
+~~~~~~~~~~~~
+
+None.
+
+See Also
+~~~~~~~~
+
+TTCN-3 Types Equivalence
+------------------------
+
+The test system interface port bound to such a probe complies with the ``ConfigFileProbeType`` port type as specified below:
+
+::
+
+  type union Command
+  {
+    SetKeyCommand set,
+    GetKeyCommand get,
+  }
+  
+  type record SetKeyCommand
+  {
+    charstring filename,
+    charstring keypath,
+    charstring value,
+    charstring format optional, // default: autodetect based on extension
+  }
+  
+  type record GetKeyCommand
+  {
+    charstring filename,
+    charstring keypath,
+    charstring format optional, // default: autodetect based on extension
+  }
+  
+  type union Result
+  {
+    charstring errorResult, // contains a human readable error string
+    charstring getResult, // empty string if not found
+    bool setResult, // True if OK, False otherwise 
+  }
+  
+  type port ConfigFileProbeType
+  {
+    in Command;
+    out Result
+  }
+
+Properties:
+|| `plugin_properties`|| dict[string] of dict || `{}` || properties to pass to plugins, indexed by the format they support ||
+
+Properties for the `ini` plugin:
+|| `comments` || list of strings || `['#', ';']` || List of characters or strings that identify a comment in a .ini file ||
 	
 	"""
 	def __init__(self):

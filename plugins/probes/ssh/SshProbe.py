@@ -91,9 +91,9 @@ had one open ssh terminal connection to your SUT.
 
 Notes:
 
- * When starting daemons from this probe, make sure that your daemon correctly closes standard output, 
-   otherwise the probe never detects the command as being complete. For poorly written daemonized programs, 
-   adding a ``>/dev/null 2>&1`` in the ``execute`` command line is usually enough to make the probe return in such cases.
+* When starting daemons from this probe, make sure that your daemon correctly closes standard output, 
+  otherwise the probe never detects the command as being complete. For poorly written daemonized programs, 
+  adding a ``>/dev/null 2>&1`` in the ``execute`` command line is usually enough to make the probe return in such cases.
 
 Availability
 ~~~~~~~~~~~~
@@ -108,8 +108,8 @@ Requires a ssh client installed on the machine running the probe, as it is only 
 See Also
 ~~~~~~~~
 
- * :doc:`ProbeExec`, implementing the same port type for local execution (convenient when you have no SSH access to your machine, but you must deploy an agent on it)
- * :doc:`ProbeExecInteractive`, to run a command line program and interact with it (CLI testing, etc)
+* :doc:`ProbeExec`, implementing the same port type for local execution (convenient when you have no SSH access to your machine, but you must deploy an agent on it)
+* :doc:`ProbeExecInteractive`, to run a command line program and interact with it (CLI testing, etc)
 
 TTCN-3 Types Equivalence
 ------------------------

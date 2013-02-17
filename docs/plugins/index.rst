@@ -35,11 +35,6 @@ would be sent through a UDP probe, actually injecting raw data over the
 network to a SUT address that could be defined as a probe property (when
 not test-dependent).
 
-*Note: codec and probe documentations are currently missing. However,
-all codecs and probes referenced below are readily available in
-Testerman. Additional documentation is available in their source code,
-too.*
-
 Codecs
 ------
 
@@ -64,7 +59,7 @@ Multimedia and VoIP Oriented Codecs
 +----------------+----------------------------------------------------------------+
 | Codec ID       | Description                                                    |
 +================+================================================================+
-| ``rtsp.*``     | :doc:`a RTSP codecs <autogen/CodecsRtsp>`                      |
+| ``rtsp.*``     | :doc:`autogen/CodecsRtsp`                                      |
 +----------------+----------------------------------------------------------------+
 | ``sdp``        | CodecSdp, a RFC4566 SDP (Session Description Protocol) codec   |
 +----------------+----------------------------------------------------------------+
@@ -97,13 +92,13 @@ Protocol Oriented Probes
 
 These probes are useful to test a SUT at protocol level.
 
--  General purpose probes: transport over IP probes: :doc:`TCP <autogen/ProbeTcp>`,
-   :doc:`UCP <autogen/ProbeUdp>`, :doc:`STCP <autogen/ProbeSctp>` (could be used as
+-  General purpose probes: transport over IP probes: :doc:`autogen/ProbeTcp`,
+   :doc:`autogen/ProbeUdp`, :doc:`autogen/ProbeSctp` (could be used as
    a base for implementing SIP testing, SUA, HTTP, ... most protocols)
--  ProbeHttpClient, a simple, dummy HTTP client probe without any
+-  :doc:`autogen/ProbeHttpClient`, a simple, dummy HTTP client probe without any
    automated behaviours (no redirect following, etc)
--  ProbeRtspClient, a simple RTSP client probe
--  ProbeRtp, a RTP stream sender/listener
+-  :doc:`autogen/ProbeRtspClient`, a simple RTSP client probe
+-  :doc:`autogen/ProbeRtp`, a RTP stream sender/listener
 
 Tools Probes
 ~~~~~~~~~~~~
@@ -114,34 +109,34 @@ domain testing, and are meant to integrate usual actions associated
 with testing: connecting to remote machines, checking files, running
 commands, changing configuration files, checking an SQL database, etc.
 
--  ProbeSsh, a probe to execute non-interactive commands remotely
+-  :doc:`autogen/ProbeSsh`, a probe to execute non-interactive commands remotely
    through SSH, ProbeExec to execute them locally, ProbeExecInteractive
    to execute them locally, but interactively
--  SQL connector probes: [ProbeSqlMysql MySQL], [ProbeSqlOracle Oracle]
--  ProbeDirWatcher, a probe that monitors a directory and notifies you
+-  SQL connector probes: :doc:`autogen/ProbeSqlMysql`, :doc:`autogen/ProbeSqlOracle`
+-  :doc:`autogen/ProbeDirWatcher`, a probe that monitors a directory and notifies you
    when an entry has been added/removed (useful to check if a lock file
    was created/removed, ...)
--  ProbeFileWatcher, a probe that monitors an ascii file and notifies
+-  :doc:`autogen/ProbeFileWatcher`, a probe that monitors an ascii file and notifies
    you of new lines (think of it as a combination of ``tail -f`` and
    ``grep``, useful to check log files for instance)
--  ProbeConfigurationFile, a probe that can access in read-write to
+-  :doc:`autogen/ProbeConfigurationFile`, a probe that can access in read-write to
    configuration files, supporting most used configuration formats and
    extensible to match your needs (useful to prepare a SUT for testing
    in particular configuration conditions)
--  ProbeXmlRpc, a probe to invoke remote operations via XML-RPC
--  ProbeLdap, a probe to access a LDAP directory
--  ProbeSelenium, a probe to execute web-oriented tests through Selenium
+-  :doc:`autogen/ProbeXmlRpc`, a probe to invoke remote operations via XML-RPC
+-  :doc:`autogen/ProbeLdapClient`, a probe to access a LDAP directory
+-  :doc:`autogen/ProbeSelenium`, a probe to execute web-oriented tests through Selenium
    RC
--  ProbeFileManager, a probe to create, move, delete files dynamically
+-  :doc:`autogen/ProbeFileManager`, a probe to create, move, delete files dynamically
    (convenient to create temporary files, to inject resources into the
    SUT that are kept embedded in the ATS that you don't have to manage
    additional dependencies at runtime)
--  (more to come)
+
 
 Codecs and Probes References
 ----------------------------
 
-This section provides the reference documentation for each codec and probes.
+This section provides the reference documentation for each codec and probe.
 
 .. toctree::
    :maxdepth: 1

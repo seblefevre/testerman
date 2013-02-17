@@ -27,157 +27,168 @@ import threading
 
 class LdapClientProbe(ProbeImplementationManager.ProbeImplementation):
 	"""
-	= Identification and Properties =
+Identification and Properties
+-----------------------------
 
-	Probe Type ID: `ldap.client`
+Probe Type ID: ``ldap.client``
 
-	Properties:
-	|| '''Name''' || '''Type''' || '''Default value''' || '''Description''' ||
-	|| `server_url` || string || `'ldap://127.0.0.1:389'` || LDAP server url, including protocol to use (ldap or ldaps) ||
-	|| `ldap_version` || integer || `2` || LDAP server version
-	|| `bind_dn` || string || `None` (undefined) || The DN entry to bind, if not provided through a request ||
-	|| `password` || string || (empty) || The password to use by default for binding ||
-	|| `timeout` || float || `60.0` || The maximum amount of time allowed to perform a search/write/delete operation before raising an error response ||
-	|| `base_dn` || string || (empty) || A base DN to suffix all DNs used in search/write/delete operations. It is not used for the  ||
-	
-	Deprecated properties:
-	|| '''Name''' || '''Type''' || '''Default value''' || '''Description''' ||
-	|| `username` || string || `None` (undefined) || Kept for compatibility. Use `bind_dn` instead. ||
-	
+Properties:
 
-	= Overview =
+.. csv-table::
+   :header: "Name","Type","Default value","Description"
 
-	This probe simulates a LDAP client that can connect to a LDAP server
-	to perform the following LDAP operations:
-	 * bind
-	 * unbind
-	 * search
-	 * add and update
-	 * delete
-	
-	It can connect to LDAP v2 and v3 servers, using a standard or a secure (ldaps, SSL/TLS)
-	connection.
-	
-	SASL connections are currently not interfaced.
+   "``server_url``","string","``'ldap://127.0.0.1:389'``","LDAP server url, including protocol to use (ldap or ldaps)"
+   "``ldap_version``","integer","``2``","LDAP server version"
+   "``bind_dn``","string","``None`` (undefined)","The DN entry to bind, if not provided through a request"
+   "``password``","string","(empty)","The password to use by default for binding"
+   "``timeout``","float","``60.0``","The maximum amount of time allowed to perform a search/write/delete operation before raising an error response"
+   "``base_dn``","string","(empty)","A base DN to suffix all DNs used in search/write/delete operations. It is not used for the"
+   "``username``","string","``None`` (undefined)","Deprecated. Use ``bind_dn`` instead."
 
-	By default, the probe automatically binds using the properties `bind_dn` and `password` prior
-	to executing a search/write/delete command, unless an explicit bind command was performed by the user before.
+Overview
+--------
 
-	The probe automatically unbinds on unmap.
-	
-	To add or update an entry, use a `WriteCommand` message. The probe
-	automatically detects if it should be a new entry (don't forget mandatory
-	attributes according to the entry's schema) or an update. In case of an update:
-	 * only provided attributes are modified. The other ones are left unchanged
-	 * all values of the existing attributes are replaced with the new ones (no values merge)
-	 * you can delete an attribute by specifying an empty value list for it
-	
-	To make ATSes more portable and more simple to manage, you may use the `base_dn` property
-	to set a DN that will be appended to all DNs in use in:
-	 * delete operation (`dn` parameter)
-	 * write operation (`dn` parameter)
-	 * search operation (`baseDn` parameter)
-	and automatically removed from the dn values as returned in `SearchResult.SearchEntry.dn` structures.[[BR]]
-	In other words, all the dn values, in the userland, will be relative to that `base_dn`.
-	
-	This `base_dn`, however, won't be suffixed to the `bind_dn`.
-	
-	Notes:
-	 * Bind, write and unbind operations are synchronous, i.e. it's not use arming a timer to cancel them from the userland: they are not cancellable, and only return when they are complete. However, you still must wait for a `BindResult` or `WriteResult` before assuming the operation is complete.
-	 * The synchronous bind and write implementations may be replaced with asynchronous equivalent ones one day. This 	won't have any impact on your testcases if you wait for the `BindResult` and `WriteResult` as explained above.
+This probe simulates a LDAP client that can connect to a LDAP server
+to perform the following LDAP operations:
 
-	== Availability ==
+* bind
+* unbind
+* search
+* add and update
+* delete
 
-	All platforms.
+It can connect to LDAP v2 and v3 servers, using a standard or a secure (ldaps, SSL/TLS)
+connection.
 
-	== Dependencies ==
+SASL connections are currently not interfaced.
 
-	This probe depends on the openldap library and its associated Python wrapper.
-	
-	On Debian-based system, this is `python-ldap` and its dependencies.
+By default, the probe automatically binds using the properties ``bind_dn`` and ``password`` prior
+to executing a search/write/delete command, unless an explicit bind command was performed by the user before.
 
-	== See Also ==
-	
-	
-	= TTCN-3 Types Equivalence =
+The probe automatically unbinds on unmap.
 
-	The test system interface port bound to such a probe complies with the `LdapPortType` port type as specified below:
-	{{{
-	type union LdapCommand
-	{
-		BindCommand   bind,     // binds to the server set in properties, with the defaut or given credentials
-		UnbindCommand unbind,   // unbinds from the server
-		SearchCommand search,   // searches entries according to a ldap search filter
-		WriteCommand  write,    // updates or adds a new entry or attribute
-		DeleteCommand delete,   // deletes an entry
-		AbandonCommand abandon, // abandon the current command, if any
-		CancelCommand abandon,  // cancel the current command, if any (only supported on RFC3909 compliant server)
-	}
+To add or update an entry, use a ``WriteCommand`` message. The probe
+automatically detects if it should be a new entry (don't forget mandatory
+attributes according to the entry's schema) or an update. In case of an update:
 
-	type record BindCommand {
-		charstring bindDn optional, // the distinguished name of the entry to bind
-		charstring password optional,
-	}
+* only provided attributes are modified. The other ones are left unchanged
+* all values of the existing attributes are replaced with the new ones (no values merge)
+* you can delete an attribute by specifying an empty value list for it
 
-	type any UnbindCommand;
+To make ATSes more portable and more simple to manage, you may use the ``base_dn`` property
+to set a DN that will be appended to all DNs in use in:
 
-	type record SearchCommand {
-		charstring baseDn, // suffixed by the probe's base_dn property, if any
-		charstring filter, 
-		charstring scope optional, // enum in 'base', 'subtree', 'onelevel', defaulted to 'base'
-		record of charstring attributes optional, // defaulted to an empty list, i.e. all attributes are returned
-	}
+* delete operation (``dn`` parameter)
+* write operation (``dn`` parameter)
+* search operation (``baseDn`` parameter)
 
-	type record WriteCommand {
-		charstring dn, // suffixed by the probe's base_dn property, if any
-		record of Attribute attributes optional, // defaulted to an empty list
-	}
+and automatically removed from the dn values as returned in ``SearchResult.SearchEntry.dn`` structures.[[BR]]
+In other words, all the dn values, in the userland, will be relative to that ``base_dn``.
 
-	type record Attribute {
-		record of <natural type> <name> // dynamic names, natural types (charstring/universal charstring, int, double, octetstring, ...)
-	}
+This ``base_dn``, however, won't be suffixed to the ``bind_dn``.
 
-	type record DeleteCommand {
-		charstring dn, // suffixed by the probe's base_dn property, if any
-	}
+Notes:
 
-	type any AbandonCommand;
+* Bind, write and unbind operations are synchronous, i.e. it's not use arming a timer to cancel them from the userland: they are not cancellable, and only return when they are complete. However, you still must wait for a ``BindResult`` or ``WriteResult`` before assuming the operation is complete.
+* The synchronous bind and write implementations may be replaced with asynchronous equivalent ones one day. This 	won't have any impact on your testcases if you wait for the ``BindResult`` and ``WriteResult`` as explained above.
 
-	type any CancelCommand;
-	
-	type boolean DeleteResult;
-	
-	type boolean BindResult;
+Availability
+~~~~~~~~~~~~
 
-	type boolean UnbindResult;
-	
-	type record of SearchEntry SearchResult;
-	
-	type record SearchEntry {
-		charstring dn, // does not contain the base_dn property part, if any
-		record of Attribute attributes,
-	}
-	
-	type boolean WriteResult;
+All platforms.
 
-	type charstring ErrorResponse;
+Dependencies
+~~~~~~~~~~~~
 
-	type union LdapResponse
-	{
-		BindResult bindResult,
-		UnbindResult unbindResult,
-		DeleteResulet deleteResult,
-		SearchResult searchResult,
-		WriteResult writeResult,
-		ErrorResponse error,
-	}
+This probe depends on the openldap library and its associated Python wrapper.
 
-	type port LdapPortType message
-	{
-		in  LdapCommand;
-		out LdapResponse;
-	}
-	}}}
+On Debian-based system, this is ``python-ldap`` and its dependencies.
+
+See Also
+~~~~~~~~
+
+
+TTCN-3 Types Equivalence
+------------------------
+
+The test system interface port bound to such a probe complies with the ``LdapPortType`` port type as specified below:
+
+::
+
+  type union LdapCommand
+  {
+    BindCommand   bind,     // binds to the server set in properties, with the defaut or given credentials
+    UnbindCommand unbind,   // unbinds from the server
+    SearchCommand search,   // searches entries according to a ldap search filter
+    WriteCommand  write,    // updates or adds a new entry or attribute
+    DeleteCommand delete,   // deletes an entry
+    AbandonCommand abandon, // abandon the current command, if any
+    CancelCommand abandon,  // cancel the current command, if any (only supported on RFC3909 compliant server)
+  }
+  
+  type record BindCommand {
+    charstring bindDn optional, // the distinguished name of the entry to bind
+    charstring password optional,
+  }
+  
+  type any UnbindCommand;
+  
+  type record SearchCommand {
+    charstring baseDn, // suffixed by the probe's base_dn property, if any
+    charstring filter, 
+    charstring scope optional, // enum in 'base', 'subtree', 'onelevel', defaulted to 'base'
+    record of charstring attributes optional, // defaulted to an empty list, i.e. all attributes are returned
+  }
+  
+  type record WriteCommand {
+    charstring dn, // suffixed by the probe's base_dn property, if any
+    record of Attribute attributes optional, // defaulted to an empty list
+  }
+  
+  type record Attribute {
+    record of <natural type> <name> // dynamic names, natural types (charstring/universal charstring, int, double, octetstring, ...)
+  }
+  
+  type record DeleteCommand {
+    charstring dn, // suffixed by the probe's base_dn property, if any
+  }
+  
+  type any AbandonCommand;
+  
+  type any CancelCommand;
+  
+  type boolean DeleteResult;
+  
+  type boolean BindResult;
+  
+  type boolean UnbindResult;
+  
+  type record of SearchEntry SearchResult;
+  
+  type record SearchEntry {
+    charstring dn, // does not contain the base_dn property part, if any
+    record of Attribute attributes,
+  }
+  
+  type boolean WriteResult;
+  
+  type charstring ErrorResponse;
+  
+  type union LdapResponse
+  {
+    BindResult bindResult,
+    UnbindResult unbindResult,
+    DeleteResulet deleteResult,
+    SearchResult searchResult,
+    WriteResult writeResult,
+    ErrorResponse error,
+  }
+  
+  type port LdapPortType message
+  {
+    in  LdapCommand;
+    out LdapResponse;
+  }
 	"""
 	def __init__(self):
 		ProbeImplementationManager.ProbeImplementation.__init__(self)

@@ -175,8 +175,9 @@ See Also
 ~~~~~~~~
 
 Other transport-oriented probes:
- * :doc:`ProbeSctp`
- * :doc:`ProbeUdp`
+
+* :doc:`ProbeSctp`
+* :doc:`ProbeUdp`
 
 TTCN-3 Types Equivalence
 ------------------------

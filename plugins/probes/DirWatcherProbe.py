@@ -80,8 +80,9 @@ The ``patterns`` startWatchingDirs field may contain several regular expression.
 is used to generate ``matched_*`` notification fields.
 
 Possible use cases for this probe:
- * Checking file rotation (the oldest should be removed, a new one should be added)
- * Checking lock files (created on application start, deleted when stopped, etc)
+
+* Checking file rotation (the oldest should be removed, a new one should be added)
+* Checking lock files (created on application start, deleted when stopped, etc)
 
 Availability
 ~~~~~~~~~~~~
@@ -96,7 +97,7 @@ None.
 See Also
 ~~~~~~~~
 
- * :doc:`ProbeFileWatcher`, a probe that watch a directory for new/removed files
+* :doc:`ProbeFileWatcher`, a probe that watch a directory for new/removed files
 
 
 TTCN-3 Types Equivalence

@@ -28,67 +28,82 @@ import select
 
 class HttpClientProbe(ProbeImplementationManager.ProbeImplementation):
 	"""
-	= Identification and Properties =
+Identification and Properties
+-----------------------------
 
-	Probe Type ID: `tcp`
+Probe Type ID: ``tcp``
 
-	Properties:
-	|| '''Name''' || '''Type''' || '''Default value''' || '''Description''' ||
-	|| `local_ip` || string || (empty - system assigned) || Local IP address to use when sending HTTP requests. ||
-	|| `local_port` || integer || `0` (system assigned) || Local port to use when sending HTTP requests. ||
-	|| `host` || string || `localhost` || The HTTP server's hostname or IP address. ||
-	|| `port` || integer || `80` || The HTTP server's port. ||
-	|| `version` || string || `HTTP/1.0` || The HTTP version to use in requests. ||
-	|| `protocol` || string || `http` || The HTTP variant:`http` or `https`. For now, only `http` is supported. ||
-	|| `maintain_connection` || boolean || `False` || If set to True and HTTP version is 1.1, the probe keeps the tcp connection opened once a response has been received, until the server closes it. ||
-	|| `connection_timeout` || float || `5.0` || The connection timeout, in s, when trying to connect to a remote party. ||
+Properties:
 
-	= Overview =
-	
-	...
+.. csv-table::
+   :header: "Name","Type","Default value","Description"
 
-	== Availability ==
+   "``local_ip``","string","(empty - system assigned)","Local IP address to use when sending HTTP requests."
+   "``local_port``","integer","``0`` (system assigned)","Local port to use when sending HTTP requests."
+   "``host``","string","``localhost``","The HTTP server's hostname or IP address."
+   "``port``","integer","``80``","The HTTP server's port."
+   "``version``","string","``HTTP/1.0``","The HTTP version to use in requests."
+   "``protocol``","string","``http``","The HTTP variant:``http`` or ``https``. For now, only ``http`` is supported."
+   "``maintain_connection``","boolean","``False``","If set to True and HTTP version is 1.1, the probe keeps the tcp connection opened once a response has been received, until the server closes it."
+   "``connection_timeout``","float","``5.0``","The connection timeout, in s, when trying to connect to a remote party."
 
-	All platforms.
+Overview
+--------
 
-	== Dependencies ==
+This probe acts as a simple HTTP client and is fully based on :doc:`ProbeTcp` with :doc:`HTTP codecs <CodecHttp>`.
 
-	None.
-	
-	== See Also ==
-	
-	Other transport-oriented probes:
-	 * ProbeSctp
-	 * ProbeUdp
+It can be used to connect to an HTTP server, send and receive requests at low-level. This client won't follow HTTP redirections, enable authentication, or anything fancy.
+However, it is able to maintain the TCP connection between requests (set ``maintain_connection`` to ``True``) and 
+manageq a connection timeout to automatically fails the probe after a given delay (see the ``connection_timeout`` property).
 
-	
-	= TTCN-3 Types Equivalence =
+For HTTPS connectivity, you should consider using :doc:`ProbeTcp` with :doc:`HTTP codecs <CodecHttp>` as default codecs instead.
 
-	The test system interface port bound to such a probe complies with the `HttpClientPortType` port type as specified below:
-	{{{
-	type record HttpRequest
-	{
-		charstring method optional, // default: 'GET'
-		charstring url,
-		record { charstring <header name>* } headers,
-		charstring body optional, // default: ''
-	}
+Availability
+~~~~~~~~~~~~
 
-	type record HttpResponse
-	{
-		integer status,
-		charstring reason,
-		charstring protocol,
-		record { charstring <header name>* } headers,
-		charstring body,
-	}
+All platforms.
 
-	type port HttpClientPortType
-	{
-		in HttpRequest;
-		out HttpResponse;
-	}
-	}}}
+Dependencies
+~~~~~~~~~~~~
+
+None.
+
+See Also
+~~~~~~~~
+
+Instead of using the probe, you may consider a :doc:`ProbeTcp` with some :doc:`HTTP codecs <CodecHttp>` set as default encoder/decoders, which offer
+a greater control and support HTTPS as well (with ``use_ssl`` set to ``True``).
+
+
+TTCN-3 Types Equivalence
+------------------------
+
+The test system interface port bound to such a probe complies with the ``HttpClientPortType`` port type as specified below:
+
+::
+
+  type record HttpRequest
+  {
+    charstring method optional, // default: 'GET'
+    charstring url,
+    record { charstring <header name>* } headers,
+    charstring body optional, // default: ''
+  }
+  
+  type record HttpResponse
+  {
+    integer status,
+    charstring reason,
+    charstring protocol,
+    record { charstring <header name>* } headers,
+    charstring body,
+  }
+  
+  type port HttpClientPortType
+  {
+    in HttpRequest;
+    out HttpResponse;
+  }
 	"""
 	def __init__(self):
 		ProbeImplementationManager.ProbeImplementation.__init__(self)

@@ -52,9 +52,9 @@ Overview
 
 This probe performs basic local file management operations:
 
- * file creation (with content injection)
- * file move, deletion, renaming
- * link creation, deletion
+* file creation (with content injection)
+* file move, deletion, renaming
+* link creation, deletion
 
 One of its primary purposes is providing the ability to create
 files on the fly from resources that were embedded in your ATS or its
