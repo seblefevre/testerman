@@ -347,10 +347,7 @@ A if/elseif/else mechanism is available:
     Undefined test case name
     #end
 
-+-----------------------+
-|  (or), ``!`` (not).   |
-+=======================+
-+-----------------------+
+The usual operators are supported: <, >, <=, >=, ==, `=`, && (and), || (or), ! (not).
 
 ::
 
