@@ -13,6 +13,7 @@ Introduction
    :maxdepth: 2
 	 
    main/About.rst
+   main/GetTesterman.rst
 
 Using Testerman
 ---------------
@@ -20,7 +21,6 @@ Using Testerman
 .. toctree::
    :maxdepth: 2
 	 
-   main/GetTesterman.rst
    main/TestermanOverview.rst
    main/TestermanQuickStart.rst
    main/QTesterman.rst
