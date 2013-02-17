@@ -149,77 +149,82 @@ def getChildrenPids(pid):
 ##
 class ExecProbe(ProbeImplementationManager.ProbeImplementation):
 	"""
-	= Identification and Properties =
+Identification and Properties
+-----------------------------
 
-	Probe Type ID: `exec`
+Probe Type ID: ``exec``
 
-	Properties:
-	|| '''Name''' || '''Type''' || '''Default value''' || '''Description''' ||
-	|| `shell` || string || `None` || The shell to use when executing the command line. On Unixes, this is defaulted to `/bin/sh`, on Windows, this is the shell as specified via the COMSPEC environment variable. ||
-	
-	
-	(no properties)
+Properties:
 
+.. csv-table::
+   :header: "Name","Type","Default value","Description"
 
-	= Overview =
+   "``shell``","string","``None``","The shell to use when executing the command line. On Unixes, this is defaulted to ``/bin/sh``, on Windows, this is the shell as specified via the COMSPEC environment variable."
 
-	This probe implements a single shot command execution interface (the same as ProbeSsh) for locally executed
-	commands.
+Overview
+--------
 
-	Basically you just specify a command to execute that will be executed within a shell, and you get a response
-	once its execution is over. The response contains both an integer return code and the whole command output.
+This probe implements a single shot command execution interface (the same as ProbeSsh) for locally executed
+commands.
 
-	If you consider the command execution is too long (no response received), you can cancel it at any time from the
-	userland. Such a cancellation terminates all the subprocess tree with a SIGKILL signal on POSIX platforms,
-	and a SIGTERM to the started process (not all its subtree) on Windows. Once cancelled, you should not expect
-	a command response anymore.
+Basically you just specify a command to execute that will be executed within a shell, and you get a response
+once its execution is over. The response contains both an integer return code and the whole command output.
 
-	No interaction is possible during the command execution.
+If you consider the command execution is too long (no response received), you can cancel it at any time from the
+userland. Such a cancellation terminates all the subprocess tree with a SIGKILL signal on POSIX platforms,
+and a SIGTERM to the started process (not all its subtree) on Windows. Once cancelled, you should not expect
+a command response anymore.
 
-	Notes:
-	 * when starting daemons from this probe, make sure that your daemon correctly closes standard output, otherwise
-	the probe never detects the command as being complete.
+No interaction is possible during the command execution.
 
-	== Availability ==
+Notes:
 
-	All platforms. Tested on Linux (kernel 2.6), Solaris 8, Solaris 10.
+ * when starting daemons from this probe, make sure that your daemon correctly closes standard output, otherwise
+   the probe never detects the command as being complete.
 
-	== Dependencies ==
+Availability
+~~~~~~~~~~~~
 
-	None.
+All platforms. Tested on Linux (kernel 2.6), Solaris 8, Solaris 10.
 
-	== See Also ==
+Dependencies
+~~~~~~~~~~~~
 
-	 * ProbeSsh, implementing the same port type for execution through SSH (avoiding the installation of an agent
-	on the target machine)
-	 * ProbeExecInteractive, to run a command line program and interact with it (CLI testing, etc)
+None.
 
+See Also
+~~~~~~~~
 
-	= TTCN-3 Types Equivalence =
+ * :doc:`ProbeSsh`, implementing the same port type for execution through SSH (avoiding the installation of an agent
+   on the target machine)
+ * :doc:`ProbeExecInteractive`, to run a command line program and interact with it (CLI testing, etc)
 
-	The test system interface port bound to such a probe complies with the `ExecPortType` port type as specified below:
-	{{{
-	type union ExecCommand
-	{
-		charstring execute,
-		anytype    cancel
-	}
+TTCN-3 Types Equivalence
+------------------------
 
-	type record ExecResponse
-	{
-		integer status,
-		charstring output
-	}
+The test system interface port bound to such a probe complies with the ``ExecPortType`` port type as specified below:
 
-	type charstring ErrorResponse;
+::
 
-	type port ExecPortType message
-	{
-		in  ExecCommand;
-		out ExecResponse, ErrorResponse;
-	}
-	}}}
-
+  type union ExecCommand
+  {
+    charstring execute,
+    anytype    cancel
+  }
+  
+  type record ExecResponse
+  {
+    integer status,
+    charstring output
+  }
+  
+  type charstring ErrorResponse;
+  
+  type port ExecPortType message
+  {
+    in  ExecCommand;
+    out ExecResponse, ErrorResponse;
+  }
 	"""
 	def __init__(self):
 		ProbeImplementationManager.ProbeImplementation.__init__(self)

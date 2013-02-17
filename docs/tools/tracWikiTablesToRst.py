@@ -102,14 +102,15 @@ def toRstCsvTable(table, header = True):
 	
 
 test = """
-|| Name || Type || Default value || Description ||
-|| ``local_ip`` || string || (empty - system assigned) || Local IP address to use when sending packets ||
-|| ``local_port`` || integer || ``0`` (system assigned) || Local port to use when sending packets ||
-|| ``listening_ip`` || string || ``0.0.0.0`` || Listening IP address, if listening mode is activated (see below) ||
-|| ``listening_port`` || integer || ``0`` || Set it to a non-zero port to start listening on mapping ||
-|| ``style`` || string in ``'tcp'``, ``'udp'`` || ``'tcp'`` || SCTP style: UDP or TCP (stream) ||
-|| ``enable_notifications`` || boolean || ``False`` || If set, you may get connection/disconnection notification and connectionConfirm/Error notification messages ||
-|| ``default_sut_address`` || string (ip:port) || ``None`` || If set, used as a default SUT address if none provided by the user ||
+|| Name || Type || Default value || Description. ||
+|| ``host`` || string || ``'localhost'`` || to host to connect onto to execute the commands. ||
+|| ``username`` || string || (none) || the username to use to log onto ``host``to execute the commands. ||
+|| ``password`` || string || (none) || the ``username``'s password on ``host``. ||
+|| ``timeout`` || float || ``5.0`` || the maximum amount of time, in s, allowed to __start__ executing the command on ``host``. Includes the SSH login sequence. ||
+|| ``convert_eol``|| boolean || ``True`` || if set to True, convert ``\\r\\n`` in output to ``\\n``. This way, the templates are compatible with ProbeExec. ||
+|| ``working_dir``|| string || (none) || the diretory to go to before executing the command line. By default, the working dir is the login directory (usually the home dir). ||
+|| ``strict_host``|| boolean || ``True`` || if set to False, the probe removes the target host from $HOME/.ssh/known_hosts to avoid failing when connecting to an updated host. Otherwise, the connection fails if the SSH key changed. ||
+|| ``max_line_length``|| integer || ``150`` || the max number of characters before splitting a line over multiple lines with a \\-based continuation. Currently the splitting algorithm is pretty dumb and may split your command line in the middle of a quoted argument, possibly changing its actual value. Increasing this size may be a workaround in such cases.||
 """		
 
 

@@ -33,108 +33,113 @@ import threading
 
 class FileWatcherProbe(ProbeImplementationManager.ProbeImplementation):
 	"""
-	= Identification and Properties =
+Identification and Properties
+-----------------------------
 
-	Probe Type ID: `watcher.file`
+Probe Type ID: ``watcher.file``
 
-	Properties:
-	|| '''Name''' || '''Type''' || '''Default value''' || '''Description''' ||
-	
-	(no properties)
+Properties:
 
+None.
 
-	= Overview =
+Overview
+--------
 
-	This probe watches one or more text files locally and sends notifications whenever a line
-	matching a pattern appeared in one of them.
-	
-	You should first send a startWatchingFiles command, specifying the files to monitor (absolute paths, wildcards accepted)
-	and an optional list of regular expression patterns to match. These patterns may contain named group, such
-	as in `r'resource (?P<name>.*) played'`. In this example, if a line matching this pattern is detected
-	in one of the watched files, you will receive a notification containing the source file filename, the
-	complete line that matched the pattern, and an additional `matched_name` string entry containing the matched group.
-	
-	On start watching, the probe checks for new lines in the monitored files each second (by default). The interval
-	between two checks can be configured via the `interval` startWatchingFiles field. The probe is aware of reset/recreated
-	or new born files (when monitoring a file that has not been created yet). In case of a file reset, you may miss some
-	matching lines if new lines are created and the file is reset before the next file check, but this should not be a show-stopper
-	considering the typical use cases for this probe.
-	
-	When you do not need to watch these files anymore, send a stopWatchingFiles command. 
-	
-	The probe automatically stops watching files on unmap and when the current test case is over. 
-	
-	If you send a startWatchingFiles command while the probe is already in watching mode, the monitoring is restarted
-	with the new watching parameters.
-	
-	The `patterns` startWatchingFiles field may contain several regular expression. Only the first one that matches new lines in watched files
-	is used to generate `matched_*` notification fields.
-	
-	WARNING: in most cases, you should set a pattern list that avoids raising a notification for each new line in watched files. This is
-	particularly true when watching application log files that may generate hundred lines per second, raising as many notifications
-	to the Testerman Test Executable, saturating the whole system.  
-	
-	Possible use cases for this probe:
-	 * Checking a log file, verifying that the application logs what we expect according to external stimuli
-	 * Using a log file to check the application behaviour; for instance, when testing an IVR (Interactive Voice Response) server, it could be convenient to check in log files the file that is assumed to be played instead of using voice recognition or RTP pattern analysis.
-	 * Applied to telecom systems, could be used to check CDR (Call Detail Reports) files, possibly in conjunction with a custom codec to apply to the notified lines
-	 * Checking that no error is dumped in a log file during a test. In this case, the probe is probably controlled by a background, dedicated behaviour, setting its verdict to fail as soon as it received an error line notification.
+This probe watches one or more text files locally and sends notifications whenever a line
+matching a pattern appeared in one of them.
 
+You should first send a startWatchingFiles command, specifying the files to monitor (absolute paths, wildcards accepted)
+and an optional list of regular expression patterns to match. These patterns may contain named group, such
+as in ``r'resource (?P<name>.*) played'``. In this example, if a line matching this pattern is detected
+in one of the watched files, you will receive a notification containing the source file filename, the
+complete line that matched the pattern, and an additional ``matched_name`` string entry containing the matched group.
 
-	== Known Bugs ==
-	
-	This probe may not detect a file recreation on some file systems such as ext3,
-	in the following case:
-	 * the file is recreated/replaced with a larger file than the initial one,
-	 * AND the file's inode is not changed (which is the case with ext3, apparently).
-	
-	In this case, only the delta lines between the old file and the new ones are
-	reported, instead of reporting all the lines of the file.
+On start watching, the probe checks for new lines in the monitored files each second (by default). The interval
+between two checks can be configured via the ``interval`` startWatchingFiles field. The probe is aware of reset/recreated
+or new born files (when monitoring a file that has not been created yet). In case of a file reset, you may miss some
+matching lines if new lines are created and the file is reset before the next file check, but this should not be a show-stopper
+considering the typical use cases for this probe.
 
-	== Availability ==
+When you do not need to watch these files anymore, send a stopWatchingFiles command. 
 
-	All platforms.
+The probe automatically stops watching files on unmap and when the current test case is over. 
 
-	== Dependencies ==
+If you send a startWatchingFiles command while the probe is already in watching mode, the monitoring is restarted
+with the new watching parameters.
 
-	None.
+The ``patterns`` startWatchingFiles field may contain several regular expression. Only the first one that matches new lines in watched files
+is used to generate ``matched_*`` notification fields.
 
-	== See Also ==
+WARNING: in most cases, you should set a pattern list that avoids raising a notification for each new line in watched files. This is
+particularly true when watching application log files that may generate hundred lines per second, raising as many notifications
+to the Testerman Test Executable, saturating the whole system.  
 
-	 * ProbeDirWatcher, a probe that watches a directory for added/removed entries.
+Possible use cases for this probe:
 
+ * Checking a log file, verifying that the application logs what we expect according to external stimuli
+ * Using a log file to check the application behaviour; for instance, when testing an IVR (Interactive Voice Response) server, it could be convenient to check in log files the file that is assumed to be played instead of using voice recognition or RTP pattern analysis.
+ * Applied to telecom systems, could be used to check CDR (Call Detail Reports) files, possibly in conjunction with a custom codec to apply to the notified lines
+ * Checking that no error is dumped in a log file during a test. In this case, the probe is probably controlled by a background, dedicated behaviour, setting its verdict to fail as soon as it received an error line notification.
 
-	= TTCN-3 Types Equivalence =
+Known Bugs
+~~~~~~~~~~
 
-	The test system interface port bound to such a probe complies with the `FileWatcherPortType` port type as specified below:
-	{{{
-	type union WatchingCommand
-	{
-		StartWatchingFile startWatchingFiles,
-		anytype           stopWatchingFiles
-	}
+This probe may not detect a file recreation on some file systems such as ext3,
+in the following case:
 
-	type record StartWatchingFiles
-	{
-		record of charstring files,
-		record of charstring patterns optional, // defaulted to [ '.*' ]
-		float interval optional, // defaulted to 1.0, in second
-	}
+ * the file is recreated/replaced with a larger file than the initial one,
+ * AND the file's inode is not changed (which is the case with ext3, apparently).
 
-	type record Notification
-	{
-		charstring filename,
-		charstring line, // the matched line
-		charstring matched_* optional, // matched groups, if defined in patterns
-	}
+In this case, only the delta lines between the old file and the new ones are
+reported, instead of reporting all the lines of the file.
 
-	type port FileWatcherPortType message
-	{
-		in  WatchingCommand;
-		out Notification;
-	}
-	}}}
+Availability
+~~~~~~~~~~~~
 
+All platforms.
+
+Dependencies
+~~~~~~~~~~~~
+
+None.
+
+See Also
+~~~~~~~~
+
+ * :doc:`ProbeDirWatcher`, a probe that watches a directory for added/removed entries.
+
+TTCN-3 Types Equivalence
+------------------------
+
+The test system interface port bound to such a probe complies with the `FileWatcherPortType` port type as specified below:
+
+::
+
+  type union WatchingCommand
+  {
+    StartWatchingFile startWatchingFiles,
+    anytype           stopWatchingFiles
+  }
+  
+  type record StartWatchingFiles
+  {
+    record of charstring files,
+    record of charstring patterns optional, // defaulted to [ '.*' ]
+    float interval optional, // defaulted to 1.0, in second
+  }
+  
+  type record Notification
+  {
+    charstring filename,
+    charstring line, // the matched line
+    charstring matched_* optional, // matched groups, if defined in patterns
+  }
+  
+  type port FileWatcherPortType message
+  {
+    in  WatchingCommand;
+    out Notification;
+  }
 	"""
 	def __init__(self):
 		ProbeImplementationManager.ProbeImplementation.__init__(self)

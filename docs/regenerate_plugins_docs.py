@@ -27,13 +27,13 @@ TESTERMAN_PLUGINS_ROOT = os.path.join(TESTERMAN_SRCROOT, 'plugins')
 
 logger = logging.getLogger()
 
-logging.basicConfig(format = '%(asctime)-15s - %(message)s', level = logging.INFO)
+logging.basicConfig(format = '%(asctime)-15s - %(levelname)s - %(message)s', level = logging.INFO)
 
 
 
 plugins_index = []
 
-for (title, filename, name, docname) in plugins_docs.PLUGINS:
+for (title, description, filename, name, docname) in plugins_docs.PLUGINS:
 	with open(os.path.join(TESTERMAN_PLUGINS_ROOT, filename)) as f:
 		src = f.read()
 
@@ -49,6 +49,9 @@ for (title, filename, name, docname) in plugins_docs.PLUGINS:
 			# We add a 'title' to the document
 			f2.write(title + '\n')
 			f2.write('='*len(title) + '\n\n')
+			if not description.endswith('.'):
+				description = description + '.'
+			f2.write(description + '\n\n')
 			f2.write(doc)
 			plugins_index.append('%s.rst' % (docname))
 	
