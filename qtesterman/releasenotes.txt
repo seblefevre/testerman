@@ -7,6 +7,14 @@ KNOWN BUGS:
 - The script properties editor does not reselect the parameter you just
   updated.
 
+
+1.4.9:
+- Fixed: the selected line in log viewer is kept visible
+  when changing the visible log levels.
+- Fixed: modification flag was not set on Module & ATS changes
+  after the first document save.
+
+
 1.4.8:
 - Fixed: error handling when getting dependencies.
 - Added: support for image (png) export from visual log view.

@@ -1611,6 +1611,10 @@ class WTextualLogView(QTreeWidget):
 		"""
 		for i in range(0, self.root.childCount()):
 			self.root.child(i).applyFilter(hiddenLogClasses)
+		# Make sure the selected line remains visible, if any was selected
+		item = self.currentItem()
+		if item:
+			self.scrollToItem(item)
 
 	
 ###############################################################################
