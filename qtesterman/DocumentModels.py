@@ -738,6 +738,10 @@ class DocumentModel(QObject):
 			self.emit(SIGNAL('modificationChanged(bool)'), self._modified)
 
 	def onBodyModificationChanged(self, modified):
+		"""
+		Called when the modification status of the body aspect of the document has been updated.
+		Typically called via the doc editor signal.
+		"""
 		# If the metadata has been modified, the document status stays to "modified".
 		if self._metadataModel and self._metadataModel.isModified():
 			log("DEBUG: onBodyModificationChanged, %s, not taken into account, metadata modified (local status: %s)" % (str(modified), str(self._modified)))
@@ -754,6 +758,7 @@ class DocumentModel(QObject):
 		"""
 		To call once modifications have been saved.
 		"""
+		log("ModificationFlag reset")
 		self._modified = False
 		self._bodyModelModified = False
 		if self._metadataModel:

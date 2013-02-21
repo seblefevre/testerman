@@ -34,47 +34,65 @@ class Connection:
 
 class UdpProbe(ProbeImplementationManager.ProbeImplementation):
 	"""
-	= Identification and Properties =
+Identification and Properties
+-----------------------------
 
-	Probe Type ID: `udp`
+Probe Type ID: ``udp``
 
-	Properties:
-	|| '''Name''' || '''Type''' || '''Default value''' || '''Description''' ||
-	|| `local_ip` || string || (empty - system assigned) || Local IP address to use when sending packets ||
-	|| `local_port` || integer || 0 (system assigned) || Local port to use when sending packets ||
-	|| `listen_on_send` || boolean || True || Once something has been sent (from `local_ip`:`local_port`), keep listening for a possible response on this address. Only stops listening on unmapping. When set to False, immediately closes the sending socket once the packet has been sent. ||
-	|| `listening_ip` || string || 0.0.0.0 || Listening IP address, if listening mode is activated (see below) ||
-	|| `listening_port` || integer || 0 || Set it to a non-zero port to start listening on mapping. May be the same ip/port as `local_ip`:`local_port`. In this case, `listen_on_send` is meaningless. ||
-	|| `default_sut_address` || string (ip:port) || `None` || If set, used as a default SUT address if none provided by the user ||
-	
-	= Overview =
-	
-	...
+Properties:
 
-	== Availability ==
+.. csv-table::
+   :header: "Name","Type","Default value","Description"
 
-	All platforms.
+   "``local_ip``","string","(empty - system assigned)","Local IP address to use when sending packets"
+   "``local_port``","integer","0 (system assigned)","Local port to use when sending packets"
+   "``listen_on_send``","boolean","True","Once something has been sent (from ``local_ip``:``local_port``), keep listening for a possible response on this address. Only stops listening on unmapping. When set to False, immediately closes the sending socket once the packet has been sent."
+   "``listening_ip``","string","0.0.0.0","Listening IP address, if listening mode is activated (see below)"
+   "``listening_port``","integer","0","Set it to a non-zero port to start listening on mapping. May be the same ip/port as ``local_ip``:``local_port``. In this case, ``listen_on_send`` is meaningless."
+   "``default_sut_address``","string (ip:port)","``None``","If set, used as a default SUT address if none provided by the user"
 
-	== Dependencies ==
+Overview
+--------
 
-	None.
-	
-	== See Also ==
-	
-	Other transport-oriented probes:
-	 * ProbeSctp
-	 * ProbeTcp
+This probe is a very simple adapter that enables to send and receive UDP packets on the network.
 
-	
-	= TTCN-3 Types Equivalence =
+It can work as a listening probe, raising an event/message each time a new UDP packet is received on its ``listening_ip``:``listening_port`` address, or send an UDP packet to either ``default_sut_address``
+or to an explicit sutAddress if one was provided in the ``send()`` port command.
 
-	The test system interface port bound to such a probe complies with the `TransportProbePortType` port type as specified below:
-	{{{
-	type TransportProbePortType
-	{
-		in, out octetstring;
-	}
-	}}}
+When sending a packet, the UDP source address is set to ``local_ip``:``local_port``.
+
+Listening and sending modes can work in parallel on the same probe.
+
+Availability
+~~~~~~~~~~~~
+
+All platforms.
+
+Dependencies
+~~~~~~~~~~~~
+
+None.
+
+See Also
+~~~~~~~~
+
+Other transport-oriented probes:
+
+* :doc:`ProbeSctp`
+* :doc:`ProbeTcp`
+
+
+TTCN-3 Types Equivalence
+------------------------
+
+The test system interface port bound to such a probe complies with the ``TransportProbePortType`` port type as specified below:
+
+::
+
+  type TransportProbePortType
+  {
+    in, out octetstring;
+  }
 	"""
 	def __init__(self):
 		ProbeImplementationManager.ProbeImplementation.__init__(self)

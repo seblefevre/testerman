@@ -41,64 +41,75 @@ class Connection:
 
 class SctpProbe(ProbeImplementationManager.ProbeImplementation):
 	"""
-	= Identification and Properties =
+Identification and Properties
+-----------------------------
 
-	Probe Type ID: `sctp`
+Probe Type ID: ``sctp``
 
-	Properties:
-	|| '''Name''' || '''Type''' || '''Default value''' || '''Description''' ||
-	|| `local_ip` || string || (empty - system assigned) || Local IP address to use when sending packets ||
-	|| `local_port` || integer || `0` (system assigned) || Local port to use when sending packets ||
-	|| `listening_ip` || string || `0.0.0.0` || Listening IP address, if listening mode is activated (see below) ||
-	|| `listening_port` || integer || `0` || Set it to a non-zero port to start listening on mapping ||
-	|| `style` || string in `'tcp'`, `'udp'` || `'tcp'` || SCTP style: UDP (...) or TCP (stream)
-	|| `enable_notifications` || boolean || `False` || If set, you may get connection/disconnection notification and connectionConfirm/Error notification messages ||
-	|| `default_sut_address` || string (ip:port) || `None` || If set, used as a default SUT address if none provided by the user ||
+Properties:
 
-	= Overview =
+.. csv-table::
+   :header: "Name","Type","Default value","Description"
 
-	...
+   "``local_ip``","string","(empty - system assigned)","Local IP address to use when sending packets"
+   "``local_port``","integer","``0`` (system assigned)","Local port to use when sending packets"
+   "``listening_ip``","string","``0.0.0.0``","Listening IP address, if listening mode is activated (see below)"
+   "``listening_port``","integer","``0``","Set it to a non-zero port to start listening on mapping"
+   "``style``","string in ``'tcp'``, ``'udp'``","``'tcp'``","SCTP style: UDP or TCP (stream)"
+   "``enable_notifications``","boolean","``False``","If set, you may get connection/disconnection notification and connectionConfirm/Error notification messages"
+   "``default_sut_address``","string (ip:port)","``None``","If set, used as a default SUT address if none provided by the user"
 
-	== Availability ==
+Overview
+--------
 
-	All platforms.
+This probe was used to implement SUA-based testing with a TCPA/MAP stack to simulate HLRs.
 
-	== Dependencies ==
+Availability
+~~~~~~~~~~~~
 
-	None.
-	
-	== See Also ==
-	
-	Other transport-oriented probes:
-	 * ProbeTcp
-	 * ProbeUdp
+All platforms.
 
-	
-	= TTCN-3 Types Equivalence =
+Dependencies
+~~~~~~~~~~~~
 
-	The	test system interface port bound to such a probe complies with the `TransportProbePortType` port type as specified below:
-	{{{
-	type union NotificationType
-	{
-		record {} connectionNotification, // new incoming connection established
-		charstring disconnectionNotification, // contains a human readable reason to the disconnection
-		record {} connectionConfirm, // connection request OK
-		charstring connectionError, // contains a human readable error after a connection request
-	}
-	
-	type union RequestType
-	{
-		any connectionRequest, // request a new tcp-connection
-		any disconnectionRequest, // request a disconnection. Except a disconnectionNotification later
-	}
-	
-	type TransportProbePortType
-	{
-		in RequestType;
-		out NotificationType;
-		in, out octetstring;
-	}
-	}}}
+None.
+
+See Also
+~~~~~~~~
+
+Other transport-oriented probes:
+
+* :doc:`ProbeTcp`
+* :doc:`ProbeUdp`
+
+
+TTCN-3 Types Equivalence
+------------------------
+
+The	test system interface port bound to such a probe complies with the ``TransportProbePortType`` port type as specified below:
+
+::
+
+  type union NotificationType
+  {
+    record {} connectionNotification, // new incoming connection established
+    charstring disconnectionNotification, // contains a human readable reason to the disconnection
+    record {} connectionConfirm, // connection request OK
+    charstring connectionError, // contains a human readable error after a connection request
+  }
+  
+  type union RequestType
+  {
+    any connectionRequest, // request a new tcp-connection
+    any disconnectionRequest, // request a disconnection. Except a disconnectionNotification later
+  }
+  
+  type TransportProbePortType
+  {
+    in RequestType;
+    out NotificationType;
+    in, out octetstring;
+  }
 	"""
 	def __init__(self):
 		ProbeImplementationManager.ProbeImplementation.__init__(self)

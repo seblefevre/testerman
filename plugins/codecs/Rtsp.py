@@ -28,22 +28,69 @@ STATUSLINE_REGEXP = re.compile(r'(?P<version>[a-zA-Z0-9_/\.-]+)\s*(?P<status>[0-
 
 class RtspRequestCodec(CodecManager.Codec):
 	"""
-	Encode/decode from to:
-	
-type record RtspRequest
-{
-	charstring method,
-	charstring uri,
-	charstring version optional, // default: RTSP/1.0
-	record { charstring <header name>* } headers optional, // default: {}
-	charstring body optional, // default: ''
-}
-	
-	Automatically computes the content-length if not provided.
+Identification and Properties
+-----------------------------
 
-	Properties:
-	lower_case: if True, header names are transformed to lowercase. If not,
-              they are left as is. So take them into account when writing testcases.
+Codec ID: ``rtsp.request`` and ``rtsp.response``
+
+Properties:
+
++------------------+-----------+-----------------+---------------------------------------------------------------------------------------------------------------------------------------+
+| name             | type      | default value   | description                                                                                                                           |
++==================+===========+=================+=======================================================================================================================================+
+| ``lower_case``   | boolean   | ``False``       | decoding: transforms header names to lower case, making header name matching easier (when performing non-protocol oriented testing)   |
++------------------+-----------+-----------------+---------------------------------------------------------------------------------------------------------------------------------------+
+| ``version``      | string    | ``RTSP/1.0``    | encoding: the version to set in the request or response line, if not provided by the user                                             |
++------------------+-----------+-----------------+---------------------------------------------------------------------------------------------------------------------------------------+
+
+Overview
+--------
+
+These two codecs encode/decode RTSP requests and responses respectively
+from/to the following TTCN-3 equivalence types (optional fields are
+always provided when decoding), as provided below.
+
+During encoding, they automatically compute the content-length if not
+provided as a header, and add it only if a body is present.
+
+Content-Length verification is also performed on decoding
+automatically. If the length is not valid, the decoding attempt fails.
+
+These codecs are usually used with :doc:`the UDP probe <ProbeUdp>` to implement solutions that can test an RTSP implementation.
+
+Availability
+~~~~~~~~~~~~
+
+All platforms.
+
+Dependencies
+~~~~~~~~~~~~
+
+None.
+
+TTCN-3 Types Equivalence
+------------------------
+
+::
+
+  type record RtspRequest
+  {
+    charstring method,
+    charstring uri,
+    charstring version optional, // default: RTSP/1.0
+    record { charstring <header name>* } headers optional, // default: {}
+    charstring body optional, // default: ''
+  }
+  
+  type record RtspResponse
+  {
+    charstring version optional, // default: RSTP/1.0
+    integer status,
+    charstring reason,
+    record { charstring <header name>* } headers optional, // default: {}
+    charstring body optional, // default: ''
+  }
+
 	"""
 	def __init__(self):
 		CodecManager.Codec.__init__(self)
@@ -124,22 +171,7 @@ CodecManager.registerCodecClass('rtsp.request', RtspRequestCodec)
 
 class RtspResponseCodec(CodecManager.Codec):
 	"""
-	Encode/decode from to:
-	
-type record RtspResponse
-{
-	charstring version optional, // default: RSTP/1.0
-	integer status,
-	charstring reason,
-	record { charstring <header name>* } headers optional, // default: {}
-	charstring body optional, // default: ''
-}
-	
-	Automatically computes the content-length if not provided.
-	
-	Properties:
-	lower_case: if True, header names are transformed to lowercase. If not,
-              they are left as is. So take them into account when writing testcases.
+	See documentation in RtspRequestCodec.
 	"""
 	def __init__(self):
 		CodecManager.Codec.__init__(self)

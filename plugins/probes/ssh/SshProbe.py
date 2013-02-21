@@ -48,84 +48,95 @@ MAX_TERMINAL_LINE_LENGTH = 150
 
 class SshProbe(ProbeImplementationManager.ProbeImplementation):
 	"""
-	= Identification and Properties =
+Identification and Properties
+-----------------------------
 
-	Probe Type ID: `ssh`
+Probe Type ID: ``ssh``
 
-	Properties:
-	|| '''Name''' || '''Type''' || '''Default value''' || '''Description'''. ||
-	|| `host` || string || `'localhost'` || to host to connect onto to execute the commands. ||
-	|| `username` || string || (none) || the username to use to log onto `host`to execute the commands. ||
-	|| `password` || string || (none) || the `username`'s password on `host`. ||
-	|| `timeout` || float || `5.0` || the maximum amount of time, in s, allowed to __start__ executing the command on `host`. Includes the SSH login sequence. ||
-	|| `convert_eol`|| boolean || `True` || if set to True, convert `\\r\\n` in output to `\\n`. This way, the templates are compatible with ProbeExec. ||
-	|| `working_dir`|| string || (none) || the diretory to go to before executing the command line. By default, the working dir is the login directory (usually the home dir). ||
-	|| `strict_host`|| boolean || `True` || if set to False, the probe removes the target host from $HOME/.ssh/known_hosts to avoid failing when connecting to an updated host. Otherwise, the connection fails if the SSH key changed. ||
-	|| `max_line_length`|| integer || `150` || the max number of characters before splitting a line over multiple lines with a \\-based continuation. Currently the splitting algorithm is pretty dumb and may split your command line in the middle of a quoted argument, possibly changing its actual value. Increasing this size may be a workaround in such cases.||
+Properties:
 
+.. csv-table::
+   :header: "Name","Type","Default value","Description."
 
-	= Overview =
+   "``host``","string","``'localhost'``","to host to connect onto to execute the commands."
+   "``username``","string","(none)","the username to use to log onto ``host`` to execute the commands."
+   "``password``","string","(none)","the ``username``'s password on ``host``."
+   "``timeout``","float","``5.0``","the maximum amount of time, in s, allowed to __start__ executing the command on ``host``. Includes the SSH login sequence."
+   "``convert_eol``","boolean","``True``","if set to True, convert ``\\r\\n`` in output to ``\\n``. This way, the templates are compatible with ProbeExec."
+   "``working_dir``","string","(none)","the diretory to go to before executing the command line. By default, the working dir is the login directory (usually the home dir)."
+   "``strict_host``","boolean","``True``","if set to False, the probe removes the target host from $HOME/.ssh/known_hosts to avoid failing when connecting to an updated host. Otherwise, the connection fails if the SSH key changed."
+   "``max_line_length``","integer","``150``","the max number of characters before splitting a line over multiple lines with a \\-based continuation. Currently the splitting algorithm is pretty dumb and may split your command line in the middle of a quoted argument, possibly changing its actual value. Increasing this size may be a workaround in such cases."
 
-	This probe implements a single shot command execution interface (the same as ProbeExec) through SSH.
+Overview
+--------
 
-	Basically you just specify a command to execute that will be executed within a shell, and you get a response
-	once its execution is over. The response contains both an integer return code and the whole command output.
+This probe implements a single shot command execution interface (the same as ProbeExec) through SSH.
 
-	If you consider the command execution is too long (no response received), you can cancel it at any time from the
-	userland. Such a cancellation terminates all the subprocess tree with a SIGKILL signal. Once cancelled,
-	you should not expect a command response anymore.
+Basically you just specify a command to execute that will be executed within a shell, and you get a response
+once its execution is over. The response contains both an integer return code and the whole command output.
 
-	No interaction is possible during the command execution.
-	
-	Like ProbeExec, this probe is not re-entrant and is only able to execute one command at a time. You can execute another one
-	(using the `ExecCommand` `execute` message template) only when the previous command
-	execution was either complete (i.e. you received a `ExecResponse` message) or cancelled via a `ExecCommand` `cancel` command
-	(no response in this case).[[BR]]
-	If you need to execute multiple commands in parallel, you should use multiple probes - consider that each one is as if you 
-	had one open ssh terminal connection to your SUT.
+If you consider the command execution is too long (no response received), you can cancel it at any time from the
+userland. Such a cancellation terminates all the subprocess tree with a SIGKILL signal. Once cancelled,
+you should not expect a command response anymore.
 
-	Notes:
-	 * When starting daemons from this probe, make sure that your daemon correctly closes standard output, otherwise the probe never detects the command as being complete. For poorly written daemonized programs, adding a `>/dev/null 2>&1` in the `execute` command line is usually enough to make the probe return in such cases.
+No interaction is possible during the command execution.
 
-	== Availability ==
+Like ProbeExec, this probe is not re-entrant and is only able to execute one command at a time. You can execute another one
+(using the ``ExecCommand`` ``execute`` message template) only when the previous command
+execution was either complete (i.e. you received a ``ExecResponse`` message) or cancelled via a ``ExecCommand`` ``cancel`` command
+(no response in this case).
 
-	All POSIX platforms. Windows platforms are not supported.
+If you need to execute multiple commands in parallel, you should use multiple probes - consider that each one is as if you 
+had one open ssh terminal connection to your SUT.
 
-	== Dependencies ==
+Notes:
 
-	Requires a ssh client installed on the machine running the probe, as it is only a wrapper over it.
+* When starting daemons from this probe, make sure that your daemon correctly closes standard output, 
+  otherwise the probe never detects the command as being complete. For poorly written daemonized programs, 
+  adding a ``>/dev/null 2>&1`` in the ``execute`` command line is usually enough to make the probe return in such cases.
 
-	== See Also ==
+Availability
+~~~~~~~~~~~~
 
-	 * ProbeExec, implementing the same port type for local execution (convenient when you have no SSH access to your machine, but you must deploy an agent on it)
-	 * ProbeExecInteractive, to run a command line program and interact with it (CLI testing, etc)
+All POSIX platforms. Windows platforms are not supported.
 
+Dependencies
+~~~~~~~~~~~~
 
-	= TTCN-3 Types Equivalence =
+Requires a ssh client installed on the machine running the probe, as it is only a wrapper over it.
 
-	The test system interface port bound to such a probe complies with the `ExecPortType` port type as specified below:
-	{{{
-	type union ExecCommand
-	{
-		charstring execute,
-		anytype    cancel
-	}
+See Also
+~~~~~~~~
 
-	type record ExecResponse
-	{
-		integer status,
-		charstring output
-	}
+* :doc:`ProbeExec`, implementing the same port type for local execution (convenient when you have no SSH access to your machine, but you must deploy an agent on it)
+* :doc:`ProbeExecInteractive`, to run a command line program and interact with it (CLI testing, etc)
 
-	type charstring ErrorResponse;
+TTCN-3 Types Equivalence
+------------------------
 
-	type port ExecPortType message
-	{
-		in  ExecCommand;
-		out ExecResponse, ErrorResponse;
-	}
-	}}}
+The test system interface port bound to such a probe complies with the ``ExecPortType`` port type as specified below:
 
+::
+
+  type union ExecCommand
+  {
+    charstring execute,
+    anytype    cancel
+  }
+  
+  type record ExecResponse
+  {
+    integer status,
+    charstring output
+  }
+  
+  type charstring ErrorResponse;
+  
+  type port ExecPortType message
+  {
+    in  ExecCommand;
+    out ExecResponse, ErrorResponse;
+  }
 	"""
 	def __init__(self):
 		ProbeImplementationManager.ProbeImplementation.__init__(self)

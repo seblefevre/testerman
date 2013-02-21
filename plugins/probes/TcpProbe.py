@@ -80,107 +80,135 @@ class Connection:
 
 class TcpProbe(ProbeImplementationManager.ProbeImplementation):
 	"""
-	= Identification and Properties =
+Identification and Properties
+-----------------------------
 
-	Probe Type ID: `tcp`
+Probe Type ID: ``tcp``
 
-	Properties:
-	|| '''Name''' || '''Type''' || '''Default value''' || '''Description''' ||
-	|| `local_ip` || string || (empty - system assigned) || Local IP address to use when sending packets ||
-	|| `local_port` || integer || `0` (system assigned) || Local port to use when sending packets ||
-	|| `listening_ip` || string || `0.0.0.0` || Listening IP address, if listening mode is activated (see below) ||
-	|| `listening_port` || integer || `0` || Set it to a non-zero port to start listening on mapping ||
-	|| `size` || integer || `0` || Fixed-size packet strategy: if set to non-zero, only raises messages when `size` bytes have been received. All raised messages will hage this constant size. ||
-	|| `separator` || string || `None` || Separator-based packet strategy: if set to a character or a string, only raises messages when `separator` has been encountered; this separator is assumed to be a packet separator, and is not included in the raised message. May be useful for, for instance, \\x00-based packet protocols. ||
-	|| `enable_notifications` || boolean || `False` || If set, you may get connection/disconnection notification and connectionConfirm/Error notification messages ||
-	|| `default_sut_address` || string (ip:port) || `None` || If set, used as a default SUT address if none provided by the user ||
-	|| `default_decoder` || string || `None` || If set, must be a valid codec name (aliases are currently not supported). This codec is then used to decode all incoming packets, and only the probe only raises an incoming message when the codec successfully decoded something. This is particular convenient when used with an incremental codec (such as `'http.request'`) that will then be responsible for identifying the actual application PDU in the TCP stream. ||
-	|| `default_encoder` || string || `None` || If set, must be a valid codec name (aliases are currently not supported). This codec is then used to encode all outgoing packets, without a need to use it when sending the message through the port mapped to this probe. ||
-	|| `use_ssl` || boolean || `False` || If set, all outgoing and incoming traffic through is probe is transported over SSLv3. All TLS negotiations are performed by the probe. However, ... ||
-	|| `ssl_key` || string || `None` || The SSL key to use if `use_ssl`is set to `True`. Contains a private key associated to `ssl_certificate`, in base64 format. If not provided, a default sample private key is used. ||
-	|| `ssl_certificate` || string || `None` || The SSL certificate to use if `use_ssl`is set to `True`. Contains a certificate in PEM format that will be used when a certificate is needed by the probe connection(s). If not provided, a default one that matches the default private key, is used. ||
-	|| `connection_timeout` || float || `5.0` || The connection timeout, in s, when trying to connect to a remote party. ||
-	|| `auto_connect` || boolean || `True` || When sending a message, autoconnect to the provided address if there is no existing connections with this peer yet. ||
+Properties:
 
-	= Overview =
-	
-	This is a general purpose probe to transport anything over TCP, with basic control on connections/disconnections
-	(you can get optional incoming connection notifications or outgoing connection confirmations, or simply focus on payload exchanges),
-	and a basic support for SSL (v3).
-	
-	Such a probe may be used as a base to test any protocol transported over TCP.[[BR]]
-	Combined with the `http.request` and `http.response` codecs, this is enough to test anything based on HTTP/HTTPS. You may also use the `diameter` or `sua` codec, actually any codec that comes
-	with an incremental decoding implementation. You just have to define such a codec as the `default_decoder` property (used to decode incoming stream) or the `default_encoder` property (used to
-	encode outgoing messages).
-	
-	...
-	
-	== ADPU Identification ==
-	
-	The probe first waits for `size` bytes (if the `size` property is set) or (exclusively) for the `separator` character(s) (is the `separator` property is set).
-	If none of those properties are set, the probe only considers what it read in the stream (which is system-dependent).[[BR]]
-	Then, the default decoder, if set, tries to decode this first raw segment. If it needs more input, it waits for the next raw segment. If multiple APDUs are detected, multiple incoming messages are raised.
-	If undecodable data is detected, the raw segment is ignored.[[BR]]
-	If no decoder is set, the raw segment is raised as raw data.
+.. csv-table::
+   :header: "Name","Type","Default value","Description"
+	 
+   "``local_ip``","string","(empty - system assigned)","Local IP address to use when sending packets"
+   "``local_port``","integer","``0`` (system assigned)","Local port to use when sending packets"
+   "``listening_ip``","string","``0.0.0.0``","Listening IP address, if listening mode is activated (see below)"
+   "``listening_port``","integer","``0``","Set it to a non-zero port to start listening on mapping"
+   "``size``","integer","``0``","Fixed-size packet strategy: if set to non-zero, only raises messages when ``size`` bytes have been received. All raised messages will hage this constant size."
+   "``separator``","string","``None``","Separator-based packet strategy: if set to a character or a string, only raises messages when ``separator`` has been encountered; this separator is assumed to be a packet separator, and is not included in the raised message. May be useful for, for instance, \\x00-based packet protocols."
+   "``enable_notifications``","boolean","``False``","If set, you may get connection/disconnection notification and connectionConfirm/Error notification messages"
+   "``default_sut_address``","string (ip:port)","``None``","If set, used as a default SUT address if none provided by the user"
+   "``default_decoder``","string","``None``","If set, must be a valid codec name (aliases are currently not supported). This codec is then used to decode all incoming packets, and only the probe only raises an incoming message when the codec successfully decoded something. This is particular convenient when used with an incremental codec (such as ``'http.request'``) that will then be responsible for identifying the actual application PDU in the TCP stream."
+   "``default_encoder``","string","``None``","If set, must be a valid codec name (aliases are currently not supported). This codec is then used to encode all outgoing packets, without a need to use it when sending the message through the port mapped to this probe."
+   "``use_ssl``","boolean","``False``","If set, all outgoing and incoming traffic through is probe is transported over SSLv3. All TLS negotiations are performed by the probe. However, ..."
+   "``ssl_key``","string","``None``","The SSL key to use if ``use_ssl``is set to ``True``. Contains a private key associated to ``ssl_certificate``, in base64 format. If not provided, a default sample private key is used."
+   "``ssl_certificate``","string","``None``","The SSL certificate to use if ``use_ssl``is set to ``True``. Contains a certificate in PEM format that will be used when a certificate is needed by the probe connection(s). If not provided, a default one that matches the default private key, is used."
+   "``connection_timeout``","float","``5.0``","The connection timeout, in s, when trying to connect to a remote party."
+   "``auto_connect``","boolean","``True``","When sending a message, autoconnect to the provided address if there is no existing connections with this peer yet."
 
-	...	
+Overview
+--------
 
-	== Basic SSL Support ==
-	
-	When the property `use_ssl` is set to True, the probe automatically performs SSL negotiations after a TCP connection (probe as a client) or when accepting a new incoming connection (as a server).[[BR]]
-	If `enable_notifications` is True, the `connectionConfirm` message will contain the server's certificate in DER format. The `connectionNotification` message is planned
-	to contain the client's certificate as well, but it is currently not possible to force the (server side) probe to request it.[[BR]]
-	In addition, received certificates are not validated.
-	
-	This probe offers very little control on these negotiations and is not meant to test SSL-level stuff (for instance, how a SUT implemented SSL itself).
-	This support is provided as a convenience to interact with a SUT through higher-level
-	protocols that have been ported over SSL (HTTP, SIP, ...).
+This is a general purpose probe to transport anything over TCP, with basic control on connections/disconnections
+(you can get optional incoming connection notifications or outgoing connection confirmations, or simply focus on payload exchanges),
+and a basic support for SSL (v3).
 
-	== Availability ==
+Such a probe may be used as a base to test any protocol transported over TCP.
 
-	All platforms. However, SSL support depends on the Python SSL module, provided by default with Python 2.6 and later on Unix platforms.
+Combined with the ``http.request`` and ``http.response`` codecs, this is enough to test anything based on HTTP/HTTPS. You may also use the ``diameter`` or ``sua`` codec, actually any codec that comes
+with an incremental decoding implementation. You just have to define such a codec as the ``default_decoder`` property (used to decode incoming stream) or the ``default_encoder`` property (used to
+encode outgoing messages).
 
-	== Dependencies ==
+ADPU Identification
+~~~~~~~~~~~~~~~~~~~
 
-	None.
-	
-	== See Also ==
-	
-	Other transport-oriented probes:
-	 * ProbeSctp
-	 * ProbeUdp
+The probe first waits for ``size`` bytes (if the ``size`` property is set) or (exclusively) for the ``separator`` character(s) (is the ``separator`` property is set).
+If none of those properties are set, the probe only considers what it read in the stream (which is system-dependent).
 
-	
-	= TTCN-3 Types Equivalence =
+Then, the default decoder, if set, tries to decode this first raw segment. If it needs more input, it waits for the next raw segment. If multiple APDUs are detected, multiple incoming messages are raised.
+If undecodable data is detected, the raw segment is ignored.
 
-	The test system interface port bound to such a probe complies with the `TransportProbePortType` port type as specified below:
-	{{{
-	type union NotificationType
-	{
-		record { octetstring certificate optional } connectionNotification, // new incoming connection established
-		charstring disconnectionNotification, // contains a human readable reason to the disconnection
-		record { octetstring certificate optional } connectionConfirm, // connection request OK
-		charstring connectionError, // contains a human readable error after a connection request
-	}
-	
-	type union RequestType
-	{
-		any connectionRequest, // request a new tcp-connection
-		any disconnectionRequest, // request a disconnection. Expect a disconnectionNotification later
-		any stopListening, // stop listening on listening port
-		any startListening, // resume listening on listening port. Keep in mind that the probe is already listening on initialization
-		any disconnectAll, // close all existing incoming and outgoing connections.  Expect disconnectionNotifications afterwards
-	}
-	
-	type TransportProbePortType
-	{
-		in RequestType;
-		out NotificationType;
-		in, out octetstring;
-		out any; // if the default_decoder is used, the raised structure is the decoder's output
-		in any; // if the default_encoder is used
-	}
-	}}}
+If no decoder is set, the raw segment is raised as raw data.
+
+Basic SSL Support
+~~~~~~~~~~~~~~~~~
+
+When the property ``use_ssl`` is set to True, the probe automatically performs SSL negotiations after a TCP connection (probe as a client) or when accepting a new incoming connection (as a server).
+
+If ``enable_notifications`` is True, the ``connectionConfirm`` message will contain the server's certificate in DER format. The ``connectionNotification`` message is planned
+to contain the client's certificate as well, but it is currently not possible to force the (server side) probe to request it.
+
+In addition, received certificates are not validated, and hostnames are not verified.
+
+This probe offers very little control on these negotiations and is not meant to test SSL-level stuff (for instance, how a SUT implemented SSL itself).
+This support is provided as a convenience to interact with a SUT through higher-level protocols that have been ported over SSL (HTTP, SIP, ...).
+
+When using this probe as a server in SSL mode, if you don't provide the ``ssl_key`` and ``ssl_certificate`` parameters, a default pair is used.
+The default certificate is::
+
+  -----BEGIN CERTIFICATE-----
+  MIICPTCCAaYCCQDP2Zlsj6TqTDANBgkqhkiG9w0BAQUFADBjMQswCQYDVQQGEwJG
+  UjERMA8GA1UECBMIR3Jlbm9ibGUxDzANBgNVBAcTBk1leWxhbjESMBAGA1UEChMJ
+  VGVzdGVybWFuMRwwGgYDVQQDExNzYW1wbGUudGVzdGVybWFuLmZyMB4XDTEwMDcx
+  MzE1NTMwNloXDTIwMDcxMDE1NTMwNlowYzELMAkGA1UEBhMCRlIxETAPBgNVBAgT
+  CEdyZW5vYmxlMQ8wDQYDVQQHEwZNZXlsYW4xEjAQBgNVBAoTCVRlc3Rlcm1hbjEc
+  MBoGA1UEAxMTc2FtcGxlLnRlc3Rlcm1hbi5mcjCBnzANBgkqhkiG9w0BAQEFAAOB
+  jQAwgYkCgYEA4scEJ3BC7WcWHYHM0Z7O5rRz5W4231OfKoOCFROoV9QWzqGhvkpJ
+  IOLUVkV9SEc9tZICUdHRnmTMacwRG75YyUV8wg4w1EqVyIysRVyQySXOr8YzjZ5N
+  BJ924nw3lwk7pms2EGIBAiTmrUdEXYD97qrzaOSER3GMUmZWaSwFGf0CAwEAATAN
+  BgkqhkiG9w0BAQUFAAOBgQDET13MT8ctRiuQkfCLO8D9iyKjT94FRe+ocPbUjOts
+  gjkrh5miH91MhabQrqEcwOArF+2yuakvfgdPP3KbHgBXDwtYg/+wqAj4e/74D6Ai
+  Ud0h6vHFVZreLZm7F1QNLpgUSrPxra2xkTiH7NxEMYlJheGCnJ4F6YP3IdKMUicZ
+  Og==
+  -----END CERTIFICATE-----
+
+Availability
+~~~~~~~~~~~~
+
+All platforms. However, SSL support depends on the Python SSL module, provided by default with Python 2.6 and later on Unix platforms.
+
+Dependencies
+~~~~~~~~~~~~
+
+None.
+
+See Also
+~~~~~~~~
+
+Other transport-oriented probes:
+
+* :doc:`ProbeSctp`
+* :doc:`ProbeUdp`
+
+TTCN-3 Types Equivalence
+------------------------
+
+The test system interface port bound to such a probe complies with the ``TransportProbePortType`` port type as specified below:
+
+::
+
+  type union NotificationType
+  {
+    record { octetstring certificate optional } connectionNotification, // new incoming connection established
+    charstring disconnectionNotification, // contains a human readable reason to the disconnection
+    record { octetstring certificate optional } connectionConfirm, // connection request OK
+    charstring connectionError, // contains a human readable error after a connection request
+  }
+  
+  type union RequestType
+  {
+    any connectionRequest, // request a new tcp-connection
+    any disconnectionRequest, // request a disconnection. Except a disconnectionNotification later
+  }
+  
+  type TransportProbePortType
+  {
+    in RequestType;
+    out NotificationType;
+    in, out octetstring;
+    out any; // if the default_decoder is used, the raised structure is the decoder's output
+    in any; // if the default_encoder is used
+  }
 	"""
 	def __init__(self):
 		ProbeImplementationManager.ProbeImplementation.__init__(self)

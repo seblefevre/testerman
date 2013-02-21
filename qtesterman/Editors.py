@@ -488,6 +488,17 @@ class WModuleDocumentEditor(WDocumentEditor):
 		layout.setMargin(0)
 		self.setLayout(layout)
 
+	def onModelModificationChanged(self, change):
+		"""
+		Update the tab title (status indicator),
+		tells the Editor widget that its document is marked as not modified.
+		
+		Overriden for this document editor, using a self.primaryEditor instead of a self.editor.
+		"""
+		if not change:
+			self.primaryEditor.setModified(0)
+		self.onUrlUpdated()
+
 	def aboutToSave(self):
 		return self.verify(False)
 
@@ -817,6 +828,17 @@ class WAtsDocumentEditor(WDocumentEditor):
 		layout.addLayout(actionLayout)
 		layout.setMargin(0)
 		self.setLayout(layout)
+
+	def onModelModificationChanged(self, change):
+		"""
+		Update the tab title (status indicator),
+		tells the Editor widget that its document is marked as not modified.
+		
+		Overriden for this document editor, using a self.primaryEditor instead of a self.editor.
+		"""
+		if not change:
+			self.primaryEditor.setModified(0)
+		self.onUrlUpdated()
 
 	def updateModel(self):
 		self.model.setBodyModel(self.activeEditor.getCode())

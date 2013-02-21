@@ -4,34 +4,31 @@ Minimal Requirements
 1. Server-side:
 - Linux (some non-portable code will prevent the server from running
   on other systems for now: Tools.kill*()) (untested under other OSes for now)
-- Python 2.4+ (tested with 2.5, 2.6)
+- Python 2.6+
 - libxml2-python (debian:python-libxml2 and dependencies)
 
 2. Client-side (QTesterman):
-- Python 2.4+ (tested with 2.5+)
+- Python 2.5+ (Python 2.7+ is preferred)
 - Qt 4.4.1+ with PyQt bindings (debian:python-qt4 and dependencies)
 - QScintilla2 for python (debian:python-qscintilla2 and dependencies)
-- Tested under Ubuntu 8.10, 9.04, 9.10, OpenSUSE 11.1,
-  Windows XP SP2, Windows XP SP3, Windows Vista SP1, Windows 7
-  and should run on any systems with a Python 2.4+ available.
 
 
-Optional Requirements
-=====================
+Additional, Optional Requirements
+=================================
 
 1. For development
-- requirements above
 - pyrcc4 (included in debian:pyqt4-dev-tools)
+- sphinx (debian:python-sphinx)
 
 2. For probes
-- depends on the probe. Please see http://www.testerman.fr/
+- depends on the probe. Please see the probes documentations.
 
 3. For QTesterman default plugins
 - xslt: xslt1 and xml2 for python (debian:{python-libxslt1 ,python-libxml2} and dependencies,
   all included in libxml2 package for Windows))
 
 
-Testerman first run for the impatient
+Testerman First Run for the Impatient
 =====================================
 
 1. Configure a document root (docroot):
@@ -73,6 +70,22 @@ bin/testerman-admin setup document-root
 bin/testerman-admin start all
 bin/testerman-agent --name localhost # use -d to daemonize if you prefer
 bin/qtesterman
+
+
+Building the documentation
+==========================
+
+Testerman documentation is located in docs/.
+To build it, you need to install sphinx (1.1.3+), which
+is a python-based documentation generator.
+
+Once installed, go to docs/ and run: make html
+
+This generates html-based documentation that can be browesed from
+docs/_build/html/index.html.
+
+Other documentation options are available (single HTML page, PDF, ...)
+
 
 
 

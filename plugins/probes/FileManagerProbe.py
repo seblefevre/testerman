@@ -38,102 +38,109 @@ def fileExists(path):
 
 class FileManagerProbe(ProbeImplementationManager.ProbeImplementation):
 	"""
-	= Identification and Properties =
+Identification and Properties
+-----------------------------
 
-	Probe Type ID: `file.manager`
+Probe Type ID: ``file.manager``
 
-	Properties:
-	|| '''Name''' || '''Type''' || '''Default value''' || '''Description''' ||
-	
-	(no properties)
+Properties:
 
-	= Overview =
+None.
 
-	This probe performs basic local file management operations:
-	 * file creation (with content injection)
-	 * file move, deletion, renaming
-	 * link creation, deletion
-	
-	One of its primary purposes is providing the ability to create
-	files on the fly from resources that were embedded in your ATS or its
-	dependencies. This way, you may have no additional requirements
-	on the SUT: you can embed some reference files directly into the
-	Testerman userland instead of instructing the user to get and copy
-	files from another source.
-	
-	== Availability ==
+Overview
+--------
 
-	All platforms.
+This probe performs basic local file management operations:
 
-	== Dependencies ==
+* file creation (with content injection)
+* file move, deletion, renaming
+* link creation, deletion
 
-	None.
+One of its primary purposes is providing the ability to create
+files on the fly from resources that were embedded in your ATS or its
+dependencies. This way, you may have no additional requirements
+on the SUT: you can embed some reference files directly into the
+Testerman userland instead of instructing the user to get and copy
+files from another source.
 
-	== See Also ==
-	
-	
-	= TTCN-3 Types Equivalence =
+Availability
+~~~~~~~~~~~~
 
-	The test system interface port bound to such a probe complies with the `FileManagerPortType` port type as specified below:
-	{{{
-	type union FileManagementCommand
-	{
-		CreateFileCommand createFile,
-		CreateLinkCommand createLink,
-		RemoveCommand remove,
-		MoveCommand move,
-		CopyCommand copy,
-	}
-		
-	type record CreateFileCommand
-	{
-		universal charstring name,
-		octetstring content optional, // defaulted to an empty content
-		boolean autorevert optional, // backup existing file, restore it on unmap, defaulted to False
-	}
-	
-	type record RemoveCommand
-	{
-		universal charstring path,
-	}
-	
-	type record MoveCommand
-	{
-		universal charstring source,
-		universal charstring destination,
-	}
-	
-	type record CopyCommand
-	{
-		universal charstring source,
-		universal charstring destination,
-	}
-	
-	type record CreateLinkCommand
-	{
-		universal charstring name,
-		universal charstring target,
-		boolean autorevert optional, // backup existing file, restore it on unmap, defaulted to False
-	}
-	
-	type record CommandStatus
-	{
-		integer status,
-		universal charstring errorMessage optional, // only if status > 0
-	}
-	
-	type union FileManagementResponse
-	{
-		CommandStatus status,
-		// more to come: fileExists response, fileType response, ...
-	}
+All platforms.
 
-	type port FileManagerPortType message
-	{
-		in  FileManagementCommand;
-		out FileManagementResponse;
-	}
-	}}}
+Dependencies
+~~~~~~~~~~~~
+
+None.
+
+See Also
+~~~~~~~~
+
+
+TTCN-3 Types Equivalence
+------------------------
+
+The test system interface port bound to such a probe complies with the ``FileManagerPortType`` port type as specified below:
+
+::
+
+  type union FileManagementCommand
+  {
+    CreateFileCommand createFile,
+    CreateLinkCommand createLink,
+    RemoveCommand remove,
+    MoveCommand move,
+    CopyCommand copy,
+  }
+  
+  type record CreateFileCommand
+  {
+    universal charstring name,
+    octetstring content optional, // defaulted to an empty content
+    boolean autorevert optional,  // backup existing file, restore it on unmap, defaulted to False
+  }
+  
+  type record RemoveCommand
+  {
+    universal charstring path,
+  }
+  
+  type record MoveCommand
+  {
+    universal charstring source,
+    universal charstring destination,
+  }
+  
+  type record CopyCommand
+  {
+    universal charstring source,
+    universal charstring destination,
+  }
+  
+  type record CreateLinkCommand
+  {
+    universal charstring name,
+    universal charstring target,
+    boolean autorevert optional, // backup existing file, restore it on unmap, defaulted to False
+  }
+  
+  type record CommandStatus
+  {
+    integer status,
+    universal charstring errorMessage optional, // only if status > 0
+  }
+  
+  type union FileManagementResponse
+  {
+    CommandStatus status,
+    // more to come: fileExists response, fileType response, ...
+  }
+  
+  type port FileManagerPortType message
+  {
+    in  FileManagementCommand;
+    out FileManagementResponse;
+  }
 	"""
 	def __init__(self):
 		ProbeImplementationManager.ProbeImplementation.__init__(self)
