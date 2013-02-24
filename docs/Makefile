@@ -47,6 +47,18 @@ clean:
 	-rm -rf *.pyc
 	-rm -rf plugins/autogen/*
 
+# Rebuild html, latexpdf and remove all unnecessary
+# temporary files, so that the docs/_build dir is ready to be pushed to gh-pages branch
+# The dir to push is "current".
+distrib: clean html latexpdf
+	-rm -rf current
+	-mv $(BUILDDIR)/latex/Testerman.pdf $(BUILDDIR)/Testerman.pdf
+	-rm -rf *.pyc
+	-rm -rf $(BUILDDIR)/doctrees
+	-rm -rf $(BUILDDIR)/latex
+	-mv $(BUILDDIR) current
+	@echo HTML and PDF documentations are available in /current.
+
 regen_docs:
 	@echo "Regenerating Plugins documentation..."
 	@$(REGENERATE_PLUGINS_DOCS)
