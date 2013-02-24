@@ -1,0 +1,360 @@
+
+<!DOCTYPE html>
+
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>Best Practices &mdash; Testerman 1.4.0 documentation</title>
+    
+    <link rel="stylesheet" href="../_static/basic.css" type="text/css" />
+    <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
+    <link rel="stylesheet" href="../_static/css/bootstrap-2.2.1.min.css" type="text/css" />
+    <link rel="stylesheet" href="../_static/bootstrap-sphinx.css" type="text/css" />
+    <link rel="stylesheet" href="../_static/css/bootstrap-responsive-2.2.1.min.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '../',
+        VERSION:     '1.4.0',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true
+      };
+    </script>
+    <script type="text/javascript" src="../_static/jquery.js"></script>
+    <script type="text/javascript" src="../_static/underscore.js"></script>
+    <script type="text/javascript" src="../_static/doctools.js"></script>
+    <script type="text/javascript" src="../_static/js/bootstrap-2.2.1.min.js"></script>
+    <script type="text/javascript" src="../_static/bootstrap-sphinx.js"></script>
+    <link rel="top" title="Testerman 1.4.0 documentation" href="../index.html" />
+    <link rel="next" title="Codecs and Probes Overview" href="../plugins/index.html" />
+    <link rel="prev" title="General Concepts" href="TestermanLanguageReference.html" />
+<meta charset='utf-8'>
+<meta http-equiv='X-UA-Compatible' content='IE=edge,chrome=1'>
+<meta name='viewport' content='width=device-width, initial-scale=1.0, maximum-scale=1'>
+<meta name="apple-mobile-web-app-capable" content="yes">
+
+  </head>
+  <body>
+<div class="container">
+  
+  <div id="navbar" class="navbar navbar-inverse navbar-fixed-top">
+    <div class="navbar-inner">
+      <!-- .btn-navbar is used as the toggle for collapsed navbar content -->
+      <button class="btn btn-navbar" data-toggle="collapse" data-target=".nav-collapse">
+        <span class="icon-bar"></span>
+        <span class="icon-bar"></span>
+        <span class="icon-bar"></span>
+      </button>
+
+      <a class="brand" href="../index.html">Testerman</a>
+      <span class="navbar-text pull-left"><b>1.4</b></span>
+
+      <div class="nav-collapse">
+        <ul class="nav">
+          <li class="divider-vertical"></li>
+          
+            <li class="dropdown">
+  <a href="../index.html" class="dropdown-toggle" data-toggle="dropdown">Site <b class="caret"></b></a>
+  <ul class="dropdown-menu globaltoc"><ul>
+<li class="toctree-l1"><a class="reference internal" href="About.html">Welcome to Testerman</a></li>
+<li class="toctree-l1"><a class="reference internal" href="About.html#about">About</a></li>
+<li class="toctree-l1"><a class="reference internal" href="About.html#contact">Contact</a></li>
+<li class="toctree-l1"><a class="reference internal" href="GetTesterman.html">Getting Testerman</a></li>
+</ul>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="TestermanOverview.html">Testerman Overview</a></li>
+<li class="toctree-l1"><a class="reference internal" href="TestermanQuickStart.html">Quick Start</a></li>
+<li class="toctree-l1"><a class="reference internal" href="TestermanQuickStart.html#external-resources">External Resources</a></li>
+<li class="toctree-l1"><a class="reference internal" href="QTesterman.html">QTesterman</a></li>
+<li class="toctree-l1"><a class="reference internal" href="TestermanReferenceGuide.html">Testerman Reference Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="TestermanLanguageReference.html">General Concepts</a></li>
+<li class="toctree-l1"><a class="reference internal" href="TestermanLanguageReference.html#reference-testerman-api">Reference: Testerman API</a></li>
+<li class="toctree-l1 current"><a class="current reference internal" href="">Best Practices</a></li>
+</ul>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../plugins/index.html">Codecs and Probes Overview</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../plugins/index.html#codecs">Codecs</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../plugins/index.html#test-adapters-probes">Test Adapters (Probes)</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../plugins/index.html#codecs-and-probes-references">Codecs and Probes References</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../plugins/index.html#developing-new-codecs-and-probes">Developing New Codecs and Probes</a></li>
+</ul>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="TestermanAdministrationGuide.html">Testerman Administration Guide</a></li>
+</ul>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="TestermanInternals.html">Testerman Internals</a></li>
+</ul>
+</ul>
+</li>
+            <li class="dropdown">
+  <a href="#" class="dropdown-toggle" data-toggle="dropdown">Page <b class="caret"></b></a>
+  <ul class="dropdown-menu localtoc"><ul>
+<li><a class="reference internal" href="#">Best Practices</a><ul>
+<li><a class="reference internal" href="#naming-conventions">Naming Conventions</a><ul>
+<li><a class="reference internal" href="#ats-naming-conventions">ATS Naming Conventions</a></li>
+<li><a class="reference internal" href="#paths-and-filenames">Paths and Filenames</a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#reusability">Reusability</a><ul>
+<li><a class="reference internal" href="#testcases">Testcases</a></li>
+<li><a class="reference internal" href="#behaviours">Behaviours</a></li>
+<li><a class="reference internal" href="#templates">Templates</a></li>
+<li><a class="reference internal" href="#functions">Functions</a><ul>
+<li><a class="reference internal" href="#simple-functions">Simple Functions</a></li>
+<li><a class="reference internal" href="#functions-involving-ports">Functions Involving Ports</a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li><a class="reference internal" href="#ats">ATS</a><ul>
+<li><a class="reference internal" href="#control-part">Control Part</a></li>
+<li><a class="reference internal" href="#ats-parameters-variables">ATS Parameters (Variables)</a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#module">Module</a></li>
+</ul>
+</li>
+</ul>
+</ul>
+</li>
+          
+          
+            
+  <li><a href="TestermanLanguageReference.html"
+         title="previous chapter">&laquo; General Concepts</a></li>
+  <li><a href="../plugins/index.html"
+         title="next chapter">Codecs and Probes Overview &raquo;</a></li>
+          
+          
+            <li>
+  <a href="../_sources/main/BestPractices.txt"
+     rel="nofollow">Source</a></li>
+          
+        </ul>
+
+        
+          
+<form class="navbar-search pull-right" style="margin-bottom:-3px;" action="../search.html" method="get">
+  <input type="text" name="q" placeholder="Search" />
+  <input type="hidden" name="check_keywords" value="yes" />
+  <input type="hidden" name="area" value="default" />
+</form>
+        
+      </div>
+    </div>
+  </div>
+
+  
+  <div class="section" id="best-practices">
+<h1>Best Practices<a class="headerlink" href="#best-practices" title="Permalink to this headline">¶</a></h1>
+<div class="section" id="naming-conventions">
+<h2>Naming Conventions<a class="headerlink" href="#naming-conventions" title="Permalink to this headline">¶</a></h2>
+<div class="section" id="ats-naming-conventions">
+<h3>ATS Naming Conventions<a class="headerlink" href="#ats-naming-conventions" title="Permalink to this headline">¶</a></h3>
+<p>Testerman adapts the <a class="reference external" href="http://www.ttcn-3.org/NamingConventions.htm">TTCN-3 naming
+conventions</a> to its
+context:</p>
+<table border="1" class="docutils">
+<colgroup>
+<col width="14%" />
+<col width="9%" />
+<col width="3%" />
+<col width="14%" />
+<col width="60%" />
+</colgroup>
+<thead valign="bottom">
+<tr class="row-odd"><th class="head"><strong>Language element</strong></th>
+<th class="head"><strong>Naming convention</strong></th>
+<th class="head"><strong>Prefix</strong></th>
+<th class="head"><strong>Example</strong></th>
+<th class="head"><strong>Comments</strong></th>
+</tr>
+</thead>
+<tbody valign="top">
+<tr class="row-even"><td>message template</td>
+<td>mixedCase</td>
+<td><tt class="docutils literal"><span class="pre">m_</span></tt></td>
+<td><tt class="docutils literal"><span class="pre">m_sipInvite</span></tt></td>
+<td>These templates are both usable as sending and receiving templates. This naming convention applies to both templates functions and templates constants.</td>
+</tr>
+<tr class="row-odd"><td>message template with wildcard or matching expression</td>
+<td>mixedCase</td>
+<td><tt class="docutils literal"><span class="pre">mw_</span></tt></td>
+<td><tt class="docutils literal"><span class="pre">mw_sipInviteResponse</span></tt></td>
+<td>These templates are (typically) only valid as receiving templates, as wilcards and maching mechanisms may prevent from valuating them when sending them. This naming convention applies to both templates functions and templates constants.</td>
+</tr>
+<tr class="row-even"><td>port</td>
+<td>mixedCase</td>
+<td>(none)</td>
+<td><tt class="docutils literal"><span class="pre">ssh</span></tt>, <tt class="docutils literal"><span class="pre">rtp01</span></tt>, <tt class="docutils literal"><span class="pre">sipSignalling</span></tt></td>
+<td>&nbsp;</td>
+</tr>
+<tr class="row-odd"><td>port name</td>
+<td>mixedCase</td>
+<td>(none)</td>
+<td><tt class="docutils literal"><span class="pre">system['iscInterface']</span></tt>, <tt class="docutils literal"><span class="pre">mtc['sipSignalling']</span></tt></td>
+<td>&nbsp;</td>
+</tr>
+<tr class="row-even"><td>test component</td>
+<td>mixedCase</td>
+<td>(none)</td>
+<td><tt class="docutils literal"><span class="pre">endpoint01</span></tt>, <tt class="docutils literal"><span class="pre">hlrSimulator</span></tt></td>
+<td>&nbsp;</td>
+</tr>
+<tr class="row-odd"><td>function</td>
+<td>mixedCase</td>
+<td><tt class="docutils literal"><span class="pre">f_</span></tt></td>
+<td><tt class="docutils literal"><span class="pre">f_executeCommand</span></tt></td>
+<td>&nbsp;</td>
+</tr>
+<tr class="row-even"><td>timer</td>
+<td>mixedCase</td>
+<td><tt class="docutils literal"><span class="pre">t_</span></tt></td>
+<td><tt class="docutils literal"><span class="pre">t_watchogTimer</span></tt></td>
+<td>&nbsp;</td>
+</tr>
+<tr class="row-odd"><td>ATS parameter</td>
+<td>upper case, _ as word separator</td>
+<td><tt class="docutils literal"><span class="pre">PX_</span></tt></td>
+<td><tt class="docutils literal"><span class="pre">PX_HOST_IP_PORT</span></tt></td>
+<td>The QTesterman client enforces this name convention when defining new ATS parameters.</td>
+</tr>
+<tr class="row-even"><td>test case (class name)</td>
+<td>upper case, _ as word separator</td>
+<td><tt class="docutils literal"><span class="pre">TC_</span></tt></td>
+<td><tt class="docutils literal"><span class="pre">TC_ORACLE_CONNECTION_001</span></tt></td>
+<td>The class name is also used as a test case identifier in log reporters</td>
+</tr>
+<tr class="row-odd"><td>behaviour (class name)</td>
+<td>CamelCase</td>
+<td>(none)</td>
+<td><tt class="docutils literal"><span class="pre">SipEndpoint</span></tt>, <tt class="docutils literal"><span class="pre">HlrSimulator</span></tt></td>
+<td>&nbsp;</td>
+</tr>
+<tr class="row-even"><td>constant</td>
+<td>mixedCase</td>
+<td><tt class="docutils literal"><span class="pre">c_</span></tt></td>
+<td><tt class="docutils literal"><span class="pre">c_suaAspActive</span> <span class="pre">=</span> <span class="pre">0x04</span></tt></td>
+<td>&nbsp;</td>
+</tr>
+<tr class="row-odd"><td>parameters (test case, behaviour, functions, ...)</td>
+<td>mixedCase</td>
+<td>(none)</td>
+<td><tt class="docutils literal"><span class="pre">controlPort</span></tt>, <tt class="docutils literal"><span class="pre">autoConnectSctp</span></tt></td>
+<td>&nbsp;</td>
+</tr>
+<tr class="row-even"><td>preamble (class name)</td>
+<td>upper case, _ as word separator</td>
+<td><tt class="docutils literal"><span class="pre">PRE_</span></tt></td>
+<td><tt class="docutils literal"><span class="pre">PRE_VOICEMAIL_INITIALIZATION</span></tt></td>
+<td>&nbsp;</td>
+</tr>
+<tr class="row-odd"><td>postamble (class name)</td>
+<td>upper case, _ as word separator</td>
+<td><tt class="docutils literal"><span class="pre">POST_</span></tt></td>
+<td><tt class="docutils literal"><span class="pre">POST_VOICEMAIL_CLEANUP</span></tt></td>
+<td>&nbsp;</td>
+</tr>
+</tbody>
+</table>
+<p>This naming convention is suggested to make a difference between what
+belongs to the userland (user-written) and what is part of the Testerman
+API availablt to the user, which uses a <tt class="docutils literal"><span class="pre">lower_case</span></tt> convention.</p>
+</div>
+<div class="section" id="paths-and-filenames">
+<h3>Paths and Filenames<a class="headerlink" href="#paths-and-filenames" title="Permalink to this headline">¶</a></h3>
+<p>Some rules on filenames:</p>
+<ul class="simple">
+<li>Use ascii characters and lower case only for ATS and Campaign
+filenames, and <tt class="docutils literal"><span class="pre">_</span></tt> as a word separator: <tt class="docutils literal"><span class="pre">my_sample.ats</span></tt>,
+<tt class="docutils literal"><span class="pre">unconditional_call_forward.ats</span></tt>, <tt class="docutils literal"><span class="pre">class5_services.campaign</span></tt>, ...</li>
+<li>Use ascii characters and CamelCase (with initial and acronyms
+considered as a word) for module filenames: <tt class="docutils literal"><span class="pre">SipMessages.py</span></tt>,
+<tt class="docutils literal"><span class="pre">DiameterServerBehaviours.py</span></tt>, ...</li>
+<li>Use lower case only for directory names, and <tt class="docutils literal"><span class="pre">_</span></tt> as a word
+separator. In particular, do NOT use a dot (<tt class="docutils literal"><span class="pre">.</span></tt>) in a directory
+name. This would prevent modules from being imported correctly.</li>
+</ul>
+<p>Additionally, the following repository structure is advised:</p>
+<ul class="simple">
+<li><tt class="docutils literal"><span class="pre">/</span></tt> : no files in the repository root</li>
+<li><tt class="docutils literal"><span class="pre">/samples/</span></tt>: contains samples (either Testerman&#8217;s provided, or
+provided by your teams - in this case creating subdirectories in it
+could be a good idea)</li>
+<li><tt class="docutils literal"><span class="pre">/sandbox/</span></tt>: a place where users can play and save their test
+documents, without working in a test project context yet (feasibility
+tests, demo, troubleshooting, ...)</li>
+<li><tt class="docutils literal"><span class="pre">/modules/</span></tt>: user created or site-related shared modules, available
+to all (SIP endpoint behaviours, convenience functions according to
+your organization&#8217;s use of Testerman, ...)</li>
+<li><tt class="docutils literal"><span class="pre">/...</span></tt>: any other directory, according to your organization,
+projects, teams, etc. Mapping this subtree to a subtree in an
+external test system could be a good idea, too.</li>
+</ul>
+</div>
+</div>
+<div class="section" id="reusability">
+<h2>Reusability<a class="headerlink" href="#reusability" title="Permalink to this headline">¶</a></h2>
+<p>This section suggests several best practices to maximize the reusability
+of the objects you design.</p>
+<div class="section" id="testcases">
+<h3>Testcases<a class="headerlink" href="#testcases" title="Permalink to this headline">¶</a></h3>
+<p>...</p>
+</div>
+<div class="section" id="behaviours">
+<h3>Behaviours<a class="headerlink" href="#behaviours" title="Permalink to this headline">¶</a></h3>
+<p>...</p>
+</div>
+<div class="section" id="templates">
+<h3>Templates<a class="headerlink" href="#templates" title="Permalink to this headline">¶</a></h3>
+<p>...</p>
+</div>
+<div class="section" id="functions">
+<h3>Functions<a class="headerlink" href="#functions" title="Permalink to this headline">¶</a></h3>
+<p>...</p>
+<div class="section" id="simple-functions">
+<h4>Simple Functions<a class="headerlink" href="#simple-functions" title="Permalink to this headline">¶</a></h4>
+<p>...</p>
+</div>
+<div class="section" id="functions-involving-ports">
+<h4>Functions Involving Ports<a class="headerlink" href="#functions-involving-ports" title="Permalink to this headline">¶</a></h4>
+<p>...</p>
+</div>
+</div>
+</div>
+<div class="section" id="ats">
+<h2>ATS<a class="headerlink" href="#ats" title="Permalink to this headline">¶</a></h2>
+<div class="section" id="control-part">
+<h3>Control Part<a class="headerlink" href="#control-part" title="Permalink to this headline">¶</a></h3>
+<p>...</p>
+</div>
+<div class="section" id="ats-parameters-variables">
+<h3>ATS Parameters (Variables)<a class="headerlink" href="#ats-parameters-variables" title="Permalink to this headline">¶</a></h3>
+<p>...</p>
+</div>
+</div>
+<div class="section" id="module">
+<h2>Module<a class="headerlink" href="#module" title="Permalink to this headline">¶</a></h2>
+<p>...</p>
+</div>
+</div>
+
+
+</div>
+<footer class="footer">
+  <div class="container">
+    <p class="pull-right">
+      <a href="#">Back to top</a>
+      
+    </p>
+    <p>
+        &copy; Copyright 2009-2013, Sébastien Lefèvre.<br/>
+      Created using <a href="http://sphinx.pocoo.org/">Sphinx</a> 1.1.3.<br/>
+    </p>
+  </div>
+</footer>
+  </body>
+</html>

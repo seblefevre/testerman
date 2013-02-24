@@ -1,0 +1,251 @@
+
+<!DOCTYPE html>
+
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>File Watcher Probe &mdash; Testerman 1.4.0 documentation</title>
+    
+    <link rel="stylesheet" href="../../_static/basic.css" type="text/css" />
+    <link rel="stylesheet" href="../../_static/pygments.css" type="text/css" />
+    <link rel="stylesheet" href="../../_static/css/bootstrap-2.2.1.min.css" type="text/css" />
+    <link rel="stylesheet" href="../../_static/bootstrap-sphinx.css" type="text/css" />
+    <link rel="stylesheet" href="../../_static/css/bootstrap-responsive-2.2.1.min.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '../../',
+        VERSION:     '1.4.0',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true
+      };
+    </script>
+    <script type="text/javascript" src="../../_static/jquery.js"></script>
+    <script type="text/javascript" src="../../_static/underscore.js"></script>
+    <script type="text/javascript" src="../../_static/doctools.js"></script>
+    <script type="text/javascript" src="../../_static/js/bootstrap-2.2.1.min.js"></script>
+    <script type="text/javascript" src="../../_static/bootstrap-sphinx.js"></script>
+    <link rel="top" title="Testerman 1.4.0 documentation" href="../../index.html" />
+    <link rel="up" title="&lt;no title&gt;" href="toc.html" />
+    <link rel="next" title="Local Execution Probe" href="ProbeExec.html" />
+    <link rel="prev" title="Directory Watcher Probe" href="ProbeDirWatcher.html" />
+<meta charset='utf-8'>
+<meta http-equiv='X-UA-Compatible' content='IE=edge,chrome=1'>
+<meta name='viewport' content='width=device-width, initial-scale=1.0, maximum-scale=1'>
+<meta name="apple-mobile-web-app-capable" content="yes">
+
+  </head>
+  <body>
+<div class="container">
+  
+  <div id="navbar" class="navbar navbar-inverse navbar-fixed-top">
+    <div class="navbar-inner">
+      <!-- .btn-navbar is used as the toggle for collapsed navbar content -->
+      <button class="btn btn-navbar" data-toggle="collapse" data-target=".nav-collapse">
+        <span class="icon-bar"></span>
+        <span class="icon-bar"></span>
+        <span class="icon-bar"></span>
+      </button>
+
+      <a class="brand" href="../../index.html">Testerman</a>
+      <span class="navbar-text pull-left"><b>1.4</b></span>
+
+      <div class="nav-collapse">
+        <ul class="nav">
+          <li class="divider-vertical"></li>
+          
+            <li class="dropdown">
+  <a href="../../index.html" class="dropdown-toggle" data-toggle="dropdown">Site <b class="caret"></b></a>
+  <ul class="dropdown-menu globaltoc"><ul>
+<li class="toctree-l1"><a class="reference internal" href="../../main/About.html">Welcome to Testerman</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../main/About.html#about">About</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../main/About.html#contact">Contact</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../main/GetTesterman.html">Getting Testerman</a></li>
+</ul>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../main/TestermanOverview.html">Testerman Overview</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../main/TestermanQuickStart.html">Quick Start</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../main/TestermanQuickStart.html#external-resources">External Resources</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../main/QTesterman.html">QTesterman</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../main/TestermanReferenceGuide.html">Testerman Reference Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../main/TestermanLanguageReference.html">General Concepts</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../main/TestermanLanguageReference.html#reference-testerman-api">Reference: Testerman API</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../main/BestPractices.html">Best Practices</a></li>
+</ul>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../index.html">Codecs and Probes Overview</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../index.html#codecs">Codecs</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../index.html#test-adapters-probes">Test Adapters (Probes)</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../index.html#codecs-and-probes-references">Codecs and Probes References</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../index.html#developing-new-codecs-and-probes">Developing New Codecs and Probes</a></li>
+</ul>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../main/TestermanAdministrationGuide.html">Testerman Administration Guide</a></li>
+</ul>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../main/TestermanInternals.html">Testerman Internals</a></li>
+</ul>
+</ul>
+</li>
+            <li class="dropdown">
+  <a href="#" class="dropdown-toggle" data-toggle="dropdown">Page <b class="caret"></b></a>
+  <ul class="dropdown-menu localtoc"><ul>
+<li><a class="reference internal" href="#">File Watcher Probe</a><ul>
+<li><a class="reference internal" href="#identification-and-properties">Identification and Properties</a></li>
+<li><a class="reference internal" href="#overview">Overview</a><ul>
+<li><a class="reference internal" href="#known-bugs">Known Bugs</a></li>
+<li><a class="reference internal" href="#availability">Availability</a></li>
+<li><a class="reference internal" href="#dependencies">Dependencies</a></li>
+<li><a class="reference internal" href="#see-also">See Also</a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#ttcn-3-types-equivalence">TTCN-3 Types Equivalence</a></li>
+</ul>
+</li>
+</ul>
+</ul>
+</li>
+          
+          
+            
+  <li><a href="ProbeDirWatcher.html"
+         title="previous chapter">&laquo; Directory Watcher Probe</a></li>
+  <li><a href="ProbeExec.html"
+         title="next chapter">Local Execution Probe &raquo;</a></li>
+          
+          
+            <li>
+  <a href="../../_sources/plugins/autogen/ProbeFileWatcher.txt"
+     rel="nofollow">Source</a></li>
+          
+        </ul>
+
+        
+          
+<form class="navbar-search pull-right" style="margin-bottom:-3px;" action="../../search.html" method="get">
+  <input type="text" name="q" placeholder="Search" />
+  <input type="hidden" name="check_keywords" value="yes" />
+  <input type="hidden" name="area" value="default" />
+</form>
+        
+      </div>
+    </div>
+  </div>
+
+  
+  <div class="section" id="file-watcher-probe">
+<h1>File Watcher Probe<a class="headerlink" href="#file-watcher-probe" title="Permalink to this headline">¶</a></h1>
+<p>Watch for changes in files.</p>
+<div class="section" id="identification-and-properties">
+<h2>Identification and Properties<a class="headerlink" href="#identification-and-properties" title="Permalink to this headline">¶</a></h2>
+<p>Probe Type ID: <tt class="docutils literal"><span class="pre">watcher.file</span></tt></p>
+<p>Properties:</p>
+<p>None.</p>
+</div>
+<div class="section" id="overview">
+<h2>Overview<a class="headerlink" href="#overview" title="Permalink to this headline">¶</a></h2>
+<p>This probe watches one or more text files locally and sends notifications whenever a line
+matching a pattern appeared in one of them.</p>
+<p>You should first send a startWatchingFiles command, specifying the files to monitor (absolute paths, wildcards accepted)
+and an optional list of regular expression patterns to match. These patterns may contain named group, such
+as in <tt class="docutils literal"><span class="pre">r'resource</span> <span class="pre">(?P&lt;name&gt;.*)</span> <span class="pre">played'</span></tt>. In this example, if a line matching this pattern is detected
+in one of the watched files, you will receive a notification containing the source file filename, the
+complete line that matched the pattern, and an additional <tt class="docutils literal"><span class="pre">matched_name</span></tt> string entry containing the matched group.</p>
+<p>On start watching, the probe checks for new lines in the monitored files each second (by default). The interval
+between two checks can be configured via the <tt class="docutils literal"><span class="pre">interval</span></tt> startWatchingFiles field. The probe is aware of reset/recreated
+or new born files (when monitoring a file that has not been created yet). In case of a file reset, you may miss some
+matching lines if new lines are created and the file is reset before the next file check, but this should not be a show-stopper
+considering the typical use cases for this probe.</p>
+<p>When you do not need to watch these files anymore, send a stopWatchingFiles command.</p>
+<p>The probe automatically stops watching files on unmap and when the current test case is over.</p>
+<p>If you send a startWatchingFiles command while the probe is already in watching mode, the monitoring is restarted
+with the new watching parameters.</p>
+<p>The <tt class="docutils literal"><span class="pre">patterns</span></tt> startWatchingFiles field may contain several regular expression. Only the first one that matches new lines in watched files
+is used to generate <tt class="docutils literal"><span class="pre">matched_*</span></tt> notification fields.</p>
+<p>WARNING: in most cases, you should set a pattern list that avoids raising a notification for each new line in watched files. This is
+particularly true when watching application log files that may generate hundred lines per second, raising as many notifications
+to the Testerman Test Executable, saturating the whole system.</p>
+<p>Possible use cases for this probe:</p>
+<ul class="simple">
+<li>Checking a log file, verifying that the application logs what we expect according to external stimuli</li>
+<li>Using a log file to check the application behaviour; for instance, when testing an IVR (Interactive Voice Response) server, it could be convenient to check in log files the file that is assumed to be played instead of using voice recognition or RTP pattern analysis.</li>
+<li>Applied to telecom systems, could be used to check CDR (Call Detail Reports) files, possibly in conjunction with a custom codec to apply to the notified lines</li>
+<li>Checking that no error is dumped in a log file during a test. In this case, the probe is probably controlled by a background, dedicated behaviour, setting its verdict to fail as soon as it received an error line notification.</li>
+</ul>
+<div class="section" id="known-bugs">
+<h3>Known Bugs<a class="headerlink" href="#known-bugs" title="Permalink to this headline">¶</a></h3>
+<p>This probe may not detect a file recreation on some file systems such as ext3,
+in the following case:</p>
+<ul class="simple">
+<li>the file is recreated/replaced with a larger file than the initial one,</li>
+<li>AND the file&#8217;s inode is not changed (which is the case with ext3, apparently).</li>
+</ul>
+<p>In this case, only the delta lines between the old file and the new ones are
+reported, instead of reporting all the lines of the file.</p>
+</div>
+<div class="section" id="availability">
+<h3>Availability<a class="headerlink" href="#availability" title="Permalink to this headline">¶</a></h3>
+<p>All platforms.</p>
+</div>
+<div class="section" id="dependencies">
+<h3>Dependencies<a class="headerlink" href="#dependencies" title="Permalink to this headline">¶</a></h3>
+<p>None.</p>
+</div>
+<div class="section" id="see-also">
+<h3>See Also<a class="headerlink" href="#see-also" title="Permalink to this headline">¶</a></h3>
+<ul class="simple">
+<li><a class="reference internal" href="ProbeDirWatcher.html"><em>Directory Watcher Probe</em></a>, a probe that watches a directory for added/removed entries.</li>
+</ul>
+</div>
+</div>
+<div class="section" id="ttcn-3-types-equivalence">
+<h2>TTCN-3 Types Equivalence<a class="headerlink" href="#ttcn-3-types-equivalence" title="Permalink to this headline">¶</a></h2>
+<p>The test system interface port bound to such a probe complies with the <cite>FileWatcherPortType</cite> port type as specified below:</p>
+<div class="highlight-python"><pre>type union WatchingCommand
+{
+  StartWatchingFile startWatchingFiles,
+  anytype           stopWatchingFiles
+}
+
+type record StartWatchingFiles
+{
+  record of charstring files,
+  record of charstring patterns optional, // defaulted to [ '.*' ]
+  float interval optional, // defaulted to 1.0, in second
+}
+
+type record Notification
+{
+  charstring filename,
+  charstring line, // the matched line
+  charstring matched_* optional, // matched groups, if defined in patterns
+}
+
+type port FileWatcherPortType message
+{
+  in  WatchingCommand;
+  out Notification;
+}</pre>
+</div>
+</div>
+</div>
+
+
+</div>
+<footer class="footer">
+  <div class="container">
+    <p class="pull-right">
+      <a href="#">Back to top</a>
+      
+    </p>
+    <p>
+        &copy; Copyright 2009-2013, Sébastien Lefèvre.<br/>
+      Created using <a href="http://sphinx.pocoo.org/">Sphinx</a> 1.1.3.<br/>
+    </p>
+  </div>
+</footer>
+  </body>
+</html>

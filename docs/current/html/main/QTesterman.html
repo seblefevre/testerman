@@ -1,0 +1,515 @@
+
+<!DOCTYPE html>
+
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>QTesterman &mdash; Testerman 1.4.0 documentation</title>
+    
+    <link rel="stylesheet" href="../_static/basic.css" type="text/css" />
+    <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
+    <link rel="stylesheet" href="../_static/css/bootstrap-2.2.1.min.css" type="text/css" />
+    <link rel="stylesheet" href="../_static/bootstrap-sphinx.css" type="text/css" />
+    <link rel="stylesheet" href="../_static/css/bootstrap-responsive-2.2.1.min.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '../',
+        VERSION:     '1.4.0',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true
+      };
+    </script>
+    <script type="text/javascript" src="../_static/jquery.js"></script>
+    <script type="text/javascript" src="../_static/underscore.js"></script>
+    <script type="text/javascript" src="../_static/doctools.js"></script>
+    <script type="text/javascript" src="../_static/js/bootstrap-2.2.1.min.js"></script>
+    <script type="text/javascript" src="../_static/bootstrap-sphinx.js"></script>
+    <link rel="top" title="Testerman 1.4.0 documentation" href="../index.html" />
+    <link rel="next" title="Testerman Reference Guide" href="TestermanReferenceGuide.html" />
+    <link rel="prev" title="Quick Start" href="TestermanQuickStart.html" />
+<meta charset='utf-8'>
+<meta http-equiv='X-UA-Compatible' content='IE=edge,chrome=1'>
+<meta name='viewport' content='width=device-width, initial-scale=1.0, maximum-scale=1'>
+<meta name="apple-mobile-web-app-capable" content="yes">
+
+  </head>
+  <body>
+<div class="container">
+  
+  <div id="navbar" class="navbar navbar-inverse navbar-fixed-top">
+    <div class="navbar-inner">
+      <!-- .btn-navbar is used as the toggle for collapsed navbar content -->
+      <button class="btn btn-navbar" data-toggle="collapse" data-target=".nav-collapse">
+        <span class="icon-bar"></span>
+        <span class="icon-bar"></span>
+        <span class="icon-bar"></span>
+      </button>
+
+      <a class="brand" href="../index.html">Testerman</a>
+      <span class="navbar-text pull-left"><b>1.4</b></span>
+
+      <div class="nav-collapse">
+        <ul class="nav">
+          <li class="divider-vertical"></li>
+          
+            <li class="dropdown">
+  <a href="../index.html" class="dropdown-toggle" data-toggle="dropdown">Site <b class="caret"></b></a>
+  <ul class="dropdown-menu globaltoc"><ul>
+<li class="toctree-l1"><a class="reference internal" href="About.html">Welcome to Testerman</a></li>
+<li class="toctree-l1"><a class="reference internal" href="About.html#about">About</a></li>
+<li class="toctree-l1"><a class="reference internal" href="About.html#contact">Contact</a></li>
+<li class="toctree-l1"><a class="reference internal" href="GetTesterman.html">Getting Testerman</a></li>
+</ul>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="TestermanOverview.html">Testerman Overview</a></li>
+<li class="toctree-l1"><a class="reference internal" href="TestermanQuickStart.html">Quick Start</a></li>
+<li class="toctree-l1"><a class="reference internal" href="TestermanQuickStart.html#external-resources">External Resources</a></li>
+<li class="toctree-l1 current"><a class="current reference internal" href="">QTesterman</a></li>
+<li class="toctree-l1"><a class="reference internal" href="TestermanReferenceGuide.html">Testerman Reference Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="TestermanLanguageReference.html">General Concepts</a></li>
+<li class="toctree-l1"><a class="reference internal" href="TestermanLanguageReference.html#reference-testerman-api">Reference: Testerman API</a></li>
+<li class="toctree-l1"><a class="reference internal" href="BestPractices.html">Best Practices</a></li>
+</ul>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../plugins/index.html">Codecs and Probes Overview</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../plugins/index.html#codecs">Codecs</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../plugins/index.html#test-adapters-probes">Test Adapters (Probes)</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../plugins/index.html#codecs-and-probes-references">Codecs and Probes References</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../plugins/index.html#developing-new-codecs-and-probes">Developing New Codecs and Probes</a></li>
+</ul>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="TestermanAdministrationGuide.html">Testerman Administration Guide</a></li>
+</ul>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="TestermanInternals.html">Testerman Internals</a></li>
+</ul>
+</ul>
+</li>
+            <li class="dropdown">
+  <a href="#" class="dropdown-toggle" data-toggle="dropdown">Page <b class="caret"></b></a>
+  <ul class="dropdown-menu localtoc"><ul>
+<li><a class="reference internal" href="#">QTesterman</a><ul>
+<li><a class="reference internal" href="#installation">Installation</a><ul>
+<li><a class="reference internal" href="#installing-prerequisites">Installing Prerequisites</a><ul>
+<li><a class="reference internal" href="#windows">Windows</a></li>
+<li><a class="reference internal" href="#debian-based-distributions">Debian-based Distributions</a></li>
+<li><a class="reference internal" href="#red-hat-based-distributions">Red-Hat-based Distributions</a></li>
+<li><a class="reference internal" href="#mac-os-x">Mac OS X</a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#running-the-qtesterman-installer">Running the QTesterman Installer</a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#first-run">First Run</a><ul>
+<li><a class="reference internal" href="#main-interface-quick-tour">Main Interface Quick Tour</a></li>
+<li><a class="reference internal" href="#your-first-ats-execution">Your First ATS Execution</a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#building-reports">Building Reports</a><ul>
+<li><a class="reference internal" href="#template-engine-syntax">Template Engine Syntax</a><ul>
+<li><a class="reference internal" href="#comments">Comments</a></li>
+<li><a class="reference internal" href="#variable-assignments">Variable Assignments</a></li>
+<li><a class="reference internal" href="#variable-references">Variable References</a></li>
+<li><a class="reference internal" href="#iteration-within-a-sequence">Iteration within a Sequence</a></li>
+<li><a class="reference internal" href="#conditions">Conditions</a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#test-specification-extractor-plugin">Test Specification Extractor Plugin</a></li>
+<li><a class="reference internal" href="#simple-reporter-plugin">Simple Reporter Plugin</a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#random-tips">Random Tips</a></li>
+</ul>
+</li>
+</ul>
+</ul>
+</li>
+          
+          
+            
+  <li><a href="TestermanQuickStart.html"
+         title="previous chapter">&laquo; Quick Start</a></li>
+  <li><a href="TestermanReferenceGuide.html"
+         title="next chapter">Testerman Reference Guide &raquo;</a></li>
+          
+          
+            <li>
+  <a href="../_sources/main/QTesterman.txt"
+     rel="nofollow">Source</a></li>
+          
+        </ul>
+
+        
+          
+<form class="navbar-search pull-right" style="margin-bottom:-3px;" action="../search.html" method="get">
+  <input type="text" name="q" placeholder="Search" />
+  <input type="hidden" name="check_keywords" value="yes" />
+  <input type="hidden" name="area" value="default" />
+</form>
+        
+      </div>
+    </div>
+  </div>
+
+  
+  <div class="section" id="qtesterman">
+<h1>QTesterman<a class="headerlink" href="#qtesterman" title="Permalink to this headline">¶</a></h1>
+<p>QTesterman is the preferred client to execute Testerman scripts, monitor
+and analyze their executions.</p>
+<p>It is a cross-platform application (Windows, Unixes, Mac OS X) developed
+in Python with PyQt4. This is the main interface to a Testerman system
+most end-users will use.</p>
+<div class="section" id="installation">
+<h2>Installation<a class="headerlink" href="#installation" title="Permalink to this headline">¶</a></h2>
+<p>QTesterman basically requires Python 2.x &gt;= 2.4.4, and a PyQt4 4.x &gt;=
+4.4.2. You may install them the way you are used to, from sources, or
+following the instructions below. Please notice that actual package
+versions may evolve and the ones given here may be deprecated or no
+longer available as a direct link - in this case, just use the next or
+recommended version on the associated sites.</p>
+<div class="section" id="installing-prerequisites">
+<h3>Installing Prerequisites<a class="headerlink" href="#installing-prerequisites" title="Permalink to this headline">¶</a></h3>
+<p>This section describes how you may install QTesterman dependencies on
+several operating systems.</p>
+<p>If you already installed them, you may jump to the
+[#RunningtheQTestermanInstaller QTesterman installer execution].</p>
+<div class="section" id="windows">
+<h4>Windows<a class="headerlink" href="#windows" title="Permalink to this headline">¶</a></h4>
+<p>To run QTesterman under Windows, you&#8217;ll first need to install Python 2.x
+and the PyQt4 library. QTesterman is not compatible with Python 3 for
+now.</p>
+<p>If you don&#8217;t have any Python installation yet, you are advised to
+install Python 2.6.1(or latest 2.6.x version) that you can grab from the
+<a class="reference external" href="http://www.python.org/download/">official Python site</a> (<a class="reference external" href="http://www.python.org/ftp/python/2.6.5/python-2.6.5.msi">direct
+Windows Installer link for Python
+2.6.5</a>).
+Once downloaded, simply run it and install the usual way.</p>
+<p>Then, get PyQt4 from <a class="reference external" href="http://www.riverbankcomputing.co.uk/software/pyqt/download">Riverbank Computing
+site</a>.
+You should get the Windows installer package that matches your Python
+version, for instance
+<a class="reference external" href="http://www.riverbankcomputing.co.uk/static/Downloads/PyQt4/PyQt-Py2.6-gpl-4.7.7-1.exe">PyQt-Py2.6-gpl-4.7.7-1.exe</a>
+if you installed a Python 2.6.x.
+The binary PyQt4 package contains everything needed for QTesterman, in
+particular the QScintilla2 module. When installing the package, you can
+limit your installation options to the single &#8220;Qt libraries&#8221; option,
+discarding all development tools, documentation, and examples.</p>
+<p>Once these dependencies have been installed, you can proceed with the
+[#RunningtheQTestermanInstaller QTesterman installer execution].</p>
+<p>QTesterman has been tested on the following combinations:</p>
+<ul class="simple">
+<li>Windows XP SP2 with Python 2.5.4 + PyQt 4.4.3</li>
+<li>Windows Vista SP1 with Python 2.5.4 + PyQt 4.4.3</li>
+<li>Windows 7 with Python 2.6.1 + PyQt 4.4.4</li>
+</ul>
+</div>
+<div class="section" id="debian-based-distributions">
+<h4>Debian-based Distributions<a class="headerlink" href="#debian-based-distributions" title="Permalink to this headline">¶</a></h4>
+<p>Under Debian and derivatives, you should apt-install the following
+packages (and their dependencies):</p>
+<ul class="simple">
+<li><tt class="docutils literal"><span class="pre">python-qt4</span></tt></li>
+<li><tt class="docutils literal"><span class="pre">python-qscintilla2</span></tt></li>
+</ul>
+<p>QTesterman has been tested on the following distributions, with their
+standard up-to-date packages:</p>
+<ul class="simple">
+<li>Ubuntu 8.10..12.10</li>
+<li>Debian lenny, wheezy</li>
+</ul>
+</div>
+<div class="section" id="red-hat-based-distributions">
+<h4>Red-Hat-based Distributions<a class="headerlink" href="#red-hat-based-distributions" title="Permalink to this headline">¶</a></h4>
+<p>Under Red-Hat and derivatives (CentOS, Fedora, RHES, Mandriva, ...), you
+should install the following RPM (and their dependencies):</p>
+<ul class="simple">
+<li><tt class="docutils literal"><span class="pre">PyQt4</span></tt></li>
+<li>... ?</li>
+</ul>
+<p>RHES4/CentOS4 only provides Python 2.3, so it won&#8217;t run on them.</p>
+</div>
+<div class="section" id="mac-os-x">
+<h4>Mac OS X<a class="headerlink" href="#mac-os-x" title="Permalink to this headline">¶</a></h4>
+<p>If you successfully installed QTesterman under an OS X version, please
+send me some feedback to complete this section !</p>
+</div>
+</div>
+<div class="section" id="running-the-qtesterman-installer">
+<h3>Running the QTesterman Installer<a class="headerlink" href="#running-the-qtesterman-installer" title="Permalink to this headline">¶</a></h3>
+<p>Once the prerequisites are installed, you can download and execute the
+QTesterman Installer.</p>
+<ul class="simple">
+<li>Get it <a class="reference external" href="attachment:Installer.py?format=raw">here</a>, or get the
+[source:/trunk/qtesterman/Installer.py latest version from SVN]</li>
+<li>Run it:<ul>
+<li>Under Windows, double-clicking on it should be OK, unless you
+changed the standard Python associations. In this case, you know
+how to execute it with your favorite interpreter</li>
+<li>Under Linux, run <tt class="docutils literal"><span class="pre">python</span> <span class="pre">Installer.py</span></tt> (<tt class="docutils literal"><span class="pre">./Installer.py</span></tt> may
+also work)</li>
+</ul>
+</li>
+<li>Alternatively you may have run it directly from your browser, since
+you can delete it once executed</li>
+</ul>
+<p>If your dependencies are correctly installed, you should get a
+minimalistic installer window enabling you to select your installation
+directory (in which a folder <tt class="docutils literal"><span class="pre">qtesterman</span></tt> will be created) and provide
+a Testerman server URL (<tt class="docutils literal"><span class="pre">http://your-server:8080</span></tt>).
+This server URL should point to a running Testerman server configured
+to deploy a QTesterman component. Your Testerman administrator is
+supposed to configure it for you correctly, or you may have a look to
+TestermanAdministrationGuide to do it yourself.</p>
+<p>When ready, click install; the installer should detect a new QTesterman
+version available on the server, and prompt you for an upgrade. Accept,
+wait for the installation to complete.</p>
+<p>Once over, QTesterman is installed in your
+<tt class="docutils literal"><span class="pre">installation</span> <span class="pre">directory/qtesterman</span></tt>. You may create a shortcut to the
+<tt class="docutils literal"><span class="pre">qtesterman.py</span></tt> file contained in it - this is the Python file to run
+to start the QTesterman client.</p>
+<p>You may delete the downloaded <tt class="docutils literal"><span class="pre">Installer.py</span></tt> file.</p>
+</div>
+</div>
+<div class="section" id="first-run">
+<h2>First Run<a class="headerlink" href="#first-run" title="Permalink to this headline">¶</a></h2>
+<p>The first time you execute the <tt class="docutils literal"><span class="pre">qtesterman.py</span></tt> script, you&#8217;ll need to
+provide the URL of your Testerman Server and a username that will
+identify you on this system.</p>
+<p>For now, this username is not associated to any password since no rights
+management is implemented yet. It just enables to have an idea of who is
+currently running jobs, who should be contacted by the administrator in
+case of a problem, etc.</p>
+<div class="section" id="main-interface-quick-tour">
+<h3>Main Interface Quick Tour<a class="headerlink" href="#main-interface-quick-tour" title="Permalink to this headline">¶</a></h3>
+<p>Main interface:</p>
+<a class="reference internal image-reference" href="../_images/qtesterman-main.png"><img alt="../_images/qtesterman-main.png" class="align-center" src="../_images/qtesterman-main.png" style="width: 767.0px; height: 536.0px;" /></a>
+<p>Log viewer, here in visual view mode:</p>
+<a class="reference internal image-reference" href="../_images/qtesterman-visual-log.png"><img alt="../_images/qtesterman-visual-log.png" class="align-center" src="../_images/qtesterman-visual-log.png" style="width: 564.0px; height: 514.0px;" /></a>
+<p>...</p>
+</div>
+<div class="section" id="your-first-ats-execution">
+<h3>Your First ATS Execution<a class="headerlink" href="#your-first-ats-execution" title="Permalink to this headline">¶</a></h3>
+<p>...</p>
+</div>
+</div>
+<div class="section" id="building-reports">
+<h2>Building Reports<a class="headerlink" href="#building-reports" title="Permalink to this headline">¶</a></h2>
+<p>QTesterman comes with two default plugins enabling to create
+template-based reports at two levels:</p>
+<ul class="simple">
+<li>ATS documentation: the Test Specification Extractor plugin allows to
+create reports based on the ATS code and embedded docstrings. This
+could be used to create an external test case documentation, such as
+a HTML page, but also any kind of text-based documents.</li>
+<li>Execution results reports: from the Log Analyzer, you can access the
+Simple Reporter plugin that use templates to produce any kind of
+text-based reports, including HTML.</li>
+</ul>
+<p>Both plugins can be used as a basis to built any kind of text-based
+reports, ranging from plain text to HTML pages, from CSV files to
+XML-based document (think ODF).
+They are based on a template engine that implements a subset of the
+<a class="reference external" href="http://velocity.apache.org/">Velocity engine</a> features.</p>
+<p>From such templates, you can access to different variables and functions
+depending on the calling context (ATS documentation report or test
+execution report); in particular, you can easily include
+[TestermanReferenceGuide#DocumentationSystem documentation string tags].</p>
+<div class="section" id="template-engine-syntax">
+<h3>Template Engine Syntax<a class="headerlink" href="#template-engine-syntax" title="Permalink to this headline">¶</a></h3>
+<p>A template is a text file that may contain particular tokens
+interpreted by the engine.
+Actually, all of the following is Velocity-compliant, and you can
+also refer to the Velocity engine documentation directly.
+Yet, some Velocity features are not implemented, in particular:</p>
+<ul class="simple">
+<li>Arithmetics/maths</li>
+<li>Range operator</li>
+<li>Velocity variables (velocityHasNext, velocityCount, ...)</li>
+<li><tt class="docutils literal"><span class="pre">#evaluate</span></tt> directive</li>
+</ul>
+<p>Additionally, there are no built-in/default velocimacros, though you can
+define your owns.</p>
+<div class="section" id="comments">
+<h4>Comments<a class="headerlink" href="#comments" title="Permalink to this headline">¶</a></h4>
+<p>The following template</p>
+<div class="highlight-python"><pre>You won't see the following lines.
+## This is a single-line comment
+
+#*
+While this
+is a multi-line
+comment
+#*
+
+Use \# to escape the pound sign.</pre>
+</div>
+<p>will result in:</p>
+<div class="highlight-python"><pre>You won't see the following lines.
+
+
+Use # to escape the pound sign.</pre>
+</div>
+</div>
+<div class="section" id="variable-assignments">
+<h4>Variable Assignments<a class="headerlink" href="#variable-assignments" title="Permalink to this headline">¶</a></h4>
+<p>you can create variables in a template dynamically:</p>
+<div class="highlight-python"><pre>#set($foo = "QTesterman")
+Hello $foo World!</pre>
+</div>
+<p>Leads to:</p>
+<div class="highlight-python"><pre>Hello QTesterman World!</pre>
+</div>
+</div>
+<div class="section" id="variable-references">
+<h4>Variable References<a class="headerlink" href="#variable-references" title="Permalink to this headline">¶</a></h4>
+<p>You may reference a context variable at any time with a <tt class="docutils literal"><span class="pre">$myvar</span></tt> or
+<tt class="docutils literal"><span class="pre">${myvar}</span></tt> syntax.</p>
+<p>The available context variables for each plugin are defined below.</p>
+<div class="highlight-python"><pre>My variable: $my_variable
+Another variable available in my context: ${another_variable}
+Say_${within_a_word}_here</pre>
+</div>
+<p>If a reference is not found when applying the template, the template
+code is unchanged. For instance, with the template above, if
+<tt class="docutils literal"><span class="pre">my_variable</span></tt> evaluates to <tt class="docutils literal"><span class="pre">2</span></tt>, <tt class="docutils literal"><span class="pre">within_a_word</span></tt> to <tt class="docutils literal"><span class="pre">&quot;hello&quot;</span></tt>,
+but <tt class="docutils literal"><span class="pre">another_variable</span></tt> is not found, this will produce:</p>
+<div class="highlight-python"><pre>My variable: 2
+Another variable available in my context: ${another_variable}
+Say_hello_here</pre>
+</div>
+<p>To substitude the placeholder with a blank instead of leaving the
+original template code, use a <tt class="docutils literal"><span class="pre">$my_var</span></tt> syntax:</p>
+<div class="highlight-python"><pre>Missing variable: $!{missing}</pre>
+</div>
+<p>Would generate:</p>
+<div class="highlight-python"><pre>Missing variable:</pre>
+</div>
+<p>If a variable cannot be evaluated to a string representation, an
+exception string is injected instead.</p>
+<p>Some object referenced by such variables may expose additional
+properties or methods. In this case, you can access them with a
+dot-based notation:</p>
+<div class="highlight-python"><pre>This is an object attribute: ${testcase.id}
+## Also works without {}:
+$testcase.title
+## And also with methods
+## Assuming $a is a string:
+$a.replace('\\n', '&lt;br /&gt;')</pre>
+</div>
+<p>Actually, you can also reference a call to an exposed function directly.
+Let&#8217;s assume that a function <tt class="docutils literal"><span class="pre">toHtml(s)</span></tt> that escapes the usual HTML
+characters is provided in the current context:</p>
+<div class="highlight-python"><pre>&lt;p&gt;Description: $toHtml($description)
+&lt;/p&gt;</pre>
+</div>
+<p>Applied with <tt class="docutils literal"><span class="pre">$description</span></tt> that evaluates to
+<tt class="docutils literal"><span class="pre">&quot;check</span> <span class="pre">that</span> <span class="pre">100</span> <span class="pre">&gt;</span> <span class="pre">10,\nthen</span> <span class="pre">make</span> <span class="pre">sure</span> <span class="pre">that</span> <span class="pre">the</span> <span class="pre">function</span> <span class="pre">returns</span> <span class="pre">within</span> <span class="pre">10s&quot;</span></tt>:</p>
+<div class="highlight-python"><pre>&lt;p&gt;Description: check that 100 &amp;gt; 10,&lt;br /&gt;then make sure that the function returns within 10s
+&lt;/p&gt;</pre>
+</div>
+</div>
+<div class="section" id="iteration-within-a-sequence">
+<h4>Iteration within a Sequence<a class="headerlink" href="#iteration-within-a-sequence" title="Permalink to this headline">¶</a></h4>
+<p>Some variables are evaluated to a list of items. In this case, you may
+use the <tt class="docutils literal"><span class="pre">#foreach</span></tt> directive to iterate through them:</p>
+<div class="highlight-python"><pre>#foreach ($testcase in $testcases)
+Testcase Identifier: $testcase.id
+#end</pre>
+</div>
+</div>
+<div class="section" id="conditions">
+<h4>Conditions<a class="headerlink" href="#conditions" title="Permalink to this headline">¶</a></h4>
+<p>A if/elseif/else mechanism is available:</p>
+<div class="highlight-python"><pre>#if ($name)
+Test case name: ${name}
+#else
+Undefined test case name
+#end</pre>
+</div>
+<p>The usual operators are supported: &lt;, &gt;, &lt;=, &gt;=, ==, <cite>=</cite>, &amp;&amp; (and), || (or), ! (not).</p>
+<div class="highlight-python"><pre>this is#if ($a &gt; 10) large#elseif ($a &gt; 5) medium#else small#end, don't you think ?</pre>
+</div>
+<p>Notice how you can mix directives and the normal text to procude the
+desired output.</p>
+</div>
+</div>
+<div class="section" id="test-specification-extractor-plugin">
+<h3>Test Specification Extractor Plugin<a class="headerlink" href="#test-specification-extractor-plugin" title="Permalink to this headline">¶</a></h3>
+<p>This plugins exposes the following variables and functions:</p>
+<table border="1" class="docutils">
+<colgroup>
+<col width="35%" />
+<col width="65%" />
+</colgroup>
+<thead valign="bottom">
+<tr class="row-odd"><th class="head">Name</th>
+<th class="head">Type</th>
+</tr>
+</thead>
+<tbody valign="top">
+<tr class="row-even"><td><tt class="docutils literal"><span class="pre">testcases</span></tt></td>
+<td>list of <tt class="docutils literal"><span class="pre">testcase</span></tt> objects</td>
+</tr>
+</tbody>
+</table>
+<p>...</p>
+</div>
+<div class="section" id="simple-reporter-plugin">
+<h3>Simple Reporter Plugin<a class="headerlink" href="#simple-reporter-plugin" title="Permalink to this headline">¶</a></h3>
+<p>This plugins exposes the following variables and functions:</p>
+<table border="1" class="docutils">
+<colgroup>
+<col width="35%" />
+<col width="65%" />
+</colgroup>
+<thead valign="bottom">
+<tr class="row-odd"><th class="head">Name</th>
+<th class="head">Type</th>
+</tr>
+</thead>
+<tbody valign="top">
+<tr class="row-even"><td><tt class="docutils literal"><span class="pre">testcases</span></tt></td>
+<td>list of <tt class="docutils literal"><span class="pre">testcase</span></tt> objects</td>
+</tr>
+</tbody>
+</table>
+<p>...</p>
+</div>
+</div>
+<div class="section" id="random-tips">
+<h2>Random Tips<a class="headerlink" href="#random-tips" title="Permalink to this headline">¶</a></h2>
+<ul class="simple">
+<li>You may use <tt class="docutils literal"><span class="pre">Ctrl+Mouse</span> <span class="pre">Wheel</span></tt> to zoom in/zoom out in the Visual
+Log Viewer</li>
+<li>This zoom is also available in the main editor, using the same
+shortcuts</li>
+<li>A simple key recording feature is available in the editor: use
+<tt class="docutils literal"><span class="pre">Alt+K</span></tt> to start recording keys, <tt class="docutils literal"><span class="pre">Alt+K</span></tt> again to stop recording,
+<tt class="docutils literal"><span class="pre">Ctrl+K</span></tt> to replay (shamelessly inspired by
+<a class="reference external" href="http://nedit.org">nedit</a>)</li>
+<li><tt class="docutils literal"><span class="pre">Ctrl+Shift+A</span></tt> on a plugin in the Settings window will display some
+additional information about it</li>
+</ul>
+</div>
+</div>
+
+
+</div>
+<footer class="footer">
+  <div class="container">
+    <p class="pull-right">
+      <a href="#">Back to top</a>
+      
+    </p>
+    <p>
+        &copy; Copyright 2009-2013, Sébastien Lefèvre.<br/>
+      Created using <a href="http://sphinx.pocoo.org/">Sphinx</a> 1.1.3.<br/>
+    </p>
+  </div>
+</footer>
+  </body>
+</html>

@@ -1,0 +1,186 @@
+RTP Probe
+=========
+
+Send/receive RTP streams.
+
+Identification and Properties
+-----------------------------
+
+Probe Type ID: ``rtp``
+
+Properties:
+
+.. csv-table::
+   :header: "Name","Type","Default value","Description"
+
+   "``listening_ip``","string","``'0.0.0.0'``","Default listening IP address, when starting listening without providing one explicitly"
+   "``listening_port``","integer","``0``","Default listening UDP port, when starting listening without providing one expliclity. ``0`` means a system-assigned port."
+   "``local_ip``","string","(empty)","Default source IP address when sending packets, if not provided explicitly when starting sending. An empty value means a system-assigned IP address."
+   "``local_port``","integer","``0``","Default UDP source port when sending packets, if not provided explicitly when starting sending. An empty value means a system-assigned port."
+   "``stream_timeout``","float","``0.5``","The maximum interruption interval allowed, in second, before considering an incoming stream has been stopped"
+   "``ssrc``","integer","``1000``","The default SSRC to use in sent RTP packets, if not provided explicitly when starting sending a stream"
+   "``payload_type``","integer","``8``","The default payload type to use in sent RTP packets, if not provided explicitly when starting sending a stream"
+   "``frame_size``","integer","``20``","The default frame size to use when sending RTP packets, if not provided explicitly when starting sending a stream"
+   "``packet_size``","integer","``160``","The default packet size to use when sending RTP packets, if not provided explicitly when starting sending a stream"
+   "``sample_rate``","integer","``8000``","The default sample rate to use in sent RTP packets, if not provided explicitly when starting sending a stream"
+
+The default payload type/frame size/packet size/sample rate values are chosen
+to enable a default stream in G.711 a-law (PCMA) / 20.
+
+Overview
+--------
+
+Through this probe, you can control sending and receiving RTP (Real Time Protocol)
+streams.
+
+It can be used as a probe companion of a UDP transport probe to simulate a SIP
+endpoint, or with a RTSP probe to act as a , and of course any other cases where
+controlling sending and receiving of RTP streams is required, without requiring to
+inspect each RTP packets individually.
+
+This probe is based on "signals" that change its state. You can:
+
+* start sending a new RTP stream to a remote destination, setting the payload characteristics that will be used until the stream is stopped,
+* stop sending a started stream
+* start listening for, i.e. waiting for a possible incoming stream
+* stop listening
+
+And you may receive the following "notifications" if the probe was in listening state:
+
+* ``StartedReceivingEvent``, indicating the payload properties (source ip/port, ssrc, payload type), when a new stream is detected or has been updated,
+* ``StoppedReceivingEvent``, when a stream being received was interrupted (or updated its properties
+
+Additionally, you may inject at any time while sending RTP
+a recorded payload using the ``PlayCommand``. Currently the probe only supports:
+
+* WAV file format:      the contained payload must be encoded with the correct codec (payload type). The probe won't check it.
+* raw format: the payload is encoded using the correct codec, no header, no container.
+
+The probe sticks to packetize the payload according
+to the current frame size parameter. No transcoding mechanism is provided.
+
+By default, when starting sending a RTP stream, a default sound is played according
+to the payload type:
+
+.. csv-table::
+   :header: "Payload type","Default sound"
+
+   "0 (PCMU/G711 u-law)","a tone"
+   "8 (PCMA/G711 a-law)","another tone"
+   "Other codecs","Some very scratchy sound"
+
+Anyway, the idea is that, by default, the probe makes some sound or noise.
+
+If you prefer start sending a silent sound, you should set the argument ``defaultPayload`` of
+``startSendingRtp`` to what fits your need according to the codec. For reference:
+
+.. csv-table::
+   :header: "Payload type","Payload to use for a silence"
+
+   "0 (PCMU/G711 u-law)","``'\xff'``"
+   "8 (PCMA/G711 a-law)","``'\x00'``"
+   "Other codecs","..."
+
+You may, of course, inject another payload as a default sound.
+
+Notes:
+
+* A probe can send/receive at most one stream in a way (i.e. can send, receive, or send+receive).
+* No RTCP support for now
+* No RFC2833 support for now (excepted by playing a wav file with RFC2833 payload, but this is not integrated enough to be usable)
+
+Availability
+~~~~~~~~~~~~
+
+All platforms. Tested on Linux (kernel 2.6), Solaris 8, Solaris 10.
+
+Dependencies
+~~~~~~~~~~~~
+
+None.
+
+See Also
+~~~~~~~~
+
+TTCN-3 Types Equivalence
+------------------------
+
+The test system interface port bound to such a probe complies with the ``RtpPortType`` port type as specified below:
+
+::
+
+  type record StartSendingCommand
+  {
+    integer payloadType optional, // default: payload_type (8)
+    integer frameSize optional, // default: frame_size (20 (ms))
+    integer ssrc optional, // default: ssrc (1000)
+    integer packetSize optional, // default: packet_size (160 bytes, corresponding to 20ms in G711a/u)
+    integer sampleRate optional, // default: sample_rate (8000 (Hz))
+
+    // Local port may be controlled dynamically - useful when negotiating ports via SDP, etc
+    integer fromPort optional, // default: local_port
+    charstring fromIp optional, // default: local_ip
+
+    // Default payload to play (infinite loop)
+    octetstring defaultPayload optional, // default: see above, according to the codec
+    charstring defaultPayloadFormat optional, // choice in wav, raw ; default: wav
+  }
+
+  type record StopSendingCommand
+  {
+  }
+
+  type record StartListeningCommand
+  {
+    // Should we control the listening ip/port dynamically ? ...
+    integer onPort optional, // default: listening_port
+    charstring onIp optional, // default: listening_ip
+    integer timeout optional, // timeout to detect interrupted incoming stream, in s
+  }
+
+  type record StopListeningCommand
+  {
+  }
+
+  type record StartedReceivingEvent
+  {
+    integer fromPort,
+    charstring fromIp,
+    integer payloadType,
+    integer ssrc,
+  }
+
+  type record StoppedReceivingEvent
+  {
+    integer fromPort,
+    charstring fromIp,
+    enum { interrupted, updated } reason,
+  }
+
+  type record PlayCommand
+  {
+    octetstring payload,
+    integer loopCount optional, // default: 1
+    charstring format optional, // choice in wav, raw ; default: wav
+  }
+
+  type union Command
+  {
+    StartSendingCommand startSendingRtp,
+    StopSendingCommand stopSendingRtp,
+    StartListeningCommand startListeningRtp,
+    StopListeningCommand stopListeningRtp,
+    PlayCommand play
+  }
+
+  type union Notification
+  {
+    StartedReceivingNotification startedReceivingRtp,
+    StoppedReceivingNotification stoppedReceivingRtp
+  }
+
+  type port message RtpPortType
+  {
+    in Command,
+    out Notification
+  }

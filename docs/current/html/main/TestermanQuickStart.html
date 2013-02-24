@@ -1,0 +1,362 @@
+
+<!DOCTYPE html>
+
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>Quick Start &mdash; Testerman 1.4.0 documentation</title>
+    
+    <link rel="stylesheet" href="../_static/basic.css" type="text/css" />
+    <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
+    <link rel="stylesheet" href="../_static/css/bootstrap-2.2.1.min.css" type="text/css" />
+    <link rel="stylesheet" href="../_static/bootstrap-sphinx.css" type="text/css" />
+    <link rel="stylesheet" href="../_static/css/bootstrap-responsive-2.2.1.min.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '../',
+        VERSION:     '1.4.0',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true
+      };
+    </script>
+    <script type="text/javascript" src="../_static/jquery.js"></script>
+    <script type="text/javascript" src="../_static/underscore.js"></script>
+    <script type="text/javascript" src="../_static/doctools.js"></script>
+    <script type="text/javascript" src="../_static/js/bootstrap-2.2.1.min.js"></script>
+    <script type="text/javascript" src="../_static/bootstrap-sphinx.js"></script>
+    <link rel="top" title="Testerman 1.4.0 documentation" href="../index.html" />
+    <link rel="next" title="QTesterman" href="QTesterman.html" />
+    <link rel="prev" title="Testerman Overview" href="TestermanOverview.html" />
+<meta charset='utf-8'>
+<meta http-equiv='X-UA-Compatible' content='IE=edge,chrome=1'>
+<meta name='viewport' content='width=device-width, initial-scale=1.0, maximum-scale=1'>
+<meta name="apple-mobile-web-app-capable" content="yes">
+
+  </head>
+  <body>
+<div class="container">
+  
+  <div id="navbar" class="navbar navbar-inverse navbar-fixed-top">
+    <div class="navbar-inner">
+      <!-- .btn-navbar is used as the toggle for collapsed navbar content -->
+      <button class="btn btn-navbar" data-toggle="collapse" data-target=".nav-collapse">
+        <span class="icon-bar"></span>
+        <span class="icon-bar"></span>
+        <span class="icon-bar"></span>
+      </button>
+
+      <a class="brand" href="../index.html">Testerman</a>
+      <span class="navbar-text pull-left"><b>1.4</b></span>
+
+      <div class="nav-collapse">
+        <ul class="nav">
+          <li class="divider-vertical"></li>
+          
+            <li class="dropdown">
+  <a href="../index.html" class="dropdown-toggle" data-toggle="dropdown">Site <b class="caret"></b></a>
+  <ul class="dropdown-menu globaltoc"><ul>
+<li class="toctree-l1"><a class="reference internal" href="About.html">Welcome to Testerman</a></li>
+<li class="toctree-l1"><a class="reference internal" href="About.html#about">About</a></li>
+<li class="toctree-l1"><a class="reference internal" href="About.html#contact">Contact</a></li>
+<li class="toctree-l1"><a class="reference internal" href="GetTesterman.html">Getting Testerman</a></li>
+</ul>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="TestermanOverview.html">Testerman Overview</a></li>
+<li class="toctree-l1 current"><a class="current reference internal" href="">Quick Start</a></li>
+<li class="toctree-l1"><a class="reference internal" href="#external-resources">External Resources</a></li>
+<li class="toctree-l1"><a class="reference internal" href="QTesterman.html">QTesterman</a></li>
+<li class="toctree-l1"><a class="reference internal" href="TestermanReferenceGuide.html">Testerman Reference Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="TestermanLanguageReference.html">General Concepts</a></li>
+<li class="toctree-l1"><a class="reference internal" href="TestermanLanguageReference.html#reference-testerman-api">Reference: Testerman API</a></li>
+<li class="toctree-l1"><a class="reference internal" href="BestPractices.html">Best Practices</a></li>
+</ul>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../plugins/index.html">Codecs and Probes Overview</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../plugins/index.html#codecs">Codecs</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../plugins/index.html#test-adapters-probes">Test Adapters (Probes)</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../plugins/index.html#codecs-and-probes-references">Codecs and Probes References</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../plugins/index.html#developing-new-codecs-and-probes">Developing New Codecs and Probes</a></li>
+</ul>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="TestermanAdministrationGuide.html">Testerman Administration Guide</a></li>
+</ul>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="TestermanInternals.html">Testerman Internals</a></li>
+</ul>
+</ul>
+</li>
+            <li class="dropdown">
+  <a href="#" class="dropdown-toggle" data-toggle="dropdown">Page <b class="caret"></b></a>
+  <ul class="dropdown-menu localtoc"><ul>
+<li><a class="reference internal" href="#">Quick Start</a><ul>
+<li><a class="reference internal" href="#server-installation">Server Installation</a><ul>
+<li><a class="reference internal" href="#requirements">Requirements</a></li>
+<li><a class="reference internal" href="#installation-current-development-snapshot">Installation (current development snapshot)</a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#starting-the-server-components">Starting the Server Components</a></li>
+<li><a class="reference internal" href="#installing-the-qtesterman-client">Installing the QTesterman Client</a></li>
+<li><a class="reference internal" href="#deploying-and-starting-a-pyagent">Deploying and Starting a PyAgent</a><ul>
+<li><a class="reference internal" href="#the-easiest-way">The Easiest Way</a></li>
+<li><a class="reference internal" href="#manual-pyagent-installation">Manual PyAgent Installation</a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li><a class="reference internal" href="#external-resources">External Resources</a><ul>
+<li><a class="reference internal" href="#ttcn-3">TTCN-3</a></li>
+<li><a class="reference internal" href="#python">Python</a></li>
+</ul>
+</li>
+</ul>
+</ul>
+</li>
+          
+          
+            
+  <li><a href="TestermanOverview.html"
+         title="previous chapter">&laquo; Testerman Overview</a></li>
+  <li><a href="QTesterman.html"
+         title="next chapter">QTesterman &raquo;</a></li>
+          
+          
+            <li>
+  <a href="../_sources/main/TestermanQuickStart.txt"
+     rel="nofollow">Source</a></li>
+          
+        </ul>
+
+        
+          
+<form class="navbar-search pull-right" style="margin-bottom:-3px;" action="../search.html" method="get">
+  <input type="text" name="q" placeholder="Search" />
+  <input type="hidden" name="check_keywords" value="yes" />
+  <input type="hidden" name="area" value="default" />
+</form>
+        
+      </div>
+    </div>
+  </div>
+
+  
+  <div class="section" id="quick-start">
+<h1>Quick Start<a class="headerlink" href="#quick-start" title="Permalink to this headline">¶</a></h1>
+<p>Before installing Testerman, make sure you had a look to
+TestermanOverview, in particular to understand its client/server
+architecture.</p>
+<p>The following procedure will help you install and start the server
+components, set up a repository with some sample scripts, and deploy the
+QTesterman client.</p>
+<div class="section" id="server-installation">
+<h2>Server Installation<a class="headerlink" href="#server-installation" title="Permalink to this headline">¶</a></h2>
+<div class="section" id="requirements">
+<h3>Requirements<a class="headerlink" href="#requirements" title="Permalink to this headline">¶</a></h3>
+<p>The Testerman server components currently run on Linux (may also run
+on Solaris 10) with Python 2.6 or better (however, Python 3 is not yet
+supported).</p>
+</div>
+<div class="section" id="installation-current-development-snapshot">
+<h3>Installation (current development snapshot)<a class="headerlink" href="#installation-current-development-snapshot" title="Permalink to this headline">¶</a></h3>
+<p>This procedure assumes that you have installed the subversion client on
+your machine, named in this sample <tt class="docutils literal"><span class="pre">testermanserver</span></tt>.</p>
+<p>0. You may create a dedicated user to run the Testerman server
+components, or run it as a normal user. It is usually a bad idea to run
+it as root.</p>
+<ol class="arabic simple">
+<li>Get the current development snapshot using subversion (here
+&#8220;installed&#8221; to <tt class="docutils literal"><span class="pre">testerman-svn</span></tt>):</li>
+</ol>
+<div class="highlight-python"><pre>git clone http://testerman.fr/git/testerman.git testerman-git
+cd testerman-git</pre>
+</div>
+<p>2. Set up a document root (in this example, we are using the default, as
+configured in <tt class="docutils literal"><span class="pre">conf/testerman.conf</span></tt>: <tt class="docutils literal"><span class="pre">~/testerman</span></tt>) and a repository
+that will contain your shared test cases; we also fill it with some
+samples (WARNING: existing samples will be replaced with the one from
+the SVN tree):</p>
+<div class="highlight-python"><pre>bin/testerman-admin setup document-root</pre>
+</div>
+<p>3. Publish the current (SVN version) QTesterman client and PyAgent on
+this server, advertising them as stable versions:</p>
+<div class="highlight-python"><pre>bin/testerman-admin -c testerman/components source-publish component qtesterman branch stable
+bin/testerman-admin -c testerman/components source-publish component pyagent branch stable</pre>
+</div>
+<ol class="arabic simple" start="4">
+<li>You may check the published components with:</li>
+</ol>
+<div class="highlight-python"><pre>user@testermanserver$ bin/testerman-admin -c testerman/components show
+Component  | Version | Branch | Archive File                  | Status
+-----------------------------------------------------------------------
+pyagent    | 1.1.3   | stable | /updates/pyagent-1.1.3.tgz    | OK
+qtesterman | 1.2.0   | stable | /updates/qtesterman-1.2.0.tgz | OK</pre>
+</div>
+</div>
+</div>
+<div class="section" id="starting-the-server-components">
+<h2>Starting the Server Components<a class="headerlink" href="#starting-the-server-components" title="Permalink to this headline">¶</a></h2>
+<p>Assuming you are using <tt class="docutils literal"><span class="pre">~/testerman</span></tt> as the document root, go to the
+directory where you installed or checked out Testerman (in the procedure
+above, into <tt class="docutils literal"><span class="pre">~/testerman-svn</span></tt>), and start the Testerman components,
+i.e. the Testerman Agent Controller Server (TACS) and the Testerman
+Server, with:</p>
+<div class="highlight-python"><pre>user@testermanserver$ bin/testerman-admin start all</pre>
+</div>
+<p>You may check that both processes are running with:</p>
+<div class="highlight-python"><pre>user@testermanserver$ bin/testerman-admin status
+ Component | Management Address    | Status  | PID
+-----------------------------------------------------
+ server    | http://localhost:8080 | running | 6625
+ tacs      | 127.0.0.1:8087        | running | 6670</pre>
+</div>
+<p>By default, the Testerman Server listens on <tt class="docutils literal"><span class="pre">tcp/8080</span></tt> (Ws interface,
+XML-RPC based Web Services), <tt class="docutils literal"><span class="pre">tcp/8082</span></tt> (Xc interface, a text-based
+event subscription service), <tt class="docutils literal"><span class="pre">tcp/127.0.0.1:8081</span></tt> (Ei interface). You
+may set Ws and Xc IP addresses explicitly in the <tt class="docutils literal"><span class="pre">conf/testerman.conf</span></tt>
+file if needed.</p>
+<p>The TACS listens on <tt class="docutils literal"><span class="pre">tcp/40000</span></tt> (Xa interface, used by the agents to
+connect to their controller) and <tt class="docutils literal"><span class="pre">tcp/127.0.0.1:8087</span></tt> (Ia interface).
+Those are configurable in the same configuration file as well.</p>
+</div>
+<div class="section" id="installing-the-qtesterman-client">
+<h2>Installing the QTesterman Client<a class="headerlink" href="#installing-the-qtesterman-client" title="Permalink to this headline">¶</a></h2>
+<p>You can now proceed with the <a class="reference external" href="QTesterman#Installation">QTesterman client
+installation</a>, pointing to
+<tt class="docutils literal"><span class="pre">http://testermanserver:8080</span></tt> were <tt class="docutils literal"><span class="pre">testermanserver</span></tt> is the name or
+the IP of the machine where you just installed and started the Testerman
+Server component.</p>
+</div>
+<div class="section" id="deploying-and-starting-a-pyagent">
+<h2>Deploying and Starting a PyAgent<a class="headerlink" href="#deploying-and-starting-a-pyagent" title="Permalink to this headline">¶</a></h2>
+<p>You may need to deploy some Testerman agents to host probes remotely.</p>
+<p>You may directly start a Python-based agent, dubbed PyAgent, from the
+installation root:</p>
+<div class="highlight-python"><pre>bin/testerman-agent --name localagent --log-filename myagent.log -d</pre>
+</div>
+<p>where <tt class="docutils literal"><span class="pre">localagent</span></tt> is a friendly identifier that will be used as the
+domain part in probe URIs when defining test adapter configurations. The
+<tt class="docutils literal"><span class="pre">-d</span></tt> flag indicates that the agent should deamonize. By default, it
+will try to connect to a controller on <tt class="docutils literal"><span class="pre">localhost:40000</span></tt>.</p>
+<p>But starting an agent locally is not very useful, as it main interest is
+its capability to be distributed over the network. Several options exit
+to install such an agent on another machine, on which it has the
+following requirements:</p>
+<ul class="simple">
+<li>Any system with Python 2.4 or better (won&#8217;t work/untested with python
+3.x)</li>
+<li>according to the probes you plan to use on this agent, additional
+requirements may appear. Please see CodecsAndProbes.</li>
+</ul>
+<div class="section" id="the-easiest-way">
+<h3>The Easiest Way<a class="headerlink" href="#the-easiest-way" title="Permalink to this headline">¶</a></h3>
+<p>Assuming <tt class="docutils literal"><span class="pre">wget</span></tt> is installed on your target machine, you can retrieve
+a pre-configured pyagent installer from the Testerman server with:</p>
+<div class="highlight-python"><pre>wget http://&lt;server&gt;:8080/pyagentinstaller</pre>
+</div>
+<p>where <tt class="docutils literal"><span class="pre">&lt;server&gt;</span></tt> is your Testerman server hostname or IP address.</p>
+<p>This fetches a Python script that is pre-configured to download and
+install the latest stable pyagent package from the server you provided
+in this url. Just execute it with:</p>
+<div class="highlight-python"><pre>python ./pyagentinstaller</pre>
+</div>
+<p>(for other options, in particular to install a specific pyagent version
+or a testing version, see the inline help with
+<tt class="docutils literal"><span class="pre">python</span> <span class="pre">./pyagentinstaller</span> <span class="pre">--help</span></tt>)</p>
+<p>Once done, your pyagent is ready to be executed from your current
+directory with:</p>
+<div class="highlight-python"><pre>./testerman-agent.py -c testermanserver --name remoteagent [-d] [--log-filename remoteagent.log]</pre>
+</div>
+<p>where <tt class="docutils literal"><span class="pre">testermanserver</span></tt> is the Testerman server hostname or IP
+address, and <tt class="docutils literal"><span class="pre">remoteagent</span></tt> the name that will identify this agent on
+the Testerman system. Use the <tt class="docutils literal"><span class="pre">-d</span></tt> flag to daemonize the agent, if
+needed, and <tt class="docutils literal"><span class="pre">--log-filename</span></tt> to add an optional log file if you want
+one.</p>
+</div>
+<div class="section" id="manual-pyagent-installation">
+<h3>Manual PyAgent Installation<a class="headerlink" href="#manual-pyagent-installation" title="Permalink to this headline">¶</a></h3>
+<p>If you don&#8217;t want to use the <tt class="docutils literal"><span class="pre">pyagentinstaller</span></tt> script, you may copy
+the pyagent component package that was deployed into
+~/testerman/updates/pyagent-X.X.X.tgz to a target machine that will run
+the agent (you can also fetch this file from
+<tt class="docutils literal"><span class="pre">http://&lt;testermanserver&gt;:8080/components.vm</span></tt>).</p>
+<p>Once <tt class="docutils literal"><span class="pre">pyagent-X.X.X.tgz</span></tt> has been copied, just untar it (it will
+create a directory named <tt class="docutils literal"><span class="pre">pyagent</span></tt>) and execute the agent:</p>
+<div class="highlight-python"><pre>cd pyagent
+python ./testerman-agent.py -c testermanserver --name remoteagent --log-filename remoteagent.log -d</pre>
+</div>
+<p>where <tt class="docutils literal"><span class="pre">testermanserver</span></tt> is the hostname or IP address of the server
+the TACS is running on and <tt class="docutils literal"><span class="pre">remoteagent</span></tt> the name you want to assign
+to this agent instance (using the machine hostname can be a good start).
+The agent will connect to the TACS on startup (and keeps reconnecting in
+case of a connection failure) and will show up in QTesterman&#8217;s probe
+manager when available.</p>
+<p>Alternatively, you may check the correct agent deployment from the
+server&#8217;s installation root with:</p>
+<div class="highlight-python"><pre>user@testermanserver$ bin/testerman-admin -c testerman/probes show all
+URI                    | Type    | Location      | Version
+--------------------------------------------------------------------------
+agent:remoteagent      | pyagent | 192.168.13.17 | PyTestermanAgent/1.1.3
+agent:localagent       | pyagent | 127.0.0.1     | PyTestermanAgent/1.1.3</pre>
+</div>
+<p>And voila ! You are now ready to play with some samples from the
+QTesterman interface.</p>
+</div>
+</div>
+</div>
+<div class="section" id="external-resources">
+<h1>External Resources<a class="headerlink" href="#external-resources" title="Permalink to this headline">¶</a></h1>
+<div class="section" id="ttcn-3">
+<h2>TTCN-3<a class="headerlink" href="#ttcn-3" title="Permalink to this headline">¶</a></h2>
+<p>If you are new to TTCN-3, you may find the following links useful:</p>
+<ul class="simple">
+<li><a class="reference external" href="http://www.ttcn-3.org">The official TTCN-3 site</a>, in particular
+the core language reference to download (and use it in conjunction
+with TestermanTTCN3 for feature comparisons) and the <a class="reference external" href="http://www.ttcn-3.org/CoursesAndTutorials.htm">tutorials
+page</a> (don&#8217;t miss
+<a class="reference external" href="http://www.ttcn-3.org/TTCN3UC2005/program/TTCN-3%20Introduction%20version%20T3UC05.pdf">C Willcock&#8217;s introduction to
+TTCN-3</a>)</li>
+<li><a class="reference external" href="http://www.ttcn3basics.com/Day1/siframes.html">TTCN-3 Basics</a>, a
+very clear introduction (courses ?) to TTCN-3 by Vesa-Matti Puro,
+from OpenTTCN</li>
+<li><a class="reference external" href="http://www.site.uottawa.ca/~bernard/ttcn.html">Research in
+TTCN-3</a> is a
+collection of very useful links, including multiple tutorials and
+real world use cases</li>
+</ul>
+</div>
+<div class="section" id="python">
+<h2>Python<a class="headerlink" href="#python" title="Permalink to this headline">¶</a></h2>
+<p>New to Python ? try these:</p>
+<ul class="simple">
+<li><a class="reference external" href="http://www.python.org">The official Python site</a> - at least one
+thing to read: <a class="reference external" href="http://docs.python.org/tutorial/">the Python
+tutorial</a>. However, since it is
+based on the most recent Python version at date, some features may be
+not available on most Testerman deployments, running Python 2.4 or
+2.5 as provided with your distribution</li>
+<li><a class="reference external" href="http://diveintopython.org/toc/index.html">Dive into Python</a> is a
+book by Mark Pilgrim that is freely available online. A good reading,
+too.</li>
+</ul>
+</div>
+</div>
+
+
+</div>
+<footer class="footer">
+  <div class="container">
+    <p class="pull-right">
+      <a href="#">Back to top</a>
+      
+    </p>
+    <p>
+        &copy; Copyright 2009-2013, Sébastien Lefèvre.<br/>
+      Created using <a href="http://sphinx.pocoo.org/">Sphinx</a> 1.1.3.<br/>
+    </p>
+  </div>
+</footer>
+  </body>
+</html>

@@ -1,0 +1,351 @@
+
+<!DOCTYPE html>
+
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>Codecs and Probes Overview &mdash; Testerman 1.4.0 documentation</title>
+    
+    <link rel="stylesheet" href="../_static/basic.css" type="text/css" />
+    <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
+    <link rel="stylesheet" href="../_static/css/bootstrap-2.2.1.min.css" type="text/css" />
+    <link rel="stylesheet" href="../_static/bootstrap-sphinx.css" type="text/css" />
+    <link rel="stylesheet" href="../_static/css/bootstrap-responsive-2.2.1.min.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '../',
+        VERSION:     '1.4.0',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true
+      };
+    </script>
+    <script type="text/javascript" src="../_static/jquery.js"></script>
+    <script type="text/javascript" src="../_static/underscore.js"></script>
+    <script type="text/javascript" src="../_static/doctools.js"></script>
+    <script type="text/javascript" src="../_static/js/bootstrap-2.2.1.min.js"></script>
+    <script type="text/javascript" src="../_static/bootstrap-sphinx.js"></script>
+    <link rel="top" title="Testerman 1.4.0 documentation" href="../index.html" />
+    <link rel="next" title="&lt;no title&gt;" href="autogen/toc.html" />
+    <link rel="prev" title="Best Practices" href="../main/BestPractices.html" />
+<meta charset='utf-8'>
+<meta http-equiv='X-UA-Compatible' content='IE=edge,chrome=1'>
+<meta name='viewport' content='width=device-width, initial-scale=1.0, maximum-scale=1'>
+<meta name="apple-mobile-web-app-capable" content="yes">
+
+  </head>
+  <body>
+<div class="container">
+  
+  <div id="navbar" class="navbar navbar-inverse navbar-fixed-top">
+    <div class="navbar-inner">
+      <!-- .btn-navbar is used as the toggle for collapsed navbar content -->
+      <button class="btn btn-navbar" data-toggle="collapse" data-target=".nav-collapse">
+        <span class="icon-bar"></span>
+        <span class="icon-bar"></span>
+        <span class="icon-bar"></span>
+      </button>
+
+      <a class="brand" href="../index.html">Testerman</a>
+      <span class="navbar-text pull-left"><b>1.4</b></span>
+
+      <div class="nav-collapse">
+        <ul class="nav">
+          <li class="divider-vertical"></li>
+          
+            <li class="dropdown">
+  <a href="../index.html" class="dropdown-toggle" data-toggle="dropdown">Site <b class="caret"></b></a>
+  <ul class="dropdown-menu globaltoc"><ul>
+<li class="toctree-l1"><a class="reference internal" href="../main/About.html">Welcome to Testerman</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../main/About.html#about">About</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../main/About.html#contact">Contact</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../main/GetTesterman.html">Getting Testerman</a></li>
+</ul>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../main/TestermanOverview.html">Testerman Overview</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../main/TestermanQuickStart.html">Quick Start</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../main/TestermanQuickStart.html#external-resources">External Resources</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../main/QTesterman.html">QTesterman</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../main/TestermanReferenceGuide.html">Testerman Reference Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../main/TestermanLanguageReference.html">General Concepts</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../main/TestermanLanguageReference.html#reference-testerman-api">Reference: Testerman API</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../main/BestPractices.html">Best Practices</a></li>
+</ul>
+<ul class="current">
+<li class="toctree-l1 current"><a class="current reference internal" href="">Codecs and Probes Overview</a></li>
+<li class="toctree-l1"><a class="reference internal" href="#codecs">Codecs</a></li>
+<li class="toctree-l1"><a class="reference internal" href="#test-adapters-probes">Test Adapters (Probes)</a></li>
+<li class="toctree-l1"><a class="reference internal" href="#codecs-and-probes-references">Codecs and Probes References</a></li>
+<li class="toctree-l1"><a class="reference internal" href="#developing-new-codecs-and-probes">Developing New Codecs and Probes</a></li>
+</ul>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../main/TestermanAdministrationGuide.html">Testerman Administration Guide</a></li>
+</ul>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../main/TestermanInternals.html">Testerman Internals</a></li>
+</ul>
+</ul>
+</li>
+            <li class="dropdown">
+  <a href="#" class="dropdown-toggle" data-toggle="dropdown">Page <b class="caret"></b></a>
+  <ul class="dropdown-menu localtoc"><ul>
+<li><a class="reference internal" href="#">Codecs and Probes Overview</a></li>
+<li><a class="reference internal" href="#codecs">Codecs</a><ul>
+<li><a class="reference internal" href="#it-oriented-codecs">IT Oriented Codecs</a></li>
+<li><a class="reference internal" href="#multimedia-and-voip-oriented-codecs">Multimedia and VoIP Oriented Codecs</a></li>
+<li><a class="reference internal" href="#telecom-oriented-codecs">Telecom Oriented Codecs</a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#test-adapters-probes">Test Adapters (Probes)</a><ul>
+<li><a class="reference internal" href="#protocol-oriented-probes">Protocol Oriented Probes</a></li>
+<li><a class="reference internal" href="#tools-probes">Tools Probes</a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#codecs-and-probes-references">Codecs and Probes References</a><ul>
+</ul>
+</li>
+<li><a class="reference internal" href="#developing-new-codecs-and-probes">Developing New Codecs and Probes</a></li>
+</ul>
+</ul>
+</li>
+          
+          
+            
+  <li><a href="../main/BestPractices.html"
+         title="previous chapter">&laquo; Best Practices</a></li>
+  <li><a href="autogen/toc.html"
+         title="next chapter">&lt;no title&gt; &raquo;</a></li>
+          
+          
+            <li>
+  <a href="../_sources/plugins/index.txt"
+     rel="nofollow">Source</a></li>
+          
+        </ul>
+
+        
+          
+<form class="navbar-search pull-right" style="margin-bottom:-3px;" action="../search.html" method="get">
+  <input type="text" name="q" placeholder="Search" />
+  <input type="hidden" name="check_keywords" value="yes" />
+  <input type="hidden" name="area" value="default" />
+</form>
+        
+      </div>
+    </div>
+  </div>
+
+  
+  <div class="section" id="codecs-and-probes-overview">
+<h1>Codecs and Probes Overview<a class="headerlink" href="#codecs-and-probes-overview" title="Permalink to this headline">¶</a></h1>
+<p>Testerman comes with a collection of codecs and probes to interact with
+your SUTs.</p>
+<p>A <em>probe</em> (a.k.a. a Test Adapter or SUT Adapter in TTCN-3
+terminology) is the entity that is responsible for actually implementing
+the interaction with the SUT.</p>
+<p>It could be reading and writing packets on the wire, reading/writing a
+file somewhere, etc, and is usually configurable to provision actual SUT
+IP addresses or port or other SUT-dependent and test logic-independent
+parameters.</p>
+<p>The probe is what is behind a test system interface port, and both are
+associated through what Testerman calls a <em>binding</em>. The binding is also
+the moment when you can set those SUT-dependent parameters for the
+probe: they are called probe <em>properties</em>.</p>
+<p>A <em>codec</em> is something different.</p>
+<p>It does not perform any SUT adaptation, but only provides a way to
+encode/decode high level, structured userland messages to/from a lower
+level payload. Codecs can be stacked so that it is trivial to build
+things such as transporting a MAP message encoded in base64 in a XML
+element sent over UDP to a remote target; in this dummy example, we
+would stack MAP, base64, and XML codecs to build a full payload that
+would be sent through a UDP probe, actually injecting raw data over the
+network to a SUT address that could be defined as a probe property (when
+not test-dependent).</p>
+</div>
+<div class="section" id="codecs">
+<h1>Codecs<a class="headerlink" href="#codecs" title="Permalink to this headline">¶</a></h1>
+<div class="section" id="it-oriented-codecs">
+<h2>IT Oriented Codecs<a class="headerlink" href="#it-oriented-codecs" title="Permalink to this headline">¶</a></h2>
+<table border="1" class="docutils">
+<colgroup>
+<col width="13%" />
+<col width="88%" />
+</colgroup>
+<thead valign="bottom">
+<tr class="row-odd"><th class="head">Codec ID</th>
+<th class="head">Description</th>
+</tr>
+</thead>
+<tbody valign="top">
+<tr class="row-even"><td><tt class="docutils literal"><span class="pre">xml</span></tt></td>
+<td><a class="reference internal" href="autogen/CodecXml.html"><em>a simple XML coder/decoder</em></a> - you may also have a look to CodecXerLite</td>
+</tr>
+<tr class="row-odd"><td><tt class="docutils literal"><span class="pre">xer.lite</span></tt></td>
+<td>CodecXerLite, a XER (XML Encoding Rules)-like codec that only uses a subset of XML capabilities (no attributes)</td>
+</tr>
+<tr class="row-even"><td><tt class="docutils literal"><span class="pre">http</span></tt></td>
+<td>CodecHttp, HTTP request/response codecs</td>
+</tr>
+<tr class="row-odd"><td><tt class="docutils literal"><span class="pre">soap11.ds</span></tt></td>
+<td>CodecSoapDs, a codec that enables to sign (and verify signatures of) SOAP 1.1 message, using Ws-Security standards.</td>
+</tr>
+</tbody>
+</table>
+</div>
+<div class="section" id="multimedia-and-voip-oriented-codecs">
+<h2>Multimedia and VoIP Oriented Codecs<a class="headerlink" href="#multimedia-and-voip-oriented-codecs" title="Permalink to this headline">¶</a></h2>
+<table border="1" class="docutils">
+<colgroup>
+<col width="20%" />
+<col width="80%" />
+</colgroup>
+<thead valign="bottom">
+<tr class="row-odd"><th class="head">Codec ID</th>
+<th class="head">Description</th>
+</tr>
+</thead>
+<tbody valign="top">
+<tr class="row-even"><td><tt class="docutils literal"><span class="pre">rtsp.*</span></tt></td>
+<td><a class="reference internal" href="autogen/CodecsRtsp.html"><em>RTSP Codecs</em></a></td>
+</tr>
+<tr class="row-odd"><td><tt class="docutils literal"><span class="pre">sdp</span></tt></td>
+<td>CodecSdp, a RFC4566 SDP (Session Description Protocol) codec</td>
+</tr>
+</tbody>
+</table>
+</div>
+<div class="section" id="telecom-oriented-codecs">
+<h2>Telecom Oriented Codecs<a class="headerlink" href="#telecom-oriented-codecs" title="Permalink to this headline">¶</a></h2>
+<table border="1" class="docutils">
+<colgroup>
+<col width="20%" />
+<col width="80%" />
+</colgroup>
+<thead valign="bottom">
+<tr class="row-odd"><th class="head">Codec ID</th>
+<th class="head">Description</th>
+</tr>
+</thead>
+<tbody valign="top">
+<tr class="row-even"><td><tt class="docutils literal"><span class="pre">sua</span></tt></td>
+<td>CodecSua, a RFC3868 SUA (SCCP User Adaptation) codec</td>
+</tr>
+<tr class="row-odd"><td><tt class="docutils literal"><span class="pre">tcap</span></tt></td>
+<td>CodecTcap, a TCAP (ITU) codec</td>
+</tr>
+<tr class="row-even"><td><tt class="docutils literal"><span class="pre">map.*</span></tt></td>
+<td>CodecMap, a collection of codecs for MAP Phase 2+ PDUs</td>
+</tr>
+<tr class="row-odd"><td><tt class="docutils literal"><span class="pre">sms.tpdu.*</span></tt></td>
+<td>CodecSmsTpdu, a collection of codecs for SMS TPDU SM-TL layer (GSM 030.40)</td>
+</tr>
+<tr class="row-even"><td><tt class="docutils literal"><span class="pre">tbcd</span></tt></td>
+<td>A telephony BCD codec</td>
+</tr>
+<tr class="row-odd"><td><tt class="docutils literal"><span class="pre">packed.7bit</span></tt></td>
+<td>A codec for 7-bit packed strings (useful for SMS encoding)</td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+<div class="section" id="test-adapters-probes">
+<h1>Test Adapters (Probes)<a class="headerlink" href="#test-adapters-probes" title="Permalink to this headline">¶</a></h1>
+<div class="section" id="protocol-oriented-probes">
+<h2>Protocol Oriented Probes<a class="headerlink" href="#protocol-oriented-probes" title="Permalink to this headline">¶</a></h2>
+<p>These probes are useful to test a SUT at protocol level.</p>
+<ul class="simple">
+<li>General purpose probes: transport over IP probes: <a class="reference internal" href="autogen/ProbeTcp.html"><em>TCP Probe</em></a>,
+<a class="reference internal" href="autogen/ProbeUdp.html"><em>UDP Probe</em></a>, <a class="reference internal" href="autogen/ProbeSctp.html"><em>SCTP Probe</em></a> (could be used as
+a base for implementing SIP testing, SUA, HTTP, ... most protocols)</li>
+<li><a class="reference internal" href="autogen/ProbeHttpClient.html"><em>HTTP Probe</em></a>, a simple, dummy HTTP client probe without any
+automated behaviours (no redirect following, etc)</li>
+<li><a class="reference internal" href="autogen/ProbeRtspClient.html"><em>RTSP Probe</em></a>, a simple RTSP client probe</li>
+<li><a class="reference internal" href="autogen/ProbeRtp.html"><em>RTP Probe</em></a>, a RTP stream sender/listener</li>
+</ul>
+</div>
+<div class="section" id="tools-probes">
+<h2>Tools Probes<a class="headerlink" href="#tools-probes" title="Permalink to this headline">¶</a></h2>
+<p>These probes are mainly useful to interfact with a SUT at high-level.
+They are mainly convenience tools to develop the glue between several
+domain testing, and are meant to integrate usual actions associated
+with testing: connecting to remote machines, checking files, running
+commands, changing configuration files, checking an SQL database, etc.</p>
+<ul class="simple">
+<li><a class="reference internal" href="autogen/ProbeSsh.html"><em>SSH Probe</em></a>, a probe to execute non-interactive commands remotely
+through SSH, ProbeExec to execute them locally, ProbeExecInteractive
+to execute them locally, but interactively</li>
+<li>SQL connector probes: <a class="reference internal" href="autogen/ProbeSqlMysql.html"><em>MySQL Probe</em></a>, <a class="reference internal" href="autogen/ProbeSqlOracle.html"><em>Oracle Probe</em></a></li>
+<li><a class="reference internal" href="autogen/ProbeDirWatcher.html"><em>Directory Watcher Probe</em></a>, a probe that monitors a directory and notifies you
+when an entry has been added/removed (useful to check if a lock file
+was created/removed, ...)</li>
+<li><a class="reference internal" href="autogen/ProbeFileWatcher.html"><em>File Watcher Probe</em></a>, a probe that monitors an ascii file and notifies
+you of new lines (think of it as a combination of <tt class="docutils literal"><span class="pre">tail</span> <span class="pre">-f</span></tt> and
+<tt class="docutils literal"><span class="pre">grep</span></tt>, useful to check log files for instance)</li>
+<li><a class="reference internal" href="autogen/ProbeConfigurationFile.html"><em>Configuration File Probe</em></a>, a probe that can access in read-write to
+configuration files, supporting most used configuration formats and
+extensible to match your needs (useful to prepare a SUT for testing
+in particular configuration conditions)</li>
+<li><tt class="xref doc docutils literal"><span class="pre">autogen/ProbeXmlRpc</span></tt>, a probe to invoke remote operations via XML-RPC</li>
+<li><a class="reference internal" href="autogen/ProbeLdapClient.html"><em>LDAP Probe</em></a>, a probe to access a LDAP directory</li>
+<li><a class="reference internal" href="autogen/ProbeSelenium.html"><em>Selenium Probe</em></a>, a probe to execute web-oriented tests through Selenium
+RC</li>
+<li><a class="reference internal" href="autogen/ProbeFileManager.html"><em>File Manager Probe</em></a>, a probe to create, move, delete files dynamically
+(convenient to create temporary files, to inject resources into the
+SUT that are kept embedded in the ATS that you don&#8217;t have to manage
+additional dependencies at runtime)</li>
+</ul>
+</div>
+</div>
+<div class="section" id="codecs-and-probes-references">
+<h1>Codecs and Probes References<a class="headerlink" href="#codecs-and-probes-references" title="Permalink to this headline">¶</a></h1>
+<p>This section provides the reference documentation for each codec and probe.</p>
+<div class="toctree-wrapper compound">
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="autogen/CodecXml.html">XML Codec</a></li>
+<li class="toctree-l1"><a class="reference internal" href="autogen/CodecsRtsp.html">RTSP Codecs</a></li>
+<li class="toctree-l1"><a class="reference internal" href="autogen/ProbeTcp.html">TCP Probe</a></li>
+<li class="toctree-l1"><a class="reference internal" href="autogen/ProbeUdp.html">UDP Probe</a></li>
+<li class="toctree-l1"><a class="reference internal" href="autogen/ProbeSctp.html">SCTP Probe</a></li>
+<li class="toctree-l1"><a class="reference internal" href="autogen/ProbeDirWatcher.html">Directory Watcher Probe</a></li>
+<li class="toctree-l1"><a class="reference internal" href="autogen/ProbeFileWatcher.html">File Watcher Probe</a></li>
+<li class="toctree-l1"><a class="reference internal" href="autogen/ProbeExec.html">Local Execution Probe</a></li>
+<li class="toctree-l1"><a class="reference internal" href="autogen/ProbeExecInteractive.html">Local Interactive Execution Probe</a></li>
+<li class="toctree-l1"><a class="reference internal" href="autogen/ProbeFileManager.html">File Manager Probe</a></li>
+<li class="toctree-l1"><a class="reference internal" href="autogen/ProbeSsh.html">SSH Probe</a></li>
+<li class="toctree-l1"><a class="reference internal" href="autogen/ProbeConfigurationFile.html">Configuration File Probe</a></li>
+<li class="toctree-l1"><a class="reference internal" href="autogen/ProbeRtp.html">RTP Probe</a></li>
+<li class="toctree-l1"><a class="reference internal" href="autogen/ProbeRtspClient.html">RTSP Probe</a></li>
+<li class="toctree-l1"><a class="reference internal" href="autogen/ProbeLdapClient.html">LDAP Probe</a></li>
+<li class="toctree-l1"><a class="reference internal" href="autogen/ProbeSqlOracle.html">Oracle Probe</a></li>
+<li class="toctree-l1"><a class="reference internal" href="autogen/ProbeSqlMysql.html">MySQL Probe</a></li>
+<li class="toctree-l1"><a class="reference internal" href="autogen/ProbeHttpClient.html">HTTP Probe</a></li>
+<li class="toctree-l1"><a class="reference internal" href="autogen/ProbeSelenium.html">Selenium Probe</a></li>
+</ul>
+</div>
+</div>
+<div class="section" id="developing-new-codecs-and-probes">
+<h1>Developing New Codecs and Probes<a class="headerlink" href="#developing-new-codecs-and-probes" title="Permalink to this headline">¶</a></h1>
+<p>TODO.</p>
+<p>Notice that the internal APIs are stable and can be safely used to develop new codecs/probes plugins.</p>
+</div>
+
+
+</div>
+<footer class="footer">
+  <div class="container">
+    <p class="pull-right">
+      <a href="#">Back to top</a>
+      
+    </p>
+    <p>
+        &copy; Copyright 2009-2013, Sébastien Lefèvre.<br/>
+      Created using <a href="http://sphinx.pocoo.org/">Sphinx</a> 1.1.3.<br/>
+    </p>
+  </div>
+</footer>
+  </body>
+</html>

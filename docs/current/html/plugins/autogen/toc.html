@@ -1,0 +1,384 @@
+
+<!DOCTYPE html>
+
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>&lt;no title&gt; &mdash; Testerman 1.4.0 documentation</title>
+    
+    <link rel="stylesheet" href="../../_static/basic.css" type="text/css" />
+    <link rel="stylesheet" href="../../_static/pygments.css" type="text/css" />
+    <link rel="stylesheet" href="../../_static/css/bootstrap-2.2.1.min.css" type="text/css" />
+    <link rel="stylesheet" href="../../_static/bootstrap-sphinx.css" type="text/css" />
+    <link rel="stylesheet" href="../../_static/css/bootstrap-responsive-2.2.1.min.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '../../',
+        VERSION:     '1.4.0',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true
+      };
+    </script>
+    <script type="text/javascript" src="../../_static/jquery.js"></script>
+    <script type="text/javascript" src="../../_static/underscore.js"></script>
+    <script type="text/javascript" src="../../_static/doctools.js"></script>
+    <script type="text/javascript" src="../../_static/js/bootstrap-2.2.1.min.js"></script>
+    <script type="text/javascript" src="../../_static/bootstrap-sphinx.js"></script>
+    <link rel="top" title="Testerman 1.4.0 documentation" href="../../index.html" />
+    <link rel="up" title="Codecs and Probes Overview" href="../index.html" />
+    <link rel="next" title="XML Codec" href="CodecXml.html" />
+    <link rel="prev" title="Codecs and Probes Overview" href="../index.html" />
+<meta charset='utf-8'>
+<meta http-equiv='X-UA-Compatible' content='IE=edge,chrome=1'>
+<meta name='viewport' content='width=device-width, initial-scale=1.0, maximum-scale=1'>
+<meta name="apple-mobile-web-app-capable" content="yes">
+
+  </head>
+  <body>
+<div class="container">
+  
+  <div id="navbar" class="navbar navbar-inverse navbar-fixed-top">
+    <div class="navbar-inner">
+      <!-- .btn-navbar is used as the toggle for collapsed navbar content -->
+      <button class="btn btn-navbar" data-toggle="collapse" data-target=".nav-collapse">
+        <span class="icon-bar"></span>
+        <span class="icon-bar"></span>
+        <span class="icon-bar"></span>
+      </button>
+
+      <a class="brand" href="../../index.html">Testerman</a>
+      <span class="navbar-text pull-left"><b>1.4</b></span>
+
+      <div class="nav-collapse">
+        <ul class="nav">
+          <li class="divider-vertical"></li>
+          
+            <li class="dropdown">
+  <a href="../../index.html" class="dropdown-toggle" data-toggle="dropdown">Site <b class="caret"></b></a>
+  <ul class="dropdown-menu globaltoc"><ul>
+<li class="toctree-l1"><a class="reference internal" href="../../main/About.html">Welcome to Testerman</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../main/About.html#about">About</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../main/About.html#contact">Contact</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../main/GetTesterman.html">Getting Testerman</a></li>
+</ul>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../main/TestermanOverview.html">Testerman Overview</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../main/TestermanQuickStart.html">Quick Start</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../main/TestermanQuickStart.html#external-resources">External Resources</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../main/QTesterman.html">QTesterman</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../main/TestermanReferenceGuide.html">Testerman Reference Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../main/TestermanLanguageReference.html">General Concepts</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../main/TestermanLanguageReference.html#reference-testerman-api">Reference: Testerman API</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../main/BestPractices.html">Best Practices</a></li>
+</ul>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../index.html">Codecs and Probes Overview</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../index.html#codecs">Codecs</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../index.html#test-adapters-probes">Test Adapters (Probes)</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../index.html#codecs-and-probes-references">Codecs and Probes References</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../index.html#developing-new-codecs-and-probes">Developing New Codecs and Probes</a></li>
+</ul>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../main/TestermanAdministrationGuide.html">Testerman Administration Guide</a></li>
+</ul>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../main/TestermanInternals.html">Testerman Internals</a></li>
+</ul>
+</ul>
+</li>
+            <li class="dropdown">
+  <a href="#" class="dropdown-toggle" data-toggle="dropdown">Page <b class="caret"></b></a>
+  <ul class="dropdown-menu localtoc"><ul>
+</ul>
+</ul>
+</li>
+          
+          
+            
+  <li><a href="../index.html"
+         title="previous chapter">&laquo; Codecs and Probes Overview</a></li>
+  <li><a href="CodecXml.html"
+         title="next chapter">XML Codec &raquo;</a></li>
+          
+          
+            <li>
+  <a href="../../_sources/plugins/autogen/toc.txt"
+     rel="nofollow">Source</a></li>
+          
+        </ul>
+
+        
+          
+<form class="navbar-search pull-right" style="margin-bottom:-3px;" action="../../search.html" method="get">
+  <input type="text" name="q" placeholder="Search" />
+  <input type="hidden" name="check_keywords" value="yes" />
+  <input type="hidden" name="area" value="default" />
+</form>
+        
+      </div>
+    </div>
+  </div>
+
+  
+  <div class="toctree-wrapper compound">
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="CodecXml.html">XML Codec</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="CodecXml.html#identification-and-properties">Identification and Properties</a></li>
+<li class="toctree-l2"><a class="reference internal" href="CodecXml.html#overview">Overview</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="CodecXml.html#decoding">Decoding</a></li>
+<li class="toctree-l3"><a class="reference internal" href="CodecXml.html#encoding">Encoding</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="CodecXml.html#ttcn-3-types-equivalence">TTCN-3 Types Equivalence</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="CodecsRtsp.html">RTSP Codecs</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="CodecsRtsp.html#identification-and-properties">Identification and Properties</a></li>
+<li class="toctree-l2"><a class="reference internal" href="CodecsRtsp.html#overview">Overview</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="CodecsRtsp.html#availability">Availability</a></li>
+<li class="toctree-l3"><a class="reference internal" href="CodecsRtsp.html#dependencies">Dependencies</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="CodecsRtsp.html#ttcn-3-types-equivalence">TTCN-3 Types Equivalence</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="ProbeTcp.html">TCP Probe</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="ProbeTcp.html#identification-and-properties">Identification and Properties</a></li>
+<li class="toctree-l2"><a class="reference internal" href="ProbeTcp.html#overview">Overview</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="ProbeTcp.html#adpu-identification">ADPU Identification</a></li>
+<li class="toctree-l3"><a class="reference internal" href="ProbeTcp.html#basic-ssl-support">Basic SSL Support</a></li>
+<li class="toctree-l3"><a class="reference internal" href="ProbeTcp.html#availability">Availability</a></li>
+<li class="toctree-l3"><a class="reference internal" href="ProbeTcp.html#dependencies">Dependencies</a></li>
+<li class="toctree-l3"><a class="reference internal" href="ProbeTcp.html#see-also">See Also</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="ProbeTcp.html#ttcn-3-types-equivalence">TTCN-3 Types Equivalence</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="ProbeUdp.html">UDP Probe</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="ProbeUdp.html#identification-and-properties">Identification and Properties</a></li>
+<li class="toctree-l2"><a class="reference internal" href="ProbeUdp.html#overview">Overview</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="ProbeUdp.html#availability">Availability</a></li>
+<li class="toctree-l3"><a class="reference internal" href="ProbeUdp.html#dependencies">Dependencies</a></li>
+<li class="toctree-l3"><a class="reference internal" href="ProbeUdp.html#see-also">See Also</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="ProbeUdp.html#ttcn-3-types-equivalence">TTCN-3 Types Equivalence</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="ProbeSctp.html">SCTP Probe</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="ProbeSctp.html#identification-and-properties">Identification and Properties</a></li>
+<li class="toctree-l2"><a class="reference internal" href="ProbeSctp.html#overview">Overview</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="ProbeSctp.html#availability">Availability</a></li>
+<li class="toctree-l3"><a class="reference internal" href="ProbeSctp.html#dependencies">Dependencies</a></li>
+<li class="toctree-l3"><a class="reference internal" href="ProbeSctp.html#see-also">See Also</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="ProbeSctp.html#ttcn-3-types-equivalence">TTCN-3 Types Equivalence</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="ProbeDirWatcher.html">Directory Watcher Probe</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="ProbeDirWatcher.html#identification-and-properties">Identification and Properties</a></li>
+<li class="toctree-l2"><a class="reference internal" href="ProbeDirWatcher.html#overview">Overview</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="ProbeDirWatcher.html#availability">Availability</a></li>
+<li class="toctree-l3"><a class="reference internal" href="ProbeDirWatcher.html#dependencies">Dependencies</a></li>
+<li class="toctree-l3"><a class="reference internal" href="ProbeDirWatcher.html#see-also">See Also</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="ProbeDirWatcher.html#ttcn-3-types-equivalence">TTCN-3 Types Equivalence</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="ProbeFileWatcher.html">File Watcher Probe</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="ProbeFileWatcher.html#identification-and-properties">Identification and Properties</a></li>
+<li class="toctree-l2"><a class="reference internal" href="ProbeFileWatcher.html#overview">Overview</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="ProbeFileWatcher.html#known-bugs">Known Bugs</a></li>
+<li class="toctree-l3"><a class="reference internal" href="ProbeFileWatcher.html#availability">Availability</a></li>
+<li class="toctree-l3"><a class="reference internal" href="ProbeFileWatcher.html#dependencies">Dependencies</a></li>
+<li class="toctree-l3"><a class="reference internal" href="ProbeFileWatcher.html#see-also">See Also</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="ProbeFileWatcher.html#ttcn-3-types-equivalence">TTCN-3 Types Equivalence</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="ProbeExec.html">Local Execution Probe</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="ProbeExec.html#identification-and-properties">Identification and Properties</a></li>
+<li class="toctree-l2"><a class="reference internal" href="ProbeExec.html#overview">Overview</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="ProbeExec.html#availability">Availability</a></li>
+<li class="toctree-l3"><a class="reference internal" href="ProbeExec.html#dependencies">Dependencies</a></li>
+<li class="toctree-l3"><a class="reference internal" href="ProbeExec.html#see-also">See Also</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="ProbeExec.html#ttcn-3-types-equivalence">TTCN-3 Types Equivalence</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="ProbeExecInteractive.html">Local Interactive Execution Probe</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="ProbeExecInteractive.html#identification-and-properties">Identification and Properties</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="ProbeExecInteractive.html#overview">Overview</a></li>
+<li class="toctree-l3"><a class="reference internal" href="ProbeExecInteractive.html#availability">Availability</a></li>
+<li class="toctree-l3"><a class="reference internal" href="ProbeExecInteractive.html#dependencies">Dependencies</a></li>
+<li class="toctree-l3"><a class="reference internal" href="ProbeExecInteractive.html#see-also">See Also</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="ProbeExecInteractive.html#ttcn-3-types-equivalence">TTCN-3 Types Equivalence</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="ProbeFileManager.html">File Manager Probe</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="ProbeFileManager.html#identification-and-properties">Identification and Properties</a></li>
+<li class="toctree-l2"><a class="reference internal" href="ProbeFileManager.html#overview">Overview</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="ProbeFileManager.html#availability">Availability</a></li>
+<li class="toctree-l3"><a class="reference internal" href="ProbeFileManager.html#dependencies">Dependencies</a></li>
+<li class="toctree-l3"><a class="reference internal" href="ProbeFileManager.html#see-also">See Also</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="ProbeFileManager.html#ttcn-3-types-equivalence">TTCN-3 Types Equivalence</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="ProbeSsh.html">SSH Probe</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="ProbeSsh.html#identification-and-properties">Identification and Properties</a></li>
+<li class="toctree-l2"><a class="reference internal" href="ProbeSsh.html#overview">Overview</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="ProbeSsh.html#availability">Availability</a></li>
+<li class="toctree-l3"><a class="reference internal" href="ProbeSsh.html#dependencies">Dependencies</a></li>
+<li class="toctree-l3"><a class="reference internal" href="ProbeSsh.html#see-also">See Also</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="ProbeSsh.html#ttcn-3-types-equivalence">TTCN-3 Types Equivalence</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="ProbeConfigurationFile.html">Configuration File Probe</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="ProbeConfigurationFile.html#identification-and-properties">Identification and Properties</a></li>
+<li class="toctree-l2"><a class="reference internal" href="ProbeConfigurationFile.html#overview">Overview</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="ProbeConfigurationFile.html#availability">Availability</a></li>
+<li class="toctree-l3"><a class="reference internal" href="ProbeConfigurationFile.html#dependencies">Dependencies</a></li>
+<li class="toctree-l3"><a class="reference internal" href="ProbeConfigurationFile.html#see-also">See Also</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="ProbeConfigurationFile.html#ttcn-3-types-equivalence">TTCN-3 Types Equivalence</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="ProbeRtp.html">RTP Probe</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="ProbeRtp.html#identification-and-properties">Identification and Properties</a></li>
+<li class="toctree-l2"><a class="reference internal" href="ProbeRtp.html#overview">Overview</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="ProbeRtp.html#availability">Availability</a></li>
+<li class="toctree-l3"><a class="reference internal" href="ProbeRtp.html#dependencies">Dependencies</a></li>
+<li class="toctree-l3"><a class="reference internal" href="ProbeRtp.html#see-also">See Also</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="ProbeRtp.html#ttcn-3-types-equivalence">TTCN-3 Types Equivalence</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="ProbeRtspClient.html">RTSP Probe</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="ProbeRtspClient.html#identification-and-properties">Identification and Properties</a></li>
+<li class="toctree-l2"><a class="reference internal" href="ProbeRtspClient.html#overview">Overview</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="ProbeRtspClient.html#availability">Availability</a></li>
+<li class="toctree-l3"><a class="reference internal" href="ProbeRtspClient.html#dependencies">Dependencies</a></li>
+<li class="toctree-l3"><a class="reference internal" href="ProbeRtspClient.html#see-also">See Also</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="ProbeRtspClient.html#ttcn-3-types-equivalence">TTCN-3 Types Equivalence</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="ProbeLdapClient.html">LDAP Probe</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="ProbeLdapClient.html#identification-and-properties">Identification and Properties</a></li>
+<li class="toctree-l2"><a class="reference internal" href="ProbeLdapClient.html#overview">Overview</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="ProbeLdapClient.html#availability">Availability</a></li>
+<li class="toctree-l3"><a class="reference internal" href="ProbeLdapClient.html#dependencies">Dependencies</a></li>
+<li class="toctree-l3"><a class="reference internal" href="ProbeLdapClient.html#see-also">See Also</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="ProbeLdapClient.html#ttcn-3-types-equivalence">TTCN-3 Types Equivalence</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="ProbeSqlOracle.html">Oracle Probe</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="ProbeSqlOracle.html#overview">Overview</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="ProbeSqlOracle.html#availability">Availability</a></li>
+<li class="toctree-l3"><a class="reference internal" href="ProbeSqlOracle.html#dependencies">Dependencies</a></li>
+<li class="toctree-l3"><a class="reference internal" href="ProbeSqlOracle.html#see-also">See Also</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="ProbeSqlOracle.html#ttcn-3-types-equivalence">TTCN-3 Types Equivalence</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="ProbeSqlMysql.html">MySQL Probe</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="ProbeSqlMysql.html#identification-and-properties">Identification and Properties</a></li>
+<li class="toctree-l2"><a class="reference internal" href="ProbeSqlMysql.html#overview">Overview</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="ProbeSqlMysql.html#availability">Availability</a></li>
+<li class="toctree-l3"><a class="reference internal" href="ProbeSqlMysql.html#dependencies">Dependencies</a></li>
+<li class="toctree-l3"><a class="reference internal" href="ProbeSqlMysql.html#see-also">See Also</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="ProbeSqlMysql.html#ttcn-3-types-equivalence">TTCN-3 Types Equivalence</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="ProbeHttpClient.html">HTTP Probe</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="ProbeHttpClient.html#identification-and-properties">Identification and Properties</a></li>
+<li class="toctree-l2"><a class="reference internal" href="ProbeHttpClient.html#overview">Overview</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="ProbeHttpClient.html#availability">Availability</a></li>
+<li class="toctree-l3"><a class="reference internal" href="ProbeHttpClient.html#dependencies">Dependencies</a></li>
+<li class="toctree-l3"><a class="reference internal" href="ProbeHttpClient.html#see-also">See Also</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="ProbeHttpClient.html#ttcn-3-types-equivalence">TTCN-3 Types Equivalence</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="ProbeSelenium.html">Selenium Probe</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="ProbeSelenium.html#identification-and-properties">Identification and Properties</a></li>
+<li class="toctree-l2"><a class="reference internal" href="ProbeSelenium.html#overview">Overview</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="ProbeSelenium.html#availability">Availability</a></li>
+<li class="toctree-l3"><a class="reference internal" href="ProbeSelenium.html#dependencies">Dependencies</a></li>
+<li class="toctree-l3"><a class="reference internal" href="ProbeSelenium.html#see-also">See Also</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="../SeleniumFormatter.html">Generate Testerman test cases with Selenium IDE</a><ul>
+<li class="toctree-l5"><a class="reference internal" href="../SeleniumFormatter.html#summary">Summary</a></li>
+<li class="toctree-l5"><a class="reference internal" href="../SeleniumFormatter.html#install">Install</a><ul>
+<li class="toctree-l6"><a class="reference internal" href="../SeleniumFormatter.html#installing-a-newer-versions-of-the-formatter">Installing a newer versions of the formatter</a></li>
+</ul>
+</li>
+<li class="toctree-l5"><a class="reference internal" href="../SeleniumFormatter.html#how-to-best-practises-and-information">How To, Best Practises and Information</a><ul>
+<li class="toctree-l6"><a class="reference internal" href="../SeleniumFormatter.html#understanding-selenium">Understanding Selenium</a></li>
+<li class="toctree-l6"><a class="reference internal" href="../SeleniumFormatter.html#using-selenium-ide-generated-commands">Using Selenium IDE generated commands</a></li>
+<li class="toctree-l6"><a class="reference internal" href="../SeleniumFormatter.html#using-testerman-s-parameter-system">Using Testerman&#8217;s parameter system</a></li>
+<li class="toctree-l6"><a class="reference internal" href="../SeleniumFormatter.html#store-commands">Store Commands</a></li>
+<li class="toctree-l6"><a class="reference internal" href="../SeleniumFormatter.html#regular-expression">Regular Expression</a></li>
+<li class="toctree-l6"><a class="reference internal" href="../SeleniumFormatter.html#assert-vs-verify">Assert vs. Verify</a></li>
+<li class="toctree-l6"><a class="reference internal" href="../SeleniumFormatter.html#adding-comments">Adding comments</a></li>
+<li class="toctree-l6"><a class="reference internal" href="../SeleniumFormatter.html#setverdict">setverdict()</a></li>
+<li class="toctree-l6"><a class="reference internal" href="../SeleniumFormatter.html#best-practices">Best Practices</a></li>
+</ul>
+</li>
+<li class="toctree-l5"><a class="reference internal" href="../SeleniumFormatter.html#import-ats-files-to-selenium-ide">Import ats files to Selenium IDE</a></li>
+<li class="toctree-l5"><a class="reference internal" href="../SeleniumFormatter.html#known-issues">Known Issues</a><ul>
+<li class="toctree-l6"><a class="reference internal" href="../SeleniumFormatter.html#selenese-returning-an-array">Selenese returning an array</a></li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="ProbeSelenium.html#extensions">Extensions</a></li>
+<li class="toctree-l2"><a class="reference internal" href="ProbeSelenium.html#ttcn-3-types-equivalence">TTCN-3 Types Equivalence</a></li>
+</ul>
+</li>
+</ul>
+</div>
+
+
+</div>
+<footer class="footer">
+  <div class="container">
+    <p class="pull-right">
+      <a href="#">Back to top</a>
+      
+    </p>
+    <p>
+        &copy; Copyright 2009-2013, Sébastien Lefèvre.<br/>
+      Created using <a href="http://sphinx.pocoo.org/">Sphinx</a> 1.1.3.<br/>
+    </p>
+  </div>
+</footer>
+  </body>
+</html>

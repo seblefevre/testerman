@@ -1,0 +1,110 @@
+Local Interactive Execution Probe
+=================================
+
+Execute a command in a local shell and interact with it.
+
+Identification and Properties
+-----------------------------
+
+Probe Type ID: ``exec.interactive``
+
+Properties:
+
+.. csv-table::
+   :header: "Name","Type","Default value","Description"
+
+   "``separator``","string","``None``","Should we notify only complete lines (or whatever) based on this separator ?"
+   "``timeout``","float","``0.5``","Maximum amount of time to wait for new data before notifying of it, when no separator is used"
+   "``encoding``","string","``'utf-8'``","The encoding to use to turn the output into unicode (also used to encode data sent to the started process)"
+
+Overview
+~~~~~~~~
+
+This probe enables to execute a shell-based program interactively, i.e. start a program, be notified of what
+it outputs to standard output (stdout, stderr), send it some input or signals.
+
+Output can be notified on a per-line basis (or any separator - the separator is not included in the event
+sent back to the userland) or a timeout basis (useful if the program does not outputs lines only, for instance
+prompts).
+
+This probe does not require the started program to use unbuffered stdout.
+
+Typical use cases include:
+
+* CLI testing
+* Program output watching, for instance something that can dump real-time traces to stdout, avoiding the use of
+  combined ``exec`` (that executes a blocking program whose output is redirected to a temp file) and ``file.watcher``
+  (that watches the temp file created by the program we should watch the output from) probes.
+
+Basically you just specify a command to start that will be executed within a shell, providing an optional
+list of regular expressions the output must match before being sent to userland (a ``egrep`` equivalent).[[BR]]
+Whenever you output to stdout/stderr is detected, based on ``separator`` and ``timeout`` properties, it checks that
+it matches at least one of the regular expressions provided above before enqueing a ``OutputNotification`` message
+to userland. If the matched regular expression contains named groups, corresponding fields are automatically
+added in this message (as for the ProbeFileWatcher).
+
+At any time, you may send some input to the started process using the ``input`` choice of the ``InteractiveExecCommand``
+message (don't forget possible trailing carriage returns, as they are not sent automatically) or send a
+signal using its POSIX integer value and the ``signal`` choice of the ``InteractiveExecCommand`` message.
+
+When the process is over (for whatever reason), a ``ExecStatus`` message is enqueued, containing the execution status
+as a shell executing the command would have provided.
+
+Limitations:
+
+* stderr output is currently reported within the stdout stream
+* interleaved stdout/stderr output are not garanteed to be delivered in the correct order
+
+Availability
+~~~~~~~~~~~~
+
+All POSIX platforms. Windows platforms are not supported.
+
+Dependencies
+~~~~~~~~~~~~
+
+None.
+
+See Also
+~~~~~~~~
+
+* :doc:`ProbeExec`, a single shoot command, non-interactive execution.
+
+
+TTCN-3 Types Equivalence
+------------------------
+
+The test system interface port bound to such a probe complies with the ``InteractiveExecPortType`` port type as specified below:
+
+::
+
+  type union InteractiveExecCommand
+  {
+    StartCommand start,
+    universal charstring input,
+    integer signal,
+  }
+
+  type record StartCommand
+  {
+    charstring command,
+    record of charstring patterns optional, // defaulted to [ r'.*' ]
+  }
+
+  type record OutputNotification
+  {
+    universal charstring output,
+    universal charstring matched_*,
+    charstring stream, // 'stderr' or 'stdout'
+  }
+
+  type record ExecStatus
+  {
+    integer status,
+  }
+
+  type port InteractiveExecPortType message
+  {
+    in  InteractiveExecCommand;
+    out ExecStatus, OutputNotification;
+  }

@@ -1,0 +1,609 @@
+
+<!DOCTYPE html>
+
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>Generate Testerman test cases with Selenium IDE &mdash; Testerman 1.4.0 documentation</title>
+    
+    <link rel="stylesheet" href="../_static/basic.css" type="text/css" />
+    <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
+    <link rel="stylesheet" href="../_static/css/bootstrap-2.2.1.min.css" type="text/css" />
+    <link rel="stylesheet" href="../_static/bootstrap-sphinx.css" type="text/css" />
+    <link rel="stylesheet" href="../_static/css/bootstrap-responsive-2.2.1.min.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '../',
+        VERSION:     '1.4.0',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true
+      };
+    </script>
+    <script type="text/javascript" src="../_static/jquery.js"></script>
+    <script type="text/javascript" src="../_static/underscore.js"></script>
+    <script type="text/javascript" src="../_static/doctools.js"></script>
+    <script type="text/javascript" src="../_static/js/bootstrap-2.2.1.min.js"></script>
+    <script type="text/javascript" src="../_static/bootstrap-sphinx.js"></script>
+    <link rel="top" title="Testerman 1.4.0 documentation" href="../index.html" />
+    <link rel="up" title="Selenium Probe" href="autogen/ProbeSelenium.html" />
+    <link rel="next" title="Testerman Administration Guide" href="../main/TestermanAdministrationGuide.html" />
+    <link rel="prev" title="Selenium Probe" href="autogen/ProbeSelenium.html" />
+<meta charset='utf-8'>
+<meta http-equiv='X-UA-Compatible' content='IE=edge,chrome=1'>
+<meta name='viewport' content='width=device-width, initial-scale=1.0, maximum-scale=1'>
+<meta name="apple-mobile-web-app-capable" content="yes">
+
+  </head>
+  <body>
+<div class="container">
+  
+  <div id="navbar" class="navbar navbar-inverse navbar-fixed-top">
+    <div class="navbar-inner">
+      <!-- .btn-navbar is used as the toggle for collapsed navbar content -->
+      <button class="btn btn-navbar" data-toggle="collapse" data-target=".nav-collapse">
+        <span class="icon-bar"></span>
+        <span class="icon-bar"></span>
+        <span class="icon-bar"></span>
+      </button>
+
+      <a class="brand" href="../index.html">Testerman</a>
+      <span class="navbar-text pull-left"><b>1.4</b></span>
+
+      <div class="nav-collapse">
+        <ul class="nav">
+          <li class="divider-vertical"></li>
+          
+            <li class="dropdown">
+  <a href="../index.html" class="dropdown-toggle" data-toggle="dropdown">Site <b class="caret"></b></a>
+  <ul class="dropdown-menu globaltoc"><ul>
+<li class="toctree-l1"><a class="reference internal" href="../main/About.html">Welcome to Testerman</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../main/About.html#about">About</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../main/About.html#contact">Contact</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../main/GetTesterman.html">Getting Testerman</a></li>
+</ul>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../main/TestermanOverview.html">Testerman Overview</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../main/TestermanQuickStart.html">Quick Start</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../main/TestermanQuickStart.html#external-resources">External Resources</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../main/QTesterman.html">QTesterman</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../main/TestermanReferenceGuide.html">Testerman Reference Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../main/TestermanLanguageReference.html">General Concepts</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../main/TestermanLanguageReference.html#reference-testerman-api">Reference: Testerman API</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../main/BestPractices.html">Best Practices</a></li>
+</ul>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="index.html">Codecs and Probes Overview</a></li>
+<li class="toctree-l1"><a class="reference internal" href="index.html#codecs">Codecs</a></li>
+<li class="toctree-l1"><a class="reference internal" href="index.html#test-adapters-probes">Test Adapters (Probes)</a></li>
+<li class="toctree-l1"><a class="reference internal" href="index.html#codecs-and-probes-references">Codecs and Probes References</a></li>
+<li class="toctree-l1"><a class="reference internal" href="index.html#developing-new-codecs-and-probes">Developing New Codecs and Probes</a></li>
+</ul>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../main/TestermanAdministrationGuide.html">Testerman Administration Guide</a></li>
+</ul>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../main/TestermanInternals.html">Testerman Internals</a></li>
+</ul>
+</ul>
+</li>
+            <li class="dropdown">
+  <a href="#" class="dropdown-toggle" data-toggle="dropdown">Page <b class="caret"></b></a>
+  <ul class="dropdown-menu localtoc"><ul>
+<li><a class="reference internal" href="#">Generate Testerman test cases with Selenium IDE</a><ul>
+<li><a class="reference internal" href="#summary">Summary</a></li>
+<li><a class="reference internal" href="#install">Install</a><ul>
+<li><a class="reference internal" href="#installing-a-newer-versions-of-the-formatter">Installing a newer versions of the formatter</a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#how-to-best-practises-and-information">How To, Best Practises and Information</a><ul>
+<li><a class="reference internal" href="#understanding-selenium">Understanding Selenium</a></li>
+<li><a class="reference internal" href="#using-selenium-ide-generated-commands">Using Selenium IDE generated commands</a></li>
+<li><a class="reference internal" href="#using-testerman-s-parameter-system">Using Testerman&#8217;s parameter system</a></li>
+<li><a class="reference internal" href="#store-commands">Store Commands</a></li>
+<li><a class="reference internal" href="#regular-expression">Regular Expression</a></li>
+<li><a class="reference internal" href="#assert-vs-verify">Assert vs. Verify</a></li>
+<li><a class="reference internal" href="#adding-comments">Adding comments</a></li>
+<li><a class="reference internal" href="#setverdict">setverdict()</a></li>
+<li><a class="reference internal" href="#best-practices">Best Practices</a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#import-ats-files-to-selenium-ide">Import ats files to Selenium IDE</a></li>
+<li><a class="reference internal" href="#known-issues">Known Issues</a><ul>
+<li><a class="reference internal" href="#selenese-returning-an-array">Selenese returning an array</a></li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+</ul>
+</li>
+          
+          
+            
+  <li><a href="autogen/ProbeSelenium.html"
+         title="previous chapter">&laquo; Selenium Probe</a></li>
+  <li><a href="../main/TestermanAdministrationGuide.html"
+         title="next chapter">Testerman Administration Guide &raquo;</a></li>
+          
+          
+            <li>
+  <a href="../_sources/plugins/SeleniumFormatter.txt"
+     rel="nofollow">Source</a></li>
+          
+        </ul>
+
+        
+          
+<form class="navbar-search pull-right" style="margin-bottom:-3px;" action="../search.html" method="get">
+  <input type="text" name="q" placeholder="Search" />
+  <input type="hidden" name="check_keywords" value="yes" />
+  <input type="hidden" name="area" value="default" />
+</form>
+        
+      </div>
+    </div>
+  </div>
+
+  
+  <div class="section" id="generate-testerman-test-cases-with-selenium-ide">
+<h1>Generate Testerman test cases with Selenium IDE<a class="headerlink" href="#generate-testerman-test-cases-with-selenium-ide" title="Permalink to this headline">¶</a></h1>
+<div class="section" id="summary">
+<h2>Summary<a class="headerlink" href="#summary" title="Permalink to this headline">¶</a></h2>
+<p><a class="reference external" href="http://seleniumhq.org/projects/ide/">Selenium IDE</a> is a Firefox
+plugin which records user interaction with a web site. The plugin can
+then export the list (of user actions) to different formats. The plugin
+enabling Selenium IDE to export is called a formatter.</p>
+<p>The Selenium team provides bindings for several <a class="reference external" href="http://seleniumhq.org/about/platforms.html#programming-languages">programming
+languages</a>.
+You can write a test in one of these languages and use the provided
+libraries to remote control a browser. Selenium IDE formatters do
+exactly that: convert the recorded list into source code for a specific
+language.</p>
+<p>The Testerman ATS Formatter let&#8217;s you export your recorded interactions
+directly to a Testerman test script (*.ats). The generated code will
+use the <a class="reference internal" href="autogen/ProbeSelenium.html"><em>Selenium Probe</em></a> to control the browser.</p>
+</div>
+<div class="section" id="install">
+<h2>Install<a class="headerlink" href="#install" title="Permalink to this headline">¶</a></h2>
+<p>The formatter is a Firefox plugin, you have to install it on top of the
+Selenium IDE plugin. It is attached at the bottom of this page (you can
+get it from the svn tree, too). Install it via Firefox: Select File -&gt;
+Open File ... and select the *.xpi file.</p>
+<div class="section" id="installing-a-newer-versions-of-the-formatter">
+<h3>Installing a newer versions of the formatter<a class="headerlink" href="#installing-a-newer-versions-of-the-formatter" title="Permalink to this headline">¶</a></h3>
+<p>Before installing a newer version, make sure to reset the options
+(Selenium IDE -&gt; Options -&gt; Options -&gt; Formats -&gt; Testerman ATS
+Formatter -&gt; Reset Options) in order to follow the latest changes.
+Please be carefully though, as this will erase all your personal
+configurations.</p>
+</div>
+</div>
+<div class="section" id="how-to-best-practises-and-information">
+<h2>How To, Best Practises and Information<a class="headerlink" href="#how-to-best-practises-and-information" title="Permalink to this headline">¶</a></h2>
+<p>Please read the following instructions carefully (yes, it is long
+*sigh*). There are a lot of hidden tricks in SeleniumIDE/Testerman one
+has to know to efficiently generate ats files.</p>
+<p>You should be familiar with writing Testerman ats files manually (and
+thus you are familiar with the send/receive concept, alt statements,
+verdicts, ...) and know Selenium IDE a little bit (record test cases,
+exporting), too. You will find a lot of documentation for Selenium IDE
+<a class="reference external" href="http://seleniumhq.org/docs/02_selenium_ide.html">here</a>.</p>
+<div class="section" id="understanding-selenium">
+<h3>Understanding Selenium<a class="headerlink" href="#understanding-selenium" title="Permalink to this headline">¶</a></h3>
+<p>Selenium is a suite of different tools. We will use Selenium IDE
+(recording user interactions with a web interface) and Selenium RC
+(remote executing of &#8220;simulated&#8221; user actions on a web interface,
+acutally, this is done by the <a class="reference internal" href="autogen/ProbeSelenium.html"><em>Selenium Probe</em></a>).</p>
+<p>Selenium RC has a set of different type of commands. There are commands
+like click(myButton), type(myInput, blablub), getText(myElement),
+isEditable(myInput).</p>
+<p>Selenium IDE uses these commands but in a slightly changed way. Some
+commands are the same (click, open, type), but some others are not
+available in Selenium IDE, at least not in their orinigal form. Selenium
+IDE uses generated commands from the Selenium RC accessors (getText,
+isEditable, ... every command where you would expect a result). Instead
+of getXXX, one can use assertXXX, verifyXXX, storeXXX, and/or
+waitForXXX. These generated commandes are ultimately translated into
+their source command (= the command Selenium RC expects). It will note
+change anything for Selenium RC whether you use assertText(id=myElement,
+42) or verifyText(id=myElement, 42); the actual command in both cases
+will be getText(id=myElement). To see which Selenium RC command will be
+produced, have a look at the reference tab in the lower bar of the
+Selenium IDE gui. When adding a command, you will see it&#8217;s argument and
+it&#8217;s base command appear. It is up to the formatter (e.g. the source
+code generator) to handle the different command types while still
+sending the base command to Selenium RC. Selenium IDE is of course not
+able to &#8220;record&#8221; these generated commands. It knows where you clicked,
+but it doesn&#8217;t know your expectations concering returned results.</p>
+<p>Selenium commands are often refered to as &#8220;selenese&#8221;.</p>
+</div>
+<div class="section" id="using-selenium-ide-generated-commands">
+<h3>Using Selenium IDE generated commands<a class="headerlink" href="#using-selenium-ide-generated-commands" title="Permalink to this headline">¶</a></h3>
+<p>As an example consider you want to fill in a form and expect a certain
+text after clicking on the submit button. During recording, you would
+type your text into the form and click the button. Selenium will list
+something like this:</p>
+<div class="highlight-python"><pre>commands        target          value
+type            id=input_pw     1234
+click           id=login</pre>
+</div>
+<p>Now, to check whether your expected text appears on the following page,
+right-click on the element where the text should appear (or select the
+text, ...). The context menu will propose you a range of commands to
+check the elements content. After selecting one command, Selenium IDE
+will list something like this:</p>
+<div class="highlight-python"><pre>verifyText      id=header   Login successful</pre>
+</div>
+<p>The command will become &#8220;getText(id=header)&#8221; for Selenium RC. If you had
+used assertText() instead, the outcoming Selenium RC commands would have
+been the same. The difference lies in the handling of the returned
+result (see below for a differentiation of assert and verify). The
+target argument is often a &#8220;locator&#8221;, i.e. the element on the web
+interface you address. To get an element&#8217;s locator, you could check the
+HTML source (Firebug!) for id or name attributes. However, it is a
+probably a good idea to let Selenium IDE choose the locator: &#8220;Record&#8221; a
+dummy click (or something) action on that element to get it&#8217;s locator
+listed and delete the dummy action then.</p>
+<p>See <a class="reference external" href="http://release.seleniumhq.org/selenium-core/1.0.1/reference.html">http://release.seleniumhq.org/selenium-core/1.0.1/reference.html</a> for
+more details</p>
+</div>
+<div class="section" id="using-testerman-s-parameter-system">
+<h3>Using Testerman&#8217;s parameter system<a class="headerlink" href="#using-testerman-s-parameter-system" title="Permalink to this headline">¶</a></h3>
+<p>The Testerman ats formatter supports Testerman&#8217;s parameter system
+(global variables, often called PX_PASSWORD or PX_HOST_IP). There is
+a support for &#8220;static&#8221; and &#8220;dynamic&#8221; parameters. We call theme &#8220;static&#8221;,
+when they are defined in the meta data block at the beginning of the
+generated code regardless of the content. You can setup these static
+parameters in the formatter&#8217;s option (Selenium IDE -&gt; Options -&gt; Options
+-&gt; Formats). Define here the parameter name, default value and type
+(&#8220;string&#8221; or &#8220;integer&#8221;). Every parameter listed here will always be
+dumped. Remember that the parameter&#8217;s value can be overwritten by the
+campaign configuration (when launching a campaing in Testerman).</p>
+<p>The Format is &#8220;name:value:type\n&#8221;. The name has to match
+<strong>/!^PX_[_A-Z0-9]+$/</strong>. Examples:</p>
+<div class="highlight-python"><pre>PX_DB_SERVER:string:127.0.0.1
+PX_DB_PASSWORD:string:1234
+PX_MAX_CONNECT:integer:10</pre>
+</div>
+<p>On the other hand, &#8220;dynamic&#8221; parameters are set up within the actual
+selenese. After recording your actions with Selenium IDE and before
+formatting (exporting), you could change some command arguments in order
+to make the test more flexible. By replacing a &#8220;real&#8221; value with it&#8217;s
+parameter name (and it&#8217;s default value), the test can be adapted to
+another test environment. To define a dynamic parameter, replace the
+original value by ${PX_PARA_NAME:orginalValue}.</p>
+<p>Example:</p>
+<div class="highlight-python"><pre>commands        target          value
+type            id=input_pw     1234</pre>
+</div>
+<p>The above command generates:</p>
+<div class="highlight-python"><div class="highlight"><pre><span class="n">sel</span><span class="o">.</span><span class="n">send</span><span class="p">([</span><span class="s">&quot;type&quot;</span><span class="p">,</span> <span class="s">&quot;id=input_pw&quot;</span><span class="p">,</span> <span class="s">&quot;1234&quot;</span><span class="p">])</span>
+</pre></div>
+</div>
+<p>Now consider the following</p>
+<div class="highlight-python"><pre>commands        target          value
+type            id=input_pw     ${PX_PASSWORD:1234} ** define parameter name and default value before export **</pre>
+</div>
+<p>generates:</p>
+<div class="highlight-python"><div class="highlight"><pre><span class="c"># &lt;parameter name=&quot;PX_PASSWORD&quot; default=&quot;1234&quot; type=&quot;integer&quot;&gt;&lt;![CDATA[]]&gt;&lt;/parameter&gt;</span>
+<span class="o">...</span>
+<span class="n">sel</span><span class="o">.</span><span class="n">send</span><span class="p">([</span><span class="s">&quot;type&quot;</span><span class="p">,</span> <span class="s">&quot;id=input_pw&quot;</span><span class="p">,</span> <span class="nb">str</span><span class="p">(</span><span class="n">PX_PASSWORD</span><span class="p">)])</span>
+</pre></div>
+</div>
+<p>As you can see, a new parameter is defined and during the selenium
+command, this parameter is used. The parameter definition is to be found
+in the meta data block, the value can be overwritten by external
+campaing config as mentioned before. Of course, you do/can not redefine
+the same parameter several times. Once, your PX_XXX is defined you can
+use in later commands:</p>
+<p>old:</p>
+<div class="highlight-python"><pre>commands        target      value
+type            id=input_pw     1234
+assertValue     id=blub     1234</pre>
+</div>
+<p>generates:</p>
+<div class="highlight-python"><div class="highlight"><pre><span class="n">sel</span><span class="o">.</span><span class="n">send</span><span class="p">([</span><span class="s">&quot;type&quot;</span><span class="p">,</span> <span class="s">&quot;id=input_pw&quot;</span><span class="p">,</span> <span class="s">&quot;1234&quot;</span><span class="p">])</span>
+<span class="n">sel</span><span class="o">.</span><span class="n">send</span><span class="p">([</span><span class="s">&quot;getValue&quot;</span><span class="p">,</span> <span class="s">&quot;id=blub&quot;</span><span class="p">])</span>
+<span class="n">alt</span><span class="p">([</span>
+    <span class="p">[</span> <span class="n">sel</span><span class="o">.</span><span class="n">RECEIVE</span><span class="p">(</span><span class="n">template</span> <span class="o">=</span> <span class="s">&quot;1234&quot;</span><span class="p">),</span>
+<span class="o">...</span>
+</pre></div>
+</div>
+<p>new:</p>
+<div class="highlight-python"><pre>commands        target          value
+type            id=input_pw     ${PX_PASSWORD:1234}
+assertValue     id=blub         ${PX_PASSWORD}</pre>
+</div>
+<p>generates:</p>
+<div class="highlight-python"><div class="highlight"><pre><span class="c"># &lt;parameter name=&quot;PX_PASSWORD&quot; default=&quot;1234&quot; type=&quot;integer&quot;&gt;&lt;![CDATA[]]&gt;&lt;/parameter&gt;</span>
+<span class="o">...</span>
+<span class="n">sel</span><span class="o">.</span><span class="n">send</span><span class="p">([</span><span class="s">&quot;type&quot;</span><span class="p">,</span> <span class="s">&quot;id=input_pw&quot;</span><span class="p">,</span> <span class="nb">str</span><span class="p">(</span><span class="n">PX_PASSWORD</span><span class="p">)])</span>
+<span class="n">sel</span><span class="o">.</span><span class="n">send</span><span class="p">([</span><span class="s">&quot;getValue&quot;</span><span class="p">,</span> <span class="s">&quot;id=blub&quot;</span><span class="p">])</span>
+<span class="n">alt</span><span class="p">([</span>
+    <span class="p">[</span> <span class="n">sel</span><span class="o">.</span><span class="n">RECEIVE</span><span class="p">(</span><span class="n">template</span> <span class="o">=</span> <span class="nb">str</span><span class="p">(</span><span class="n">PX_PASSWORD</span><span class="p">)),</span>
+<span class="o">...</span>
+</pre></div>
+</div>
+<p>The parameter can easily be referred to. This enables you to use static
+parameters as well. You do not have to define a default value because
+they are defined anyway. Remember that you have to adapt the selenese
+*before* exporting. Their is one disadvantage: Once you changed your
+values to &#8216;PX_SOMETHING&#8217; you won&#8217;t be able to replay your test case
+with Selenium IDE any more.</p>
+<p>The rule of thumb is:</p>
+<p><tt class="docutils literal"><span class="pre">${PX_XXX}</span></tt> &#8211;&gt; replace this by a variable called <tt class="docutils literal"><span class="pre">PX_XXX</span></tt></p>
+<p><tt class="docutils literal"><span class="pre">${PX_XXX:1234}</span></tt> &#8211;&gt; replace this by a variable called <tt class="docutils literal"><span class="pre">PX_XXX</span></tt>, which
+has been set to 1234 in the meta data block</p>
+<p><tt class="docutils literal"><span class="pre">PX_XXX</span></tt> &#8211;&gt; take this literally (do not replace anything, used for
+<tt class="docutils literal"><span class="pre">storeXXX()</span></tt>, see later)</p>
+<p>The replace mechanism generally applies to the last argument of a
+command (often called &#8220;pattern&#8221; in Selenium IDE).</p>
+<p>The px parameters can be used in conjunction with regular expressions.
+The value field is <tt class="docutils literal"><span class="pre">regexp:${PX_VAR_NAME:the_actual_expression}</span></tt>.
+Fur further details see the section for regular expressions.</p>
+<div class="highlight-python"><pre>commands        target      value
+assertValue     id=blub     regexp:${PX_PASSWORD:[a-z]?}</pre>
+</div>
+</div>
+<div class="section" id="store-commands">
+<h3>Store Commands<a class="headerlink" href="#store-commands" title="Permalink to this headline">¶</a></h3>
+<p>Seleniums provides the possiblity to store values in variables. You will
+find a lot of storeXXX() fonctions (storeText(), storeAlert(),
+storeChecked(), ...). Whenever you use a store command, the Testerman
+Formatter will print a send and a receive command (to the port). When
+using storeXXX(), the second argument of the command is the name of the
+variable to which the value will be assigned. There are two
+possibilities to store values. Either you use a &#8220;normal&#8221; variable name
+or you use a name like PX_XXX (matching the abouve regexp).</p>
+<div class="highlight-python"><pre>commands        target      value
+storeText       link=home   myvari
+storeText       link=home   PX_MYVAR</pre>
+</div>
+<p>The generated code will be as follows:</p>
+<div class="highlight-python"><div class="highlight"><pre><span class="c"># store (selinium): myvari = getText(link=home)</span>
+<span class="n">sel</span><span class="o">.</span><span class="n">send</span><span class="p">([</span><span class="s">&quot;getText&quot;</span><span class="p">,</span> <span class="s">&quot;link=home&quot;</span><span class="p">])</span>
+<span class="n">sel</span><span class="o">.</span><span class="n">receive</span><span class="p">(</span><span class="n">value</span> <span class="o">=</span> <span class="s">&#39;myvari&#39;</span><span class="p">)</span>
+<span class="n">myvari</span> <span class="o">=</span> <span class="n">value</span><span class="p">(</span><span class="s">&#39;myvari&#39;</span><span class="p">)</span>
+<span class="n">log</span><span class="p">(</span><span class="s">&#39;myvari = </span><span class="si">%s</span><span class="s">&#39;</span> <span class="o">%</span> <span class="n">myvari</span><span class="p">)</span>
+<span class="c"># store (selinium): PX_MYVAR = getText(link=home)</span>
+<span class="n">sel</span><span class="o">.</span><span class="n">send</span><span class="p">([</span><span class="s">&quot;getText&quot;</span><span class="p">,</span> <span class="s">&quot;link=home&quot;</span><span class="p">])</span>
+<span class="n">sel</span><span class="o">.</span><span class="n">receive</span><span class="p">(</span><span class="n">value</span> <span class="o">=</span> <span class="s">&#39;PX_MYVAR&#39;</span><span class="p">)</span>
+<span class="n">PX_MYVAR</span> <span class="o">=</span> <span class="n">value</span><span class="p">(</span><span class="s">&#39;PX_MYVAR&#39;</span><span class="p">))</span>
+<span class="n">log</span><span class="p">(</span><span class="s">&#39;PX_MYVAR = </span><span class="si">%s</span><span class="s">&#39;</span> <span class="o">%</span> <span class="nb">str</span><span class="p">(</span><span class="n">PX_MYVAR</span><span class="p">))</span>
+</pre></div>
+</div>
+<p>To refer to the stored variables, use the <strong>${nameOfTheVariable}</strong>
+syntax as mentioned above. If you used a PX_XXX variable you could even
+store a value and define a default value in the metadata block:</p>
+<div class="highlight-python"><pre>commands        target      value
+storeText       link=home   ${PX_MYVAR:42}</pre>
+</div>
+<p>The generated code will be as follows:</p>
+<div class="highlight-python"><div class="highlight"><pre><span class="c"># &lt;parameter name=&quot;PX_MY_VAR&quot; default=&quot;42&quot; type=&quot;integer&quot;&gt;&lt;![CDATA[]]&gt;&lt;/parameter&gt;</span>
+<span class="o">...</span>
+<span class="c"># store (selinium): PX_MYVAR = getText(link=home)</span>
+<span class="n">sel</span><span class="o">.</span><span class="n">send</span><span class="p">([</span><span class="s">&quot;getText&quot;</span><span class="p">,</span> <span class="s">&quot;link=home&quot;</span><span class="p">])</span>
+<span class="n">sel</span><span class="o">.</span><span class="n">receive</span><span class="p">(</span><span class="n">value</span> <span class="o">=</span> <span class="s">&#39;PX_MYVAR&#39;</span><span class="p">)</span>
+<span class="n">PX_MYVAR</span> <span class="o">=</span> <span class="n">value</span><span class="p">(</span><span class="s">&#39;PX_MYVAR&#39;</span><span class="p">))</span>
+<span class="n">log</span><span class="p">(</span><span class="s">&#39;PX_MYVAR = </span><span class="si">%s</span><span class="s">&#39;</span> <span class="o">%</span> <span class="nb">str</span><span class="p">(</span><span class="n">PX_MYVAR</span><span class="p">))</span>
+</pre></div>
+</div>
+<p>This would enable you to use PX_MYVAR (with it&#8217;s default value) even
+before storing it. Of course, it&#8217;s pretty hard to find a use case ;)</p>
+<p>Let&#8217;s take another example. Imagine you want to change a value on the
+web interface, check that the settings are saved correctly and then
+reset the original value. The naive command list would be:</p>
+<div class="highlight-python"><pre>commands        target            value
+type            name=port         12345
+clickAndWait    id=submit_button
+assertValue     name=port         12345
+type            name=port         1234 (supposing the original value was 1234)
+clickAndWait    id=submit_button</pre>
+</div>
+<p>While this is pretty forward (and easily recordable), it is not very
+flexible. When you are not sure of the system&#8217;s state before test
+execution, it will be hard to reset the &#8220;right&#8221; default value (in this
+case, the original value was 9999 or so). Use storeXXX() to copy and
+paste. After recording your test with Selenium IDE and before exporting
+to an ats file, change the following:</p>
+<div class="highlight-python"><pre>commands        target            value
+storeValue      name=port         PX_DEFAULT_PORT
+type            name=port         ${PX_NEW_PORT:12345}
+clickAndWait    id=submit_button
+assertValue     name=port         ${PX_NEW_PORT}
+type            name=port         ${PX_DEFAULT_PORT}
+clickAndWait    id=submit_button</pre>
+</div>
+<p>Just save the value before changing it, then, during &#8220;cleanup&#8221; reuse the
+given name. The above example will produce the following code:</p>
+<div class="highlight-python"><div class="highlight"><pre><span class="c"># &lt;parameter name=&quot;PX_NEW_PORT&quot; default=&quot;12345&quot; type=&quot;integer&quot;&gt;&lt;![CDATA[]]&gt;&lt;/parameter&gt;</span>
+<span class="o">...</span>
+<span class="c"># store (selinium): PX_DEFAULT_PORT = getValue(name=port)</span>
+<span class="n">sel</span><span class="o">.</span><span class="n">send</span><span class="p">([</span><span class="s">&quot;getValue&quot;</span><span class="p">,</span> <span class="s">&quot;name=port&quot;</span><span class="p">])</span>
+<span class="n">sel</span><span class="o">.</span><span class="n">receive</span><span class="p">(</span><span class="n">value</span> <span class="o">=</span> <span class="s">&#39;PX_DEFAULT_PORT&#39;</span><span class="p">)</span>
+<span class="n">PX_DEFAULT_PORT</span> <span class="o">=</span> <span class="n">value</span><span class="p">(</span><span class="s">&#39;PX_DEFAULT_PORT&#39;</span><span class="p">))</span>
+<span class="n">log</span><span class="p">(</span><span class="s">&#39;PX_DEFAULT_PORT = </span><span class="si">%s</span><span class="s">&#39;</span> <span class="o">%</span> <span class="nb">str</span><span class="p">(</span><span class="n">PX_DEFAULT_PORT</span><span class="p">))</span>
+
+<span class="c">#change to new port</span>
+<span class="n">sel</span><span class="o">.</span><span class="n">send</span><span class="p">([</span><span class="s">&quot;type&quot;</span><span class="p">,</span> <span class="s">&quot;name=port&quot;</span><span class="p">,</span> <span class="nb">str</span><span class="p">(</span><span class="n">PX_NEW_PORT</span><span class="p">)])</span>
+<span class="n">sel</span><span class="o">.</span><span class="n">send</span><span class="p">([</span><span class="s">&quot;click&quot;</span><span class="p">,</span> <span class="s">&quot;id=submit_button&quot;</span><span class="p">])</span>
+<span class="n">sel</span><span class="o">.</span><span class="n">send</span><span class="p">([</span><span class="s">&quot;waitForPageToLoad&quot;</span><span class="p">,</span> <span class="s">&quot;30000&quot;</span><span class="p">])</span>
+
+<span class="c">#verify changings</span>
+<span class="n">sel</span><span class="o">.</span><span class="n">send</span><span class="p">([</span><span class="s">&quot;getValue&quot;</span><span class="p">,</span> <span class="s">&quot;name=port&quot;</span><span class="p">])</span>
+<span class="n">alt</span><span class="p">([</span>
+    <span class="p">[</span> <span class="n">sel</span><span class="o">.</span><span class="n">RECEIVE</span><span class="p">(</span><span class="n">template</span> <span class="o">=</span> <span class="nb">str</span><span class="p">(</span><span class="n">PX_NEW_PORT</span><span class="p">)),</span>
+        <span class="k">lambda</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">setverdict</span><span class="p">(</span><span class="n">PASS</span><span class="p">),</span>
+        <span class="k">lambda</span><span class="p">:</span> <span class="n">log</span><span class="p">(</span><span class="s">&#39;getValue(name=port) == &#39;</span> <span class="o">+</span> <span class="nb">str</span><span class="p">(</span><span class="n">PX_NEW_PORT</span><span class="p">)</span> <span class="o">+</span> <span class="s">&#39; [using PX_NEW_PORT] -&gt; Good!&#39;</span><span class="p">),</span>
+    <span class="p">],</span>
+    <span class="p">[</span> <span class="n">sel</span><span class="o">.</span><span class="n">RECEIVE</span><span class="p">(</span><span class="n">template</span> <span class="o">=</span> <span class="n">any_or_none</span><span class="p">()),</span>
+        <span class="k">lambda</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">setverdict</span><span class="p">(</span><span class="n">FAIL</span><span class="p">),</span>
+        <span class="k">lambda</span><span class="p">:</span> <span class="n">log</span><span class="p">(</span><span class="s">&#39;getValue(name=port) != &#39;</span> <span class="o">+</span> <span class="nb">str</span><span class="p">(</span><span class="n">PX_NEW_PORT</span><span class="p">)</span> <span class="o">+</span> <span class="s">&#39; [using PX_NEW_PORT] -&gt; Bad!&#39;</span><span class="p">),</span>
+        <span class="k">lambda</span><span class="p">:</span> <span class="n">stop</span><span class="p">(),</span>
+    <span class="p">],</span>
+<span class="p">])</span>
+
+<span class="c">#clean up</span>
+<span class="n">sel</span><span class="o">.</span><span class="n">send</span><span class="p">([</span><span class="s">&quot;type&quot;</span><span class="p">,</span> <span class="s">&quot;name=port&quot;</span><span class="p">,</span> <span class="nb">str</span><span class="p">(</span><span class="n">PX_DEFAULT_PORT</span><span class="p">)])</span>
+<span class="n">sel</span><span class="o">.</span><span class="n">send</span><span class="p">([</span><span class="s">&quot;click&quot;</span><span class="p">,</span> <span class="s">&quot;id=submit_button&quot;</span><span class="p">])</span>
+<span class="n">sel</span><span class="o">.</span><span class="n">send</span><span class="p">([</span><span class="s">&quot;waitForPageToLoad&quot;</span><span class="p">,</span> <span class="s">&quot;30000&quot;</span><span class="p">])</span>
+</pre></div>
+</div>
+</div>
+<div class="section" id="regular-expression">
+<h3>Regular Expression<a class="headerlink" href="#regular-expression" title="Permalink to this headline">¶</a></h3>
+<p>Sometime you need to check a certain value, but you know only the
+expected pattern. Selenium IDE has build-in support for regular
+expression (in fact, it says [in our case] to the formatter, that the
+user wants to use a regexp). The following example should answer all
+questions:</p>
+<div class="highlight-python"><pre>commands            target         value
+assertValue         name=search    blub
+assertValue         name=search    regexp:^[A-Z]?$
+assertValue         name=search    regexp:${PX_MYPATTERN}
+assertTextPresent   regexp:[a-z].?</pre>
+</div>
+<p>generates:</p>
+<div class="highlight-python"><div class="highlight"><pre><span class="n">sel</span><span class="o">.</span><span class="n">send</span><span class="p">([</span><span class="s">&quot;getValue&quot;</span><span class="p">,</span> <span class="s">&quot;name=search&quot;</span><span class="p">])</span>
+<span class="n">alt</span><span class="p">([</span>
+    <span class="p">[</span> <span class="n">sel</span><span class="o">.</span><span class="n">RECEIVE</span><span class="p">(</span><span class="n">template</span> <span class="o">=</span> <span class="s">&quot;blub&quot;</span><span class="p">),</span>
+<span class="o">...</span>
+<span class="n">sel</span><span class="o">.</span><span class="n">send</span><span class="p">([</span><span class="s">&quot;getValue&quot;</span><span class="p">,</span> <span class="s">&quot;name=search&quot;</span><span class="p">])</span>
+<span class="n">alt</span><span class="p">([</span>
+    <span class="p">[</span> <span class="n">sel</span><span class="o">.</span><span class="n">RECEIVE</span><span class="p">(</span><span class="n">template</span> <span class="o">=</span> <span class="n">pattern</span><span class="p">(</span><span class="s">r&quot;^[A-Z]?$&quot;</span><span class="p">)),</span>
+<span class="o">...</span>
+<span class="n">sel</span><span class="o">.</span><span class="n">send</span><span class="p">([</span><span class="s">&quot;getValue&quot;</span><span class="p">,</span> <span class="s">&quot;name=search&quot;</span><span class="p">])</span>
+<span class="n">alt</span><span class="p">([</span>
+    <span class="p">[</span> <span class="n">sel</span><span class="o">.</span><span class="n">RECEIVE</span><span class="p">(</span><span class="n">template</span> <span class="o">=</span> <span class="n">pattern</span><span class="p">(</span><span class="nb">str</span><span class="p">(</span><span class="n">PX_MYPATTERN</span><span class="p">))),</span>
+<span class="o">...</span>
+<span class="n">sel</span><span class="o">.</span><span class="n">send</span><span class="p">([</span><span class="s">&quot;isTextPresent&quot;</span><span class="p">,</span> <span class="s">&quot;regexp:[a-z].?&quot;</span><span class="p">])</span>
+<span class="n">alt</span><span class="p">([</span>
+    <span class="p">[</span> <span class="n">sel</span><span class="o">.</span><span class="n">RECEIVE</span><span class="p">(</span><span class="n">template</span> <span class="o">=</span> <span class="bp">True</span><span class="p">),</span>
+<span class="o">...</span>
+</pre></div>
+</div>
+<p>You can combine px parameter definitions with regexp:</p>
+<div class="highlight-python"><pre>commands        target      value
+assertValue     name=search regexp:${PX_REGEXP:[a-e]?}  ** define new px parameter (with default value) and it use it as regexp **</pre>
+</div>
+<p>Regular expression are a bit tricky though. In fact, Selenium RC
+supports regexp by itself and Testerman does so (vie Python&#8217;s
+re.search()), too. The &#8220;problem&#8221; is that sometimes Selenium RC has to
+use it to determine the result of a command and sometimes Testerman can
+just wait for the result and then check it against the regular
+expression. Whenever you use a selenese generated from getXXX() (like
+assertText(), verifyConfirmation(), ...) the Testerman&#8217;s (=Python&#8217;s)
+regular expressions will be used. You can see them in the output
+(Testerman&#8217;s function pattern()). On the other hand, commands like
+assertTextPresent() (e.g. commands where you expect a boolean response)
+will use Selenium RC&#8217;s regexp. When dumping these commands, you will the
+that the literal &#8220;regexp:&#8221; is still present because it will be send to
+Selenium RC. There doesn&#8217;t seem to be a way to unify the two regular
+expression systems, although it probably won&#8217;t be a problem.</p>
+<p>Note: You can not use a variable stored previously via storeXXX() in an
+regexp if the variable is <strong>not</strong> a PX_XXX parameter. By the way,
+Selenium IDE doesn&#8217;t implement variable translation (with
+${variableName}) in regular expressions at all. It&#8217;s the Testerman
+Formatter which adds this feature only for PX_XXX parameters.</p>
+<p>See also:
+<a class="reference external" href="http://release.seleniumhq.org/selenium-core/1.0.1/reference.html#patterns">http://release.seleniumhq.org/selenium-core/1.0.1/reference.html#patterns</a></p>
+</div>
+<div class="section" id="assert-vs-verify">
+<h3>Assert vs. Verify<a class="headerlink" href="#assert-vs-verify" title="Permalink to this headline">¶</a></h3>
+<p>assertXXX() and verifyXXX() produce nearly the same code. In both cases,
+an alt statement checks whether the returned response matches the
+expected result. The difference is that assert() will stop the test case
+if the check failed, verify will not (-&gt; assert() generates an extra
+&#8220;lambda: stop()&#8221; for the failing template). Most of the time, you would
+probably want to use assert(), but verify() can be handy for debugging
+purpose or small and unimportant checks.</p>
+</div>
+<div class="section" id="adding-comments">
+<h3>Adding comments<a class="headerlink" href="#adding-comments" title="Permalink to this headline">¶</a></h3>
+<p>There are to types of comments possible. The first one is inserted via
+Selenium IDE -&gt; Edit -&gt; Insert new comment. This will generate a simply
+python comment. Or, use the command echo(), which will use Testerman&#8217;s
+log() method.</p>
+</div>
+<div class="section" id="setverdict">
+<h3>setverdict()<a class="headerlink" href="#setverdict" title="Permalink to this headline">¶</a></h3>
+<p>The formatter will dump a setverdict(FAIL) during every alt step for the
+branch with the not-matching template (no setverdict() in storXXX(),
+though). A setverdict(PASS) is only printed in the very last alt branch.
+In fact, before dumping the code, the formatter counts all accessors (=
+all commands generated from isXXX() or getXXX() = every command where a
+result is returned). This enables him to print the setverdict(PASS) only
+at the very end.</p>
+</div>
+<div class="section" id="best-practices">
+<h3>Best Practices<a class="headerlink" href="#best-practices" title="Permalink to this headline">¶</a></h3>
+<p>If Selenium IDE is not recording your actions (although the red button
+is pressed), the base url is most likely wrong. Selenium IDE will only
+record user interaction with the site given in the base url. You can
+change it in the upper &#8220;address bar&#8221; in Selenium IDE gui.</p>
+<p>When using stuff like waitForCondition (e.g. functions with a timeout),
+you could consider to set up a high timeout and use a Testerman timer as
+watchdog with a lower timeout instead. If the selenium call fails
+(=condition didn&#8217;t become true until the given timeout), the
+<a class="reference internal" href="autogen/ProbeSelenium.html"><em>Selenium Probe</em></a> will throw an exception; whereas if the Testerman timer
+times out, the test can &#8220;fail correctly&#8221;</p>
+<p>Make sure you use [assert|verify|storte]Value() when checking the text
+of an input and not [assert|verify|store]Text(). Inputs do not have
+text, they have values. Applying getText() on an input will return an
+empty string.</p>
+<p>Once you did your assertions etc (e.g. your test verdict is set), reset
+the system to the state before the test.</p>
+<p>Wherever you want in the command list in Selenium IDE, you can use &#8220;Edit
+-&gt; Insert new comment&#8221; to add a comment in the generated source coude.
+For example, before resetting the system to the former state you could
+add a comment saying &#8220;clean up&#8221;</p>
+</div>
+</div>
+<div class="section" id="import-ats-files-to-selenium-ide">
+<h2>Import ats files to Selenium IDE<a class="headerlink" href="#import-ats-files-to-selenium-ide" title="Permalink to this headline">¶</a></h2>
+<p>It is possible to revert the process, e.g. import a generated ats file
+to Selenium IDE. It does not work with every ats file, though. In fact,
+the generated ats files contain the list of selenese and the import
+mechanism exploits this list. Thus, ats without this list cannot be
+imported. To open an ats file with Selenium IDE, you have to change the
+expected format: Selenium IDE -&gt; Options -&gt; Format -&gt; Testerman Anevia
+ATS Formatter. If this option is not available, enable it via Options -&gt;
+Options -&gt; Enable experimental features.</p>
+<p>Note that the formatter is NOT able to import ats scripts containing
+several test cases.</p>
+<p>ATTENTION: Make backups of your original ats file. The formatter will
+try to warn you if the thinks the file has been touched by hand</p>
+</div>
+<div class="section" id="known-issues">
+<h2>Known Issues<a class="headerlink" href="#known-issues" title="Permalink to this headline">¶</a></h2>
+<div class="section" id="selenese-returning-an-array">
+<h3>Selenese returning an array<a class="headerlink" href="#selenese-returning-an-array" title="Permalink to this headline">¶</a></h3>
+<p>Some commands return an array (typically commands with
+[assert|verify|waitFor]All[Buttons|Links|...](), like
+assertAllLinks()). They are handled by the formatter now in a
+experimental version. The generated code may not be what you expected.
+The formatter will warn you.</p>
+</div>
+</div>
+</div>
+
+
+</div>
+<footer class="footer">
+  <div class="container">
+    <p class="pull-right">
+      <a href="#">Back to top</a>
+      
+    </p>
+    <p>
+        &copy; Copyright 2009-2013, Sébastien Lefèvre.<br/>
+      Created using <a href="http://sphinx.pocoo.org/">Sphinx</a> 1.1.3.<br/>
+    </p>
+  </div>
+</footer>
+  </body>
+</html>

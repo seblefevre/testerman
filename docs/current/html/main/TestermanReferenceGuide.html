@@ -1,0 +1,850 @@
+
+<!DOCTYPE html>
+
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>Testerman Reference Guide &mdash; Testerman 1.4.0 documentation</title>
+    
+    <link rel="stylesheet" href="../_static/basic.css" type="text/css" />
+    <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
+    <link rel="stylesheet" href="../_static/css/bootstrap-2.2.1.min.css" type="text/css" />
+    <link rel="stylesheet" href="../_static/bootstrap-sphinx.css" type="text/css" />
+    <link rel="stylesheet" href="../_static/css/bootstrap-responsive-2.2.1.min.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '../',
+        VERSION:     '1.4.0',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true
+      };
+    </script>
+    <script type="text/javascript" src="../_static/jquery.js"></script>
+    <script type="text/javascript" src="../_static/underscore.js"></script>
+    <script type="text/javascript" src="../_static/doctools.js"></script>
+    <script type="text/javascript" src="../_static/js/bootstrap-2.2.1.min.js"></script>
+    <script type="text/javascript" src="../_static/bootstrap-sphinx.js"></script>
+    <link rel="top" title="Testerman 1.4.0 documentation" href="../index.html" />
+    <link rel="next" title="General Concepts" href="TestermanLanguageReference.html" />
+    <link rel="prev" title="QTesterman" href="QTesterman.html" />
+<meta charset='utf-8'>
+<meta http-equiv='X-UA-Compatible' content='IE=edge,chrome=1'>
+<meta name='viewport' content='width=device-width, initial-scale=1.0, maximum-scale=1'>
+<meta name="apple-mobile-web-app-capable" content="yes">
+
+  </head>
+  <body>
+<div class="container">
+  
+  <div id="navbar" class="navbar navbar-inverse navbar-fixed-top">
+    <div class="navbar-inner">
+      <!-- .btn-navbar is used as the toggle for collapsed navbar content -->
+      <button class="btn btn-navbar" data-toggle="collapse" data-target=".nav-collapse">
+        <span class="icon-bar"></span>
+        <span class="icon-bar"></span>
+        <span class="icon-bar"></span>
+      </button>
+
+      <a class="brand" href="../index.html">Testerman</a>
+      <span class="navbar-text pull-left"><b>1.4</b></span>
+
+      <div class="nav-collapse">
+        <ul class="nav">
+          <li class="divider-vertical"></li>
+          
+            <li class="dropdown">
+  <a href="../index.html" class="dropdown-toggle" data-toggle="dropdown">Site <b class="caret"></b></a>
+  <ul class="dropdown-menu globaltoc"><ul>
+<li class="toctree-l1"><a class="reference internal" href="About.html">Welcome to Testerman</a></li>
+<li class="toctree-l1"><a class="reference internal" href="About.html#about">About</a></li>
+<li class="toctree-l1"><a class="reference internal" href="About.html#contact">Contact</a></li>
+<li class="toctree-l1"><a class="reference internal" href="GetTesterman.html">Getting Testerman</a></li>
+</ul>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="TestermanOverview.html">Testerman Overview</a></li>
+<li class="toctree-l1"><a class="reference internal" href="TestermanQuickStart.html">Quick Start</a></li>
+<li class="toctree-l1"><a class="reference internal" href="TestermanQuickStart.html#external-resources">External Resources</a></li>
+<li class="toctree-l1"><a class="reference internal" href="QTesterman.html">QTesterman</a></li>
+<li class="toctree-l1 current"><a class="current reference internal" href="">Testerman Reference Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="TestermanLanguageReference.html">General Concepts</a></li>
+<li class="toctree-l1"><a class="reference internal" href="TestermanLanguageReference.html#reference-testerman-api">Reference: Testerman API</a></li>
+<li class="toctree-l1"><a class="reference internal" href="BestPractices.html">Best Practices</a></li>
+</ul>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../plugins/index.html">Codecs and Probes Overview</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../plugins/index.html#codecs">Codecs</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../plugins/index.html#test-adapters-probes">Test Adapters (Probes)</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../plugins/index.html#codecs-and-probes-references">Codecs and Probes References</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../plugins/index.html#developing-new-codecs-and-probes">Developing New Codecs and Probes</a></li>
+</ul>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="TestermanAdministrationGuide.html">Testerman Administration Guide</a></li>
+</ul>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="TestermanInternals.html">Testerman Internals</a></li>
+</ul>
+</ul>
+</li>
+            <li class="dropdown">
+  <a href="#" class="dropdown-toggle" data-toggle="dropdown">Page <b class="caret"></b></a>
+  <ul class="dropdown-menu localtoc"><ul>
+<li><a class="reference internal" href="#">Testerman Reference Guide</a><ul>
+<li><a class="reference internal" href="#main-concepts">Main Concepts</a><ul>
+<li><a class="reference internal" href="#logical-architectures">Logical Architectures</a><ul>
+<li><a class="reference internal" href="#ttcn-3-test-system">TTCN-3 Test System</a></li>
+<li><a class="reference internal" href="#testerman-system">Testerman System</a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#physical-architecture">Physical Architecture</a><ul>
+<li><a class="reference internal" href="#interfaces">Interfaces</a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li><a class="reference internal" href="#core-concepts">Core Concepts</a><ul>
+<li><a class="reference internal" href="#test-adapter-configuration">Test Adapter Configuration</a></li>
+<li><a class="reference internal" href="#codec-aliasing">Codec Aliasing</a></li>
+<li><a class="reference internal" href="#basic-general-purpose-sut-adapters">Basic, General Purpose SUT Adapters</a></li>
+<li><a class="reference internal" href="#preamble-and-postamble">Preamble and Postamble</a></li>
+<li><a class="reference internal" href="#testerman-applications">Testerman Applications</a></li>
+<li><a class="reference internal" href="#campaigns">Campaigns</a><ul>
+<li><a class="reference internal" href="#campaign-definition">Campaign Definition</a></li>
+<li><a class="reference internal" href="#session-parameters-flows-in-campaigns">Session Parameters Flows in Campaigns</a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li><a class="reference internal" href="#jobs">Jobs</a><ul>
+<li><a class="reference internal" href="#job-control">Job Control</a></li>
+<li><a class="reference internal" href="#job-lifecycle">Job Lifecycle</a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#documentation-system">Documentation System</a><ul>
+<li><a class="reference internal" href="#raw-documentation">Raw Documentation</a></li>
+<li><a class="reference internal" href="#documentation-tags">Documentation Tags</a></li>
+<li><a class="reference internal" href="#tag-format">Tag Format</a></li>
+<li><a class="reference internal" href="#tag-value-format">Tag Value Format</a></li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+</ul>
+</li>
+          
+          
+            
+  <li><a href="QTesterman.html"
+         title="previous chapter">&laquo; QTesterman</a></li>
+  <li><a href="TestermanLanguageReference.html"
+         title="next chapter">General Concepts &raquo;</a></li>
+          
+          
+            <li>
+  <a href="../_sources/main/TestermanReferenceGuide.txt"
+     rel="nofollow">Source</a></li>
+          
+        </ul>
+
+        
+          
+<form class="navbar-search pull-right" style="margin-bottom:-3px;" action="../search.html" method="get">
+  <input type="text" name="q" placeholder="Search" />
+  <input type="hidden" name="check_keywords" value="yes" />
+  <input type="hidden" name="area" value="default" />
+</form>
+        
+      </div>
+    </div>
+  </div>
+
+  
+  <div class="section" id="testerman-reference-guide">
+<h1>Testerman Reference Guide<a class="headerlink" href="#testerman-reference-guide" title="Permalink to this headline">¶</a></h1>
+<p>This chapter describes features that are not related to the
+Testerman core librairies, implementing the TTCN-3 concepts,
+but instead the Testerman infrastructure and environment features.</p>
+<div class="section" id="main-concepts">
+<h2>Main Concepts<a class="headerlink" href="#main-concepts" title="Permalink to this headline">¶</a></h2>
+<p>Note: all concepts that from TTCN-3 are indicated with a * in this
+chapter.</p>
+<ul class="simple">
+<li>ATS (Abstract Test Suite)*: The script containing the automated
+testcases. It is normally written in TTCN-3. In Testerman, it is
+written in Python, using the Testerman-provided modules (libs) to
+provide TTCN-3 features and an access to a complete Test System*
+implementation.</li>
+<li>Test System*. An implementation framework to compile TTCN-3 scripts
+to TEs*, execute them, control them, analyse their logs, etc. A
+typical TSE system is described below. Testerman is one example of a
+Test system, though not TTCN-3 compliant.</li>
+<li>TE (Test Executable)*: the executable generated from an ATS that can
+be actually executed on a real machine to perform the tests. In
+Testerman, the TE is built as a python script from the user-written
+ATS*, slightly modified, and linked to Testerman-provided modules to
+connect to the execution environment, providing system, platform, and
+test adapters implementations.</li>
+<li>Campaign: a hierarchical collection of ATSes (or other campaigns) to
+execute conditionally in a row. Gathers your ATSes from multiple
+sources in a single campaign, and run all your tests in one click.</li>
+<li>...</li>
+<li>SUT (System Under Test): the system to test. Identifying the SUT is
+essential to correct automated tests implementation in Testerman (and
+TTCN-3), especially because you&#8217;ll have to identify the different
+stimulation and observation interfaces between the Test System and
+the SUT. These interfaces are then viewed in TTCN-3 as Test System
+Interface Ports*, or TSI Ports for short.</li>
+<li>userland: the &#8220;TTCN-3&#8221; or &#8220;Testerman&#8221; world, where the testcase is
+executed and designed by a writer, i.e. the abstract part where
+testcases, test components, messages, templates live without being
+bothered by low-level consideration such as encoding/decoding,
+physical transports, physical connections, etc. The userland is test
+logic-oriented, not test implementation-oriented.</li>
+</ul>
+<div class="section" id="logical-architectures">
+<h3>Logical Architectures<a class="headerlink" href="#logical-architectures" title="Permalink to this headline">¶</a></h3>
+<div class="section" id="ttcn-3-test-system">
+<h4>TTCN-3 Test System<a class="headerlink" href="#ttcn-3-test-system" title="Permalink to this headline">¶</a></h4>
+<p>...</p>
+<ul class="simple">
+<li><em>TCI</em> (Test Control Interface) and <em>TRI</em> (Test Runtime Interface)
+are two interfaces standardized in TTCN-3, with specific operations
+and call flows.</li>
+</ul>
+<p>Testerman does not implement them directly nor completely, but tries to
+follow them as often as possible to keep the clean, flexible model of a
+TTCN-3 implementation.</p>
+</div>
+<div class="section" id="testerman-system">
+<h4>Testerman System<a class="headerlink" href="#testerman-system" title="Permalink to this headline">¶</a></h4>
+<p>...</p>
+</div>
+</div>
+<div class="section" id="physical-architecture">
+<h3>Physical Architecture<a class="headerlink" href="#physical-architecture" title="Permalink to this headline">¶</a></h3>
+<p>Testerman implements these logical view as a distributed system, at
+different levels:</p>
+<ul class="simple">
+<li>the SA is made of distributable entities: agents. Agents are
+containers that can be deployed on any physical machine providing it
+has an access to an agent controller (and, not to be useless, to the
+SUT). This controller, dubbed the TACS (Testerman Agent Controller
+Server), is typically co-hosted with the Testerman Server (the main
+test system executor front-end), and exposes the connected agents to
+TACS clients:</li>
+</ul>
+<p>[little diagram]</p>
+<p>All TEs are clients to the TACS, enabling them an access to all the
+probes hosted on the agents. The Testerman Server itself is also a TACS
+client, for administration and control purposes.</p>
+<p>On the front-end side, Testerman uses a client/server model, enabling
+multiple users to control and executes ATSes at the same time, sharing
+the same Testerman installation and repository.</p>
+<p>[another little diagram]</p>
+<div class="section" id="interfaces">
+<h4>Interfaces<a class="headerlink" href="#interfaces" title="Permalink to this headline">¶</a></h4>
+<p>Testerman names the following interfaces:</p>
+<ul class="simple">
+<li><strong>Ws</strong> (Web Service): client/server control interface. Job control,
+repository access (read/write), agent/probe management, and some
+server administration. Implemented in XML-RPC, and documented
+<a class="reference external" href="TestermanInternals">here</a> - useful if you plan to integrate Testerman in
+a SOA.</li>
+<li><strong>Xc</strong> (eXternal interface, Client): subscription-based notification
+interface. Clients can subscribe to get job, probe, agent
+control-related events or real-time execution logs. Implemented using
+TestermanProtocol.</li>
+<li><strong>Xa</strong> (eXternal interface, Agent): the interface between the TACS
+and the agents (TACS southbound interface). Implemented using
+TestermanProtocol.</li>
+<li><strong>Ia</strong> (Internal interface, Agent): the protocol used internally by
+the TEs to access the remote probes through the TACS (TACS northbound
+interface). Also used for basic TACS management. Implemented using
+TestermanProtocol.</li>
+<li><strong>Il</strong> (Internal interface, Logging): the interface between the TEs
+and the Test Logging (TL) module embedded within the Testerman
+Server. Whenever the TE needs to log something, it sends it to the TL
+through this interface. The TL is responsible for writing it to the
+proper log file. Will enable distributed PTCs over multiple TEs on
+different machine (but not yet). You can identify this interface as
+being a part of the TTCN-3 TCI. Implemented using TestermanProtocol.</li>
+</ul>
+</div>
+</div>
+</div>
+<div class="section" id="core-concepts">
+<h2>Core Concepts<a class="headerlink" href="#core-concepts" title="Permalink to this headline">¶</a></h2>
+<p>Most concepts at use for an ATS writers are described in <a class="reference external" href="http://www.ttcn-3.org/StandardSuite.htm">TTCN-3: Core
+Language (ES 201 873-1, version
+3.4.1)</a>. However, Testerman
+adds some new ones to fill the gap between the standard, dealing with
+abstractions only, and a real implementation.</p>
+<div class="section" id="test-adapter-configuration">
+<h3>Test Adapter Configuration<a class="headerlink" href="#test-adapter-configuration" title="Permalink to this headline">¶</a></h3>
+<p>TTCN-3 does not provide a standard way to assign a test system interface
+port with an actual test adapter implementation, implementing
+on-the-wire sending and receiving operations.</p>
+<p>Testerman introduces a way to bind these ports to test adapters, i.e. to
+probes, and calls this relationship a &#8220;binding&#8221;. When defining a (named)
+Test Adapter Configuration (for now, programmatically in your ATS only),
+you defines the different bindings (i.e. what probe instance will be
+used to implement a test system interface port), including the binding
+configuration, i.e. the probe parameters, if any.</p>
+<p>You may define multiple test adapter configurations and switch from
+one to another one depending on the test environment you&#8217;re about to run
+your tests against.</p>
+<p>The test adapter configuration is supposed to be the only thing that
+change from one test environment to another one. It usually defines:</p>
+<ul class="simple">
+<li>real SUT IP addresses, ports</li>
+<li>some low level variables such as ssh login/password (likely to change
+from one system to another one)</li>
+<li>etc</li>
+</ul>
+<p>Application-oriented variables may still vary from one test environment
+to another one, but if your testcase is carefully designed, including
+with correct [#PreambleandPostamble Preambles], you should be able to
+minimize the amount of efforts needed to run your test on another
+instance of your SUT.</p>
+</div>
+<div class="section" id="codec-aliasing">
+<h3>Codec Aliasing<a class="headerlink" href="#codec-aliasing" title="Permalink to this headline">¶</a></h3>
+<p>The TTCN-3 code language does not completely ignore this, though.</p>
+</div>
+<div class="section" id="basic-general-purpose-sut-adapters">
+<h3>Basic, General Purpose SUT Adapters<a class="headerlink" href="#basic-general-purpose-sut-adapters" title="Permalink to this headline">¶</a></h3>
+<p>Once introduced to TTCN-3, you may wonder &#8220;OK, that&#8217;s nice and powerful,
+but now, how do I connect to a tcp server, send and receive some data
+?&#8221;. Protocols in use are not a (direct) concern for the standard, you
+are right. We&#8217;re dealing with application- and test-oriented message
+structures, but physical transport (such as tcp/udp/sctp or even ip) is
+not adressed. TTCN-3 has the concept of SUT addresses, but how do we
+control (perform and verify) actual connections, disconnections,
+stream-oriented data reception, and so on ?</p>
+<p>Antti Hyrkkanen, from the Tampere University of Technology, defended his
+<a class="reference external" href="http://www.ttcn-3.org/doc/GeneralPurposeTTCN3SA.pdf">master thesis</a>
+about a general purpose SUT Adapter for TTCN-3, bringing socket-like
+structures and associated functions to TTCN-3. While this approach
+cannot be more flexible and complete, it renders ATSes harder to write
+for non-programmers, forced to take into account low level details in
+most cases (of course, if your tests are about testing the SUT&#8217;s ability
+to handle tcp connections, disconnect them when expected, etc, this is
+fully adapted and even required).</p>
+<p>[WARNING: feel free to correct me if I misunderstood Antti&#8217;s work]</p>
+<p>Testerman tries to find an intermediate solution to this problem by
+providing a collection of transport-related probes, interfaced in
+userland using the same kind of templates - quite similar to Antti&#8217;s
+solution, but just less generic as the very low level (socket
+parameters) are embedded within the probe, and partially controllable
+through test adapter configurations.</p>
+<p>(TODO: transport interface: to document)</p>
+</div>
+<div class="section" id="preamble-and-postamble">
+<h3>Preamble and Postamble<a class="headerlink" href="#preamble-and-postamble" title="Permalink to this headline">¶</a></h3>
+<p>Testcases may require some SUT preparation in order to be executed,
+typically data provisioning, configuration files settings, maybe some
+processes or applications restarts.</p>
+<p>Once the test is over (independently from its verdict), the SUT needs
+to be restored in an &#8220;original&#8221; state so that, in particular, we can
+replay the testcase without any additional manipulations.</p>
+<p>These SUT preparation and clean up phases are called &#8220;Preamble&#8221; and
+&#8220;Postamble&#8221; (P&amp;P), respectively, in Testerman terminology.</p>
+<p>Testerman provides a way to use its core features to implement an
+automated preamble (you may call it &#8220;automated test bed setup&#8221;,
+&#8220;automated prerequisites set up&#8221;, ...) at least for what Testerman can
+automate using its available probes and the available SUT provisioning
+interfaces - manual prerequisites may still be needed.</p>
+<p>You may design campaign-level P&amp;P, suitable for multiple ATSes (i.e.
+starting the Preamble at the beginning of a campaign, starting the
+Postamble when finished), or ATS-level P&amp;P, where a Preamble/postable
+may be used for multiple testcases in a row, or testcase-level P&amp;P, i.e.
+only valid for a particular testcase (in this case, they are typically
+embedded within the testcase definition itself).</p>
+</div>
+<div class="section" id="testerman-applications">
+<h3>Testerman Applications<a class="headerlink" href="#testerman-applications" title="Permalink to this headline">¶</a></h3>
+<p><strong>The Testerman application framework is currently not available.</strong></p>
+<p>The idea is to provide a way to run &#8220;in the background&#8221; applications
+built using Testerman features to act as simulators either to help
+manual testing or to simulate/prototype new applications.</p>
+<p>Basically, you can already develop such simulators in a testcase, but a
+testcase is not designed to run forever and not to return a verdict. A
+Testerman application will.</p>
+</div>
+<div class="section" id="campaigns">
+<h3>Campaigns<a class="headerlink" href="#campaigns" title="Permalink to this headline">¶</a></h3>
+<p>A campaign is a structured collection of ATSes that can be executed
+conditionally.</p>
+<p>It is basically a black and white tree (each node has two branches: one
+to follow if the current node is successful, the other one in case of an
+error) enabling to chain ATSes (or other campaigns), executing specific
+ATSes or campaign depending on the execution status of the current job.</p>
+<div class="section" id="campaign-definition">
+<h4>Campaign Definition<a class="headerlink" href="#campaign-definition" title="Permalink to this headline">¶</a></h4>
+<p>A campaign is defined in clear text, declaring a job tree based on
+indentation:</p>
+<div class="highlight-python"><pre>job
+ job
+ job
+  job
+job</pre>
+</div>
+<p>The indentation is defined by the number of indent characters. Valid
+indent characters are <tt class="docutils literal"><span class="pre">\t</span></tt> and <tt class="docutils literal"><span class="pre">'</span> <span class="pre">'</span></tt>.</p>
+<p>A job line is formatted as:</p>
+<div class="highlight-python"><pre>[&lt;branch&gt; ]&lt;type&gt; &lt;path&gt; [groups &lt;groups&gt;] [with &lt;mapping&gt;]</pre>
+</div>
+<p>where:</p>
+<ul class="simple">
+<li><tt class="docutils literal"><span class="pre">&lt;branch&gt;</span></tt> indicates the execution branch the job belongs too. Must
+be a keyword in &#8216;on_success&#8217;, &#8216;on_error&#8217;, &#8216;*&#8217;, or left empty. If
+not provided or set to &#8216;on_success&#8217;, it indicates that the job is in
+the <em>success</em> branch, and that it should be executed only if its
+parent job returns a 0-result. If set to &#8216;on_error&#8217; or &#8216;*&#8217;, this is
+the &#8216;error&#8217; branch, and the job is executed only if its parent job
+returns a non-0 result.</li>
+<li><tt class="docutils literal"><span class="pre">&lt;type&gt;</span></tt> is a keyword in &#8216;ats&#8217;, &#8216;campaign&#8217;, indicating the type of
+the job</li>
+<li><tt class="docutils literal"><span class="pre">&lt;path&gt;</span></tt> is a relative (not starting with a /) or and absolute path
+(/-starting) within the repository refering to the ATS or the
+campaign to execute.</li>
+<li><tt class="docutils literal"><span class="pre">&lt;groups&gt;</span></tt> is an optional string formatted as
+<tt class="docutils literal"><span class="pre">GX_GROUP_NAME[,GX_ANOTHER_GROUP]*</span></tt> enabling to select
+the groups to run in the ATS. This option is only valid for an ATS job.
+By default, all groups are selected.</li>
+<li><tt class="docutils literal"><span class="pre">&lt;mapping&gt;</span></tt> is an optional string formatted as
+<tt class="docutils literal"><span class="pre">key=value[,key=value]*</span></tt> enabling to map or set job&#8217;s parameters
+from the current context&#8217;s parameters. See
+<a class="reference external" href="#SessionParametersFlowsinCampaigns">below</a> for more details.</li>
+</ul>
+<p>Comments are indicated with a #.</p>
+<p>Example:</p>
+<div class="highlight-python"><pre># Sample campaign
+ats class5/call_forward_unconditional.ats # job1
+ ats class5/call_forward_busy.ats         # job2
+ ats class5/call_forward_no_answer.ats    # job3
+ats clip/clip_base.ats                    # job4
+ats clip/clir_base.ats                    # job5</pre>
+</div>
+<p>reads:</p>
+<ul class="simple">
+<li>first start executing <tt class="docutils literal"><span class="pre">call_forward_unconditional.ats</span></tt>. If it&#8217;s OK
+(retcode = 0), then execute <tt class="docutils literal"><span class="pre">call_forward_busy.ats</span></tt>, and
+(regardless of its retcode) <tt class="docutils literal"><span class="pre">call_forward_no_answer.ats</span></tt></li>
+<li>always execute <tt class="docutils literal"><span class="pre">clip_base.ats</span></tt> then <tt class="docutils literal"><span class="pre">clir_base.ats</span></tt></li>
+</ul>
+</div>
+<div class="section" id="session-parameters-flows-in-campaigns">
+<h4>Session Parameters Flows in Campaigns<a class="headerlink" href="#session-parameters-flows-in-campaigns" title="Permalink to this headline">¶</a></h4>
+<p>Additionally, session parameters are transmitted to the executed
+children. In the example above:</p>
+<ul class="simple">
+<li>job1 will be started with the campaign&#8217;s initial session parameters
+(a merge from the user provided values, if any, and the default
+values)</li>
+<li>job2, if executed, will be started with the session output from job1</li>
+<li>job3, if executed (same condition as for job2), will be executed with
+the session output from job1, too (its parent)</li>
+<li>job4 will be executed with the campaign&#8217;s initial session parameters</li>
+<li>job5 will be executed with the campaign&#8217;s initial session parameters</li>
+</ul>
+<p>You can also define some local mappings to adjust the parameters to
+pass to a child job.</p>
+<p>Let&#8217;s assume the script <tt class="docutils literal"><span class="pre">class5/call_forward_unconditional.ats</span></tt>
+takes two parameters: <tt class="docutils literal"><span class="pre">PX_SUT_IP</span></tt>, defaulted to 127.0.0.1,
+<tt class="docutils literal"><span class="pre">PX_SUT_PORT</span></tt>, defaulted to 5060, and <tt class="docutils literal"><span class="pre">PX_SOURCE_URI</span></tt>, defaulted to
+<tt class="docutils literal"><span class="pre">'sip:john&#64;testerman.fr'</span></tt>.
+In a campaign defined as:</p>
+<div class="highlight-python"><pre>ats class5/call_forward_unconditional.ats with PX_SUT_IP=192.168.1.1,PX_SOURCE_URI=sip:campaign@somewhere.com</pre>
+</div>
+<p>the ATS will be executed with explicitly provided <tt class="docutils literal"><span class="pre">PX_SUT_IP</span></tt> and
+<tt class="docutils literal"><span class="pre">PX_SOURCE_URI</span></tt> values, but keeping the default ATS value for
+<tt class="docutils literal"><span class="pre">PX_SUT_PORT</span></tt> (5060).</p>
+<p>However, hardcoding SUT-dependent values is probably not a good idea.
+Instead, we&#8217;d probably define the <tt class="docutils literal"><span class="pre">PX_SUT_IP</span></tt> parameter at campaign
+level, and set it on run or via its default value.</p>
+<div class="highlight-python"><pre>ats class5/call_forward_unconditional.ats with PX_SOURCE_URI=sip:campaign@somewhere.com</pre>
+</div>
+<p>with a <tt class="docutils literal"><span class="pre">PX_SUT_IP</span></tt> defined as a parameter for the campaign.</p>
+<p><strong>Note</strong>: this is equivalent to:</p>
+<div class="highlight-python"><pre>ats class5/call_forward_unconditional.ats with PX_SUT_IP=${PX_SUT_IP},PX_SOURCE_URI=sip:campaign@somewhere.com</pre>
+</div>
+<p>Now, if you have several ATSes using the same parameter names for
+different purposes, for instance PX_SUT_IP, used to defined a SIP
+server in one ATS, and used to defined a LDAP interface in another ATS,
+you can design different parameters at campaign levels and map them to
+their local names when needed:</p>
+<div class="highlight-python"><pre>ats class5/sip_test.ats with PX_SUT_IP=${PX_SIP_SUT_IP}
+ats class5/ldap_provisioning_test.ats with PX_SUT_IP=${PX_LDAP_SUT_IP}</pre>
+</div>
+<p>and defining <tt class="docutils literal"><span class="pre">PX_SIP_SUT_IP</span></tt> and <tt class="docutils literal"><span class="pre">PX_LDAP_SUT_IP</span></tt> as parameters for
+the campaign.</p>
+<p>You got it, <tt class="docutils literal"><span class="pre">'${NAME}'</span></tt> is the way to reference a session parameter
+named <tt class="docutils literal"><span class="pre">NAME</span></tt>. If such a parameter is not defined when requested, no
+substitution occurs (<tt class="docutils literal"><span class="pre">'${UNKNOWN_PARAM}'</span></tt> will be expanded to
+<tt class="docutils literal"><span class="pre">'${UNKNOW_PARAM}'</span></tt>).</p>
+<p>As it is a mere string substitution, you may design campaigns whose
+parameterization is more user-friendly than the ATSes (or campaigns)
+they embed:</p>
+<div class="highlight-python"><pre>ats another_test.ats with PX_PROBE_URI=probe:_@${PX_AGENT}</pre>
+</div>
+<p>The ATS <tt class="docutils literal"><span class="pre">another_test.ats</span></tt> was designed to make the whole probe URI
+configurable. In the campaign, only the agent is, indirectly reducing
+the amount of information to set.</p>
+</div>
+</div>
+</div>
+<div class="section" id="jobs">
+<h2>Jobs<a class="headerlink" href="#jobs" title="Permalink to this headline">¶</a></h2>
+<p>ATSes and campaigns are executed as &#8220;jobs&#8221; created internally by the
+server.</p>
+<div class="section" id="job-control">
+<h3>Job Control<a class="headerlink" href="#job-control" title="Permalink to this headline">¶</a></h3>
+<p>Some clients, for instance QTesterman, provides a user interface to
+control the scheduled or running testerman jobs.</p>
+<p>Jobs are controlled sending <em>signals</em> to them, through the Ws
+interface using the <tt class="docutils literal"><span class="pre">sendSignal(jobId,</span> <span class="pre">signal)</span></tt> API. The job reacts
+differently according to its state when receiving the signal.</p>
+<table border="1" class="docutils">
+<colgroup>
+<col width="4%" />
+<col width="82%" />
+<col width="8%" />
+<col width="6%" />
+</colgroup>
+<thead valign="bottom">
+<tr class="row-odd"><th class="head">Signal</th>
+<th class="head">Description</th>
+<th class="head"><strong>Acceptable states</strong></th>
+<th class="head"><strong>Final state</strong></th>
+</tr>
+</thead>
+<tbody valign="top">
+<tr class="row-even"><td>pause</td>
+<td>pause the job</td>
+<td>running</td>
+<td>paused</td>
+</tr>
+<tr class="row-odd"><td>resume</td>
+<td>resume a paused job</td>
+<td>paused</td>
+<td>running</td>
+</tr>
+<tr class="row-even"><td>cancel</td>
+<td>cancel a waiting job (preventing it from being executed), or stop a running job after its current ATS is over (for a campaign), or gracefully stop the current testcase (for an ATS) then stop the ATS. This automatically resumes the job if it was paused before cancelling it.</td>
+<td>waiting, running, paused</td>
+<td>cancelled</td>
+</tr>
+<tr class="row-odd"><td>kill</td>
+<td>kill a running job, not waiting for any pending testcase completion. This should only be used if the cancel operation does not work, as it may leave remote probe resources unfreed.</td>
+<td>running, cancelling</td>
+<td>killed</td>
+</tr>
+</tbody>
+</table>
+</div>
+<div class="section" id="job-lifecycle">
+<h3>Job Lifecycle<a class="headerlink" href="#job-lifecycle" title="Permalink to this headline">¶</a></h3>
+<p>The following diagram exposes the basic job state machine, from its
+birth to its multiple death possibilities:</p>
+<img alt="../_images/job-state-machine.png" src="../_images/job-state-machine.png" />
+<p>Some state explanations:</p>
+<ul class="simple">
+<li><strong>initializing</strong>: the job is being prepared and dependencies scanned:
+campaigns are parsed and missing ATSes or children are reported,
+leading to an error; imported modules in ATSes are checked.</li>
+<li><strong>waiting</strong>: the job is now in the server&#8217;s queue, waiting for its
+start according to its scheduled start time.</li>
+<li><strong>running</strong>: the job is now running, either executing testcases for
+ATSes, or ATSes for campaigns</li>
+<li><strong>paused</strong>: the job has been paused. Only meaningful for an ATS job.
+Running timers, if any, are not frozen during the pause. As a
+consequence, when resuming the job, several timers may expire
+immediately.</li>
+<li><strong>complete</strong>: the job completes its execution &#8220;successfully&#8221;, i.e. no
+technical errors (TTCN3-, Testerman- or Python-related
+errors/exceptions) occurred, and the job return code is 0 (you may
+alter it with the stop(retcode) statement in the control part).
+However, it does not mean that all testcases were OK.</li>
+<li><strong>cancelling</strong>: the job is being cancelled, i.e. it waits for the
+pending testcase to finish, then stops.</li>
+<li><strong>cancelled</strong>: the job has been cancelled, i.e. probably did not
+complete all its testcases (unless the cancel signal arrived during
+the last testcase execution). The associated log file is still valid
+and consistent to analyze testcases till the cancellation.</li>
+<li><strong>killing</strong>: the job is being killed, i.e. stopped without waiting
+for a possible pending testcase to finish. This state typically lasts
+less than one second. Anyway, you can&#8217;t do anything more to kill the
+job now.</li>
+<li><strong>killed</strong>: the job has been killed. The associated log file may be
+inconsistent, especially regarding the running testcase when killed.</li>
+<li><strong>error</strong>: a problem occurred either while preparing the job
+(campaign parsing error, temporary files creation problems, TE syntax
+error, ...) or a technical error occurred preventing the ATS
+continuation, typically a Python exception in the control part
+(incorrect testcase identifier, ...). In the first case, you should
+have a look to the server&#8217;s logs to know what was wrong; in the
+second case, take a look at the log file in raw mode: the exception
+is probably logged. Additionally, the job&#8217;s return code could help
+you diagnose the problem:</li>
+</ul>
+<table border="1" class="docutils">
+<colgroup>
+<col width="5%" />
+<col width="19%" />
+<col width="6%" />
+<col width="70%" />
+</colgroup>
+<thead valign="bottom">
+<tr class="row-odd"><th class="head">Return code</th>
+<th class="head">Description</th>
+<th class="head"><strong>Associated state</strong></th>
+<th class="head"><strong>Comments</strong></th>
+</tr>
+</thead>
+<tbody valign="top">
+<tr class="row-even"><td>0</td>
+<td>No error</td>
+<td>complete</td>
+<td>&nbsp;</td>
+</tr>
+<tr class="row-odd"><td>1</td>
+<td>Cancelled (by the user)</td>
+<td>cancelled</td>
+<td>&nbsp;</td>
+</tr>
+<tr class="row-even"><td>2</td>
+<td>Killed (by the user)</td>
+<td>killed</td>
+<td>&nbsp;</td>
+</tr>
+<tr class="row-odd"><td>3</td>
+<td>Killed by the OS</td>
+<td>error</td>
+<td>Could be a segfault, out of memory, ... check the server&#8217;s logs for the exact signal.</td>
+</tr>
+<tr class="row-even"><td>4</td>
+<td>Complete, but some testcases were not executed successfully</td>
+<td>complete</td>
+<td>This status enables to quickly identify that at least one testcase was not passed, and the ATS may require your attention.</td>
+</tr>
+<tr class="row-odd"><td>10</td>
+<td>TE/Runtime: Unable to initialize the logger</td>
+<td>error</td>
+<td>Check the server&#8217;s log for a possible additional trace. Check Il interface settings and local firewall settings.</td>
+</tr>
+<tr class="row-even"><td>11</td>
+<td>TE/Runtime: Unable to initialize core libraries</td>
+<td>error</td>
+<td>Check the ATS log file for more details, in raw mode.</td>
+</tr>
+<tr class="row-odd"><td>12</td>
+<td>TE/Runtime: TTCN-3 related error</td>
+<td>error</td>
+<td>You did something not compliant with the TTCN-3 logic in the control part. Check the ATS log file for more details, in raw mode.</td>
+</tr>
+<tr class="row-even"><td>13</td>
+<td>TE/Runtime: Generic TE error</td>
+<td>error</td>
+<td>An exception occurred in the control part, probably a missing or invalid identifier. Check the ATS log file for more details, in raw mode.</td>
+</tr>
+<tr class="row-odd"><td>20</td>
+<td>Preparation: Unable to write the TE</td>
+<td>error</td>
+<td>Check disk space and rights to create a file in the document_root/archives folder.</td>
+</tr>
+<tr class="row-even"><td>21</td>
+<td>Preparation: Python Syntax error</td>
+<td>error</td>
+<td>Look at the server&#8217;s logs for the error line in the TE.</td>
+</tr>
+<tr class="row-odd"><td>22</td>
+<td>Preparation: Unable to check the TE</td>
+<td>error</td>
+<td>Look at the server&#8217;s logs for more details.</td>
+</tr>
+<tr class="row-even"><td>23</td>
+<td>Preparation: Unable to extract ATS parameters from its metadata</td>
+<td>error</td>
+<td>Look at the server&#8217;s logs for more details.</td>
+</tr>
+<tr class="row-odd"><td>24</td>
+<td>Preparation: Unable to create input session file or TE dependencies</td>
+<td>error</td>
+<td>Check disk space and rights to create a file in the tmp_root.</td>
+</tr>
+<tr class="row-even"><td>25</td>
+<td>Preparation: Unable to locate all module dependencies</td>
+<td>error</td>
+<td>Check <tt class="docutils literal"><span class="pre">import</span></tt> statements in ATS and imported modules (you can only import modules that are in the repository or Python system modules). The missing dependencies are reported to some client such as QTesterman. Alternatively, you may look at the server&#8217;s logs.</td>
+</tr>
+<tr class="row-odd"><td>26</td>
+<td>Preparation: Unable to create the TE</td>
+<td>error</td>
+<td>The exact error is provided to the caller when submitting the job for an standalone run (i.e. outside a campaign). Typical errors include unsupported language APIs, or internal (but specified) errors.</td>
+</tr>
+<tr class="row-even"><td>&gt;= 100</td>
+<td>user defined, via stop(retcode) in control part</td>
+<td>error</td>
+<td>&nbsp;</td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+<div class="section" id="documentation-system">
+<h2>Documentation System<a class="headerlink" href="#documentation-system" title="Permalink to this headline">¶</a></h2>
+<p>Testerman provides a highly flexible framework to create documentation
+from ATS scripts, based on Python’s docstring capabilities.</p>
+<p>A docstring is a character string (usually multi-line) that is inserted
+just after defining a Python object, in particular a class or a
+function. Testerman re-uses this model to offer the ability to document
+user-created functions as well as test cases through the use of
+documentation plugins that extract these information to create a test
+specification document, or to export to a test management system, etc.</p>
+<div class="section" id="raw-documentation">
+<h3>Raw Documentation<a class="headerlink" href="#raw-documentation" title="Permalink to this headline">¶</a></h3>
+<p>Basically, if you need to document a test case named <tt class="docutils literal"><span class="pre">TC_MY_TESTCASE</span></tt>:</p>
+<div class="highlight-python"><div class="highlight"><pre><span class="k">class</span> <span class="nc">TC_MY_TESTCASE</span><span class="p">(</span><span class="n">TestCase</span><span class="p">):</span>
+  <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">  This is the test case documentation.</span>
+
+<span class="sd">  This test verifies that an SNMP trap</span>
+<span class="sd">  is actually sent when rebooting the server.</span>
+<span class="sd">  We first listen for a trap,</span>
+<span class="sd">  then we reboot a machine using ssh reboot.</span>
+<span class="sd">  We then should get our trap within 30 seconds.</span>
+
+<span class="sd">  Created by John Smith on 2009-05-05.</span>
+<span class="sd">  &quot;&quot;&quot;</span>
+  <span class="k">def</span> <span class="nf">body</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">...</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    A documentation can also apply here</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="o">...</span>
+</pre></div>
+</div>
+</div>
+<div class="section" id="documentation-tags">
+<h3>Documentation Tags<a class="headerlink" href="#documentation-tags" title="Permalink to this headline">¶</a></h3>
+<p>It is usually convenient to structure your test case documentation into
+something more formal. A test case specification, for instance, may
+contain a purpose, the description of the steps to perform, some
+prerequisites, an author, a creation date, and so on.</p>
+<p>The documentation may be left as is, using a plain English text, or
+turned into something more formal and still human-readable using tags.
+Tags are special markers in the plain text that indicates the different
+parts of the documentation. If you are familiar with code documentation
+system such as Epydoc, Javadoc, Doxygen, there is nothing new here – the
+syntax is (almost) the same:</p>
+<div class="highlight-python"><div class="highlight"><pre><span class="k">class</span> <span class="nc">TC_MY_TESTCASE</span><span class="p">(</span><span class="n">TestCase</span><span class="p">):</span>
+  <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">  This is the test case documentation.</span>
+
+<span class="sd">  @purpose: This test verifies that an SNMP trap</span>
+<span class="sd">  is actually sent when rebooting the server.</span>
+<span class="sd">  @steps:</span>
+<span class="sd">  We first listen for a trap,</span>
+<span class="sd">  then we reboot a machine using ssh reboot.</span>
+
+<span class="sd">  We then should get our trap within 30 seconds.</span>
+
+<span class="sd">  @author: John Smith</span>
+<span class="sd">  @date: 2009-05-05</span>
+<span class="sd">  &quot;&quot;&quot;</span>
+  <span class="k">def</span> <span class="nf">body</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">...</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    A documentation can also apply here</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="o">...</span>
+</pre></div>
+</div>
+<p><tt class="docutils literal"><span class="pre">&#64;purposes</span></tt>, <tt class="docutils literal"><span class="pre">&#64;steps</span></tt>, <tt class="docutils literal"><span class="pre">&#64;author</span></tt>, <tt class="docutils literal"><span class="pre">&#64;date</span></tt> are used to tag
+different parts of the raw documentation. In this sample, however, we
+left what could be a test case overview untagged, as the &#8220;natural&#8221;,
+basic test case documentation.</p>
+<p>Documentation plugins, for instance, can then access tag values directly
+to create some more formal test specification (or any other kind of
+documentation).</p>
+<p>Any tags can be created at any time, anywhere in docstrings. However,
+they are mainly interpreted by plugins and you should match their
+expectations, according to the documentation strategy defined by your
+Testerman administrator and test managers. Testerman only provides a
+framework, regardless of the way you plan to use it.</p>
+</div>
+<div class="section" id="tag-format">
+<h3>Tag Format<a class="headerlink" href="#tag-format" title="Permalink to this headline">¶</a></h3>
+<p>A tag is defined as an identifier (<tt class="docutils literal"><span class="pre">[a-zA-Z0-9_-]+</span></tt>) following a <tt class="docutils literal"><span class="pre">&#64;</span></tt>
+character, starting a new line. Its value starts just after the
+following <tt class="docutils literal"><span class="pre">:</span></tt> character.</p>
+<p>Tags are case-insensitive: for instance, <tt class="docutils literal"><span class="pre">&#64;purpose</span></tt> and <tt class="docutils literal"><span class="pre">&#64;Purpose</span></tt>
+define the same tag <tt class="docutils literal"><span class="pre">purpose</span></tt>.</p>
+</div>
+<div class="section" id="tag-value-format">
+<h3>Tag Value Format<a class="headerlink" href="#tag-value-format" title="Permalink to this headline">¶</a></h3>
+<p>A tag value can be written over multiple lines. Actually, the current
+tags value only stops when another tag is started or when the docstring
+ends:</p>
+<div class="highlight-python"><pre>@purpose: This test verifies that an SNMP trap
+is actually sent when rebooting the server.</pre>
+</div>
+<p>Resulting in a tag value:</p>
+<div class="highlight-python"><pre>This test verifies that an SNMP trap is actually sent when rebooting the server.</pre>
+</div>
+<p>Notice that leading and trailing spaces are stripped, so that this is
+equivalent to:</p>
+<div class="highlight-python"><pre>@purpose:
+This test verifies that an SNMP trap
+is actually sent when rebooting the server.</pre>
+</div>
+<p>If you need to create a value that contains carriage returns, you must
+either leave an empty line or starts a new line with at least one blank
+character (space(s), tab(s)):</p>
+<div class="highlight-python"><pre>@steps:
+We first listen for a trap,
+then we reboot a machine using ssh reboot.
+We then should get our trap within 30 seconds.</pre>
+</div>
+<p>Resulting in the following tag value:</p>
+<div class="highlight-python"><pre>We first listen for a trap, then we reboot a machine using ssh reboot. We then should get our trap within 30 seconds.</pre>
+</div>
+<p>Which is not really readable. So let’s use:</p>
+<div class="highlight-python"><pre>@steps:
+We first listen for a trap,
+then we reboot a machine using ssh reboot.
+
+We then should get our trap within 30 seconds.</pre>
+</div>
+<p>Or</p>
+<div class="highlight-python"><pre>@steps:
+We first listen for a trap, then we reboot a machine using ssh reboot.
+We then should get our trap within 30 seconds.</pre>
+</div>
+<p>Leading to:</p>
+<div class="highlight-python"><pre>We first listen for a trap, then we reboot a machine using ssh reboot.
+We then should get our trap within 30 seconds.</pre>
+</div>
+</div>
+</div>
+</div>
+
+
+</div>
+<footer class="footer">
+  <div class="container">
+    <p class="pull-right">
+      <a href="#">Back to top</a>
+      
+    </p>
+    <p>
+        &copy; Copyright 2009-2013, Sébastien Lefèvre.<br/>
+      Created using <a href="http://sphinx.pocoo.org/">Sphinx</a> 1.1.3.<br/>
+    </p>
+  </div>
+</footer>
+  </body>
+</html>

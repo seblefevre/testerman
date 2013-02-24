@@ -1,0 +1,274 @@
+
+<!DOCTYPE html>
+
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>RTSP Probe &mdash; Testerman 1.4.0 documentation</title>
+    
+    <link rel="stylesheet" href="../../_static/basic.css" type="text/css" />
+    <link rel="stylesheet" href="../../_static/pygments.css" type="text/css" />
+    <link rel="stylesheet" href="../../_static/css/bootstrap-2.2.1.min.css" type="text/css" />
+    <link rel="stylesheet" href="../../_static/bootstrap-sphinx.css" type="text/css" />
+    <link rel="stylesheet" href="../../_static/css/bootstrap-responsive-2.2.1.min.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '../../',
+        VERSION:     '1.4.0',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true
+      };
+    </script>
+    <script type="text/javascript" src="../../_static/jquery.js"></script>
+    <script type="text/javascript" src="../../_static/underscore.js"></script>
+    <script type="text/javascript" src="../../_static/doctools.js"></script>
+    <script type="text/javascript" src="../../_static/js/bootstrap-2.2.1.min.js"></script>
+    <script type="text/javascript" src="../../_static/bootstrap-sphinx.js"></script>
+    <link rel="top" title="Testerman 1.4.0 documentation" href="../../index.html" />
+    <link rel="up" title="&lt;no title&gt;" href="toc.html" />
+    <link rel="next" title="LDAP Probe" href="ProbeLdapClient.html" />
+    <link rel="prev" title="RTP Probe" href="ProbeRtp.html" />
+<meta charset='utf-8'>
+<meta http-equiv='X-UA-Compatible' content='IE=edge,chrome=1'>
+<meta name='viewport' content='width=device-width, initial-scale=1.0, maximum-scale=1'>
+<meta name="apple-mobile-web-app-capable" content="yes">
+
+  </head>
+  <body>
+<div class="container">
+  
+  <div id="navbar" class="navbar navbar-inverse navbar-fixed-top">
+    <div class="navbar-inner">
+      <!-- .btn-navbar is used as the toggle for collapsed navbar content -->
+      <button class="btn btn-navbar" data-toggle="collapse" data-target=".nav-collapse">
+        <span class="icon-bar"></span>
+        <span class="icon-bar"></span>
+        <span class="icon-bar"></span>
+      </button>
+
+      <a class="brand" href="../../index.html">Testerman</a>
+      <span class="navbar-text pull-left"><b>1.4</b></span>
+
+      <div class="nav-collapse">
+        <ul class="nav">
+          <li class="divider-vertical"></li>
+          
+            <li class="dropdown">
+  <a href="../../index.html" class="dropdown-toggle" data-toggle="dropdown">Site <b class="caret"></b></a>
+  <ul class="dropdown-menu globaltoc"><ul>
+<li class="toctree-l1"><a class="reference internal" href="../../main/About.html">Welcome to Testerman</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../main/About.html#about">About</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../main/About.html#contact">Contact</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../main/GetTesterman.html">Getting Testerman</a></li>
+</ul>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../main/TestermanOverview.html">Testerman Overview</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../main/TestermanQuickStart.html">Quick Start</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../main/TestermanQuickStart.html#external-resources">External Resources</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../main/QTesterman.html">QTesterman</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../main/TestermanReferenceGuide.html">Testerman Reference Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../main/TestermanLanguageReference.html">General Concepts</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../main/TestermanLanguageReference.html#reference-testerman-api">Reference: Testerman API</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../main/BestPractices.html">Best Practices</a></li>
+</ul>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../index.html">Codecs and Probes Overview</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../index.html#codecs">Codecs</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../index.html#test-adapters-probes">Test Adapters (Probes)</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../index.html#codecs-and-probes-references">Codecs and Probes References</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../index.html#developing-new-codecs-and-probes">Developing New Codecs and Probes</a></li>
+</ul>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../main/TestermanAdministrationGuide.html">Testerman Administration Guide</a></li>
+</ul>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../main/TestermanInternals.html">Testerman Internals</a></li>
+</ul>
+</ul>
+</li>
+            <li class="dropdown">
+  <a href="#" class="dropdown-toggle" data-toggle="dropdown">Page <b class="caret"></b></a>
+  <ul class="dropdown-menu localtoc"><ul>
+<li><a class="reference internal" href="#">RTSP Probe</a><ul>
+<li><a class="reference internal" href="#identification-and-properties">Identification and Properties</a></li>
+<li><a class="reference internal" href="#overview">Overview</a><ul>
+<li><a class="reference internal" href="#availability">Availability</a></li>
+<li><a class="reference internal" href="#dependencies">Dependencies</a></li>
+<li><a class="reference internal" href="#see-also">See Also</a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#ttcn-3-types-equivalence">TTCN-3 Types Equivalence</a></li>
+</ul>
+</li>
+</ul>
+</ul>
+</li>
+          
+          
+            
+  <li><a href="ProbeRtp.html"
+         title="previous chapter">&laquo; RTP Probe</a></li>
+  <li><a href="ProbeLdapClient.html"
+         title="next chapter">LDAP Probe &raquo;</a></li>
+          
+          
+            <li>
+  <a href="../../_sources/plugins/autogen/ProbeRtspClient.txt"
+     rel="nofollow">Source</a></li>
+          
+        </ul>
+
+        
+          
+<form class="navbar-search pull-right" style="margin-bottom:-3px;" action="../../search.html" method="get">
+  <input type="text" name="q" placeholder="Search" />
+  <input type="hidden" name="check_keywords" value="yes" />
+  <input type="hidden" name="area" value="default" />
+</form>
+        
+      </div>
+    </div>
+  </div>
+
+  
+  <div class="section" id="rtsp-probe">
+<h1>RTSP Probe<a class="headerlink" href="#rtsp-probe" title="Permalink to this headline">¶</a></h1>
+<p>Act as a RTSP client over TCP.</p>
+<div class="section" id="identification-and-properties">
+<h2>Identification and Properties<a class="headerlink" href="#identification-and-properties" title="Permalink to this headline">¶</a></h2>
+<p>Probe Type ID: <tt class="docutils literal"><span class="pre">rtsp.client</span></tt></p>
+<p>Properties:</p>
+<table border="1" class="docutils">
+<colgroup>
+<col width="25%" />
+<col width="25%" />
+<col width="25%" />
+<col width="25%" />
+</colgroup>
+<thead valign="bottom">
+<tr class="row-odd"><th class="head">Name</th>
+<th class="head">Type</th>
+<th class="head">Default value</th>
+<th class="head">Description</th>
+</tr>
+</thead>
+<tbody valign="top">
+<tr class="row-even"><td><tt class="docutils literal"><span class="pre">strict_mode</span></tt></td>
+<td>boolean</td>
+<td><tt class="docutils literal"><span class="pre">False</span></tt></td>
+<td>When <tt class="docutils literal"><span class="pre">True</span></tt>, disables automatic CSeq management (generation and check on response), and transfer response headers as is, without modifying the case (use this mode for protocol-oriented testing). When <tt class="docutils literal"><span class="pre">False</span></tt>, CSeq is automatically generated if not provided, checked when receiving a response, and reponse header names are converted to lower case to make matching easier.</td>
+</tr>
+<tr class="row-odd"><td><tt class="docutils literal"><span class="pre">version</span></tt></td>
+<td>string</td>
+<td><tt class="docutils literal"><span class="pre">RTSP/1.0</span></tt></td>
+<td>The RSTP version string to use in the request line</td>
+</tr>
+<tr class="row-even"><td><tt class="docutils literal"><span class="pre">auto_connect</span></tt></td>
+<td>boolean</td>
+<td><tt class="docutils literal"><span class="pre">False</span></tt></td>
+<td>If set to <tt class="docutils literal"><span class="pre">True</span></tt>, tcp-connect on mapping, otherwise only connect hen sending a message. Has no effect for udp transport.</td>
+</tr>
+<tr class="row-odd"><td><tt class="docutils literal"><span class="pre">maintain_connection</span></tt></td>
+<td>boolean</td>
+<td><tt class="docutils literal"><span class="pre">False</span></tt></td>
+<td>If set to <tt class="docutils literal"><span class="pre">True</span></tt>, does not tcp-disconnect once a response has been received. Has no effect for udp transport.</td>
+</tr>
+<tr class="row-even"><td><tt class="docutils literal"><span class="pre">host</span></tt></td>
+<td>string</td>
+<td><tt class="docutils literal"><span class="pre">localhost</span></tt></td>
+<td>The IP address or hostname of the RTSP server</td>
+</tr>
+<tr class="row-odd"><td><tt class="docutils literal"><span class="pre">port</span></tt></td>
+<td>integer</td>
+<td><tt class="docutils literal"><span class="pre">554</span></tt></td>
+<td>The transport port of the RTSP server</td>
+</tr>
+<tr class="row-even"><td><tt class="docutils literal"><span class="pre">transport</span></tt></td>
+<td>string in <tt class="docutils literal"><span class="pre">'tcp',</span> <span class="pre">'udp'</span></tt></td>
+<td><tt class="docutils literal"><span class="pre">tcp</span></tt></td>
+<td>The transport to use to reach the RTSP server. Only <tt class="docutils literal"><span class="pre">tcp</span></tt> is implemented for now</td>
+</tr>
+<tr class="row-odd"><td><tt class="docutils literal"><span class="pre">local_ip</span></tt></td>
+<td>string</td>
+<td><tt class="docutils literal"><span class="pre">''</span></tt> (empty)</td>
+<td>The local IP address (or hostname) to use for outgoing packets. Leave it empty for automatic selection by the system. For udp transport, this is also the address the probe listens for a response on</td>
+</tr>
+<tr class="row-even"><td><tt class="docutils literal"><span class="pre">local_port</span></tt></td>
+<td>integer</td>
+<td><tt class="docutils literal"><span class="pre">0</span></tt></td>
+<td>The local port for the outgoing packets. Leave it to 0 for automatic port selection by the system. For udp transport, this is also the port the probe listens for a response on</td>
+</tr>
+</tbody>
+</table>
+</div>
+<div class="section" id="overview">
+<h2>Overview<a class="headerlink" href="#overview" title="Permalink to this headline">¶</a></h2>
+<p>This probe implements a very simple RTSP encoder/decoder over tcp.
+It encapsulates the <a class="reference internal" href="CodecsRtsp.html"><em>RTSP codecs</em></a>, feeding it only when the whole payload has been received
+(that&#8217;s why a probe is required), and is based on <a class="reference external" href="http://www.ietf.org/rfc/rfc2326.txt">RFC 2326</a>.</p>
+<p>Optionally, the probe can manage CSeq generation and correlation on response (see the <tt class="docutils literal"><span class="pre">strict_mode</span></tt> property),
+enabling both high-level and more procotol-oriented testing.</p>
+<div class="section" id="availability">
+<h3>Availability<a class="headerlink" href="#availability" title="Permalink to this headline">¶</a></h3>
+<p>All platforms.</p>
+</div>
+<div class="section" id="dependencies">
+<h3>Dependencies<a class="headerlink" href="#dependencies" title="Permalink to this headline">¶</a></h3>
+<p>None.</p>
+</div>
+<div class="section" id="see-also">
+<h3>See Also<a class="headerlink" href="#see-also" title="Permalink to this headline">¶</a></h3>
+<p>For pure protocol testing, you may also consider using <a class="reference internal" href="CodecsRtsp.html"><em>RTSP codecs</em></a> with an <a class="reference internal" href="ProbeUdp.html"><em>UDP probe</em></a> (stateful decoding not required),
+or  with a <a class="reference internal" href="ProbeTcp.html"><em>TCP probe</em></a>.</p>
+</div>
+</div>
+<div class="section" id="ttcn-3-types-equivalence">
+<h2>TTCN-3 Types Equivalence<a class="headerlink" href="#ttcn-3-types-equivalence" title="Permalink to this headline">¶</a></h2>
+<p>The test system interface port bound to such a probe complies with the <tt class="docutils literal"><span class="pre">RtspClientPortType</span></tt> port type as specified below:</p>
+<div class="highlight-python"><pre>type record RtspRequest
+{
+  charstring method,
+  charstring uri,
+  charstring version optional, // default: 'RTSP/1.0', or as configured
+  record { charstring &lt;header name&gt;* } headers,
+  charstring body optional, // default: ''
+}
+
+type record RtspResponse
+{
+  integer status,
+  charstring reason,
+  charstring protocol,
+  record { charstring &lt;header name&gt;* } headers,
+  charstring body,
+}
+
+type port RtspClientPortType message
+{
+  in RtspRequest;
+  out RtspResponse;
+}</pre>
+</div>
+</div>
+</div>
+
+
+</div>
+<footer class="footer">
+  <div class="container">
+    <p class="pull-right">
+      <a href="#">Back to top</a>
+      
+    </p>
+    <p>
+        &copy; Copyright 2009-2013, Sébastien Lefèvre.<br/>
+      Created using <a href="http://sphinx.pocoo.org/">Sphinx</a> 1.1.3.<br/>
+    </p>
+  </div>
+</footer>
+  </body>
+</html>

@@ -1,0 +1,347 @@
+
+<!DOCTYPE html>
+
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>LDAP Probe &mdash; Testerman 1.4.0 documentation</title>
+    
+    <link rel="stylesheet" href="../../_static/basic.css" type="text/css" />
+    <link rel="stylesheet" href="../../_static/pygments.css" type="text/css" />
+    <link rel="stylesheet" href="../../_static/css/bootstrap-2.2.1.min.css" type="text/css" />
+    <link rel="stylesheet" href="../../_static/bootstrap-sphinx.css" type="text/css" />
+    <link rel="stylesheet" href="../../_static/css/bootstrap-responsive-2.2.1.min.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '../../',
+        VERSION:     '1.4.0',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true
+      };
+    </script>
+    <script type="text/javascript" src="../../_static/jquery.js"></script>
+    <script type="text/javascript" src="../../_static/underscore.js"></script>
+    <script type="text/javascript" src="../../_static/doctools.js"></script>
+    <script type="text/javascript" src="../../_static/js/bootstrap-2.2.1.min.js"></script>
+    <script type="text/javascript" src="../../_static/bootstrap-sphinx.js"></script>
+    <link rel="top" title="Testerman 1.4.0 documentation" href="../../index.html" />
+    <link rel="up" title="&lt;no title&gt;" href="toc.html" />
+    <link rel="next" title="Oracle Probe" href="ProbeSqlOracle.html" />
+    <link rel="prev" title="RTSP Probe" href="ProbeRtspClient.html" />
+<meta charset='utf-8'>
+<meta http-equiv='X-UA-Compatible' content='IE=edge,chrome=1'>
+<meta name='viewport' content='width=device-width, initial-scale=1.0, maximum-scale=1'>
+<meta name="apple-mobile-web-app-capable" content="yes">
+
+  </head>
+  <body>
+<div class="container">
+  
+  <div id="navbar" class="navbar navbar-inverse navbar-fixed-top">
+    <div class="navbar-inner">
+      <!-- .btn-navbar is used as the toggle for collapsed navbar content -->
+      <button class="btn btn-navbar" data-toggle="collapse" data-target=".nav-collapse">
+        <span class="icon-bar"></span>
+        <span class="icon-bar"></span>
+        <span class="icon-bar"></span>
+      </button>
+
+      <a class="brand" href="../../index.html">Testerman</a>
+      <span class="navbar-text pull-left"><b>1.4</b></span>
+
+      <div class="nav-collapse">
+        <ul class="nav">
+          <li class="divider-vertical"></li>
+          
+            <li class="dropdown">
+  <a href="../../index.html" class="dropdown-toggle" data-toggle="dropdown">Site <b class="caret"></b></a>
+  <ul class="dropdown-menu globaltoc"><ul>
+<li class="toctree-l1"><a class="reference internal" href="../../main/About.html">Welcome to Testerman</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../main/About.html#about">About</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../main/About.html#contact">Contact</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../main/GetTesterman.html">Getting Testerman</a></li>
+</ul>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../main/TestermanOverview.html">Testerman Overview</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../main/TestermanQuickStart.html">Quick Start</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../main/TestermanQuickStart.html#external-resources">External Resources</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../main/QTesterman.html">QTesterman</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../main/TestermanReferenceGuide.html">Testerman Reference Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../main/TestermanLanguageReference.html">General Concepts</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../main/TestermanLanguageReference.html#reference-testerman-api">Reference: Testerman API</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../main/BestPractices.html">Best Practices</a></li>
+</ul>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../index.html">Codecs and Probes Overview</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../index.html#codecs">Codecs</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../index.html#test-adapters-probes">Test Adapters (Probes)</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../index.html#codecs-and-probes-references">Codecs and Probes References</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../index.html#developing-new-codecs-and-probes">Developing New Codecs and Probes</a></li>
+</ul>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../main/TestermanAdministrationGuide.html">Testerman Administration Guide</a></li>
+</ul>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../main/TestermanInternals.html">Testerman Internals</a></li>
+</ul>
+</ul>
+</li>
+            <li class="dropdown">
+  <a href="#" class="dropdown-toggle" data-toggle="dropdown">Page <b class="caret"></b></a>
+  <ul class="dropdown-menu localtoc"><ul>
+<li><a class="reference internal" href="#">LDAP Probe</a><ul>
+<li><a class="reference internal" href="#identification-and-properties">Identification and Properties</a></li>
+<li><a class="reference internal" href="#overview">Overview</a><ul>
+<li><a class="reference internal" href="#availability">Availability</a></li>
+<li><a class="reference internal" href="#dependencies">Dependencies</a></li>
+<li><a class="reference internal" href="#see-also">See Also</a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#ttcn-3-types-equivalence">TTCN-3 Types Equivalence</a></li>
+</ul>
+</li>
+</ul>
+</ul>
+</li>
+          
+          
+            
+  <li><a href="ProbeRtspClient.html"
+         title="previous chapter">&laquo; RTSP Probe</a></li>
+  <li><a href="ProbeSqlOracle.html"
+         title="next chapter">Oracle Probe &raquo;</a></li>
+          
+          
+            <li>
+  <a href="../../_sources/plugins/autogen/ProbeLdapClient.txt"
+     rel="nofollow">Source</a></li>
+          
+        </ul>
+
+        
+          
+<form class="navbar-search pull-right" style="margin-bottom:-3px;" action="../../search.html" method="get">
+  <input type="text" name="q" placeholder="Search" />
+  <input type="hidden" name="check_keywords" value="yes" />
+  <input type="hidden" name="area" value="default" />
+</form>
+        
+      </div>
+    </div>
+  </div>
+
+  
+  <div class="section" id="ldap-probe">
+<h1>LDAP Probe<a class="headerlink" href="#ldap-probe" title="Permalink to this headline">¶</a></h1>
+<p>Act as a LDAP client.</p>
+<div class="section" id="identification-and-properties">
+<h2>Identification and Properties<a class="headerlink" href="#identification-and-properties" title="Permalink to this headline">¶</a></h2>
+<p>Probe Type ID: <tt class="docutils literal"><span class="pre">ldap.client</span></tt></p>
+<p>Properties:</p>
+<table border="1" class="docutils">
+<colgroup>
+<col width="25%" />
+<col width="25%" />
+<col width="25%" />
+<col width="25%" />
+</colgroup>
+<thead valign="bottom">
+<tr class="row-odd"><th class="head">Name</th>
+<th class="head">Type</th>
+<th class="head">Default value</th>
+<th class="head">Description</th>
+</tr>
+</thead>
+<tbody valign="top">
+<tr class="row-even"><td><tt class="docutils literal"><span class="pre">server_url</span></tt></td>
+<td>string</td>
+<td><tt class="docutils literal"><span class="pre">'ldap://127.0.0.1:389'</span></tt></td>
+<td>LDAP server url, including protocol to use (ldap or ldaps)</td>
+</tr>
+<tr class="row-odd"><td><tt class="docutils literal"><span class="pre">ldap_version</span></tt></td>
+<td>integer</td>
+<td><tt class="docutils literal"><span class="pre">2</span></tt></td>
+<td>LDAP server version</td>
+</tr>
+<tr class="row-even"><td><tt class="docutils literal"><span class="pre">bind_dn</span></tt></td>
+<td>string</td>
+<td><tt class="docutils literal"><span class="pre">None</span></tt> (undefined)</td>
+<td>The DN entry to bind, if not provided through a request</td>
+</tr>
+<tr class="row-odd"><td><tt class="docutils literal"><span class="pre">password</span></tt></td>
+<td>string</td>
+<td>(empty)</td>
+<td>The password to use by default for binding</td>
+</tr>
+<tr class="row-even"><td><tt class="docutils literal"><span class="pre">timeout</span></tt></td>
+<td>float</td>
+<td><tt class="docutils literal"><span class="pre">60.0</span></tt></td>
+<td>The maximum amount of time allowed to perform a search/write/delete operation before raising an error response</td>
+</tr>
+<tr class="row-odd"><td><tt class="docutils literal"><span class="pre">base_dn</span></tt></td>
+<td>string</td>
+<td>(empty)</td>
+<td>A base DN to suffix all DNs used in search/write/delete operations. It is not used for the</td>
+</tr>
+<tr class="row-even"><td><tt class="docutils literal"><span class="pre">username</span></tt></td>
+<td>string</td>
+<td><tt class="docutils literal"><span class="pre">None</span></tt> (undefined)</td>
+<td>Deprecated. Use <tt class="docutils literal"><span class="pre">bind_dn</span></tt> instead.</td>
+</tr>
+</tbody>
+</table>
+</div>
+<div class="section" id="overview">
+<h2>Overview<a class="headerlink" href="#overview" title="Permalink to this headline">¶</a></h2>
+<p>This probe simulates a LDAP client that can connect to a LDAP server
+to perform the following LDAP operations:</p>
+<ul class="simple">
+<li>bind</li>
+<li>unbind</li>
+<li>search</li>
+<li>add and update</li>
+<li>delete</li>
+</ul>
+<p>It can connect to LDAP v2 and v3 servers, using a standard or a secure (ldaps, SSL/TLS)
+connection.</p>
+<p>SASL connections are currently not interfaced.</p>
+<p>By default, the probe automatically binds using the properties <tt class="docutils literal"><span class="pre">bind_dn</span></tt> and <tt class="docutils literal"><span class="pre">password</span></tt> prior
+to executing a search/write/delete command, unless an explicit bind command was performed by the user before.</p>
+<p>The probe automatically unbinds on unmap.</p>
+<p>To add or update an entry, use a <tt class="docutils literal"><span class="pre">WriteCommand</span></tt> message. The probe
+automatically detects if it should be a new entry (don&#8217;t forget mandatory
+attributes according to the entry&#8217;s schema) or an update. In case of an update:</p>
+<ul class="simple">
+<li>only provided attributes are modified. The other ones are left unchanged</li>
+<li>all values of the existing attributes are replaced with the new ones (no values merge)</li>
+<li>you can delete an attribute by specifying an empty value list for it</li>
+</ul>
+<p>To make ATSes more portable and more simple to manage, you may use the <tt class="docutils literal"><span class="pre">base_dn</span></tt> property
+to set a DN that will be appended to all DNs in use in:</p>
+<ul class="simple">
+<li>delete operation (<tt class="docutils literal"><span class="pre">dn</span></tt> parameter)</li>
+<li>write operation (<tt class="docutils literal"><span class="pre">dn</span></tt> parameter)</li>
+<li>search operation (<tt class="docutils literal"><span class="pre">baseDn</span></tt> parameter)</li>
+</ul>
+<p>and automatically removed from the dn values as returned in <tt class="docutils literal"><span class="pre">SearchResult.SearchEntry.dn</span></tt> structures.[[BR]]
+In other words, all the dn values, in the userland, will be relative to that <tt class="docutils literal"><span class="pre">base_dn</span></tt>.</p>
+<p>This <tt class="docutils literal"><span class="pre">base_dn</span></tt>, however, won&#8217;t be suffixed to the <tt class="docutils literal"><span class="pre">bind_dn</span></tt>.</p>
+<p>Notes:</p>
+<ul class="simple">
+<li>Bind, write and unbind operations are synchronous, i.e. it&#8217;s not use arming a timer to cancel them from the userland: they are not cancellable, and only return when they are complete. However, you still must wait for a <tt class="docutils literal"><span class="pre">BindResult</span></tt> or <tt class="docutils literal"><span class="pre">WriteResult</span></tt> before assuming the operation is complete.</li>
+<li>The synchronous bind and write implementations may be replaced with asynchronous equivalent ones one day. This        won&#8217;t have any impact on your testcases if you wait for the <tt class="docutils literal"><span class="pre">BindResult</span></tt> and <tt class="docutils literal"><span class="pre">WriteResult</span></tt> as explained above.</li>
+</ul>
+<div class="section" id="availability">
+<h3>Availability<a class="headerlink" href="#availability" title="Permalink to this headline">¶</a></h3>
+<p>All platforms.</p>
+</div>
+<div class="section" id="dependencies">
+<h3>Dependencies<a class="headerlink" href="#dependencies" title="Permalink to this headline">¶</a></h3>
+<p>This probe depends on the openldap library and its associated Python wrapper.</p>
+<p>On Debian-based system, this is <tt class="docutils literal"><span class="pre">python-ldap</span></tt> and its dependencies.</p>
+</div>
+<div class="section" id="see-also">
+<h3>See Also<a class="headerlink" href="#see-also" title="Permalink to this headline">¶</a></h3>
+</div>
+</div>
+<div class="section" id="ttcn-3-types-equivalence">
+<h2>TTCN-3 Types Equivalence<a class="headerlink" href="#ttcn-3-types-equivalence" title="Permalink to this headline">¶</a></h2>
+<p>The test system interface port bound to such a probe complies with the <tt class="docutils literal"><span class="pre">LdapPortType</span></tt> port type as specified below:</p>
+<div class="highlight-python"><pre>type union LdapCommand
+{
+  BindCommand   bind,     // binds to the server set in properties, with the defaut or given credentials
+  UnbindCommand unbind,   // unbinds from the server
+  SearchCommand search,   // searches entries according to a ldap search filter
+  WriteCommand  write,    // updates or adds a new entry or attribute
+  DeleteCommand delete,   // deletes an entry
+  AbandonCommand abandon, // abandon the current command, if any
+  CancelCommand abandon,  // cancel the current command, if any (only supported on RFC3909 compliant server)
+}
+
+type record BindCommand {
+  charstring bindDn optional, // the distinguished name of the entry to bind
+  charstring password optional,
+}
+
+type any UnbindCommand;
+
+type record SearchCommand {
+  charstring baseDn, // suffixed by the probe's base_dn property, if any
+  charstring filter,
+  charstring scope optional, // enum in 'base', 'subtree', 'onelevel', defaulted to 'base'
+  record of charstring attributes optional, // defaulted to an empty list, i.e. all attributes are returned
+}
+
+type record WriteCommand {
+  charstring dn, // suffixed by the probe's base_dn property, if any
+  record of Attribute attributes optional, // defaulted to an empty list
+}
+
+type record Attribute {
+  record of &lt;natural type&gt; &lt;name&gt; // dynamic names, natural types (charstring/universal charstring, int, double, octetstring, ...)
+}
+
+type record DeleteCommand {
+  charstring dn, // suffixed by the probe's base_dn property, if any
+}
+
+type any AbandonCommand;
+
+type any CancelCommand;
+
+type boolean DeleteResult;
+
+type boolean BindResult;
+
+type boolean UnbindResult;
+
+type record of SearchEntry SearchResult;
+
+type record SearchEntry {
+  charstring dn, // does not contain the base_dn property part, if any
+  record of Attribute attributes,
+}
+
+type boolean WriteResult;
+
+type charstring ErrorResponse;
+
+type union LdapResponse
+{
+  BindResult bindResult,
+  UnbindResult unbindResult,
+  DeleteResulet deleteResult,
+  SearchResult searchResult,
+  WriteResult writeResult,
+  ErrorResponse error,
+}
+
+type port LdapPortType message
+{
+  in  LdapCommand;
+  out LdapResponse;
+}</pre>
+</div>
+</div>
+</div>
+
+
+</div>
+<footer class="footer">
+  <div class="container">
+    <p class="pull-right">
+      <a href="#">Back to top</a>
+      
+    </p>
+    <p>
+        &copy; Copyright 2009-2013, Sébastien Lefèvre.<br/>
+      Created using <a href="http://sphinx.pocoo.org/">Sphinx</a> 1.1.3.<br/>
+    </p>
+  </div>
+</footer>
+  </body>
+</html>

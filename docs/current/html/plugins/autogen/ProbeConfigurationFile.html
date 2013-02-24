@@ -1,0 +1,291 @@
+
+<!DOCTYPE html>
+
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>Configuration File Probe &mdash; Testerman 1.4.0 documentation</title>
+    
+    <link rel="stylesheet" href="../../_static/basic.css" type="text/css" />
+    <link rel="stylesheet" href="../../_static/pygments.css" type="text/css" />
+    <link rel="stylesheet" href="../../_static/css/bootstrap-2.2.1.min.css" type="text/css" />
+    <link rel="stylesheet" href="../../_static/bootstrap-sphinx.css" type="text/css" />
+    <link rel="stylesheet" href="../../_static/css/bootstrap-responsive-2.2.1.min.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '../../',
+        VERSION:     '1.4.0',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true
+      };
+    </script>
+    <script type="text/javascript" src="../../_static/jquery.js"></script>
+    <script type="text/javascript" src="../../_static/underscore.js"></script>
+    <script type="text/javascript" src="../../_static/doctools.js"></script>
+    <script type="text/javascript" src="../../_static/js/bootstrap-2.2.1.min.js"></script>
+    <script type="text/javascript" src="../../_static/bootstrap-sphinx.js"></script>
+    <link rel="top" title="Testerman 1.4.0 documentation" href="../../index.html" />
+    <link rel="up" title="&lt;no title&gt;" href="toc.html" />
+    <link rel="next" title="RTP Probe" href="ProbeRtp.html" />
+    <link rel="prev" title="SSH Probe" href="ProbeSsh.html" />
+<meta charset='utf-8'>
+<meta http-equiv='X-UA-Compatible' content='IE=edge,chrome=1'>
+<meta name='viewport' content='width=device-width, initial-scale=1.0, maximum-scale=1'>
+<meta name="apple-mobile-web-app-capable" content="yes">
+
+  </head>
+  <body>
+<div class="container">
+  
+  <div id="navbar" class="navbar navbar-inverse navbar-fixed-top">
+    <div class="navbar-inner">
+      <!-- .btn-navbar is used as the toggle for collapsed navbar content -->
+      <button class="btn btn-navbar" data-toggle="collapse" data-target=".nav-collapse">
+        <span class="icon-bar"></span>
+        <span class="icon-bar"></span>
+        <span class="icon-bar"></span>
+      </button>
+
+      <a class="brand" href="../../index.html">Testerman</a>
+      <span class="navbar-text pull-left"><b>1.4</b></span>
+
+      <div class="nav-collapse">
+        <ul class="nav">
+          <li class="divider-vertical"></li>
+          
+            <li class="dropdown">
+  <a href="../../index.html" class="dropdown-toggle" data-toggle="dropdown">Site <b class="caret"></b></a>
+  <ul class="dropdown-menu globaltoc"><ul>
+<li class="toctree-l1"><a class="reference internal" href="../../main/About.html">Welcome to Testerman</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../main/About.html#about">About</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../main/About.html#contact">Contact</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../main/GetTesterman.html">Getting Testerman</a></li>
+</ul>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../main/TestermanOverview.html">Testerman Overview</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../main/TestermanQuickStart.html">Quick Start</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../main/TestermanQuickStart.html#external-resources">External Resources</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../main/QTesterman.html">QTesterman</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../main/TestermanReferenceGuide.html">Testerman Reference Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../main/TestermanLanguageReference.html">General Concepts</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../main/TestermanLanguageReference.html#reference-testerman-api">Reference: Testerman API</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../main/BestPractices.html">Best Practices</a></li>
+</ul>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../index.html">Codecs and Probes Overview</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../index.html#codecs">Codecs</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../index.html#test-adapters-probes">Test Adapters (Probes)</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../index.html#codecs-and-probes-references">Codecs and Probes References</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../index.html#developing-new-codecs-and-probes">Developing New Codecs and Probes</a></li>
+</ul>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../main/TestermanAdministrationGuide.html">Testerman Administration Guide</a></li>
+</ul>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../main/TestermanInternals.html">Testerman Internals</a></li>
+</ul>
+</ul>
+</li>
+            <li class="dropdown">
+  <a href="#" class="dropdown-toggle" data-toggle="dropdown">Page <b class="caret"></b></a>
+  <ul class="dropdown-menu localtoc"><ul>
+<li><a class="reference internal" href="#">Configuration File Probe</a><ul>
+<li><a class="reference internal" href="#identification-and-properties">Identification and Properties</a></li>
+<li><a class="reference internal" href="#overview">Overview</a><ul>
+<li><a class="reference internal" href="#availability">Availability</a></li>
+<li><a class="reference internal" href="#dependencies">Dependencies</a></li>
+<li><a class="reference internal" href="#see-also">See Also</a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#ttcn-3-types-equivalence">TTCN-3 Types Equivalence</a></li>
+</ul>
+</li>
+</ul>
+</ul>
+</li>
+          
+          
+            
+  <li><a href="ProbeSsh.html"
+         title="previous chapter">&laquo; SSH Probe</a></li>
+  <li><a href="ProbeRtp.html"
+         title="next chapter">RTP Probe &raquo;</a></li>
+          
+          
+            <li>
+  <a href="../../_sources/plugins/autogen/ProbeConfigurationFile.txt"
+     rel="nofollow">Source</a></li>
+          
+        </ul>
+
+        
+          
+<form class="navbar-search pull-right" style="margin-bottom:-3px;" action="../../search.html" method="get">
+  <input type="text" name="q" placeholder="Search" />
+  <input type="hidden" name="check_keywords" value="yes" />
+  <input type="hidden" name="area" value="default" />
+</form>
+        
+      </div>
+    </div>
+  </div>
+
+  
+  <div class="section" id="configuration-file-probe">
+<h1>Configuration File Probe<a class="headerlink" href="#configuration-file-probe" title="Permalink to this headline">¶</a></h1>
+<p>Get or set a key in a configuration file.</p>
+<div class="section" id="identification-and-properties">
+<h2>Identification and Properties<a class="headerlink" href="#identification-and-properties" title="Permalink to this headline">¶</a></h2>
+<p>Probe Type ID: <tt class="docutils literal"><span class="pre">configurationfile</span></tt></p>
+<p>Properties:</p>
+<table border="1" class="docutils">
+<colgroup>
+<col width="25%" />
+<col width="25%" />
+<col width="25%" />
+<col width="25%" />
+</colgroup>
+<thead valign="bottom">
+<tr class="row-odd"><th class="head">Name</th>
+<th class="head">Type</th>
+<th class="head">Default value</th>
+<th class="head">Description</th>
+</tr>
+</thead>
+<tbody valign="top">
+<tr class="row-even"><td><tt class="docutils literal"><span class="pre">plugin_properties</span></tt></td>
+<td>dict[string] of dict</td>
+<td><tt class="docutils literal"><span class="pre">{}</span></tt></td>
+<td>properties to pass to sub-plugins, indexed by the format they support</td>
+</tr>
+</tbody>
+</table>
+<p>Properties for the <tt class="docutils literal"><span class="pre">ini</span></tt> plugin:</p>
+<table border="1" class="docutils">
+<colgroup>
+<col width="25%" />
+<col width="25%" />
+<col width="25%" />
+<col width="25%" />
+</colgroup>
+<thead valign="bottom">
+<tr class="row-odd"><th class="head">Name</th>
+<th class="head">Type</th>
+<th class="head">Default value</th>
+<th class="head">Description</th>
+</tr>
+</thead>
+<tbody valign="top">
+<tr class="row-even"><td><tt class="docutils literal"><span class="pre">comments</span></tt></td>
+<td>list of strings</td>
+<td><tt class="docutils literal"><span class="pre">['#',</span> <span class="pre">';']</span></tt></td>
+<td>List of characters or strings that identify a comment in a .ini file</td>
+</tr>
+</tbody>
+</table>
+<p>There are no properties for the other <tt class="docutils literal"><span class="pre">xml</span></tt> and <tt class="docutils literal"><span class="pre">conf</span></tt> plugins.</p>
+</div>
+<div class="section" id="overview">
+<h2>Overview<a class="headerlink" href="#overview" title="Permalink to this headline">¶</a></h2>
+<p>This probe is specialized in updating configuration files, so that you can easily integrate small configuration changes
+prior to running a particular test (and rollback this change after).</p>
+<p>In can only work with files located on the system the probe is running on (i.e. you cannot update a file remotely via this probe,
+but you can still deploy your probe on a remote agent, so technically you can still update a configuration file anywhere on your
+distributed SUT).</p>
+<p>This implementation relies on probe-specific plugins (yes, nested plugins ! where this over-engineering spree will end ?)
+to update the files. These plugins simply provide <tt class="docutils literal"><span class="pre">get</span></tt> and <tt class="docutils literal"><span class="pre">set</span></tt> operations for a specific key, and the way the key
+is identified is plugin-specific.</p>
+<p>Currently the following configuration file formats are supported:</p>
+<ul class="simple">
+<li>XML files (extension: <tt class="docutils literal"><span class="pre">.xml</span></tt>): the key format is a XPath request, so you can change an element value or attribute.</li>
+<li>Shell sourceable configuration files (extension: <tt class="docutils literal"><span class="pre">.conf</span></tt>): the typical key=value configuration file that
+can be read by <tt class="docutils literal"><span class="pre">sh</span></tt>, using <tt class="docutils literal"><span class="pre">#</span></tt> for comments, and a flat structure (no sections).</li>
+<li>INI files (extension: <tt class="docutils literal"><span class="pre">.ini</span></tt>): Windows-like configuration files, with sections. The key format is &#8220;section/key&#8221;.
+The characters used for comments in such a file are configurable (see the <tt class="docutils literal"><span class="pre">comments</span></tt> property) so that
+it could adapt to some custom INI file formats.</li>
+</ul>
+<p>The plugin to use to handle a configuration file is automatically detected based on the file extension, unless you force one
+(which is convenient to support INI files named <tt class="docutils literal"><span class="pre">something.conf</span></tt>).</p>
+<p>To get the value of a key in a file (here, the value of the key name <tt class="docutils literal"><span class="pre">key</span></tt> in section <tt class="docutils literal"><span class="pre">[section]</span></tt> in the INI configuration file <tt class="docutils literal"><span class="pre">/pat/to/my/config.ini</span></tt>), simply send the following message:</p>
+<p>Then, expect a result message:</p>
+<p>If the key or the configuration file was not found or not readable, the returned value is an empty string.</p>
+<p>To set the previous key to a given value:</p>
+<p>Then, optionally expect a result message (if you don&#8217;t mind if the operation succeeded, don&#8217;t expect anything):</p>
+<p>Other received messages indicate a set error.</p>
+<p>As usual, it may be convenient to embed these message-based calls into a convenience function to use in your ATSes.</p>
+<div class="section" id="availability">
+<h3>Availability<a class="headerlink" href="#availability" title="Permalink to this headline">¶</a></h3>
+<p>All platforms.</p>
+</div>
+<div class="section" id="dependencies">
+<h3>Dependencies<a class="headerlink" href="#dependencies" title="Permalink to this headline">¶</a></h3>
+<p>None.</p>
+</div>
+<div class="section" id="see-also">
+<h3>See Also<a class="headerlink" href="#see-also" title="Permalink to this headline">¶</a></h3>
+</div>
+</div>
+<div class="section" id="ttcn-3-types-equivalence">
+<h2>TTCN-3 Types Equivalence<a class="headerlink" href="#ttcn-3-types-equivalence" title="Permalink to this headline">¶</a></h2>
+<p>The test system interface port bound to such a probe complies with the <tt class="docutils literal"><span class="pre">ConfigFileProbeType</span></tt> port type as specified below:</p>
+<div class="highlight-python"><pre>type union Command
+{
+  SetKeyCommand set,
+  GetKeyCommand get,
+}
+
+type record SetKeyCommand
+{
+  charstring filename,
+  charstring keypath,
+  charstring value,
+  charstring format optional, // default: autodetect based on extension
+}
+
+type record GetKeyCommand
+{
+  charstring filename,
+  charstring keypath,
+  charstring format optional, // default: autodetect based on extension
+}
+
+type union Result
+{
+  charstring errorResult, // contains a human readable error string
+  charstring getResult, // empty string if not found
+  bool setResult, // True if OK, False otherwise
+}
+
+type port ConfigFileProbeType
+{
+  in Command;
+  out Result
+}</pre>
+</div>
+<p>Properties:
+|| <cite>plugin_properties`|| dict[string] of dict || `{}</cite> || properties to pass to plugins, indexed by the format they support ||</p>
+<p>Properties for the <cite>ini</cite> plugin:
+|| <cite>comments</cite> || list of strings || <cite>[&#8216;#&#8217;, &#8216;;&#8217;]</cite> || List of characters or strings that identify a comment in a .ini file ||</p>
+</div>
+</div>
+
+
+</div>
+<footer class="footer">
+  <div class="container">
+    <p class="pull-right">
+      <a href="#">Back to top</a>
+      
+    </p>
+    <p>
+        &copy; Copyright 2009-2013, Sébastien Lefèvre.<br/>
+      Created using <a href="http://sphinx.pocoo.org/">Sphinx</a> 1.1.3.<br/>
+    </p>
+  </div>
+</footer>
+  </body>
+</html>

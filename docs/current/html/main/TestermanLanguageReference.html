@@ -1,0 +1,1921 @@
+
+<!DOCTYPE html>
+
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>General Concepts &mdash; Testerman 1.4.0 documentation</title>
+    
+    <link rel="stylesheet" href="../_static/basic.css" type="text/css" />
+    <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
+    <link rel="stylesheet" href="../_static/css/bootstrap-2.2.1.min.css" type="text/css" />
+    <link rel="stylesheet" href="../_static/bootstrap-sphinx.css" type="text/css" />
+    <link rel="stylesheet" href="../_static/css/bootstrap-responsive-2.2.1.min.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '../',
+        VERSION:     '1.4.0',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true
+      };
+    </script>
+    <script type="text/javascript" src="../_static/jquery.js"></script>
+    <script type="text/javascript" src="../_static/underscore.js"></script>
+    <script type="text/javascript" src="../_static/doctools.js"></script>
+    <script type="text/javascript" src="../_static/js/bootstrap-2.2.1.min.js"></script>
+    <script type="text/javascript" src="../_static/bootstrap-sphinx.js"></script>
+    <link rel="top" title="Testerman 1.4.0 documentation" href="../index.html" />
+    <link rel="next" title="Best Practices" href="BestPractices.html" />
+    <link rel="prev" title="Testerman Reference Guide" href="TestermanReferenceGuide.html" />
+<meta charset='utf-8'>
+<meta http-equiv='X-UA-Compatible' content='IE=edge,chrome=1'>
+<meta name='viewport' content='width=device-width, initial-scale=1.0, maximum-scale=1'>
+<meta name="apple-mobile-web-app-capable" content="yes">
+
+  </head>
+  <body>
+<div class="container">
+  
+  <div id="navbar" class="navbar navbar-inverse navbar-fixed-top">
+    <div class="navbar-inner">
+      <!-- .btn-navbar is used as the toggle for collapsed navbar content -->
+      <button class="btn btn-navbar" data-toggle="collapse" data-target=".nav-collapse">
+        <span class="icon-bar"></span>
+        <span class="icon-bar"></span>
+        <span class="icon-bar"></span>
+      </button>
+
+      <a class="brand" href="../index.html">Testerman</a>
+      <span class="navbar-text pull-left"><b>1.4</b></span>
+
+      <div class="nav-collapse">
+        <ul class="nav">
+          <li class="divider-vertical"></li>
+          
+            <li class="dropdown">
+  <a href="../index.html" class="dropdown-toggle" data-toggle="dropdown">Site <b class="caret"></b></a>
+  <ul class="dropdown-menu globaltoc"><ul>
+<li class="toctree-l1"><a class="reference internal" href="About.html">Welcome to Testerman</a></li>
+<li class="toctree-l1"><a class="reference internal" href="About.html#about">About</a></li>
+<li class="toctree-l1"><a class="reference internal" href="About.html#contact">Contact</a></li>
+<li class="toctree-l1"><a class="reference internal" href="GetTesterman.html">Getting Testerman</a></li>
+</ul>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="TestermanOverview.html">Testerman Overview</a></li>
+<li class="toctree-l1"><a class="reference internal" href="TestermanQuickStart.html">Quick Start</a></li>
+<li class="toctree-l1"><a class="reference internal" href="TestermanQuickStart.html#external-resources">External Resources</a></li>
+<li class="toctree-l1"><a class="reference internal" href="QTesterman.html">QTesterman</a></li>
+<li class="toctree-l1"><a class="reference internal" href="TestermanReferenceGuide.html">Testerman Reference Guide</a></li>
+<li class="toctree-l1 current"><a class="current reference internal" href="">General Concepts</a></li>
+<li class="toctree-l1"><a class="reference internal" href="#reference-testerman-api">Reference: Testerman API</a></li>
+<li class="toctree-l1"><a class="reference internal" href="BestPractices.html">Best Practices</a></li>
+</ul>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../plugins/index.html">Codecs and Probes Overview</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../plugins/index.html#codecs">Codecs</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../plugins/index.html#test-adapters-probes">Test Adapters (Probes)</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../plugins/index.html#codecs-and-probes-references">Codecs and Probes References</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../plugins/index.html#developing-new-codecs-and-probes">Developing New Codecs and Probes</a></li>
+</ul>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="TestermanAdministrationGuide.html">Testerman Administration Guide</a></li>
+</ul>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="TestermanInternals.html">Testerman Internals</a></li>
+</ul>
+</ul>
+</li>
+            <li class="dropdown">
+  <a href="#" class="dropdown-toggle" data-toggle="dropdown">Page <b class="caret"></b></a>
+  <ul class="dropdown-menu localtoc"><ul>
+<li><a class="reference internal" href="#">General Concepts</a><ul>
+<li><a class="reference internal" href="#test-cases">Test Cases</a></li>
+<li><a class="reference internal" href="#control-part">Control Part</a><ul>
+<li><a class="reference internal" href="#executing-a-test-case">Executing a Test Case</a></li>
+<li><a class="reference internal" href="#test-case-instantiation">Test Case Instantiation</a></li>
+<li><a class="reference internal" href="#controlling-log-level">Controlling Log Level</a></li>
+<li><a class="reference internal" href="#controlling-test-cases-execution">Controlling Test Cases Execution</a></li>
+<li><a class="reference internal" href="#test-adapter-configuration">Test Adapter Configuration</a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#basic-statements">Basic Statements</a><ul>
+<li><a class="reference internal" href="#the-stop-statement">The <tt class="docutils literal"><span class="pre">stop()</span></tt> Statement</a></li>
+<li><a class="reference internal" href="#the-log-statement">The <tt class="docutils literal"><span class="pre">log()</span></tt> Statement</a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#test-components">Test Components</a></li>
+<li><a class="reference internal" href="#timers">Timers</a></li>
+<li><a class="reference internal" href="#template-matching">Template Matching</a><ul>
+<li><a class="reference internal" href="#matching-mechanisms">Matching Mechanisms</a></li>
+<li><a class="reference internal" href="#matching-mechanisms-valuation">Matching Mechanisms Valuation</a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#alternatives">Alternatives</a><ul>
+<li><a class="reference internal" href="#branch-conditions">Branch Conditions</a></li>
+<li><a class="reference internal" href="#code-block">Code Block</a></li>
+<li><a class="reference internal" href="#repeating-a-alt">Repeating a Alt</a></li>
+<li><a class="reference internal" href="#returning-from-a-alt">Returning from a Alt</a></li>
+<li><a class="reference internal" href="#guards">Guards</a></li>
+<li><a class="reference internal" href="#alt-execution">Alt Execution</a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#default-behaviours">Default Behaviours</a><ul>
+<li><a class="reference internal" href="#activating-a-default-behaviour">Activating a Default Behaviour</a></li>
+<li><a class="reference internal" href="#deactivating-a-default-behaviour">Deactivating a Default Behaviour</a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#template-value-extraction">Template Value Extraction</a><ul>
+<li><a class="reference internal" href="#full-extraction">Full Extraction</a></li>
+<li><a class="reference internal" href="#selective-extraction">Selective Extraction</a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#verdict-management">Verdict Management</a></li>
+<li><a class="reference internal" href="#setting-a-verdict">Setting a Verdict</a></li>
+<li><a class="reference internal" href="#getting-a-verdict">Getting a Verdict</a><ul>
+<li><a class="reference internal" href="#local-verdict-test-component">Local Verdict (Test Component)</a></li>
+<li><a class="reference internal" href="#test-case-verdict">Test Case Verdict</a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li><a class="reference internal" href="#reference-testerman-api">Reference: Testerman API</a><ul>
+<li><a class="reference internal" href="#timer-objects">Timer Objects</a></li>
+<li><a class="reference internal" href="#testcomponent-objects">TestComponent Objects</a></li>
+<li><a class="reference internal" href="#port-objects">Port Objects</a></li>
+<li><a class="reference internal" href="#behaviour-objects">Behaviour Objects</a></li>
+<li><a class="reference internal" href="#testcase-objects">TestCase Objects</a></li>
+<li><a class="reference internal" href="#functions-callable-while-a-testcase-is-running">Functions Callable while a Testcase is Running</a></li>
+<li><a class="reference internal" href="#id1">Control Part</a><ul>
+<li><a class="reference internal" href="#testadapterconfiguration-objects">TestAdapterConfiguration Objects</a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#test-unrelated">Test-unrelated</a><ul>
+<li><a class="reference internal" href="#statemanager-objects">StateManager Objects</a></li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+</ul>
+</li>
+          
+          
+            
+  <li><a href="TestermanReferenceGuide.html"
+         title="previous chapter">&laquo; Testerman Reference Guide</a></li>
+  <li><a href="BestPractices.html"
+         title="next chapter">Best Practices &raquo;</a></li>
+          
+          
+            <li>
+  <a href="../_sources/main/TestermanLanguageReference.txt"
+     rel="nofollow">Source</a></li>
+          
+        </ul>
+
+        
+          
+<form class="navbar-search pull-right" style="margin-bottom:-3px;" action="../search.html" method="get">
+  <input type="text" name="q" placeholder="Search" />
+  <input type="hidden" name="check_keywords" value="yes" />
+  <input type="hidden" name="area" value="default" />
+</form>
+        
+      </div>
+    </div>
+  </div>
+
+  
+  <div class="section" id="general-concepts">
+<h1>General Concepts<a class="headerlink" href="#general-concepts" title="Permalink to this headline">¶</a></h1>
+<div class="section" id="test-cases">
+<h2>Test Cases<a class="headerlink" href="#test-cases" title="Permalink to this headline">¶</a></h2>
+<p>...</p>
+</div>
+<div class="section" id="control-part">
+<h2>Control Part<a class="headerlink" href="#control-part" title="Permalink to this headline">¶</a></h2>
+<p>You may think of control part of an ATS as the main function in a
+program: this is where test cases are instantiated and executed in the
+order that fits your needs, with additional conditions or loops or the
+usual programming control primitives.</p>
+<p>The control code is usually located at the end of the ATS, and it is a
+good practice to stick to this structure, defining all test cases
+classes before it, leading to the following advised ATS layout:</p>
+<ol class="arabic simple">
+<li>ATS header, comments</li>
+<li><tt class="docutils literal"><span class="pre">import</span></tt> directives</li>
+<li>ATS-wide function definitions, including templates (non-shared functions or templates are better kept within their test cases)</li>
+<li>Test Case and Behaviour definitions as Python classes</li>
+<li>Control part</li>
+</ol>
+<p>For instance:</p>
+<div class="highlight-python"><pre>##
+# Some comments here
+##
+
+
+# Let's import some stuff shared with our colleages
+from myteam.SharedFunctions_2_3 as CommonTeam
+import mysite.utils as Utils
+
+
+# We define some templates and functions
+def mw_myTemplate(text, minsize = 10, author = any()):
+  return { 'text': text, 'size': greater_than(minsize), 'author': author }
+
+def f_sleep(duration):
+  t_sleep = Timer(duration)
+  t_sleep.start()
+  t_sleep.timeout()
+
+
+# Now, let's define some test cases
+class TC_MY_TESTCASE(TestCase):
+  """
+  A first test case.
+  """
+  def body(self):
+    ...
+
+# Another one
+class TC_MY_SECOND_TESTCASE(TestCase):
+  """
+  Don't forget to document me.
+  """
+  def body(self, loopCount = 10):
+    ...
+
+
+# Finally, the control part
+TC_MY_TESTCASE().execute()
+TC_MY_SECOND_TESTCASE().execute(loopCount = 20)</pre>
+</div>
+<p>In the ATS control section, TTCN-3 allows several basic operations, and
+so does Testerman:</p>
+<ul class="simple">
+<li>Logging, using the [#ThelogStatement <tt class="docutils literal"><span class="pre">log()</span></tt> statement]</li>
+<li>Stopping the ATS explicitly, using the [#ThestopStatement <tt class="docutils literal"><span class="pre">stop()</span></tt>
+statement]</li>
+<li>[#ExecutingaTestCase Executing a test case], optionally modifying
+some test case information on the fly (such as its ID)</li>
+</ul>
+<p>In addition, TTCN-3 provides a way to create and start timers from the
+control part. Testerman does not, however it offers several facilities
+to:</p>
+<ul class="simple">
+<li>[#ControllingLogLevel Control log level]</li>
+<li>[#TestAdapterConfiguration Define and use test adapter
+configurations]</li>
+<li>[#ControllingTestCasesExecution Control ATS autostop after a testcase
+failure]</li>
+</ul>
+<div class="section" id="executing-a-test-case">
+<h3>Executing a Test Case<a class="headerlink" href="#executing-a-test-case" title="Permalink to this headline">¶</a></h3>
+<p>To execute a test case, you first have to instantiate its class, then
+call its <tt class="docutils literal"><span class="pre">execute()</span></tt> method. In practice, this translates to:</p>
+<div class="highlight-python"><div class="highlight"><pre><span class="n">TC_MY_TESTCASE</span><span class="p">()</span><span class="o">.</span><span class="n">execute</span><span class="p">()</span>
+</pre></div>
+</div>
+<p>The <tt class="docutils literal"><span class="pre">execute()</span></tt> method may take any optional or mandatory arguments,
+depending on how you defined the test case body. Naming the argument
+before assigning it a value is mandatory.
+Let&#8217;s imagine you defined a test case this way:</p>
+<div class="highlight-python"><div class="highlight"><pre><span class="k">class</span> <span class="nc">TC_MY_TESTCASE</span><span class="p">(</span><span class="n">TestCase</span><span class="p">):</span>
+  <span class="k">def</span> <span class="nf">body</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">clip</span><span class="p">,</span> <span class="n">clir</span><span class="p">,</span> <span class="n">cnip</span> <span class="o">=</span> <span class="bp">False</span><span class="p">,</span> <span class="n">cnir</span> <span class="o">=</span> <span class="bp">False</span><span class="p">):</span>
+    <span class="o">...</span>
+</pre></div>
+</div>
+<p>This defines a test case with 4 parameters: two of them are mandatory
+(<tt class="docutils literal"><span class="pre">clip</span></tt> and <tt class="docutils literal"><span class="pre">clir</span></tt>), while the two last (<tt class="docutils literal"><span class="pre">cnip</span></tt> and <tt class="docutils literal"><span class="pre">cnir</span></tt>) are
+optional, as they have a default value. You may then execute such a test
+case with:</p>
+<div class="highlight-python"><div class="highlight"><pre><span class="c"># Minimal case: we only provide the mandatory parameters</span>
+<span class="n">TC_MY_TESTCASE</span><span class="p">()</span><span class="o">.</span><span class="n">execute</span><span class="p">(</span><span class="n">clir</span> <span class="o">=</span> <span class="bp">False</span><span class="p">,</span> <span class="n">clip</span> <span class="o">=</span> <span class="bp">True</span><span class="p">)</span>
+<span class="c"># We provide an additional, optional parameter value</span>
+<span class="n">TC_MY_TESTCASE</span><span class="p">()</span><span class="o">.</span><span class="n">execute</span><span class="p">(</span><span class="n">clir</span> <span class="o">=</span> <span class="bp">False</span><span class="p">,</span> <span class="n">clip</span> <span class="o">=</span> <span class="bp">True</span><span class="p">,</span> <span class="n">cnir</span> <span class="o">=</span> <span class="bp">True</span><span class="p">)</span>
+<span class="c"># Or all of them (notice that the argument order does not matter):</span>
+<span class="n">TC_MY_TESTCASE</span><span class="p">()</span><span class="o">.</span><span class="n">execute</span><span class="p">(</span><span class="n">cnip</span> <span class="o">=</span> <span class="bp">True</span><span class="p">,</span> <span class="n">clir</span> <span class="o">=</span> <span class="bp">False</span><span class="p">,</span> <span class="n">clip</span> <span class="o">=</span> <span class="bp">True</span><span class="p">,</span> <span class="n">cnir</span> <span class="o">=</span> <span class="bp">True</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>The following cases would lead to a runtime error, as the mandatory
+paraemeters won&#8217;t be set:</p>
+<div class="highlight-python"><div class="highlight"><pre><span class="c"># Missing mandatory parameters</span>
+<span class="n">TC_MY_TESTCASE</span><span class="p">()</span><span class="o">.</span><span class="n">execute</span><span class="p">()</span>
+<span class="c"># Missing argument name - not a syntax error, but won&#39;t fill clip/clir</span>
+<span class="n">TC_MY_TESTCASE</span><span class="p">()</span><span class="o">.</span><span class="n">execute</span><span class="p">(</span><span class="bp">False</span><span class="p">,</span> <span class="bp">True</span><span class="p">)</span>
+<span class="c"># Missing mandatory parameter</span>
+<span class="n">TC_MY_TESTCASE</span><span class="p">()</span><span class="o">.</span><span class="n">execute</span><span class="p">(</span><span class="n">clir</span> <span class="o">=</span> <span class="bp">True</span><span class="p">,</span> <span class="n">cnir</span> <span class="o">=</span> <span class="bp">False</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>A call to <tt class="docutils literal"><span class="pre">execute()</span></tt> returns the test case verdict, as a character
+string in <tt class="docutils literal"><span class="pre">&quot;pass&quot;,</span> <span class="pre">&quot;inconc&quot;,</span> <span class="pre">&quot;fail&quot;,</span> <span class="pre">&quot;none&quot;,</span> <span class="pre">&quot;error&quot;</span></tt>. You may use
+this result to execute additional tests or stop the ATS conditionally
+(see [#ThestopStatement below] for some examples).</p>
+</div>
+<div class="section" id="test-case-instantiation">
+<h3>Test Case Instantiation<a class="headerlink" href="#test-case-instantiation" title="Permalink to this headline">¶</a></h3>
+<p>Upon test case instantiation, you also have the possibility to alter
+some of its static attributes to adapt them to the execution context:</p>
+<div class="highlight-python"><div class="highlight"><pre><span class="n">TC_MY_TESTCASE</span><span class="p">(</span><span class="n">title</span> <span class="o">=</span> <span class="s">&quot;Sample test case&quot;</span><span class="p">,</span> <span class="n">id_suffix</span> <span class="o">=</span> <span class="s">&quot;001&quot;</span><span class="p">)</span><span class="o">.</span><span class="n">execute</span><span class="p">()</span>
+</pre></div>
+</div>
+<p>Both <tt class="docutils literal"><span class="pre">title</span></tt> and <tt class="docutils literal"><span class="pre">id_suffix</span></tt> are optional.</p>
+<ul class="simple">
+<li><tt class="docutils literal"><span class="pre">title</span></tt> is a way to label your test case with a friendly short
+description. Such a title can then be used in log analyzers and
+reporters to create more clear and readable test execution reports.</li>
+<li><tt class="docutils literal"><span class="pre">id_suffix</span></tt> enables to alter the test case ID, which is its class
+name (in this sample, <tt class="docutils literal"><span class="pre">TC_MY_TESTCASE</span></tt>) with an additional suffix.
+When such a suffix is present, an underscore character is
+automatically added before adding it to the native ID. In this case,
+for instance, the executed test case would have a final ID equals to
+<tt class="docutils literal"><span class="pre">TC_MY_TESTCASE_001</span></tt>.</li>
+</ul>
+<p>These parameters may prove useful when looping over the same test case
+with different parameters:</p>
+<div class="highlight-python"><div class="highlight"><pre><span class="n">i</span> <span class="o">=</span> <span class="mi">0</span>
+<span class="k">for</span> <span class="n">clir</span> <span class="ow">in</span> <span class="p">[</span> <span class="bp">True</span><span class="p">,</span> <span class="bp">False</span> <span class="p">]:</span>
+  <span class="k">for</span> <span class="n">clip</span> <span class="ow">in</span> <span class="p">[</span> <span class="bp">True</span><span class="p">,</span> <span class="bp">False</span> <span class="p">]:</span>
+    <span class="n">i</span> <span class="o">+=</span> <span class="mi">1</span>
+    <span class="n">TC_MY_TESTCASE</span><span class="p">(</span><span class="n">id_prefix</span> <span class="o">=</span> <span class="s">&quot;</span><span class="si">%3.3d</span><span class="s">&quot;</span> <span class="o">%</span> <span class="n">i</span><span class="p">,</span> <span class="n">title</span> <span class="o">=</span> <span class="s">&quot;Call with clip=</span><span class="si">%s</span><span class="s">, clir=</span><span class="si">%s</span><span class="s">&quot;</span> <span class="o">%</span> <span class="p">(</span><span class="n">clip</span><span class="p">,</span> <span class="n">clir</span><span class="p">))</span><span class="o">.</span><span class="n">execute</span><span class="p">(</span><span class="n">clip</span> <span class="o">=</span> <span class="n">clip</span><span class="p">,</span> <span class="n">clir</span> <span class="o">=</span> <span class="n">clir</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>will result in the four following test cases:</p>
+<table border="1" class="docutils">
+<colgroup>
+<col width="42%" />
+<col width="58%" />
+</colgroup>
+<thead valign="bottom">
+<tr class="row-odd"><th class="head">ID</th>
+<th class="head">Title</th>
+</tr>
+</thead>
+<tbody valign="top">
+<tr class="row-even"><td>TC_MY_TESTCASE_001</td>
+<td>Call with clip=True, clir=True</td>
+</tr>
+<tr class="row-odd"><td>TC_MY_TESTCASE_002</td>
+<td>Call with clip=False, clir=True</td>
+</tr>
+<tr class="row-even"><td>TC_MY_TESTCASE_003</td>
+<td>Call with clip=True, clir=False</td>
+</tr>
+<tr class="row-odd"><td>TC_MY_TESTCASE_004</td>
+<td>Call with clip=True, clir=False</td>
+</tr>
+</tbody>
+</table>
+<p>In particular, their IDs are now unique.</p>
+</div>
+<div class="section" id="controlling-log-level">
+<h3>Controlling Log Level<a class="headerlink" href="#controlling-log-level" title="Permalink to this headline">¶</a></h3>
+<p>Several functions are provided to control the logs that the execution
+may generate.</p>
+<p>Generally, you don&#8217;t need to use these functions, as the default log
+levels provide all that is necessary to construct acceptable log files
+for functional testing analysis. However, in several conditions, you may
+need to add additional internal traces, using:</p>
+<div class="highlight-python"><div class="highlight"><pre><span class="n">enable_debug_logs</span><span class="p">()</span>
+</pre></div>
+</div>
+<p>or disable them later in your ATS, using:</p>
+<div class="highlight-python"><div class="highlight"><pre><span class="n">disable_debug_logs</span><span class="p">()</span>
+</pre></div>
+</div>
+<p>Finally, if you don&#8217;t care analysing your test cases (known to work
+already) and you need to boost test execution performances (for minimal
+load testing, for instance), you may use:</p>
+<div class="highlight-python"><div class="highlight"><pre><span class="n">disable_logs</span><span class="p">()</span>
+</pre></div>
+</div>
+<p>to disable all traces except the core ones that will be used to identify
+ATSes and test cases executions.</p>
+<p>A fine-grain log control is also available, using
+<tt class="docutils literal"><span class="pre">enable_log_levels(*levels)</span></tt> and <tt class="docutils literal"><span class="pre">disable_log_levels(*levels)</span></tt>.</p>
+</div>
+<div class="section" id="controlling-test-cases-execution">
+<h3>Controlling Test Cases Execution<a class="headerlink" href="#controlling-test-cases-execution" title="Permalink to this headline">¶</a></h3>
+<p>The <tt class="docutils literal"><span class="pre">execute()</span></tt> method of a Test Case returns its verdict. It enables
+to stop your ATS conditionally:</p>
+<div class="highlight-python"><div class="highlight"><pre><span class="k">if</span> <span class="n">TC_MY_TESTCASE</span><span class="p">()</span><span class="o">.</span><span class="n">execute</span><span class="p">()</span> <span class="o">!=</span> <span class="n">PASS</span><span class="p">:</span>
+  <span class="n">stop</span><span class="p">()</span> <span class="c"># explicit ATS stop, this is a critical testcase</span>
+<span class="n">TC_MY_SECOND_TESTCASE</span><span class="p">()</span><span class="o">.</span><span class="n">execute</span><span class="p">()</span>  <span class="c"># we don&#39;t care about its verdict</span>
+<span class="k">if</span> <span class="n">TC_MY_THIRD_TESTCASE</span><span class="p">()</span><span class="o">.</span><span class="n">execute</span><span class="p">()</span> <span class="o">!=</span> <span class="n">PASS</span><span class="p">:</span>
+  <span class="n">stop</span><span class="p">()</span> <span class="c"># another important testcase</span>
+</pre></div>
+</div>
+<p>While this method offers a precise control over which testcase may be
+considered critical enough to justify the ATS abortion, it is not
+convenient when you want any testcase failure to stop the ATS.</p>
+<p>In this case, you may use the <tt class="docutils literal"><span class="pre">stop_ats_on_testcase_failure()</span></tt>
+directive:</p>
+<div class="highlight-python"><div class="highlight"><pre><span class="c"># auto stop on failure</span>
+<span class="n">stop_ats_on_testcase_failure</span><span class="p">()</span>
+
+<span class="n">TC_MY_TESTCASE</span><span class="p">()</span><span class="o">.</span><span class="n">execute</span><span class="p">()</span>
+<span class="n">TC_MY_THIRD_TESTCASE</span><span class="p">()</span><span class="o">.</span><span class="n">execute</span><span class="p">()</span>
+</pre></div>
+</div>
+</div>
+<div class="section" id="test-adapter-configuration">
+<h3>Test Adapter Configuration<a class="headerlink" href="#test-adapter-configuration" title="Permalink to this headline">¶</a></h3>
+<p>A test adapter configuration is a Testerman context that enables to
+define a set of bindings, i.e. the mapping between test system interface
+ports and probes, with their location on the network and particular
+properties, to use when executing your test cases.</p>
+<p>In the mid term, such configurations will be taken outside the ATS, as
+they can be different from one site (or user) to another one. This deals
+with ATS portability, and running an ATS to another site should not make
+the operator modify the source at all.</p>
+<p>However, for now, the test adapter configuration can be done only
+programmatically, using the <tt class="docutils literal"><span class="pre">TestAdapterConfiguration</span></tt> Testerman
+class:</p>
+<div class="highlight-python"><div class="highlight"><pre><span class="n">myconfig</span> <span class="o">=</span> <span class="n">TestAdapterConfiguration</span><span class="p">(</span><span class="s">&#39;myconfig&#39;</span><span class="p">)</span>
+<span class="n">myconfig</span><span class="o">.</span><span class="n">bind</span><span class="p">(</span><span class="s">&#39;ldapServer&#39;</span><span class="p">,</span> <span class="s">&#39;probe:ldap&#39;</span><span class="p">,</span> <span class="s">&#39;ldap&#39;</span><span class="p">)</span>
+<span class="n">myconfig</span><span class="o">.</span><span class="n">bind</span><span class="p">(</span><span class="s">&#39;hlr&#39;</span><span class="p">,</span> <span class="s">&#39;probe:sctp@remoteagent&#39;</span><span class="p">,</span> <span class="s">&#39;sctp&#39;</span><span class="p">,</span> <span class="n">listening_port</span> <span class="o">=</span> <span class="mi">14001</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>This will create a test adapter configuration labelled/named
+<tt class="docutils literal"><span class="pre">default</span></tt>, binding a ldap probe to the test system interface port name
+<tt class="docutils literal"><span class="pre">ldapServer</span></tt> and a remote SCTP probe bound to <tt class="docutils literal"><span class="pre">hlr</span></tt>. This probe is
+also pre-configured to listen on port 14001.</p>
+<p>Then, to activate a test adapter configuration, use:</p>
+<div class="highlight-python"><div class="highlight"><pre><span class="n">use_test_adapter_configuration</span><span class="p">(</span><span class="s">&#39;myconfig&#39;</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>where <tt class="docutils literal"><span class="pre">name</span></tt> is the name of your defined configuration, for instance
+<tt class="docutils literal"><span class="pre">'myconfig'</span></tt> in the example above.</p>
+<p>Activating a configuration automatically deactivates the previous one,
+if any.</p>
+<p>However, it is not mandatory to create a test adapter configuration
+explicitely. You may also use the <tt class="docutils literal"><span class="pre">bind</span></tt> instruction directly, and it
+will use a built-in, default test adapter configuration:</p>
+<div class="highlight-python"><div class="highlight"><pre><span class="n">bind</span><span class="p">(</span><span class="s">&#39;ldapServer&#39;</span><span class="p">,</span> <span class="s">&#39;probe:ldap&#39;</span><span class="p">,</span> <span class="s">&#39;ldap&#39;</span><span class="p">)</span>
+<span class="n">bind</span><span class="p">(</span><span class="s">&#39;hlr&#39;</span><span class="p">,</span> <span class="s">&#39;probe:sctp@remoteagent&#39;</span><span class="p">,</span> <span class="s">&#39;sctp&#39;</span><span class="p">,</span> <span class="n">listening_port</span> <span class="o">=</span> <span class="mi">14001</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>is actually enough to be able to use the tsiPort <tt class="docutils literal"><span class="pre">'ldapServer'</span></tt> and
+<tt class="docutils literal"><span class="pre">'hlr'</span></tt> in your testcases.</p>
+</div>
+</div>
+<div class="section" id="basic-statements">
+<h2>Basic Statements<a class="headerlink" href="#basic-statements" title="Permalink to this headline">¶</a></h2>
+<div class="section" id="the-stop-statement">
+<h3>The <tt class="docutils literal"><span class="pre">stop()</span></tt> Statement<a class="headerlink" href="#the-stop-statement" title="Permalink to this headline">¶</a></h3>
+<p>This statement can be used in multiple locations, leading to different
+effects according to the calling context.</p>
+<ul class="simple">
+<li>When called from a (running) PTC (either from its Behaviour body or
+any of the functions called from it, including in alternative
+actions), it stops the PTC whose final local verdict will then be its
+last known local verdict.</li>
+<li>When called from the MTC, i.e. from the test case body or any of the
+functions called from it, it stops the test case itself, requesting
+all running PTC to stop, merging all current local verdicts at the
+time of the stop action as the final test case verdict.</li>
+</ul>
+<p>A typical usage pattern can be:</p>
+<div class="highlight-python"><div class="highlight"><pre><span class="n">setverdict</span><span class="p">(</span><span class="s">&#39;fail&#39;</span><span class="p">)</span>
+<span class="n">stop</span><span class="p">()</span>
+</pre></div>
+</div>
+<p>used when something went wrong and you don&#8217;t need to continue your
+test case anymore. Notice that you don&#8217;t need to stop whenever you set
+the verdict to <tt class="docutils literal"><span class="pre">fail</span></tt> to fail your test case since this verdict value
+can&#8217;t be overriden.</p>
+<p>In case of explicit test case stop, beware that you may skip the
+postamble part of your test case that is supposed to restore the SUT
+state to what it was before the test case started. You should use this
+statement carefully.</p>
+<ul class="simple">
+<li>In addition, you may call <tt class="docutils literal"><span class="pre">stop()</span></tt> from anywhere in the ATS control
+part to stop the ATS explicitly. In this case, Testerman provides an
+additional, optional integer argument to this function so that you
+can control the ATS return code - useful to control a campaign
+continuation, or simply state that the ATS was &#8220;failed&#8221; or &#8220;passed&#8221;.
+This code is also returned by the Testerman CLIclient in synchronous
+execution mode, enabling to check an ATS status from shell scripts,
+Makefile, continuous integration engines or the likes.</li>
+<li>An ATS is considered complete if its return code is 0 - this is
+the default behaviour. This status is independent from the
+executed test cases results: it just indicates that the ATS was
+run up to its end.</li>
+<li>An ATS is considered not complete if its return code is greather
+or equals to 1. Return codes from 1 to 99 (included) are reserved
+for runtime errors and ATS control (abnormal terminations, either
+system or user-triggered). Return codes &gt;= 100 (and &lt;= 255) are
+for your own use, and you should only pass return codes in this
+range to <tt class="docutils literal"><span class="pre">stop()</span></tt>.</li>
+</ul>
+<p>You may control this return code with:</p>
+<div class="highlight-python"><div class="highlight"><pre><span class="c"># Don&#39;t continue if this test case is not passed,</span>
+<span class="c"># and consider the ATS should report an error to the ATS executor</span>
+<span class="c"># (a campaign, or a Makefile, ...)</span>
+<span class="k">if</span> <span class="n">TC_VERY_IMPORTANT_TESTCASE</span><span class="p">()</span><span class="o">.</span><span class="n">execute</span><span class="p">()</span> <span class="o">!=</span> <span class="n">PASS</span><span class="p">:</span>
+  <span class="n">stop</span><span class="p">(</span><span class="mi">100</span><span class="p">)</span>
+
+<span class="c"># In this case, we stop the ATS for optimization reasons:</span>
+<span class="c"># if the first TC fails, we assume that all others will fail too.</span>
+<span class="c"># Since they lasts a very long time, we don&#39;t want to waste our time waiting</span>
+<span class="c"># for their completion.</span>
+<span class="k">if</span> <span class="n">TC_FIRST_OF_A_SERIES_OF_SAME_KIND_OF_TC</span><span class="p">()</span><span class="o">.</span><span class="n">execute</span><span class="p">(</span><span class="n">param</span> <span class="o">=</span> <span class="n">value1</span><span class="p">)</span> <span class="o">!=</span> <span class="n">PASS</span><span class="p">:</span>
+  <span class="n">stop</span><span class="p">()</span>
+<span class="n">TC_FIRST_OF_A_SERIES_OF_SAME_KIND_OF_TC</span><span class="p">()</span><span class="o">.</span><span class="n">execute</span><span class="p">(</span><span class="n">param</span> <span class="o">=</span> <span class="n">value2</span><span class="p">)</span>
+<span class="n">TC_FIRST_OF_A_SERIES_OF_SAME_KIND_OF_TC</span><span class="p">()</span><span class="o">.</span><span class="n">execute</span><span class="p">(</span><span class="n">param</span> <span class="o">=</span> <span class="n">value3</span><span class="p">)</span>
+<span class="n">TC_FIRST_OF_A_SERIES_OF_SAME_KIND_OF_TC</span><span class="p">()</span><span class="o">.</span><span class="n">execute</span><span class="p">(</span><span class="n">param</span> <span class="o">=</span> <span class="n">value4</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>Setting a return code in a <tt class="docutils literal"><span class="pre">stop()</span></tt> called from a test case (i.e. not
+from the control part) has no effect.</p>
+</div>
+<div class="section" id="the-log-statement">
+<h3>The <tt class="docutils literal"><span class="pre">log()</span></tt> Statement<a class="headerlink" href="#the-log-statement" title="Permalink to this headline">¶</a></h3>
+<p>You may log a user message at any time, anywhere in your ATS, using the
+following function:</p>
+<div class="highlight-python"><div class="highlight"><pre><span class="n">log</span><span class="p">(</span><span class="s">&quot;This is a user message&quot;</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>This produces a user log element in the logger system that can be
+analyzed and displayed in the various log viewers available for
+Testerman. Such a logged message is automatically attached to a logging
+entity depending on the calling context:</p>
+<ul class="simple">
+<li>when called from the control part, the logged message is not attached
+to any test case.</li>
+<li>when called from the test case body or any function called from here,
+the logged message is attached to the main test component (MTC). The
+QTesterman visual log viewer, for instance, is able to make this
+association visible to the end-user.</li>
+<li>when called from a behaviour body or any function called from here,
+the logged message is attached to the parallel test component (PTC)
+running the behaviour. The QTesterman visual log viewer is able to
+make this association visible to the end-user, too.</li>
+</ul>
+<p><tt class="docutils literal"><span class="pre">log()</span></tt> only takes a single string or unicode string argument. The
+usual Python formatting methods apply, such as:</p>
+<div class="highlight-python"><div class="highlight"><pre><span class="n">log</span><span class="p">(</span><span class="s">&quot;Current verdict: </span><span class="si">%s</span><span class="s"> ; based on parameter p1=</span><span class="si">%s</span><span class="s">&quot;</span> <span class="o">%</span> <span class="p">(</span><span class="n">getverdict</span><span class="p">(),</span> <span class="n">p1</span><span class="p">))</span>
+</pre></div>
+</div>
+</div>
+</div>
+<div class="section" id="test-components">
+<h2>Test Components<a class="headerlink" href="#test-components" title="Permalink to this headline">¶</a></h2>
+<p>...</p>
+</div>
+<div class="section" id="timers">
+<h2>Timers<a class="headerlink" href="#timers" title="Permalink to this headline">¶</a></h2>
+<p>Timers can be defined at any time as soon as a test case is running
+(TTCN-3 allows the use of timers in the control part, this is not the
+case for Testerman). They can be declared and manipulated in the MTC,
+PTC, or any functions called from them.</p>
+<p>Once started, a timer emits a timeout event on expiry. It can be
+restarted at any time (while running, stopped or expired), stopped
+before its timeout, and provides a way to measure the elapsed time since
+its start.</p>
+<p>To declare a timer, use:</p>
+<div class="highlight-python"><div class="highlight"><pre><span class="n">t_myTimer</span> <span class="o">=</span> <span class="n">Timer</span><span class="p">()</span>
+</pre></div>
+</div>
+<p>Alternatively, you may assign a default duration to it, expressed in
+seconds (as a non-negative float), and a name to track it in execution
+logs:</p>
+<div class="highlight-python"><div class="highlight"><pre><span class="n">t_myTimer</span> <span class="o">=</span> <span class="n">Timer</span><span class="p">(</span><span class="mf">2.0</span><span class="p">,</span> <span class="s">&quot;my timer&quot;</span><span class="p">)</span> <span class="c"># defines a 2-second timer labeled &quot;my timer&quot;</span>
+</pre></div>
+</div>
+<p>Both arguments are optional, and you may use named arguments as well:</p>
+<div class="highlight-python"><div class="highlight"><pre><span class="n">t_myTimer</span> <span class="o">=</span> <span class="n">Timer</span><span class="p">(</span><span class="n">duration</span> <span class="o">=</span> <span class="mf">2.0</span><span class="p">,</span> <span class="n">name</span> <span class="o">=</span> <span class="s">&quot;my timer&quot;</span><span class="p">)</span> <span class="c"># defines a 2-second timer labeled &quot;my timer&quot;</span>
+</pre></div>
+</div>
+<p>If no name is provided, an identifier is automatically generated. It is
+unique for each timer. If no duration is provided, you will have to
+provide one when starting it. Consider this is a default duration.</p>
+<p>To start a timer, use:</p>
+<div class="highlight-python"><div class="highlight"><pre><span class="n">t_myTimer</span><span class="o">.</span><span class="n">start</span><span class="p">()</span> <span class="c"># raise a runtime error (exception) if no duration was provided on declaration</span>
+</pre></div>
+</div>
+<p>or</p>
+<div class="highlight-python"><div class="highlight"><pre><span class="n">t_myTimer</span><span class="o">.</span><span class="n">start</span><span class="p">(</span><span class="mf">5.0</span><span class="p">)</span> <span class="c"># start the timer with a 5 second duration, overriding the default duration, if any.</span>
+</pre></div>
+</div>
+<p>If you start an already running timer, it is restarted with the new
+duration, or, if not provided, the default duration provided during the
+timer declaration.</p>
+<p>At any time you may stop it:</p>
+<div class="highlight-python"><div class="highlight"><pre><span class="n">t_myTimer</span><span class="o">.</span><span class="n">stop</span><span class="p">()</span>
+</pre></div>
+</div>
+<p>This has no effect if the timer was not running (already stopped,
+expired, or never started).</p>
+<p>While the timer is running, you may use:</p>
+<div class="highlight-python"><div class="highlight"><pre><span class="n">elapsed</span> <span class="o">=</span> <span class="n">t_myTimer</span><span class="o">.</span><span class="n">read</span><span class="p">()</span>
+</pre></div>
+</div>
+<p>which returns the number of seconds, as a float, since the timer start.
+Returns <tt class="docutils literal"><span class="pre">0.0</span></tt> if the timer is not running; and</p>
+<div class="highlight-python"><div class="highlight"><pre><span class="k">if</span> <span class="n">t_myTimer</span><span class="o">.</span><span class="n">running</span><span class="p">():</span>
+  <span class="o">...</span>
+</pre></div>
+</div>
+<p>which returns a boolean value indicating if the timer is running.
+Returns False only if the timer is stopped, expired, or never started.</p>
+<p>To catch the timeout event, you may use, in a <tt class="docutils literal"><span class="pre">alt</span></tt> statement:</p>
+<div class="highlight-python"><div class="highlight"><pre><span class="n">alt</span><span class="p">([</span>
+  <span class="p">[</span> <span class="n">t_myTimer</span><span class="o">.</span><span class="n">TIMEOUT</span><span class="p">,</span> <span class="c"># timer timeout</span>
+    <span class="k">lambda</span><span class="p">:</span> <span class="n">log</span><span class="p">(</span><span class="s">&quot;Do something on timer expiry&quot;</span><span class="p">),</span>
+    <span class="k">lambda</span><span class="p">:</span> <span class="o">...</span>
+  <span class="p">],</span>
+  <span class="o">...</span>
+<span class="p">])</span>
+</pre></div>
+</div>
+<p>or the shortcut:</p>
+<div class="highlight-python"><div class="highlight"><pre><span class="n">t_myTimer</span><span class="o">.</span><span class="n">timeout</span><span class="p">()</span>
+</pre></div>
+</div>
+<p>if you don&#8217;t have any other events or messages to match in parallel.
+This is equivalent to <tt class="docutils literal"><span class="pre">alt([[t_myTimer.TIMEOUT]])</span></tt>.</p>
+<p>In particular, this is used to implement a sleep/wait function:</p>
+<div class="highlight-python"><div class="highlight"><pre><span class="c"># Sleep of 1.5s, the TTCN-3/Testerman way</span>
+<span class="n">t_myTimer</span> <span class="o">=</span> <span class="n">Timer</span><span class="p">(</span><span class="mf">1.5</span><span class="p">)</span>
+<span class="n">t_myTimer</span><span class="o">.</span><span class="n">start</span><span class="p">()</span>
+<span class="n">t_myTimer</span><span class="o">.</span><span class="n">timeout</span><span class="p">()</span>
+</pre></div>
+</div>
+<p>It is important to use this pattern for a sleep/wait implementation
+instead of the standard Python library <tt class="docutils literal"><span class="pre">time.sleep()</span></tt> to ensure that
+your code is interruptible by a <tt class="docutils literal"><span class="pre">ptc.stop()</span></tt> or equivalent.</p>
+<p>Notes:</p>
+<ul class="simple">
+<li><tt class="docutils literal"><span class="pre">t_myTimer.timeout()</span></tt> blocks until the timeout event for this timer
+is detected. However, it will returns immediately if the timer is not
+running.</li>
+<li><tt class="docutils literal"><span class="pre">t_myTimer.TIMEOUT</span></tt> event can be matched only once. It will me
+matchable again once the timer has been restarted.</li>
+</ul>
+</div>
+<div class="section" id="template-matching">
+<h2>Template Matching<a class="headerlink" href="#template-matching" title="Permalink to this headline">¶</a></h2>
+<div class="section" id="matching-mechanisms">
+<h3>Matching Mechanisms<a class="headerlink" href="#matching-mechanisms" title="Permalink to this headline">¶</a></h3>
+<p>Template matching is one of the most interesting feature of TTCN-3. It
+enables to detect if we receive a quite precise message without any
+manual checks or conditional value traversal. In addition to constant
+matching, several matching mechanisms are available to act as wildcards
+or conditions. These mechanisms are used in place of a constant in a
+template.</p>
+<p>Testerman implements the following template matching mechanisms:</p>
+<table border="1" class="docutils">
+<colgroup>
+<col width="12%" />
+<col width="15%" />
+<col width="9%" />
+<col width="64%" />
+</colgroup>
+<thead valign="bottom">
+<tr class="row-odd"><th class="head">mechanism</th>
+<th class="head">arguments</th>
+<th class="head">applies to*</th>
+<th class="head">description</th>
+</tr>
+</thead>
+<tbody valign="top">
+<tr class="row-even"><td><tt class="docutils literal"><span class="pre">any()</span></tt></td>
+<td>&nbsp;</td>
+<td>any type of values</td>
+<td>matches any but non-empty value. May be used as a single element wildcard in a list, too.</td>
+</tr>
+<tr class="row-odd"><td><tt class="docutils literal"><span class="pre">any_or_none()</span></tt></td>
+<td>&nbsp;</td>
+<td>any type of values</td>
+<td>matches any values, including empty values (lists, dicts, strings) or absent values (in a dict). May be used as &#8220;any number of elements&#8221; wildcard in a list, too</td>
+</tr>
+<tr class="row-even"><td><tt class="docutils literal"><span class="pre">greater_than(value)</span></tt></td>
+<td>integer, float</td>
+<td>integer or float</td>
+<td>matches values v as <tt class="docutils literal"><span class="pre">value</span></tt> &lt;= <tt class="docutils literal"><span class="pre">v</span></tt></td>
+</tr>
+<tr class="row-odd"><td><tt class="docutils literal"><span class="pre">lower_than(value)</span></tt></td>
+<td>integer, float</td>
+<td>integer or float</td>
+<td>matches values v as <tt class="docutils literal"><span class="pre">v</span></tt> &lt;= <tt class="docutils literal"><span class="pre">value</span></tt></td>
+</tr>
+<tr class="row-even"><td><tt class="docutils literal"><span class="pre">between(a,</span> <span class="pre">b)</span></tt></td>
+<td>integer, float</td>
+<td>integer or float</td>
+<td>matches values v as <tt class="docutils literal"><span class="pre">a</span></tt> &lt;= <tt class="docutils literal"><span class="pre">v</span></tt> &lt;= <tt class="docutils literal"><span class="pre">b</span></tt></td>
+</tr>
+<tr class="row-odd"><td><tt class="docutils literal"><span class="pre">empty()</span></tt></td>
+<td>&nbsp;</td>
+<td>list, dict, string</td>
+<td>matches empty lists, dicts, or strings</td>
+</tr>
+<tr class="row-even"><td><tt class="docutils literal"><span class="pre">pattern(pattern)</span></tt></td>
+<td>Python regular expression</td>
+<td>string</td>
+<td>matches strings that matches the regular expression <tt class="docutils literal"><span class="pre">pattern</span></tt></td>
+</tr>
+<tr class="row-odd"><td><tt class="docutils literal"><span class="pre">omit()</span></tt></td>
+<td>&nbsp;</td>
+<td>any value in a dict</td>
+<td>enables to match a dict only if the associated field is not present in the dict (i.e. the entry has been omitted)</td>
+</tr>
+<tr class="row-even"><td><tt class="docutils literal"><span class="pre">ifpresent(template)</span></tt></td>
+<td>a Testerman template</td>
+<td>any value in a dict</td>
+<td>enables to apply the <tt class="docutils literal"><span class="pre">template</span></tt> to the value if the field present in a received dict, or still accept to match the dict if the field is not present</td>
+</tr>
+<tr class="row-odd"><td><tt class="docutils literal"><span class="pre">superset(*templates)</span></tt></td>
+<td>any number of elements of any type</td>
+<td>lists</td>
+<td>matches any list that contains at least one time each of the given elements, in any order</td>
+</tr>
+<tr class="row-even"><td><tt class="docutils literal"><span class="pre">subset(*templates)</span></tt></td>
+<td>any number of elements of any type</td>
+<td>lists</td>
+<td>matches any list that contains only elements in the given elements, 0 or more times, in any order</td>
+</tr>
+<tr class="row-odd"><td><tt class="docutils literal"><span class="pre">complement(*templates)</span></tt></td>
+<td>any number of elements of any type</td>
+<td>lists</td>
+<td>matches any list that does not contain any of the given elements</td>
+</tr>
+<tr class="row-even"><td><tt class="docutils literal"><span class="pre">length(template)</span></tt></td>
+<td>a Testerman (scalar) template</td>
+<td>list, string, dict</td>
+<td>extracts the length of the received message, and matches it against the provided template</td>
+</tr>
+</tbody>
+</table>
+<p>* &#8220;applies to&#8221; means &#8220;can be used to match&#8221;</p>
+<p>Mechanisms can be combined together. See the examples below.</p>
+<p><strong>Examples</strong></p>
+<table border="1" class="docutils">
+<colgroup>
+<col width="22%" />
+<col width="35%" />
+<col width="9%" />
+<col width="34%" />
+</colgroup>
+<thead valign="bottom">
+<tr class="row-odd"><th class="head">message</th>
+<th class="head">template</th>
+<th class="head"><strong>matched ?</strong></th>
+<th class="head"><strong>comments</strong></th>
+</tr>
+</thead>
+<tbody valign="top">
+<tr class="row-even"><td><tt class="docutils literal"><span class="pre">1.0</span></tt></td>
+<td><tt class="docutils literal"><span class="pre">any()</span></tt></td>
+<td>yes</td>
+<td>&nbsp;</td>
+</tr>
+<tr class="row-odd"><td><tt class="docutils literal"><span class="pre">0</span></tt></td>
+<td><tt class="docutils literal"><span class="pre">any()</span></tt></td>
+<td>yes</td>
+<td>&nbsp;</td>
+</tr>
+<tr class="row-even"><td><tt class="docutils literal"><span class="pre">[]</span></tt></td>
+<td><tt class="docutils literal"><span class="pre">any()</span></tt></td>
+<td>no</td>
+<td>&nbsp;</td>
+</tr>
+<tr class="row-odd"><td><tt class="docutils literal"><span class="pre">[]</span></tt></td>
+<td><tt class="docutils literal"><span class="pre">any_or_none()</span></tt></td>
+<td>yes</td>
+<td>&nbsp;</td>
+</tr>
+<tr class="row-even"><td><tt class="docutils literal"><span class="pre">hello</span></tt></td>
+<td><tt class="docutils literal"><span class="pre">pattern(r'^hell.*')</span></tt></td>
+<td>yes</td>
+<td>&nbsp;</td>
+</tr>
+<tr class="row-odd"><td><tt class="docutils literal"><span class="pre">{</span> <span class="pre">'key':</span> <span class="pre">123,</span> <span class="pre">'password':</span> <span class="pre">'secret'</span> <span class="pre">}</span></tt></td>
+<td><tt class="docutils literal"><span class="pre">{</span> <span class="pre">'key':</span> <span class="pre">between(100,</span> <span class="pre">200)</span> <span class="pre">}</span></tt></td>
+<td>yes</td>
+<td>&nbsp;</td>
+</tr>
+<tr class="row-even"><td><tt class="docutils literal"><span class="pre">{</span> <span class="pre">'key':</span> <span class="pre">123,</span> <span class="pre">'password':</span> <span class="pre">'secret'</span> <span class="pre">}</span></tt></td>
+<td><tt class="docutils literal"><span class="pre">{</span> <span class="pre">'key':</span> <span class="pre">lower_than(200),</span> <span class="pre">'password':</span> <span class="pre">omit()</span> <span class="pre">}</span></tt></td>
+<td>no</td>
+<td>the field <tt class="docutils literal"><span class="pre">password</span></tt> should not be present</td>
+</tr>
+<tr class="row-odd"><td><tt class="docutils literal"><span class="pre">{</span> <span class="pre">'key':</span> <span class="pre">123</span> <span class="pre">}</span></tt></td>
+<td><tt class="docutils literal"><span class="pre">{</span> <span class="pre">'key':</span> <span class="pre">any(),</span> <span class="pre">'password':</span> <span class="pre">any_or_none()</span> <span class="pre">}</span></tt></td>
+<td>yes</td>
+<td>&nbsp;</td>
+</tr>
+<tr class="row-even"><td><tt class="docutils literal"><span class="pre">{</span> <span class="pre">'password':</span> <span class="pre">'secret'</span> <span class="pre">}</span></tt></td>
+<td><tt class="docutils literal"><span class="pre">{</span> <span class="pre">'key':</span> <span class="pre">any(),</span> <span class="pre">'password':</span> <span class="pre">any_or_none()</span> <span class="pre">}</span></tt></td>
+<td>no</td>
+<td>the <tt class="docutils literal"><span class="pre">key</span></tt> field must be present (but may have any value)</td>
+</tr>
+<tr class="row-odd"><td><tt class="docutils literal"><span class="pre">{</span> <span class="pre">'key':</span> <span class="pre">123</span> <span class="pre">}</span></tt></td>
+<td><tt class="docutils literal"><span class="pre">{</span> <span class="pre">'key':</span> <span class="pre">any(),</span> <span class="pre">'password':</span> <span class="pre">ifpresent('secret')</span> <span class="pre">}</span></tt></td>
+<td>yes</td>
+<td><tt class="docutils literal"><span class="pre">password</span></tt> was made optional</td>
+</tr>
+<tr class="row-even"><td><tt class="docutils literal"><span class="pre">{</span> <span class="pre">'key':</span> <span class="pre">123,</span> <span class="pre">'password':</span> <span class="pre">'hello'</span> <span class="pre">}</span></tt></td>
+<td><tt class="docutils literal"><span class="pre">{</span> <span class="pre">'key':</span> <span class="pre">any(),</span> <span class="pre">'password':</span> <span class="pre">ifpresent(pattern(r'secret.*'))</span> <span class="pre">}</span></tt></td>
+<td>no</td>
+<td><tt class="docutils literal"><span class="pre">password</span></tt> is now present, but does not match the sub-template</td>
+</tr>
+<tr class="row-odd"><td><tt class="docutils literal"><span class="pre">'verylongpassword'</span></tt></td>
+<td><tt class="docutils literal"><span class="pre">length(greater_than(16))</span></tt></td>
+<td>yes</td>
+<td>&nbsp;</td>
+</tr>
+<tr class="row-even"><td><tt class="docutils literal"><span class="pre">[1,</span> <span class="pre">2,</span> <span class="pre">3]</span></tt></td>
+<td><tt class="docutils literal"><span class="pre">subset(3,</span> <span class="pre">2,</span> <span class="pre">4,</span> <span class="pre">1,</span> <span class="pre">5,</span> <span class="pre">6)</span></tt></td>
+<td>yes</td>
+<td>&nbsp;</td>
+</tr>
+<tr class="row-odd"><td><tt class="docutils literal"><span class="pre">[1,</span> <span class="pre">2,</span> <span class="pre">3,</span> <span class="pre">1]</span></tt></td>
+<td><tt class="docutils literal"><span class="pre">superset(2,</span> <span class="pre">1)</span></tt></td>
+<td>yes</td>
+<td>&nbsp;</td>
+</tr>
+<tr class="row-even"><td><tt class="docutils literal"><span class="pre">[1,</span> <span class="pre">2,</span> <span class="pre">3,</span> <span class="pre">2]</span></tt></td>
+<td><tt class="docutils literal"><span class="pre">superset(1,</span> <span class="pre">2,</span> <span class="pre">3,</span> <span class="pre">4)</span></tt></td>
+<td>no</td>
+<td>&nbsp;</td>
+</tr>
+<tr class="row-odd"><td><tt class="docutils literal"><span class="pre">[1,</span> <span class="pre">1,</span> <span class="pre">2,</span> <span class="pre">2]</span></tt></td>
+<td><tt class="docutils literal"><span class="pre">complement(3,</span> <span class="pre">4,</span> <span class="pre">5,</span> <span class="pre">6,</span> <span class="pre">7)</span></tt></td>
+<td>yes</td>
+<td>&nbsp;</td>
+</tr>
+</tbody>
+</table>
+<p><strong>List matching</strong></p>
+<p>List matching may be tricky because ordered. Several mechanisms,
+however, can help you matching exactly what you need, even if you don&#8217;t
+know the complete list you may receive (optional elements, etc). In
+particular, you can use <tt class="docutils literal"><span class="pre">any()</span></tt> and <tt class="docutils literal"><span class="pre">any_or_none()</span></tt> as <tt class="docutils literal"><span class="pre">?</span></tt> and
+<tt class="docutils literal"><span class="pre">*</span></tt> wildcards, respectively:</p>
+<table border="1" class="docutils">
+<colgroup>
+<col width="19%" />
+<col width="29%" />
+<col width="11%" />
+<col width="41%" />
+</colgroup>
+<thead valign="bottom">
+<tr class="row-odd"><th class="head">message</th>
+<th class="head">template</th>
+<th class="head">matched ?</th>
+<th class="head">comments</th>
+</tr>
+</thead>
+<tbody valign="top">
+<tr class="row-even"><td><tt class="docutils literal"><span class="pre">[</span> <span class="pre">1,</span> <span class="pre">2,</span> <span class="pre">3,</span> <span class="pre">4,</span> <span class="pre">5,</span> <span class="pre">6</span> <span class="pre">]</span></tt></td>
+<td><tt class="docutils literal"><span class="pre">[]</span></tt></td>
+<td>no</td>
+<td>&nbsp;</td>
+</tr>
+<tr class="row-odd"><td><tt class="docutils literal"><span class="pre">[</span> <span class="pre">1,</span> <span class="pre">2,</span> <span class="pre">3,</span> <span class="pre">4,</span> <span class="pre">5,</span> <span class="pre">6</span> <span class="pre">]</span></tt></td>
+<td><tt class="docutils literal"><span class="pre">[</span> <span class="pre">1,</span> <span class="pre">2,</span> <span class="pre">3,</span> <span class="pre">4,</span> <span class="pre">5,</span> <span class="pre">6,</span> <span class="pre">7</span> <span class="pre">]</span></tt></td>
+<td>no</td>
+<td>&nbsp;</td>
+</tr>
+<tr class="row-even"><td><tt class="docutils literal"><span class="pre">[</span> <span class="pre">1,</span> <span class="pre">2,</span> <span class="pre">3,</span> <span class="pre">4,</span> <span class="pre">5,</span> <span class="pre">6</span> <span class="pre">]</span></tt></td>
+<td><tt class="docutils literal"><span class="pre">[</span> <span class="pre">6,</span> <span class="pre">5,</span> <span class="pre">4,</span> <span class="pre">3,</span> <span class="pre">2,</span> <span class="pre">1</span> <span class="pre">]</span></tt></td>
+<td>no</td>
+<td>not in the correct order</td>
+</tr>
+<tr class="row-odd"><td><tt class="docutils literal"><span class="pre">[</span> <span class="pre">1,</span> <span class="pre">2,</span> <span class="pre">3,</span> <span class="pre">4,</span> <span class="pre">5,</span> <span class="pre">6</span> <span class="pre">]</span></tt></td>
+<td><tt class="docutils literal"><span class="pre">[</span> <span class="pre">1,</span> <span class="pre">2,</span> <span class="pre">3,</span> <span class="pre">4,</span> <span class="pre">5,</span> <span class="pre">6</span> <span class="pre">]</span></tt></td>
+<td>yes</td>
+<td>&nbsp;</td>
+</tr>
+<tr class="row-even"><td><tt class="docutils literal"><span class="pre">[</span> <span class="pre">1,</span> <span class="pre">2,</span> <span class="pre">3,</span> <span class="pre">4,</span> <span class="pre">5,</span> <span class="pre">6</span> <span class="pre">]</span></tt></td>
+<td><tt class="docutils literal"><span class="pre">[</span> <span class="pre">1,</span> <span class="pre">2,</span> <span class="pre">any(),</span> <span class="pre">4,</span> <span class="pre">5,</span> <span class="pre">6</span> <span class="pre">]</span></tt></td>
+<td>yes</td>
+<td><tt class="docutils literal"><span class="pre">any()</span></tt> can replace any single element...</td>
+</tr>
+<tr class="row-odd"><td><tt class="docutils literal"><span class="pre">[</span> <span class="pre">1,</span> <span class="pre">2,</span> <span class="pre">3,</span> <span class="pre">4,</span> <span class="pre">5,</span> <span class="pre">6</span> <span class="pre">]</span></tt></td>
+<td><tt class="docutils literal"><span class="pre">[</span> <span class="pre">1,</span> <span class="pre">2,</span> <span class="pre">3,</span> <span class="pre">any(),</span> <span class="pre">4,</span> <span class="pre">5,</span> <span class="pre">6</span> <span class="pre">]</span></tt></td>
+<td>no</td>
+<td>...but this element must be present</td>
+</tr>
+<tr class="row-even"><td><tt class="docutils literal"><span class="pre">[</span> <span class="pre">1,</span> <span class="pre">2,</span> <span class="pre">3,</span> <span class="pre">4,</span> <span class="pre">5,</span> <span class="pre">6</span> <span class="pre">]</span></tt></td>
+<td><tt class="docutils literal"><span class="pre">[</span> <span class="pre">1,</span> <span class="pre">2,</span> <span class="pre">any_or_none(),</span> <span class="pre">5,</span> <span class="pre">6</span> <span class="pre">]</span></tt></td>
+<td>yes</td>
+<td><tt class="docutils literal"><span class="pre">any_or_none()</span></tt> can replace any number of elements...</td>
+</tr>
+<tr class="row-odd"><td><tt class="docutils literal"><span class="pre">[</span> <span class="pre">1,</span> <span class="pre">2,</span> <span class="pre">3,</span> <span class="pre">4,</span> <span class="pre">5,</span> <span class="pre">6</span> <span class="pre">]</span></tt></td>
+<td><tt class="docutils literal"><span class="pre">[</span> <span class="pre">1,</span> <span class="pre">2,</span> <span class="pre">3,</span> <span class="pre">any_or_none(),</span> <span class="pre">4,</span> <span class="pre">5,</span> <span class="pre">6</span> <span class="pre">]</span></tt></td>
+<td>yes</td>
+<td>...even zero</td>
+</tr>
+<tr class="row-even"><td><tt class="docutils literal"><span class="pre">[</span> <span class="pre">1,</span> <span class="pre">2,</span> <span class="pre">3,</span> <span class="pre">4,</span> <span class="pre">5,</span> <span class="pre">6</span> <span class="pre">]</span></tt></td>
+<td><tt class="docutils literal"><span class="pre">[</span> <span class="pre">any_or_none(),</span> <span class="pre">3,</span> <span class="pre">any(),</span> <span class="pre">5,</span> <span class="pre">6</span> <span class="pre">]</span></tt></td>
+<td>yes</td>
+<td>you may combine <tt class="docutils literal"><span class="pre">any()</span></tt> and <tt class="docutils literal"><span class="pre">any_or_none()</span></tt></td>
+</tr>
+<tr class="row-odd"><td><tt class="docutils literal"><span class="pre">[</span> <span class="pre">1,</span> <span class="pre">2,</span> <span class="pre">3,</span> <span class="pre">4,</span> <span class="pre">5,</span> <span class="pre">6</span> <span class="pre">]</span></tt></td>
+<td><tt class="docutils literal"><span class="pre">[</span> <span class="pre">any_or_none(),</span> <span class="pre">3,</span> <span class="pre">any_or_none()</span> <span class="pre">]</span></tt></td>
+<td>yes</td>
+<td>equivalent to <tt class="docutils literal"><span class="pre">superset(3)</span></tt>, which may be more readable</td>
+</tr>
+</tbody>
+</table>
+<p>And you may combine any other matching mechanism as well:</p>
+<table border="1" class="docutils">
+<colgroup>
+<col width="21%" />
+<col width="54%" />
+<col width="13%" />
+<col width="12%" />
+</colgroup>
+<thead valign="bottom">
+<tr class="row-odd"><th class="head">message</th>
+<th class="head">template</th>
+<th class="head">matched ?</th>
+<th class="head">comments</th>
+</tr>
+</thead>
+<tbody valign="top">
+<tr class="row-even"><td><tt class="docutils literal"><span class="pre">[</span> <span class="pre">1,</span> <span class="pre">2,</span> <span class="pre">3,</span> <span class="pre">4,</span> <span class="pre">5,</span> <span class="pre">6</span> <span class="pre">]</span></tt></td>
+<td><tt class="docutils literal"><span class="pre">[</span> <span class="pre">lower_than(10),</span> <span class="pre">2,</span> <span class="pre">3,</span> <span class="pre">any_or_none()</span> <span class="pre">]</span></tt></td>
+<td>yes</td>
+<td>&nbsp;</td>
+</tr>
+<tr class="row-odd"><td><tt class="docutils literal"><span class="pre">[</span> <span class="pre">1,</span> <span class="pre">2,</span> <span class="pre">3,</span> <span class="pre">4,</span> <span class="pre">5,</span> <span class="pre">6</span> <span class="pre">]</span></tt></td>
+<td><tt class="docutils literal"><span class="pre">[</span> <span class="pre">any_or_none(),</span> <span class="pre">lower_than(2),</span> <span class="pre">any_or_none(),</span> <span class="pre">3,</span> <span class="pre">4,</span> <span class="pre">5,</span> <span class="pre">any()</span> <span class="pre">]</span></tt></td>
+<td>yes</td>
+<td>&nbsp;</td>
+</tr>
+<tr class="row-even"><td><tt class="docutils literal"><span class="pre">[</span> <span class="pre">1,</span> <span class="pre">2,</span> <span class="pre">3,</span> <span class="pre">4,</span> <span class="pre">5,</span> <span class="pre">6</span> <span class="pre">]</span></tt></td>
+<td><tt class="docutils literal"><span class="pre">superset(greater_than(5))</span></tt></td>
+<td>yes</td>
+<td>&nbsp;</td>
+</tr>
+</tbody>
+</table>
+</div>
+<div class="section" id="matching-mechanisms-valuation">
+<h3>Matching Mechanisms Valuation<a class="headerlink" href="#matching-mechanisms-valuation" title="Permalink to this headline">¶</a></h3>
+<p>To avoid writing different templates for both sending and receiving
+purposes, Testerman proposes an extension to TTCN-3 to valuate some
+matching mechanisms.</p>
+<p>For instance, if you defined the following template:</p>
+<div class="highlight-python"><div class="highlight"><pre><span class="n">mw_received_message</span> <span class="o">=</span> <span class="p">{</span> <span class="s">&#39;location&#39;</span><span class="p">:</span> <span class="s">&#39;Grenoble, France&#39;</span><span class="p">,</span> <span class="s">&#39;weatherForecast&#39;</span><span class="p">:</span> <span class="p">{</span> <span class="s">&#39;temperature&#39;</span><span class="p">:</span> <span class="n">between</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">30</span><span class="p">)</span> <span class="p">}</span> <span class="p">}</span>
+</pre></div>
+</div>
+<p>You may also send it though it does not contain only fully qualified
+values due to the <tt class="docutils literal"><span class="pre">between</span></tt> matching condition. In this example, the
+sent value will use a <tt class="docutils literal"><span class="pre">temperature</span></tt> field valuated to a random integer
+between 0 and 30 (inclusive).</p>
+<p>The following table provides the possible valuations for the matching
+mechanisms that implement one:</p>
+<table border="1" class="docutils">
+<colgroup>
+<col width="34%" />
+<col width="20%" />
+<col width="32%" />
+<col width="13%" />
+</colgroup>
+<thead valign="bottom">
+<tr class="row-odd"><th class="head">template matching mechanism</th>
+<th class="head">valuation type</th>
+<th class="head">valuation value</th>
+<th class="head">comments</th>
+</tr>
+</thead>
+<tbody valign="top">
+<tr class="row-even"><td><tt class="docutils literal"><span class="pre">between(a,</span> <span class="pre">b)</span></tt></td>
+<td>integer</td>
+<td>random integer &gt;= a, &lt;= b</td>
+<td>&nbsp;</td>
+</tr>
+<tr class="row-odd"><td><tt class="docutils literal"><span class="pre">lower_than(a)</span></tt></td>
+<td>a&#8217;s type</td>
+<td>value of a</td>
+<td>&nbsp;</td>
+</tr>
+<tr class="row-even"><td><tt class="docutils literal"><span class="pre">greater_than(a)</span></tt></td>
+<td>a&#8217;s type</td>
+<td>value of a</td>
+<td>&nbsp;</td>
+</tr>
+<tr class="row-odd"><td><tt class="docutils literal"><span class="pre">any()</span></tt></td>
+<td><tt class="docutils literal"><span class="pre">None</span></tt></td>
+<td><tt class="docutils literal"><span class="pre">None</span></tt></td>
+<td>&nbsp;</td>
+</tr>
+</tbody>
+</table>
+<p>All valuations are implemented so that they lead to a value that matches
+the corresponding matching mechanisms. When trying to send a message
+that contains non-value-able matching mechanisms, a Testerman exception
+occurs.</p>
+</div>
+</div>
+<div class="section" id="alternatives">
+<h2>Alternatives<a class="headerlink" href="#alternatives" title="Permalink to this headline">¶</a></h2>
+<p>Alternatives are a way to express the branching of a test behaviour upon
+the reception of messages on selected ports, timer events, or
+termination of (parallel) test components. Basically, you can see them
+as a kind of <tt class="docutils literal"><span class="pre">switch..case</span></tt> operating asynchronously and
+self-reevaluating in an infinite loop, until one branch is selected.
+This is a pooling loop where we wait for SUT (or Timer or PTC) events.</p>
+<p>The event is called a &#8220;branch condition&#8221;, and is associated to some code
+to execute if the condition is met, i.e. when the branch is selected.
+Branches can be of five different types:</p>
+<ul class="simple">
+<li><em>receiving-branch</em>: such a branch is selected when a message matching
+a template has been receiving on a port. The associated condition is
+expressed, in Testerman, using <tt class="docutils literal"><span class="pre">port.RECEIVE(template)</span></tt>, as
+detailed below.</li>
+<li><em>timeout-branch</em>: this kind of branch is selected when a timer
+expires. The associated condition is expressed using
+<tt class="docutils literal"><span class="pre">timer.TIMEOUT</span></tt>.</li>
+<li><em>done-branch</em>: the associated branch is selected when a PTC is
+complete; it is denoted <tt class="docutils literal"><span class="pre">ptc.DONE</span></tt> in Testerman.</li>
+<li><em>killed-branch</em>: the associated branch is selected when a PTC is
+killed; denoted <tt class="docutils literal"><span class="pre">ptc.KILLED</span></tt> in testerman.</li>
+<li>TTCN-3 also specifies an <em>altstep-branch</em>, which is currently not
+supported in Testerman.</li>
+</ul>
+<p>Notice that all branch conditions syntaxes use methods or members in
+uppercase. It helps differentiate them from the operations
+<tt class="docutils literal"><span class="pre">port.receive(template)</span></tt>, <tt class="docutils literal"><span class="pre">timer.timeout()</span></tt>, <tt class="docutils literal"><span class="pre">ptc.done()</span></tt>,
+<tt class="docutils literal"><span class="pre">ptc.killed()</span></tt> respectively, which are basically shortcuts to a
+<tt class="docutils literal"><span class="pre">alt()</span></tt> statement containing only a single branch condition.</p>
+<p>Additionally, a branch condition can be optionally guarded, i.e. only
+considered if an additional condition evaluates to true. If not
+provided, the guard is assumed to be always fulfilled, and the branch
+condition is always taken into account.</p>
+<p>Finally, the branch contains some code to execute if its branch
+condition is matched. In Testerman, this code is written as a list of
+<tt class="docutils literal"><span class="pre">lambda</span></tt> functions (aka anonymous functions).</p>
+<p><em>Note for the curious readers</em>: lambda functions are used to prevent
+evaluating their contained statements when calling the <tt class="docutils literal"><span class="pre">alt()</span></tt>
+function - since we basically write Python code in the Testerman ATS,
+Python naturally evaluates all arguments to a function before being able
+to call it. In our case, this is not what we want, since we want to
+execute code conditionally. As an alternative (no pun intended), you may
+call a single function that contains all your code for the branch. This
+is, by the way, your only choice if you need multiple-line lambda
+functions (containing control structures such as <tt class="docutils literal"><span class="pre">if/else</span></tt>, <tt class="docutils literal"><span class="pre">while</span></tt>,
+...).</p>
+<p>These complete branches (optional guard, branch condition, code) are
+technically written as a list, and all these branches are gathered into
+another, ordered list which is passed as the single argument to the
+<tt class="docutils literal"><span class="pre">alt()</span></tt> function, leading to the following kind of construct:</p>
+<div class="highlight-python"><div class="highlight"><pre><span class="n">alt</span><span class="p">([</span>
+  <span class="p">[</span> <span class="n">port01</span><span class="o">.</span><span class="n">RECEIVE</span><span class="p">(</span><span class="n">mw_myTemplate</span><span class="p">),</span>
+    <span class="k">lambda</span><span class="p">:</span> <span class="n">log</span><span class="p">(</span><span class="s">&quot;This is a receiving-branch&quot;</span><span class="p">),</span>
+  <span class="p">],</span>
+  <span class="p">[</span> <span class="n">port02</span><span class="o">.</span><span class="n">RECEIVE</span><span class="p">(</span><span class="n">mw_mySecondTemplate</span><span class="p">),</span>
+    <span class="k">lambda</span><span class="p">:</span> <span class="n">log</span><span class="p">(</span><span class="s">&quot;This is another receiving-branch, on an other port&quot;</span><span class="p">),</span>
+  <span class="p">],</span>
+  <span class="p">[</span> <span class="n">port01</span><span class="o">.</span><span class="n">RECEIVE</span><span class="p">(),</span>
+    <span class="k">lambda</span><span class="p">:</span> <span class="n">log</span><span class="p">(</span><span class="s">&quot;Still a receiving-branch, matching all messages on port01&quot;</span><span class="p">),</span>
+    <span class="k">lambda</span><span class="p">:</span> <span class="n">log</span><span class="p">(</span><span class="s">&quot;You can use several lambda in the &#39;code block&#39;&quot;</span><span class="p">),</span>
+    <span class="k">lambda</span><span class="p">:</span> <span class="n">setverdict</span><span class="p">(</span><span class="s">&#39;fail&#39;</span><span class="p">),</span>
+  <span class="p">],</span>
+  <span class="p">[</span> <span class="k">lambda</span><span class="p">:</span> <span class="n">a</span> <span class="o">&gt;=</span> <span class="mi">1</span><span class="p">,</span> <span class="n">port02</span><span class="o">.</span><span class="n">RECEIVE</span><span class="p">(</span><span class="n">mw_myThirdTemplate</span><span class="p">),</span>
+    <span class="k">lambda</span><span class="p">:</span> <span class="n">log</span><span class="p">(</span><span class="s">&quot;This is another receiving-branch, guarded only considered if a &gt;= 1&quot;</span><span class="p">),</span>
+  <span class="p">],</span>
+  <span class="p">[</span> <span class="n">t_timer</span><span class="o">.</span><span class="n">TIMEOUT</span><span class="p">,</span>
+    <span class="k">lambda</span><span class="p">:</span> <span class="n">log</span><span class="p">(</span><span class="s">&quot;This is a timeout-branch&quot;</span><span class="p">),</span>
+  <span class="p">],</span>
+  <span class="p">[</span> <span class="n">ptc</span><span class="o">.</span><span class="n">DONE</span><span class="p">,</span>
+    <span class="k">lambda</span><span class="p">:</span> <span class="n">log</span><span class="p">(</span><span class="s">&quot;This is a done-branch&quot;</span><span class="p">),</span>
+  <span class="p">],</span>
+  <span class="p">[</span> <span class="n">ptc</span><span class="o">.</span><span class="n">KILLED</span><span class="p">,</span>
+    <span class="k">lambda</span><span class="p">:</span> <span class="n">log</span><span class="p">(</span><span class="s">&quot;This is a killed-branch&quot;</span><span class="p">),</span>
+  <span class="p">],</span>
+<span class="p">])</span>
+</pre></div>
+</div>
+<p>The order branches are written does matter, due to the following rules
+when entering an <tt class="docutils literal"><span class="pre">alt()</span></tt>:</p>
+<ul class="simple">
+<li>whenever we enter a alt or loop over it (once all conditions have
+been checked and mismatched, or due to an explicit repeat using
+<tt class="docutils literal"><span class="pre">REPEAT</span></tt>), a &#8220;snapshot&#8221; of the current system is taken, memorizing
+all message queues states on all ports that are involved in the alt
+(actually, this snapshot is not implemented for now - ticket:20 -
+just consider it should be the expected behaviour, however) - in our
+example, <tt class="docutils literal"><span class="pre">port01</span></tt> and <tt class="docutils literal"><span class="pre">port02</span></tt> - as well as the current known PTC
+and timer event,</li>
+<li>we try to match the snapshot messages/events against the different
+branch conditions <tt class="docutils literal"><span class="pre">in</span> <span class="pre">their</span> <span class="pre">order</span> <span class="pre">of</span> <span class="pre">appearance</span></tt> - providing their
+guards are fulfilled (they are re-evaluated at each loop)</li>
+<li>if the branch condition is matched, then the associated code is
+executed. If the last executed statement evaluates to <tt class="docutils literal"><span class="pre">REPEAT</span></tt>, we
+restart the loop from scratch, with the matched message consumed,
+re-snapshooting the current system state. If the last executed
+statement evaluates to anything else, we exit the <tt class="docutils literal"><span class="pre">alt()</span></tt> call,
+with the matched message consumed, but all other messages on other
+ports unchanged. Matching a condition is the only way to exit a
+<tt class="docutils literal"><span class="pre">alt()</span></tt> call.</li>
+<li>if the branch condition is mismatched, we continue with the next
+branch condition</li>
+<li>once we mismatched all conditions in the alt, we discard the
+mismatched message, and restart our pass with the next message.</li>
+</ul>
+<p>Since matching is &#8220;first-match&#8221; and not &#8220;best-match&#8221; based, the order
+does matter. In particular, in something like:</p>
+<div class="highlight-python"><div class="highlight"><pre><span class="n">alt</span><span class="p">([</span>
+  <span class="p">[</span> <span class="n">port01</span><span class="o">.</span><span class="n">RECEIVE</span><span class="p">(),</span>
+    <span class="k">lambda</span><span class="p">:</span> <span class="n">log</span><span class="p">(</span><span class="s">&quot;This condition hides the next one&quot;</span><span class="p">),</span>
+  <span class="p">],</span>
+  <span class="p">[</span> <span class="n">port01</span><span class="o">.</span><span class="n">RECEIVE</span><span class="p">(</span><span class="n">mw_myTemplate</span><span class="p">),</span>
+    <span class="k">lambda</span><span class="p">:</span> <span class="n">log</span><span class="p">(</span><span class="s">&quot;This log will never be displayed&quot;</span><span class="p">),</span>
+  <span class="p">],</span>
+<span class="p">])</span>
+</pre></div>
+</div>
+<p>both conditions are expecting a message on the same port, but even if we
+receive a message that matches <tt class="docutils literal"><span class="pre">mw_myTemplate</span></tt>, it will first match
+the default template implicitly provided in <tt class="docutils literal"><span class="pre">port01.RECEIVE()</span></tt>,
+keeping the second branch from being selected.</p>
+<div class="section" id="branch-conditions">
+<h3>Branch Conditions<a class="headerlink" href="#branch-conditions" title="Permalink to this headline">¶</a></h3>
+<p>...</p>
+</div>
+<div class="section" id="code-block">
+<h3>Code Block<a class="headerlink" href="#code-block" title="Permalink to this headline">¶</a></h3>
+<p>A code &#8220;block&#8221; is typically a list of lambda functions to call in this
+order. While this is quite convenient for small actions, such as sending
+a message back, setting a verdict, logging something, or event stop the
+current test component or test case, this is sufficient.</p>
+<p>However, if you need to execute more complex statements, in particular
+control statements such as <tt class="docutils literal"><span class="pre">if/elif/else</span></tt>, <tt class="docutils literal"><span class="pre">for..in</span></tt>, or even
+variable assignment, you won&#8217;t be able to do it from a lambda. In this
+case, you&#8217;ll need to implement a function external to the <tt class="docutils literal"><span class="pre">alt</span></tt> call,
+or, if you just want to assign a variable, use something like a
+<tt class="docutils literal"><span class="pre">StateManager</span></tt> instance, which has been designed for this kind of
+case.</p>
+<p>Examples: If you need an additional condition or loop in a branch:</p>
+<div class="highlight-python"><div class="highlight"><pre><span class="k">def</span> <span class="nf">f_messageHandler</span><span class="p">(</span><span class="n">message</span><span class="p">):</span>
+  <span class="k">if</span> <span class="n">message</span><span class="p">[</span><span class="s">&#39;method&#39;</span><span class="p">]</span> <span class="o">==</span> <span class="s">&#39;POST&#39;</span><span class="p">:</span>
+    <span class="n">action1</span><span class="p">()</span>
+  <span class="k">elif</span> <span class="n">message</span><span class="p">[</span><span class="s">&#39;method&#39;</span><span class="p">]</span> <span class="o">==</span> <span class="s">&#39;PUT&#39;</span><span class="p">:</span>
+    <span class="n">action2</span><span class="p">()</span>
+
+<span class="k">def</span> <span class="nf">f_doSomeLoop</span><span class="p">():</span>
+  <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">10</span><span class="p">):</span>
+    <span class="n">port02</span><span class="o">.</span><span class="n">send</span><span class="p">(</span><span class="n">m_response</span><span class="p">(</span><span class="n">count</span> <span class="o">=</span> <span class="n">i</span><span class="p">))</span>
+
+<span class="n">alt</span><span class="p">([</span>
+  <span class="p">[</span> <span class="n">port01</span><span class="o">.</span><span class="n">RECEIVE</span><span class="p">(</span><span class="n">mw_request</span><span class="p">(),</span> <span class="n">value</span> <span class="o">=</span> <span class="s">&#39;msg&#39;</span><span class="p">),</span>
+    <span class="k">lambda</span><span class="p">:</span> <span class="n">f_messageHandler</span><span class="p">(</span><span class="n">value</span><span class="p">(</span><span class="s">&#39;msg&#39;</span><span class="p">)),</span>
+  <span class="p">],</span>
+  <span class="p">[</span> <span class="n">port02</span><span class="o">.</span><span class="n">RECEIVE</span><span class="p">(),</span>
+    <span class="k">lambda</span><span class="p">:</span> <span class="n">f_doSomeLoop</span><span class="p">(),</span>
+  <span class="p">],</span>
+  <span class="o">...</span>
+<span class="p">])</span>
+</pre></div>
+</div>
+<p>Notice that most conditions could be embedded into the matching
+template too. In the example above, we may have just use 2 branch
+conditions, one on <tt class="docutils literal"><span class="pre">port01.RECEIVE(mw_postRequest())</span></tt>, another one on
+<tt class="docutils literal"><span class="pre">port01.RECEIVE(mw_putRequest())</span></tt>.</p>
+<p>Loops, to a certain extent, can also be collapsed to a single line
+instruction using Python list comprehensions:
+<tt class="docutils literal"><span class="pre">lambda:</span> <span class="pre">[</span> <span class="pre">port02.send(m_response(count</span> <span class="pre">=</span> <span class="pre">i))</span> <span class="pre">for</span> <span class="pre">i</span> <span class="pre">in</span> <span class="pre">range(10)</span> <span class="pre">]</span></tt>
+would have been equivalent to the <tt class="docutils literal"><span class="pre">f_doSomeLoop()</span></tt> code above, but may
+be less readable.</p>
+<p>In case of variable assignation, something like <tt class="docutils literal"><span class="pre">lambda:</span> <span class="pre">a</span> <span class="pre">=</span> <span class="pre">1</span></tt>,
+you&#8217;ll simply get a syntax error. You can&#8217;t assign a variable directly
+from a lambda, but you can assign a member variable, or use a
+<tt class="docutils literal"><span class="pre">StateManager</span></tt>:</p>
+<div class="highlight-python"><div class="highlight"><pre><span class="c"># This sample counts the number of requests received on a port</span>
+<span class="n">count</span> <span class="o">=</span> <span class="n">StateManager</span><span class="p">(</span><span class="mi">0</span><span class="p">)</span>
+
+<span class="n">alt</span><span class="p">([</span>
+  <span class="p">[</span> <span class="n">port01</span><span class="o">.</span><span class="n">RECEIVE</span><span class="p">(</span><span class="n">mw_request</span><span class="p">()),</span>
+    <span class="k">lambda</span><span class="p">:</span> <span class="n">count</span><span class="o">.</span><span class="n">set</span><span class="p">(</span><span class="n">count</span><span class="o">.</span><span class="n">get</span><span class="p">()</span> <span class="o">+</span> <span class="mi">1</span><span class="p">),</span> <span class="c"># increment a</span>
+    <span class="k">lambda</span><span class="p">:</span> <span class="n">REPEAT</span><span class="p">,</span> <span class="c"># repeat the alt</span>
+  <span class="p">],</span>
+  <span class="p">[</span> <span class="n">port02</span><span class="o">.</span><span class="n">RECEIVE</span><span class="p">(),</span>
+    <span class="c"># no action - just exit the alt when something has been received on port02</span>
+  <span class="p">]</span>
+<span class="p">])</span>
+
+<span class="n">log</span><span class="p">(</span><span class="s">&quot;OK, we received </span><span class="si">%d</span><span class="s"> requests on port01&quot;</span> <span class="o">%</span> <span class="n">count</span><span class="o">.</span><span class="n">get</span><span class="p">())</span>
+</pre></div>
+</div>
+<p><tt class="docutils literal"><span class="pre">StateManager</span></tt> objects can be quite convenient to implement state
+machines (hence their names), as we will see below.</p>
+</div>
+<div class="section" id="repeating-a-alt">
+<h3>Repeating a Alt<a class="headerlink" href="#repeating-a-alt" title="Permalink to this headline">¶</a></h3>
+<p>By default, when a branch is selected, its code block is executed and
+the alt returns. If you need to re-enter the loop, waiting for another
+event, you may use the special &#8220;Testerman keyword&#8221; <tt class="docutils literal"><span class="pre">REPEAT</span></tt> as the
+(usually last) action in your code block:</p>
+<div class="highlight-python"><div class="highlight"><pre><span class="n">alt</span><span class="p">([</span>
+  <span class="p">[</span> <span class="n">port01</span><span class="o">.</span><span class="n">RECEIVE</span><span class="p">(</span><span class="n">mw_interestingMessage</span><span class="p">()),</span>
+    <span class="k">lambda</span><span class="p">:</span> <span class="n">log</span><span class="p">(</span><span class="s">&quot;Got it !&quot;</span><span class="p">)</span> <span class="c"># then exit the alt</span>
+  <span class="p">],</span>
+  <span class="p">[</span> <span class="n">port01</span><span class="o">.</span><span class="n">RECEIVE</span><span class="p">(</span><span class="n">mw_keepAlive</span><span class="p">()),</span>
+    <span class="k">lambda</span><span class="p">:</span> <span class="n">log</span><span class="p">(</span><span class="s">&quot;KA message received, sending response&quot;</span><span class="p">)</span>
+    <span class="k">lambda</span><span class="p">:</span> <span class="n">port01</span><span class="o">.</span><span class="n">send</span><span class="p">(</span><span class="n">m_keepAliveResponse</span><span class="p">()),</span>
+    <span class="k">lambda</span><span class="p">:</span> <span class="n">REPEAT</span><span class="p">,</span> <span class="c"># repeat the alt</span>
+  <span class="p">],</span>
+<span class="p">])</span>
+</pre></div>
+</div>
+<p>Repeating the alt is the default behaviour when receiving a message that
+does not match your templates. So it&#8217;s not use adding an alternative
+branch if you don&#8217;t need to perform any particular action on this
+message.</p>
+<p><tt class="docutils literal"><span class="pre">REPEAT</span></tt> can also be returned by the function called in your code
+block. Combined with the fact that if <tt class="docutils literal"><span class="pre">REPEAT</span></tt> is not the last action
+of your code block, it breaks your action sequence to restart the alt,
+discarding the remaining actions, this can lead to interesting things:</p>
+<div class="highlight-python"><div class="highlight"><pre><span class="n">count</span> <span class="o">=</span> <span class="mi">0</span>
+
+<span class="k">def</span> <span class="nf">f_conditionalLoop</span><span class="p">():</span>
+  <span class="n">count</span> <span class="o">+=</span> <span class="mi">1</span>
+  <span class="k">if</span> <span class="n">count</span> <span class="o">&lt;</span> <span class="mi">10</span><span class="p">:</span>
+    <span class="k">return</span> <span class="n">REPEAT</span>
+  <span class="k">return</span> <span class="bp">False</span> <span class="c"># or anything != REPEAT</span>
+
+<span class="n">alt</span><span class="p">([</span>
+  <span class="p">[</span> <span class="n">port</span><span class="o">.</span><span class="n">RECEIVE</span><span class="p">(),</span>
+    <span class="k">lambda</span><span class="p">:</span> <span class="n">action1</span><span class="p">(),</span>
+    <span class="k">lambda</span><span class="p">:</span> <span class="n">f_conditionalLoop</span><span class="p">(),</span> <span class="c"># if it returns REPEAT, action2 won&#39;t be executed this time.</span>
+    <span class="k">lambda</span><span class="p">:</span> <span class="n">action2</span><span class="p">()</span>
+  <span class="p">]</span>
+<span class="p">])</span>
+
+<span class="c"># action2 will be executed only in the last loop, before leaving the alt</span>
+</pre></div>
+</div>
+<p>However, this example would rather be implemented with two alternative
+guarded branches (more readable).</p>
+</div>
+<div class="section" id="returning-from-a-alt">
+<h3>Returning from a Alt<a class="headerlink" href="#returning-from-a-alt" title="Permalink to this headline">¶</a></h3>
+<p>By default, when a branch is selected, its code block is executed and
+the alt returns, so you don&#8217;t need to return explicitly. However, you
+may implement conditional return in your list of actions via external
+functions:</p>
+<div class="highlight-python"><div class="highlight"><pre><span class="k">def</span> <span class="nf">f_shouldWeContinue</span><span class="p">():</span>
+  <span class="k">if</span> <span class="n">count</span> <span class="o">&gt;</span> <span class="mi">10</span> <span class="ow">and</span> <span class="n">timer</span><span class="o">.</span><span class="n">read</span><span class="p">()</span> <span class="o">&lt;</span> <span class="mf">10.0</span><span class="p">:</span>
+    <span class="k">return</span> <span class="n">RETURN</span> <span class="c"># don&#39;t continue</span>
+  <span class="k">return</span> <span class="bp">True</span> <span class="c"># or anything != RETURN</span>
+
+<span class="n">alt</span><span class="p">([</span>
+  <span class="o">...</span>
+  <span class="p">[</span> <span class="n">port</span><span class="o">.</span><span class="n">RECEIVE</span><span class="p">(),</span>
+    <span class="k">lambda</span><span class="p">:</span> <span class="n">action1</span><span class="p">(),</span>
+    <span class="k">lambda</span><span class="p">:</span> <span class="n">f_shouldWeContinue</span><span class="p">(),</span> <span class="c"># if it returns RETURN, action2 won&#39;t be executed</span>
+    <span class="k">lambda</span><span class="p">:</span> <span class="n">action2</span><span class="p">()</span>
+  <span class="p">]</span>
+<span class="p">])</span>
+</pre></div>
+</div>
+<p>Returning the &#8220;Testerman keyword&#8221; <tt class="docutils literal"><span class="pre">RETURN</span></tt> immediately returns from
+the alt, discarding the subsequent actions. Writing it statically is
+also possible, but would have exactly the same effect as commenting out
+the subsequent actions:</p>
+<div class="highlight-python"><div class="highlight"><pre><span class="n">alt</span><span class="p">([</span>
+  <span class="p">[</span> <span class="n">port</span><span class="o">.</span><span class="n">RECEIVE</span><span class="p">(),</span>
+    <span class="k">lambda</span><span class="p">:</span> <span class="n">action1</span><span class="p">(),</span>
+    <span class="k">lambda</span><span class="p">:</span> <span class="n">RETURN</span><span class="p">,</span>
+    <span class="k">lambda</span><span class="p">:</span> <span class="n">action2</span><span class="p">(),</span>
+    <span class="k">lambda</span><span class="p">:</span> <span class="n">action3</span><span class="p">()</span>
+  <span class="p">]</span>
+<span class="p">])</span>
+<span class="c"># equivalent to:</span>
+<span class="n">alt</span><span class="p">([</span>
+  <span class="p">[</span> <span class="n">port</span><span class="o">.</span><span class="n">RECEIVE</span><span class="p">(),</span>
+    <span class="k">lambda</span><span class="p">:</span> <span class="n">action1</span><span class="p">(),</span>
+  <span class="p">]</span>
+<span class="p">])</span>
+</pre></div>
+</div>
+</div>
+<div class="section" id="guards">
+<h3>Guards<a class="headerlink" href="#guards" title="Permalink to this headline">¶</a></h3>
+<p>Guards are defined as callable/0 Python objects, that is functions that
+do not take any argument. If the first element of a branch declaration
+list is such a callable object, Testerman assumes this is a guard. If
+not, the first element of the list is assumed to be the branch condition
+- this is the way the guard can be optional.</p>
+<p>The most usual way to implement such guards is, once again, <tt class="docutils literal"><span class="pre">lambda</span></tt>
+functions:</p>
+<div class="highlight-python"><div class="highlight"><pre><span class="k">class</span> <span class="nc">TC_GUARD</span><span class="p">(</span><span class="n">TestCase</span><span class="p">):</span>
+  <span class="k">def</span> <span class="nf">body</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+    <span class="n">a</span> <span class="o">=</span> <span class="n">StateManager</span><span class="p">(</span><span class="mi">0</span><span class="p">)</span>
+
+    <span class="n">alt</span><span class="p">([</span>
+      <span class="p">[</span> <span class="n">port01</span><span class="o">.</span><span class="n">RECEIVE</span><span class="p">(</span><span class="n">m_something</span><span class="p">()),</span>
+        <span class="k">lambda</span><span class="p">:</span> <span class="n">log</span><span class="p">(</span><span class="s">&quot;let&#39;s increment a&quot;</span><span class="p">),</span>
+        <span class="k">lambda</span><span class="p">:</span> <span class="n">a</span><span class="o">.</span><span class="n">set</span><span class="p">(</span><span class="n">a</span><span class="o">.</span><span class="n">get</span><span class="p">()</span> <span class="o">+</span> <span class="mi">1</span><span class="p">),</span>
+        <span class="k">lambda</span><span class="p">:</span> <span class="n">REPEAT</span><span class="p">,</span>
+      <span class="p">],</span>
+      <span class="p">[</span> <span class="k">lambda</span><span class="p">:</span> <span class="n">a</span><span class="o">.</span><span class="n">get</span><span class="p">()</span> <span class="o">&gt;=</span> <span class="mi">1</span><span class="p">,</span>
+        <span class="n">port01</span><span class="o">.</span><span class="n">RECEIVE</span><span class="p">(),</span>
+        <span class="k">lambda</span><span class="p">:</span> <span class="n">log</span><span class="p">(</span><span class="s">&quot;ok, now we are sure that we received at least once m_something() on port01&quot;</span><span class="p">),</span>
+      <span class="p">],</span>
+    <span class="p">])</span>
+</pre></div>
+</div>
+<p>...</p>
+</div>
+<div class="section" id="alt-execution">
+<h3>Alt Execution<a class="headerlink" href="#alt-execution" title="Permalink to this headline">¶</a></h3>
+<p>You can execute one <tt class="docutils literal"><span class="pre">alt()</span></tt> per test component &#8220;thread&#8221;. An alt is
+interruptible via <tt class="docutils literal"><span class="pre">ptc.kill()</span></tt> or <tt class="docutils literal"><span class="pre">ptc.stop()</span></tt> from any other test
+component, or only by a matching event. So be careful when entering the
+function, be sure to have a watchdog timer or a way to stop the polling
+loop gracefully.</p>
+<p>Default Behaviours may help you with setting such watchdog timers for
+all <tt class="docutils literal"><span class="pre">alt()</span></tt> at once.</p>
+</div>
+</div>
+<div class="section" id="default-behaviours">
+<h2>Default Behaviours<a class="headerlink" href="#default-behaviours" title="Permalink to this headline">¶</a></h2>
+<p>It is not unusual to have one or several events to catch systematically
+in a <tt class="docutils literal"><span class="pre">alt</span></tt> to execute some default actions, such as stopping the test
+case on error due to receiving a non-explicitly handled message, a
+global watchdog timeout keeping your test case from running
+indefinitely, or dealing with &#8220;background&#8221;, uninteresting messages such
+as keep-alive probes.</p>
+<p>In these case, you may appreciate to implement one or several default
+behaviours.</p>
+<p>Basically, a default behaviour is a set of alternative branches that are
+automatically appended to any <tt class="docutils literal"><span class="pre">alt()</span></tt> defined branches. This set can
+be activated and deactivated at any time. It is also possible to
+activate multiple default behaviours - however they will be handled in
+the order or their activation.</p>
+<div class="section" id="activating-a-default-behaviour">
+<h3>Activating a Default Behaviour<a class="headerlink" href="#activating-a-default-behaviour" title="Permalink to this headline">¶</a></h3>
+<p>To activate, i.e. register, a default behaviour, use:</p>
+<div class="highlight-python"><div class="highlight"><pre><span class="n">myDefaultBehaviour</span> <span class="o">=</span> <span class="n">activate</span><span class="p">([</span>
+  <span class="p">[</span> <span class="n">t_watchdog</span><span class="o">.</span><span class="n">TIMEOUT</span><span class="p">,</span>
+    <span class="k">lambda</span><span class="p">:</span> <span class="n">log</span><span class="p">(</span><span class="s">&quot;Global watchdog expiry - stopping testcase&quot;</span><span class="p">),</span>
+    <span class="k">lambda</span><span class="p">:</span> <span class="n">setverdict</span><span class="p">(</span><span class="s">&quot;fail&quot;</span><span class="p">),</span>
+    <span class="k">lambda</span><span class="p">:</span> <span class="n">stop</span><span class="p">()</span>
+  <span class="p">],</span>
+  <span class="p">[</span> <span class="n">port</span><span class="o">.</span><span class="n">RECEIVE</span><span class="p">(),</span>
+    <span class="k">lambda</span><span class="p">:</span> <span class="n">log</span><span class="p">(</span><span class="s">&quot;Unknown message received. Strict mode: stopping testcase&quot;</span><span class="p">),</span>
+    <span class="k">lambda</span><span class="p">:</span> <span class="n">setverdict</span><span class="p">(</span><span class="s">&quot;inconc&quot;</span><span class="p">),</span>
+    <span class="k">lambda</span><span class="p">:</span> <span class="n">stop</span><span class="p">()</span>
+  <span class="p">],</span>
+<span class="p">])</span>
+</pre></div>
+</div>
+<p>You noticed that <tt class="docutils literal"><span class="pre">activate</span></tt> takes only one argument that is exactly
+constructed the same as for a <tt class="docutils literal"><span class="pre">alt()</span></tt>. It may contain as many branches
+as needed. <tt class="docutils literal"><span class="pre">activate</span></tt> returns an identifier that is suitable for a
+call to <tt class="docutils literal"><span class="pre">deactivate</span></tt> (see below), in case of you need to deactivate
+thisdeault behaviour.</p>
+<p>Since you can activate multiple default behaviours in a row, it may be
+convenient to separate the branches sets according to their functions.
+For instance, one set for a global watchdog, one set for background
+error management:</p>
+<div class="highlight-python"><div class="highlight"><pre><span class="n">defaultWatchdog</span> <span class="o">=</span> <span class="n">activate</span><span class="p">([[</span><span class="n">t_watchog</span><span class="o">.</span><span class="n">TIMEOUT</span><span class="p">,</span> <span class="k">lambda</span><span class="p">:</span> <span class="n">setverdict</span><span class="p">(</span><span class="s">&#39;fail&#39;</span><span class="p">),</span> <span class="k">lambda</span><span class="p">:</span> <span class="n">stop</span><span class="p">()]])</span>
+<span class="n">defaultError</span> <span class="o">=</span> <span class="n">activate</span><span class="p">([[</span><span class="n">port</span><span class="o">.</span><span class="n">RECEIVE</span><span class="p">(</span><span class="n">mw_errorMessage</span><span class="p">()),</span> <span class="k">lambda</span><span class="p">:</span> <span class="n">setverdict</span><span class="p">(</span><span class="s">&#39;fail&#39;</span><span class="p">),</span> <span class="k">lambda</span><span class="p">:</span> <span class="n">stop</span><span class="p">()]])</span>
+</pre></div>
+</div>
+<p>An activation is only valid within a single test component, depending on
+where you activated it from. As a consequence, if you want to use a
+default behaviour in the MTC and in each PTC you create, you have to
+activate it from each PTC in addition to the MTC.</p>
+<p>Notes:</p>
+<ul class="simple">
+<li>a default behaviour activated from within an alternative branch will
+only be taken into account in the next <tt class="docutils literal"><span class="pre">alt</span></tt> call and not in the
+current one, if it is repeated.</li>
+</ul>
+</div>
+<div class="section" id="deactivating-a-default-behaviour">
+<h3>Deactivating a Default Behaviour<a class="headerlink" href="#deactivating-a-default-behaviour" title="Permalink to this headline">¶</a></h3>
+<p>Once a default behaviour has been activated using <tt class="docutils literal"><span class="pre">activate()</span></tt>, it is
+taken into account in all subsequent calls to <tt class="docutils literal"><span class="pre">alt()</span></tt> (or functions
+that embeds an alt, such as <tt class="docutils literal"><span class="pre">timer.timeout()</span></tt>, <tt class="docutils literal"><span class="pre">port.receive()</span></tt>,
+etc) for the current test component. At any time, however, you may
+deactivate it using the identifier returned during its activation:</p>
+<div class="highlight-python"><div class="highlight"><pre><span class="n">defaultWatchog</span> <span class="o">=</span> <span class="n">activate</span><span class="p">([</span> <span class="o">...</span> <span class="p">])</span>
+
+<span class="o">...</span>
+
+<span class="n">deactivate</span><span class="p">(</span><span class="n">defaultWachdog</span><span class="p">)</span>
+<span class="c"># From now on, no more default watchdog handling in alt()</span>
+</pre></div>
+</div>
+<p>You can only deactivate a default behaviour that was activated in the
+same test component. Deactivating an already-deactivated behaviour has
+no effect.</p>
+<p>Notes:</p>
+<ul class="simple">
+<li>a default behaviour deactivated from within an alternative branch
+will only be discarded in the next <tt class="docutils literal"><span class="pre">alt</span></tt> call and not in the
+current one, if it is repeated.</li>
+</ul>
+</div>
+</div>
+<div class="section" id="template-value-extraction">
+<h2>Template Value Extraction<a class="headerlink" href="#template-value-extraction" title="Permalink to this headline">¶</a></h2>
+<div class="section" id="full-extraction">
+<h3>Full Extraction<a class="headerlink" href="#full-extraction" title="Permalink to this headline">¶</a></h3>
+<p>TTCN-3 defines a single way to extract a value from a message that
+matched a template, using the <tt class="docutils literal"><span class="pre">-&gt;</span></tt> syntax and <tt class="docutils literal"><span class="pre">value</span></tt> (and
+<tt class="docutils literal"><span class="pre">sender</span></tt>) keywords.
+For instance:</p>
+<div class="highlight-python"><pre>port.receive(my_template) -&gt; value m, sender s;</pre>
+</div>
+<p>will store the received message that matched the template
+<tt class="docutils literal"><span class="pre">my_template</span></tt> to the local variable <tt class="docutils literal"><span class="pre">m</span></tt>, and the address of the
+sender (either a test component reference or a SUT address) to the local
+variable <tt class="docutils literal"><span class="pre">s</span></tt>.
+Once stored, you may traverse the received message as any other
+structured value to find the field of interest. For instance, if we
+assumed we received a SIP request to which we should reply with a
+response using the same call-id, we may use:</p>
+<div class="highlight-python"><pre>type record SipRequestType {
+  charstring method,
+  ...
+  charstring callId,
+  ...
+}
+
+template SipRequestType mw_sipRequest()
+{
+  method := ?,
+  ...
+  callId := ?,
+  ...
+}
+
+// ...
+
+charstring callId;
+
+port.receive(nw_sipRequest) -&gt; value request;
+callId := request.callId
+
+// Now reinject the callId into a response
+
+resp = m_sipResponse(callId)
+// ...</pre>
+</div>
+<p>Testerman offers a similar mechanism to match the complete received
+message (and the associated sender, if needed). The syntax, however, is
+different:</p>
+<div class="highlight-python"><div class="highlight"><pre><span class="n">port</span><span class="o">.</span><span class="n">receive</span><span class="p">(</span><span class="n">m_myTemplate</span><span class="p">,</span> <span class="n">value</span> <span class="o">=</span> <span class="s">&#39;m&#39;</span><span class="p">,</span> <span class="n">sender</span> <span class="o">=</span> <span class="s">&#39;s&#39;</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>This will store the received message matching the template
+<tt class="docutils literal"><span class="pre">my_template</span></tt> to an internal structure whose value can be retrieve
+later within the same test component &#8220;thread&#8221; (i.e. within the
+behaviour/PTC &#8220;thread&#8221; or the main/MTC &#8220;thread&#8221;) using:</p>
+<div class="highlight-python"><div class="highlight"><pre><span class="n">matchedMessage</span> <span class="o">=</span> <span class="n">value</span><span class="p">(</span><span class="s">&#39;m&#39;</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>The sender (either a reference to a test component (<tt class="docutils literal"><span class="pre">TestComponent</span></tt>
+instance) or the SUT address (Python built-in <tt class="docutils literal"><span class="pre">string</span></tt>) can be
+retrieved a similar way within the current test component &#8220;thread&#8221; with:</p>
+<div class="highlight-python"><div class="highlight"><pre><span class="n">messageSender</span> <span class="o">=</span> <span class="n">value</span><span class="p">(</span><span class="s">&#39;s&#39;</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>Of course, it is not mandatory to store the matched value to a variable;
+however you are advised to do so, as the matched value may be overriden
+on the next template match if you use the same value/sender name.</p>
+<p>The above SIP example then translates to:</p>
+<div class="highlight-python"><div class="highlight"><pre><span class="k">def</span> <span class="nf">mw_sipRequest</span><span class="p">():</span>
+  <span class="k">return</span> <span class="p">{</span> <span class="s">&#39;method&#39;</span><span class="p">:</span> <span class="nb">any</span><span class="p">(),</span> <span class="s">&#39;callId&#39;</span><span class="p">:</span> <span class="nb">any</span><span class="p">()</span> <span class="p">}</span>
+
+<span class="n">port</span><span class="o">.</span><span class="n">receive</span><span class="p">(</span><span class="n">sip_request</span><span class="p">(),</span> <span class="n">value</span> <span class="o">=</span> <span class="s">&#39;request&#39;</span><span class="p">)</span>
+<span class="n">callId</span> <span class="o">=</span> <span class="n">value</span><span class="p">(</span><span class="s">&#39;request&#39;</span><span class="p">)[</span><span class="s">&#39;callId&#39;</span><span class="p">]</span>
+
+<span class="n">resp</span> <span class="o">=</span> <span class="n">m_sipResponse</span><span class="p">(</span><span class="n">callId</span><span class="p">)</span>
+<span class="o">...</span>
+</pre></div>
+</div>
+</div>
+<div class="section" id="selective-extraction">
+<h3>Selective Extraction<a class="headerlink" href="#selective-extraction" title="Permalink to this headline">¶</a></h3>
+<p>The mechanism above is quite convenient to get a whole message.
+Sometimes, however, you may prefer get only a part of the matched
+message to avoid a structure traversal, especially when this structure
+is not as trivial as in the example above or when wildcards and lists
+are involved.</p>
+<p>For example, if your template is something like:</p>
+<div class="highlight-python"><div class="highlight"><pre><span class="c"># In SUA protocol, we may get an undefined list of parameters that contain a tag and a value.</span>
+<span class="c"># We are only interested in one of these parameters, but we cannot control the order</span>
+<span class="c"># we received them.</span>
+<span class="n">mw_myTemplate</span> <span class="o">=</span> <span class="p">[</span> <span class="n">any_or_none</span><span class="p">(),</span> <span class="p">{</span> <span class="s">&#39;tag&#39;</span><span class="p">:</span> <span class="mh">0x06</span><span class="p">,</span> <span class="s">&#39;value&#39;</span><span class="p">:</span> <span class="nb">any</span><span class="p">()</span> <span class="p">},</span> <span class="n">any_or_none</span><span class="p">()</span> <span class="p">]</span>
+<span class="c"># This is equivalent to my_template = superset({ &#39;tag&#39;: 0x06, &#39;value&#39;: any() })</span>
+</pre></div>
+</div>
+<p>Once we matched it, we have to find the interesting parameter manually,
+checking the tag value in each entry of the matched list (provided all
+these entries contains a<tt class="docutils literal"><span class="pre">tag</span></tt> field, which may be not mandatory
+depending on the message structure / involved codec). Instead of
+traversing the list manually, Testerman proposes a selective extraction
+mechanism that is tightly bound to the template:</p>
+<div class="highlight-python"><div class="highlight"><pre><span class="n">mw_myTemplate</span> <span class="o">=</span> <span class="p">[</span> <span class="n">any_or_none</span><span class="p">(),</span> <span class="p">{</span> <span class="s">&#39;tag&#39;</span><span class="p">:</span> <span class="mh">0x06</span><span class="p">,</span> <span class="s">&#39;value&#39;</span><span class="p">:</span> <span class="n">extract</span><span class="p">(</span><span class="nb">any</span><span class="p">(),</span> <span class="s">&#39;my_val&#39;</span><span class="p">)</span> <span class="p">},</span> <span class="n">any_or_none</span><span class="p">()</span> <span class="p">]</span>
+</pre></div>
+</div>
+<p>Using the <tt class="docutils literal"><span class="pre">extract(&lt;matching</span> <span class="pre">mechanism&gt;,</span> <span class="pre">&lt;name&gt;)</span></tt> feature, you can
+directly get the value you want to extract without requiring a full
+message traversal. The matched value, if the template has matched, is
+then available through the <tt class="docutils literal"><span class="pre">value(&lt;name&gt;)</span></tt> syntax as for full message
+extraction.</p>
+<p>Full example:</p>
+<div class="highlight-python"><div class="highlight"><pre><span class="n">mw_myTemplate</span> <span class="o">=</span> <span class="p">[</span> <span class="n">any_or_none</span><span class="p">(),</span> <span class="p">{</span> <span class="s">&#39;tag&#39;</span><span class="p">:</span> <span class="mh">0x06</span><span class="p">,</span> <span class="s">&#39;value&#39;</span><span class="p">:</span> <span class="n">extract</span><span class="p">(</span><span class="nb">any</span><span class="p">(),</span> <span class="s">&#39;my_val&#39;</span><span class="p">)</span> <span class="p">},</span> <span class="n">any_or_none</span><span class="p">()</span> <span class="p">]</span>
+
+<span class="n">alt</span><span class="p">([</span>
+  <span class="p">[</span> <span class="n">port</span><span class="o">.</span><span class="n">RECEIVE</span><span class="p">(</span><span class="n">mw_myTemplate</span><span class="p">),</span>
+    <span class="k">lambda</span><span class="p">:</span> <span class="n">log</span><span class="p">(</span><span class="s">&quot;parameter 0x06 value: </span><span class="si">%s</span><span class="s">&quot;</span> <span class="o">%</span> <span class="n">value</span><span class="p">(</span><span class="s">&#39;my_val&#39;</span><span class="p">),</span>
+  <span class="p">]</span>
+<span class="p">])</span>
+</pre></div>
+</div>
+<p>Notice that you can freely use <tt class="docutils literal"><span class="pre">extract</span></tt> in sending templates
+providing the wrapped template matching condition has a tangible
+valuation (typically <tt class="docutils literal"><span class="pre">between</span></tt>, <tt class="docutils literal"><span class="pre">greater_than</span></tt>, <tt class="docutils literal"><span class="pre">lower_than</span></tt>, ...
+- selective extraction is meaningless, but fully usable, to extract
+constants).</p>
+<p><strong>Limitations</strong>:</p>
+<ul class="simple">
+<li>This selective extraction mechanism does not work with
+<tt class="docutils literal"><span class="pre">any_or_none()</span></tt> (TTCN-3 <tt class="docutils literal"><span class="pre">*</span></tt>) wildcard.</li>
+<li>Calls to <tt class="docutils literal"><span class="pre">value(name)</span></tt> where <tt class="docutils literal"><span class="pre">name</span></tt> is a string referring to a
+selected extraction in a template that did not match is undefined
+(may or may not return a value, depending on when the mismatch was
+detected).</li>
+</ul>
+</div>
+</div>
+<div class="section" id="verdict-management">
+<h2>Verdict Management<a class="headerlink" href="#verdict-management" title="Permalink to this headline">¶</a></h2>
+<p>Each test component has a local verdict that can be set and retrieved
+at any moment, from anywhere during the test component execution.</p>
+<p>This verdict is said to be local as it is only valid for the running
+test component: this is the PTC verdict in a behaviour body or any
+functions called from it, or the MTC verdict in the test case body or
+any functions called from it.</p>
+<p>You can only manipulate (get or set) the local verdict of your current
+context. The test case verdict is automatically computed from merging
+the different local verdicts.</p>
+<p>In Testerman, verdict values are string literals instead (while they are
+keywords in TTCN-3). However, the full verdict values are available, and
+some Testerman constants are provided for convenience to avoid using
+string values:</p>
+<table border="1" class="docutils">
+<colgroup>
+<col width="6%" />
+<col width="10%" />
+<col width="84%" />
+</colgroup>
+<thead valign="bottom">
+<tr class="row-odd"><th class="head">TTCN-3 verdict</th>
+<th class="head">Testerman verdict value</th>
+<th class="head">description</th>
+</tr>
+</thead>
+<tbody valign="top">
+<tr class="row-even"><td><tt class="docutils literal"><span class="pre">none</span></tt></td>
+<td><tt class="docutils literal"><span class="pre">NONE</span></tt> (or <tt class="docutils literal"><span class="pre">'none'</span></tt>)</td>
+<td>default verdict, unset</td>
+</tr>
+<tr class="row-odd"><td><tt class="docutils literal"><span class="pre">pass</span></tt></td>
+<td><tt class="docutils literal"><span class="pre">PASS</span></tt> (or <tt class="docutils literal"><span class="pre">'pass'</span></tt>)</td>
+<td>the test component logic considers the SUT reactions it observed were what it expected. Test case passed successfully.</td>
+</tr>
+<tr class="row-even"><td><tt class="docutils literal"><span class="pre">fail</span></tt></td>
+<td><tt class="docutils literal"><span class="pre">FAIL</span></tt> (or <tt class="docutils literal"><span class="pre">'fail'</span></tt>)</td>
+<td>the test component logic considers the SUT reactions it observed were not the expected ones. Due to the verdict values precedence rules, if at least one local verdict is set to <tt class="docutils literal"><span class="pre">fail</span></tt>, it implies that the Test case verdict will be <tt class="docutils literal"><span class="pre">fail</span></tt>, too.</td>
+</tr>
+<tr class="row-odd"><td><tt class="docutils literal"><span class="pre">inconc</span></tt></td>
+<td><tt class="docutils literal"><span class="pre">INCONC</span></tt> (or <tt class="docutils literal"><span class="pre">'inconc'</span></tt>)</td>
+<td>inconclusive: not enough elements have been observed to tell if the SUT reactions were correct or not. We can&#8217;t tell that the test case failed because what we planned to test was not tested actually. Useful when some prerequisites cannot be set up or verified.</td>
+</tr>
+<tr class="row-even"><td><tt class="docutils literal"><span class="pre">error</span></tt></td>
+<td><tt class="docutils literal"><span class="pre">ERROR</span></tt> (or <tt class="docutils literal"><span class="pre">'error'</span></tt>)</td>
+<td>an execution error occurred. Automatically set by the test execution system on runtime exception; cannot be set by the user.</td>
+</tr>
+</tbody>
+</table>
+<p>Local verdicts are automatically merged to create a &#8220;test case&#8221; verdict
+using the following rules:</p>
+<ul class="simple">
+<li>the test case verdict is initialized to <tt class="docutils literal"><span class="pre">none</span></tt></li>
+<li>whenever a test component is over (either done or killed), the test
+case verdict is updated with its local verdict,</li>
+<li>when updating a verdict (including the test case verdict), the
+following precedence rules apply: <tt class="docutils literal"><span class="pre">none</span></tt> &lt; <tt class="docutils literal"><span class="pre">pass</span></tt> &lt; <tt class="docutils literal"><span class="pre">inconc</span></tt> &lt;
+<tt class="docutils literal"><span class="pre">fail</span></tt> &lt; <tt class="docutils literal"><span class="pre">error</span></tt>, which can also be visualized as indicated in
+the table below, indicating the resulting verdict after an update:</li>
+</ul>
+<table border="1" class="docutils">
+<colgroup>
+<col width="31%" />
+<col width="24%" />
+<col width="16%" />
+<col width="13%" />
+<col width="16%" />
+</colgroup>
+<thead valign="bottom">
+<tr class="row-odd"><th class="head" rowspan="2">current verdict</th>
+<th class="head" colspan="4">new verdict</th>
+</tr>
+<tr class="row-even"><th class="head">pass</th>
+<th class="head">inconc</th>
+<th class="head">fail</th>
+<th class="head">none</th>
+</tr>
+</thead>
+<tbody valign="top">
+<tr class="row-odd"><td>none</td>
+<td>pass</td>
+<td>inconc</td>
+<td>fail</td>
+<td>none</td>
+</tr>
+<tr class="row-even"><td>pass</td>
+<td>pass</td>
+<td>inconc</td>
+<td>fail</td>
+<td>pass</td>
+</tr>
+<tr class="row-odd"><td>inconc</td>
+<td>inconc</td>
+<td>inconc</td>
+<td>fail</td>
+<td>inconc</td>
+</tr>
+<tr class="row-even"><td>fail</td>
+<td>fail</td>
+<td>fail</td>
+<td>fail</td>
+<td>fail</td>
+</tr>
+</tbody>
+</table>
+<p>The <tt class="docutils literal"><span class="pre">error</span></tt> value overwrites all others.</p>
+<p>Notice that the order of verdict merges does not affect the final test
+case verdict (when we wait for N PTCs to complete, for instance).</p>
+</div>
+<div class="section" id="setting-a-verdict">
+<h2>Setting a Verdict<a class="headerlink" href="#setting-a-verdict" title="Permalink to this headline">¶</a></h2>
+<p>You can only set a local verdict; the test case verdict is automatically
+computed by the system according to the different local ones.</p>
+<p>To update the current local verdict, use the Testerman function
+<tt class="docutils literal"><span class="pre">setverdict</span></tt> anywhere in your test case or behaviour body or in a
+called function, for instance:</p>
+<div class="highlight-python"><div class="highlight"><pre><span class="n">setverdict</span><span class="p">(</span><span class="n">PASS</span><span class="p">)</span> <span class="c"># you may use setverdict(&#39;pass&#39;) if not using the pre-defined constant</span>
+</pre></div>
+</div>
+<p>Setting a verdict that is not in
+<tt class="docutils literal"><span class="pre">[</span> <span class="pre">'error',</span> <span class="pre">'none',</span> <span class="pre">'pass',</span> <span class="pre">'fail',</span> <span class="pre">'inconc'</span> <span class="pre">]</span></tt> leads to a runtime
+exception.</p>
+<p>However, as a best practice to make your code more readable and more
+reusable, you should only set verdicts from behaviour an test case
+<tt class="docutils literal"><span class="pre">body</span></tt> methods, while functions you call should never decide for such
+a verdict: only the caller should know how to interpret a function
+result.</p>
+</div>
+<div class="section" id="getting-a-verdict">
+<h2>Getting a Verdict<a class="headerlink" href="#getting-a-verdict" title="Permalink to this headline">¶</a></h2>
+<div class="section" id="local-verdict-test-component">
+<h3>Local Verdict (Test Component)<a class="headerlink" href="#local-verdict-test-component" title="Permalink to this headline">¶</a></h3>
+<p>You can get a verdict at any time during a test component execution
+using the Testerman function <tt class="docutils literal"><span class="pre">getverdict</span></tt>:</p>
+<div class="highlight-python"><div class="highlight"><pre><span class="n">v</span> <span class="o">=</span> <span class="n">getverdict</span><span class="p">()</span>
+</pre></div>
+</div>
+<p>The returned value is the current local verdict, as a string in
+<tt class="docutils literal"><span class="pre">[</span> <span class="pre">'error',</span> <span class="pre">'none',</span> <span class="pre">'pass',</span> <span class="pre">'fail',</span> <span class="pre">'inconc'</span> <span class="pre">]</span></tt> (i.e. in
+`` [ ERROR, NONE, PASS, FAIL, INCONC ]``).</p>
+<p>Additionally, when a test component is over (either done or killed), you
+may retrieve their local verdict with the <tt class="docutils literal"><span class="pre">getverdict()</span></tt> method:</p>
+<div class="highlight-python"><div class="highlight"><pre><span class="n">ptc</span> <span class="o">=</span> <span class="n">create</span><span class="p">()</span>
+<span class="n">ptc</span><span class="o">.</span><span class="n">start</span><span class="p">(</span><span class="n">MyBehaviour</span><span class="p">())</span>
+<span class="n">ptc</span><span class="o">.</span><span class="n">done</span><span class="p">()</span>
+<span class="n">v_ptcVerdict</span> <span class="o">=</span> <span class="n">ptc</span><span class="o">.</span><span class="n">getverdict</span><span class="p">()</span>
+</pre></div>
+</div>
+</div>
+<div class="section" id="test-case-verdict">
+<h3>Test Case Verdict<a class="headerlink" href="#test-case-verdict" title="Permalink to this headline">¶</a></h3>
+<p>The test case verdict is returned as a result to its execution; if you
+don&#8217;t store it in a variable, it is lost. For instance:</p>
+<div class="highlight-python"><div class="highlight"><pre><span class="n">TC_SAMPLE_01</span><span class="p">()</span><span class="o">.</span><span class="n">execute</span><span class="p">()</span>
+<span class="n">v</span> <span class="o">=</span> <span class="n">TC_SAMPLE_02</span><span class="p">()</span><span class="o">.</span><span class="n">execute</span><span class="p">()</span>
+<span class="k">if</span> <span class="n">v</span> <span class="o">!=</span> <span class="s">&#39;pass&#39;</span><span class="p">:</span>
+  <span class="n">stop</span><span class="p">()</span>
+</pre></div>
+</div>
+<p>could be a way to stop an ATS when a particular test case fails (or more
+precisely - does not succeed), avoiding executing additional test cases
+whose outcomes would already be known since this basic test case failed.</p>
+</div>
+</div>
+</div>
+<div class="section" id="reference-testerman-api">
+<h1>Reference: Testerman API<a class="headerlink" href="#reference-testerman-api" title="Permalink to this headline">¶</a></h1>
+<p>This API may evolve, but its backward compatibility is guaranteed, so
+that your ATSes can still work in next Testerman versions.</p>
+<p>The whole API is made accessible directly in the ATS namespace. You
+should NOT import any Testerman modules in your ATS, as their names and
+contents may evolve without notice.</p>
+<div class="section" id="timer-objects">
+<h2>Timer Objects<a class="headerlink" href="#timer-objects" title="Permalink to this headline">¶</a></h2>
+<p>Constructor:</p>
+<div class="highlight-python"><div class="highlight"><pre><span class="n">Timer</span><span class="p">(</span><span class="n">duration</span> <span class="o">=</span> <span class="bp">None</span><span class="p">,</span> <span class="n">name</span> <span class="o">=</span> <span class="bp">None</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>Methods:</p>
+<div class="highlight-python"><div class="highlight"><pre><span class="n">start</span><span class="p">(</span><span class="n">duration</span> <span class="o">=</span> <span class="bp">None</span><span class="p">)</span>
+<span class="n">stop</span><span class="p">()</span>
+<span class="n">running</span><span class="p">()</span>
+<span class="n">timeout</span><span class="p">()</span>
+<span class="n">read</span><span class="p">()</span>
+</pre></div>
+</div>
+</div>
+<div class="section" id="testcomponent-objects">
+<h2>TestComponent Objects<a class="headerlink" href="#testcomponent-objects" title="Permalink to this headline">¶</a></h2>
+<p>Constructor: N/A (constructed from a testcase only)</p>
+<p>Methods (meaningless on MTC):</p>
+<div class="highlight-python"><div class="highlight"><pre><span class="n">alive</span><span class="p">()</span>
+<span class="n">running</span><span class="p">()</span>
+<span class="n">start</span><span class="p">(</span><span class="n">behaviour</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+<span class="n">stop</span><span class="p">()</span>
+<span class="n">kill</span><span class="p">()</span>
+<span class="n">done</span><span class="p">()</span>
+</pre></div>
+</div>
+<p>Members (meaningless on MTC):</p>
+<div class="highlight-python"><div class="highlight"><pre><span class="n">DONE</span>
+<span class="n">KILLED</span>
+</pre></div>
+</div>
+<p>Specials:</p>
+<div class="highlight-python"><div class="highlight"><pre><span class="n">get_item</span><span class="p">[</span><span class="n">name</span><span class="p">]</span> <span class="c"># provides a reference to a TC port - creates it dynamically if needed</span>
+</pre></div>
+</div>
+</div>
+<div class="section" id="port-objects">
+<h2>Port Objects<a class="headerlink" href="#port-objects" title="Permalink to this headline">¶</a></h2>
+<p>Constructor: N/A (constructed dynamically when calling
+<tt class="docutils literal"><span class="pre">tc['portname']</span></tt>)</p>
+<p>Methods:</p>
+<div class="highlight-python"><div class="highlight"><pre><span class="n">send</span><span class="p">(</span><span class="n">message</span><span class="p">,</span> <span class="n">to</span> <span class="o">=</span> <span class="bp">None</span><span class="p">)</span>
+<span class="n">receive</span><span class="p">(</span><span class="n">template</span> <span class="o">=</span> <span class="bp">None</span><span class="p">,</span> <span class="n">value</span> <span class="o">=</span> <span class="bp">None</span><span class="p">,</span> <span class="n">sender</span> <span class="o">=</span> <span class="bp">None</span><span class="p">,</span> <span class="n">from_</span> <span class="o">=</span> <span class="bp">None</span><span class="p">)</span>
+<span class="n">start</span><span class="p">()</span>
+<span class="n">stop</span><span class="p">()</span>
+<span class="n">clear</span><span class="p">()</span>
+<span class="n">RECEIVE</span><span class="p">(</span><span class="n">template</span> <span class="o">=</span> <span class="bp">None</span><span class="p">,</span> <span class="n">value</span> <span class="o">=</span> <span class="bp">None</span><span class="p">,</span> <span class="n">sender</span> <span class="o">=</span> <span class="bp">None</span><span class="p">,</span> <span class="n">from_</span> <span class="o">=</span> <span class="bp">None</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+<div class="section" id="behaviour-objects">
+<h2>Behaviour Objects<a class="headerlink" href="#behaviour-objects" title="Permalink to this headline">¶</a></h2>
+<p>Constructor:</p>
+<div class="highlight-python"><div class="highlight"><pre><span class="n">Behaviour</span><span class="p">()</span>
+</pre></div>
+</div>
+</div>
+<div class="section" id="testcase-objects">
+<h2>TestCase Objects<a class="headerlink" href="#testcase-objects" title="Permalink to this headline">¶</a></h2>
+<p>Constructor:</p>
+<div class="highlight-python"><div class="highlight"><pre><span class="n">TestCase</span><span class="p">(</span><span class="n">title</span> <span class="o">=</span> <span class="bp">None</span><span class="p">,</span> <span class="n">id_suffix</span> <span class="o">=</span> <span class="bp">None</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>Methods:</p>
+<div class="highlight-python"><div class="highlight"><pre><span class="n">set_description</span><span class="p">(</span><span class="n">description</span><span class="p">)</span>
+<span class="n">create</span><span class="p">(</span><span class="n">name</span> <span class="o">=</span> <span class="bp">None</span><span class="p">,</span> <span class="n">alive</span> <span class="o">=</span> <span class="bp">False</span><span class="p">)</span>
+<span class="n">execute</span><span class="p">(</span><span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+<span class="n">stop_testcase_on_failure</span><span class="p">(</span><span class="n">stop</span> <span class="o">=</span> <span class="bp">True</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+<div class="section" id="functions-callable-while-a-testcase-is-running">
+<h2>Functions Callable while a Testcase is Running<a class="headerlink" href="#functions-callable-while-a-testcase-is-running" title="Permalink to this headline">¶</a></h2>
+<p>Can be used anywhere (functions, altsteps, behaviour, testcases):</p>
+<div class="highlight-python"><div class="highlight"><pre><span class="n">stop</span><span class="p">()</span>
+<span class="n">log</span><span class="p">(</span><span class="n">msg</span><span class="p">)</span>
+<span class="n">getverdict</span><span class="p">(</span><span class="n">verdict</span><span class="p">)</span>
+<span class="n">alt</span><span class="p">(</span><span class="n">alternatives</span><span class="p">)</span>
+<span class="n">get_variable</span><span class="p">(</span><span class="n">name</span><span class="p">,</span> <span class="n">default_value</span> <span class="o">=</span> <span class="bp">None</span><span class="p">)</span>
+<span class="n">set_variable</span><span class="p">(</span><span class="n">name</span><span class="p">,</span> <span class="n">value</span><span class="p">)</span>
+<span class="n">value</span><span class="p">(</span><span class="n">name</span><span class="p">)</span>
+<span class="n">sender</span><span class="p">(</span><span class="n">name</span><span class="p">)</span>
+<span class="n">match</span><span class="p">(</span><span class="n">message</span><span class="p">,</span> <span class="n">template</span><span class="p">)</span>
+<span class="n">action</span><span class="p">(</span><span class="n">message</span><span class="p">,</span> <span class="n">timeout</span> <span class="o">=</span> <span class="mf">5.0</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>Should be used in behaviours and testcases only (avoid setting the local
+verdict from anywhere):</p>
+<div class="highlight-python"><div class="highlight"><pre><span class="n">setverdict</span><span class="p">(</span><span class="n">verdict</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>Should be used in testcases only (avoid dynamic test reconfiguration):</p>
+<div class="highlight-python"><div class="highlight"><pre><span class="n">connect</span><span class="p">(</span><span class="n">portA</span><span class="p">,</span> <span class="n">portB</span><span class="p">)</span>
+<span class="n">disconnect</span><span class="p">(</span><span class="n">portA</span><span class="p">,</span> <span class="n">portB</span><span class="p">)</span>
+<span class="n">port_map</span><span class="p">(</span><span class="n">port</span><span class="p">,</span> <span class="n">tsiPort</span><span class="p">)</span>
+<span class="n">port_unmap</span><span class="p">(</span><span class="n">port</span><span class="p">,</span> <span class="n">tsiPort</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>Default alternatives management:</p>
+<div class="highlight-python"><div class="highlight"><pre><span class="n">activate</span><span class="p">(</span><span class="n">altstep</span><span class="p">)</span>
+<span class="n">deactivate</span><span class="p">(</span><span class="n">id_</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>Templates matching mechanisms:</p>
+<div class="highlight-python"><div class="highlight"><pre><span class="n">greater_than</span><span class="p">(</span><span class="n">value</span><span class="p">)</span>
+<span class="n">lower_than</span><span class="p">(</span><span class="n">value</span><span class="p">)</span>
+<span class="n">between</span><span class="p">(</span><span class="n">a</span><span class="p">,</span> <span class="n">b</span><span class="p">)</span>
+<span class="nb">any</span><span class="p">()</span>
+<span class="n">any_or_none</span><span class="p">()</span>
+<span class="n">empty</span><span class="p">()</span>
+<span class="n">pattern</span><span class="p">(</span><span class="n">pattern</span><span class="p">)</span>
+<span class="n">omit</span><span class="p">()</span>
+<span class="n">ifpresent</span><span class="p">(</span><span class="n">template</span><span class="p">)</span>
+<span class="n">length</span><span class="p">(</span><span class="n">template</span><span class="p">)</span>
+<span class="n">superset</span><span class="p">(</span><span class="o">*</span><span class="n">templates</span><span class="p">)</span>
+<span class="n">subset</span><span class="p">(</span><span class="o">*</span><span class="n">templates</span><span class="p">)</span>
+<span class="n">complement</span><span class="p">(</span><span class="o">*</span><span class="n">templates</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>Selective message value extraction:</p>
+<div class="highlight-python"><div class="highlight"><pre><span class="n">extract</span><span class="p">(</span><span class="n">template</span><span class="p">,</span> <span class="n">value</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>Codec :</p>
+<div class="highlight-python"><div class="highlight"><pre><span class="n">with_</span><span class="p">(</span><span class="n">codec</span><span class="p">,</span> <span class="n">template</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+<div class="section" id="id1">
+<h2>Control Part<a class="headerlink" href="#id1" title="Permalink to this headline">¶</a></h2>
+<p>Functions:</p>
+<div class="highlight-python"><div class="highlight"><pre><span class="n">enable_debug_logs</span><span class="p">()</span>
+<span class="n">disable_debug_logs</span><span class="p">()</span>
+<span class="n">disable_logs</span><span class="p">()</span>
+<span class="n">enable_logs</span><span class="p">()</span>
+<span class="n">get_variable</span><span class="p">(</span><span class="n">name</span><span class="p">,</span> <span class="n">default_value</span> <span class="o">=</span> <span class="bp">None</span><span class="p">)</span>
+<span class="n">set_variable</span><span class="p">(</span><span class="n">name</span><span class="p">)</span>
+<span class="n">with_test_adapter_configuration</span><span class="p">(</span><span class="n">name</span><span class="p">)</span>
+<span class="n">bind</span><span class="p">(</span><span class="n">tsiPort</span><span class="p">,</span> <span class="n">uri</span><span class="p">,</span> <span class="n">type_</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+<span class="n">stop_ats_on_testcase_failure</span><span class="p">(</span><span class="n">stop</span> <span class="o">=</span> <span class="bp">True</span><span class="p">)</span>
+</pre></div>
+</div>
+<div class="section" id="testadapterconfiguration-objects">
+<h3>TestAdapterConfiguration Objects<a class="headerlink" href="#testadapterconfiguration-objects" title="Permalink to this headline">¶</a></h3>
+<p>Constructor:</p>
+<div class="highlight-python"><div class="highlight"><pre><span class="n">TestAdapterConfiguration</span><span class="p">(</span><span class="n">name</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>Methods:</p>
+<div class="highlight-python"><div class="highlight"><pre><span class="n">bind</span><span class="p">(</span><span class="n">tsiPort</span><span class="p">,</span> <span class="n">uri</span><span class="p">,</span> <span class="n">type_</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+</div>
+<div class="section" id="test-unrelated">
+<h2>Test-unrelated<a class="headerlink" href="#test-unrelated" title="Permalink to this headline">¶</a></h2>
+<p>Functions:</p>
+<div class="highlight-python"><div class="highlight"><pre><span class="n">octetstring</span><span class="p">(</span><span class="n">s</span><span class="p">)</span>
+</pre></div>
+</div>
+<div class="section" id="statemanager-objects">
+<h3>StateManager Objects<a class="headerlink" href="#statemanager-objects" title="Permalink to this headline">¶</a></h3>
+<p>Constructor:</p>
+<div class="highlight-python"><div class="highlight"><pre><span class="n">StateManager</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">state</span> <span class="o">=</span> <span class="bp">None</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>Methods:</p>
+<div class="highlight-python"><div class="highlight"><pre><span class="n">get</span><span class="p">()</span>
+<span class="nb">set</span><span class="p">(</span><span class="n">state</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+</div>
+</div>
+
+
+</div>
+<footer class="footer">
+  <div class="container">
+    <p class="pull-right">
+      <a href="#">Back to top</a>
+      
+    </p>
+    <p>
+        &copy; Copyright 2009-2013, Sébastien Lefèvre.<br/>
+      Created using <a href="http://sphinx.pocoo.org/">Sphinx</a> 1.1.3.<br/>
+    </p>
+  </div>
+</footer>
+  </body>
+</html>

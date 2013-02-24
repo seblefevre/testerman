@@ -1,0 +1,302 @@
+
+<!DOCTYPE html>
+
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>Testerman Overview &mdash; Testerman 1.4.0 documentation</title>
+    
+    <link rel="stylesheet" href="../_static/basic.css" type="text/css" />
+    <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
+    <link rel="stylesheet" href="../_static/css/bootstrap-2.2.1.min.css" type="text/css" />
+    <link rel="stylesheet" href="../_static/bootstrap-sphinx.css" type="text/css" />
+    <link rel="stylesheet" href="../_static/css/bootstrap-responsive-2.2.1.min.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '../',
+        VERSION:     '1.4.0',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true
+      };
+    </script>
+    <script type="text/javascript" src="../_static/jquery.js"></script>
+    <script type="text/javascript" src="../_static/underscore.js"></script>
+    <script type="text/javascript" src="../_static/doctools.js"></script>
+    <script type="text/javascript" src="../_static/js/bootstrap-2.2.1.min.js"></script>
+    <script type="text/javascript" src="../_static/bootstrap-sphinx.js"></script>
+    <link rel="top" title="Testerman 1.4.0 documentation" href="../index.html" />
+    <link rel="next" title="Quick Start" href="TestermanQuickStart.html" />
+    <link rel="prev" title="Getting Testerman" href="GetTesterman.html" />
+<meta charset='utf-8'>
+<meta http-equiv='X-UA-Compatible' content='IE=edge,chrome=1'>
+<meta name='viewport' content='width=device-width, initial-scale=1.0, maximum-scale=1'>
+<meta name="apple-mobile-web-app-capable" content="yes">
+
+  </head>
+  <body>
+<div class="container">
+  
+  <div id="navbar" class="navbar navbar-inverse navbar-fixed-top">
+    <div class="navbar-inner">
+      <!-- .btn-navbar is used as the toggle for collapsed navbar content -->
+      <button class="btn btn-navbar" data-toggle="collapse" data-target=".nav-collapse">
+        <span class="icon-bar"></span>
+        <span class="icon-bar"></span>
+        <span class="icon-bar"></span>
+      </button>
+
+      <a class="brand" href="../index.html">Testerman</a>
+      <span class="navbar-text pull-left"><b>1.4</b></span>
+
+      <div class="nav-collapse">
+        <ul class="nav">
+          <li class="divider-vertical"></li>
+          
+            <li class="dropdown">
+  <a href="../index.html" class="dropdown-toggle" data-toggle="dropdown">Site <b class="caret"></b></a>
+  <ul class="dropdown-menu globaltoc"><ul>
+<li class="toctree-l1"><a class="reference internal" href="About.html">Welcome to Testerman</a></li>
+<li class="toctree-l1"><a class="reference internal" href="About.html#about">About</a></li>
+<li class="toctree-l1"><a class="reference internal" href="About.html#contact">Contact</a></li>
+<li class="toctree-l1"><a class="reference internal" href="GetTesterman.html">Getting Testerman</a></li>
+</ul>
+<ul class="current">
+<li class="toctree-l1 current"><a class="current reference internal" href="">Testerman Overview</a></li>
+<li class="toctree-l1"><a class="reference internal" href="TestermanQuickStart.html">Quick Start</a></li>
+<li class="toctree-l1"><a class="reference internal" href="TestermanQuickStart.html#external-resources">External Resources</a></li>
+<li class="toctree-l1"><a class="reference internal" href="QTesterman.html">QTesterman</a></li>
+<li class="toctree-l1"><a class="reference internal" href="TestermanReferenceGuide.html">Testerman Reference Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="TestermanLanguageReference.html">General Concepts</a></li>
+<li class="toctree-l1"><a class="reference internal" href="TestermanLanguageReference.html#reference-testerman-api">Reference: Testerman API</a></li>
+<li class="toctree-l1"><a class="reference internal" href="BestPractices.html">Best Practices</a></li>
+</ul>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../plugins/index.html">Codecs and Probes Overview</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../plugins/index.html#codecs">Codecs</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../plugins/index.html#test-adapters-probes">Test Adapters (Probes)</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../plugins/index.html#codecs-and-probes-references">Codecs and Probes References</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../plugins/index.html#developing-new-codecs-and-probes">Developing New Codecs and Probes</a></li>
+</ul>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="TestermanAdministrationGuide.html">Testerman Administration Guide</a></li>
+</ul>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="TestermanInternals.html">Testerman Internals</a></li>
+</ul>
+</ul>
+</li>
+            <li class="dropdown">
+  <a href="#" class="dropdown-toggle" data-toggle="dropdown">Page <b class="caret"></b></a>
+  <ul class="dropdown-menu localtoc"><ul>
+<li><a class="reference internal" href="#">Testerman Overview</a><ul>
+<li><a class="reference internal" href="#testerman-infrastructure">Testerman Infrastructure</a><ul>
+<li><a class="reference internal" href="#clients">Clients</a></li>
+<li><a class="reference internal" href="#server-components">Server Components</a></li>
+<li><a class="reference internal" href="#test-executables">Test Executables</a></li>
+<li><a class="reference internal" href="#agents-probes">Agents &amp; Probes</a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#main-concepts">Main Concepts</a></li>
+</ul>
+</li>
+</ul>
+</ul>
+</li>
+          
+          
+            
+  <li><a href="GetTesterman.html"
+         title="previous chapter">&laquo; Getting Testerman</a></li>
+  <li><a href="TestermanQuickStart.html"
+         title="next chapter">Quick Start &raquo;</a></li>
+          
+          
+            <li>
+  <a href="../_sources/main/TestermanOverview.txt"
+     rel="nofollow">Source</a></li>
+          
+        </ul>
+
+        
+          
+<form class="navbar-search pull-right" style="margin-bottom:-3px;" action="../search.html" method="get">
+  <input type="text" name="q" placeholder="Search" />
+  <input type="hidden" name="check_keywords" value="yes" />
+  <input type="hidden" name="area" value="default" />
+</form>
+        
+      </div>
+    </div>
+  </div>
+
+  
+  <div class="section" id="testerman-overview">
+<h1>Testerman Overview<a class="headerlink" href="#testerman-overview" title="Permalink to this headline">¶</a></h1>
+<p>Testerman is a project that brings most of the powerful
+capabilities and concepts of TTCN-3 to the Python programming language,
+both providing a set of Python libraries and a complete, multi-user,
+distributed test execution environment.</p>
+<p>TTCN-3 is a test description language standardized by the ETSI as <a class="reference external" href="http://www.ttcn-3.org/StandardSuite.htm">ES
+201 873</a>. Testerman
+implements most language primitives described in its part 1
+(ES201-873-1: TTCN-3 Core Part) as Python functions, however it drops
+all the strict typing model of TTCN-3 and privileges the weak typing of
+Python, enabling to write test cases faster than in TTCN-3.</p>
+<p>Testerman is not meant to replace or to compete with such a growing
+supported standard. Instead, it tries to fill the gap between the
+existing, closed-source, expensive TTCN-3 tools on the market and the
+other testing tools that are dedicated to one family of protocols,
+forcing the users to develop glues to synchronize them together, and
+create additional scripts to test non-protocol things such as log files,
+database updates, etc.</p>
+<p>By using the same concepts as in TTCN-3, your time investment in
+Testerman can be fully reusable when migrating to the standard, if
+needed: the test logic implementation, objects and primitives remain the
+same, only the syntax changes.</p>
+<div class="section" id="testerman-infrastructure">
+<h2>Testerman Infrastructure<a class="headerlink" href="#testerman-infrastructure" title="Permalink to this headline">¶</a></h2>
+<p>Testerman has been designed to be multi-user (client-server) with a
+centralized test cases repository, adaptable to most SUT topologies and
+network constraints (distributed test/system adapters), and extensible
+(test/system adapters can be developed easily, in any language).</p>
+<img alt="../_images/architecture.png" class="align-center" src="../_images/architecture.png" />
+<div class="section" id="clients">
+<h3>Clients<a class="headerlink" href="#clients" title="Permalink to this headline">¶</a></h3>
+<p>Users interact with the system through a Testerman client. Any number of
+clients can connect to the same server, enabling to share the same ATS
+repository and the same technical resources (the agents, see below).
+Currently, the following clients are available:</p>
+<ul class="simple">
+<li>a command-line interface client, that can be used to call test suite
+executions from a shell script, a Makefile, or a continuous
+integration system</li>
+<li>a multi-platform, rich client named QTesterman providing an IDE to
+design, execute, control and analyze test suites</li>
+<li>a lightweigth web-based client, limited to running tests and
+get their results and logs. This client can be published as a front-end
+to your customers in a DMZ.</li>
+</ul>
+<p>CLI and rich client should be installed on the user&#8217;s workstation. However,
+developing a full fledged web-based client (with test designs and writing
+capabilities) is quite possible.</p>
+</div>
+<div class="section" id="server-components">
+<h3>Server Components<a class="headerlink" href="#server-components" title="Permalink to this headline">¶</a></h3>
+<p>The server is actually split into two components:</p>
+<ul class="simple">
+<li>The Testerman Server, which is a front-end to the clients,
+responsible for creating, running and controlling Test Executables
+(TE) from a source ATS written by the user. It is also able to push
+updates to the clients which implemented auto-updates, such as
+QTesterman.</li>
+<li>The Testerman Agent Controller Server (TACS), which is a backend
+process responsible for managing remote Agents and Probes so that TEs
+can use them when needed at runtime (see below). The TACS may be
+installed on another machine than the Testerman Server (and shared
+between multiple servers), but is typically colocated with it.</li>
+</ul>
+</div>
+<div class="section" id="test-executables">
+<h3>Test Executables<a class="headerlink" href="#test-executables" title="Permalink to this headline">¶</a></h3>
+<p>They are the result of a &#8220;compilation&#8221; of the ATS into something
+runnable by the operating system. In a real TTCN-3 execution system, the
+ATS, written in TTCN-3, would probably be transformed into Java or C++
+code before being compiled with a standard compiler, and linked to
+specific libraries according to the tool vendor. These libraries then
+enable the TE to access a Platform Adapter (PA) and System Adapters (SA)
+modules that implement actual, technical services such as timers,
+message encoders/decoders, and connections to the SUT (actual socket
+management, writing and reading on the wire, etc).</p>
+<p>In Testerman, the ATS, writing by the user in Python and calling
+Testerman-provided functions, is also transformed into a special Python
+program that embeds additional Testerman modules (the Python word for
+&#8220;libraries&#8221;) to provide an access to the Testerman environment
+functions. In particular, these libraries enable the TE to access the
+probes either hosted on a distant agent (&#8220;remote probes&#8221;) or run from
+the same location as the TE (&#8220;local probes&#8221;).</p>
+</div>
+<div class="section" id="agents-probes">
+<h3>Agents &amp; Probes<a class="headerlink" href="#agents-probes" title="Permalink to this headline">¶</a></h3>
+<p>A probe is the Testerman word for the implementation of what TTCN-3
+would call a Test Adapter (aka a System Adapter). This is the piece of
+software that can actually connects to a SUT (System Under Test) using
+different protocols (such as tcp, udp, sctp, or higher level ones: http,
+rtsp, Oracle, SOAP, XMLRPC, ...).</p>
+<p>Testerman provides a collection of probes to be able to interact with
+the SUT using most usual protocols but also to interact with it
+simulating user actions or anything needed to automate a test you can do
+manually. For instance, the probe whose type is <tt class="docutils literal"><span class="pre">watcher.file</span></tt> is able
+to monitor any (text) file on a system, and sends notifications when a
+new line matching some patterns was written to it. Some others enable
+you to simulate command line commands, as if you were opening a local
+shell on the machine and running some commands locally.</p>
+<p>Probes can be run by the TE itself, running on the Testerman Server and
+thus initiating or expecting network connections on the Testerman
+Server&#8217;s IP interfaces (which may not be possible in all SUT
+topologies), or can be run on any distant system. In this case, they
+need to be hosted on a Testerman Agent, responsible for managing the
+low-level communications with the Testerman Agent Controller Server
+(TACS).</p>
+<p>Agents must be deployed (i.e. installed and started) manually by the
+tester. However, once deployed, an agent may be used by any TE to deploy
+(dynamically) any number of probes on it, according to its defined Test
+Adapter Configuration.</p>
+<p>This Agent-oriented architecture enables to distribute probes anywhere
+in the network, either around the SUT or inside the SUT itself. This
+provides several benefits:</p>
+<ul class="simple">
+<li>You can stimulate the SUT from any IP address, not limited to the
+server&#8217;s ones. Useful to simulate SIP endpoints between multiple NAT
+gateways, test an Intrusion Detection System or any security rules,
+stimulate some interfaces that are only reachable from selected SUT
+subnets, etc.</li>
+<li>You may install an agent on the SUT machines themselves, even if they
+are behind a router disabling direct access to them (the agents
+tcp-connect to the TACS, so that you can NAT them), and then be able
+to execute commands on the SUT itself or observe events occurring
+inside the SUT only, such as log updates, file creations, child
+process creations or kills, etc. You are no longer limited to what
+the SUT exposes outside of it to interact with it.</li>
+<li>As a side effect, you may implement probes in any language, providing
+an agent exists for it - you are not stuck to Python and free to
+choose the best implementation language for your probe according to
+your likes, skills, or available libraries in the language (for
+instance, a SOAP probe using the .NET stack, a C++ based ISUP probe
+linked with HP OpenCall TDM modules, ...). If not using Python,
+however, your probes won&#8217;t be able to run locally with the TE and
+will require an agent to host them.</li>
+</ul>
+<p>For now, the main (and single) Testerman agent implementation available
+is written in Python (that&#8217;s why it is dubbed PyAgent) and can host any
+probes that can also be run locally by the TE, sharing the same plugin
+interface. This PyAgent can also be updated remotely from the
+TACS+Testerman Server, making Testerman administrator&#8217;s and user&#8217;s lives
+easier when new updates are available.</p>
+</div>
+</div>
+<div class="section" id="main-concepts">
+<h2>Main Concepts<a class="headerlink" href="#main-concepts" title="Permalink to this headline">¶</a></h2>
+<p>...</p>
+</div>
+</div>
+
+
+</div>
+<footer class="footer">
+  <div class="container">
+    <p class="pull-right">
+      <a href="#">Back to top</a>
+      
+    </p>
+    <p>
+        &copy; Copyright 2009-2013, Sébastien Lefèvre.<br/>
+      Created using <a href="http://sphinx.pocoo.org/">Sphinx</a> 1.1.3.<br/>
+    </p>
+  </div>
+</footer>
+  </body>
+</html>

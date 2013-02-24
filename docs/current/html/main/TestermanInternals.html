@@ -1,0 +1,508 @@
+
+<!DOCTYPE html>
+
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>Testerman Internals &mdash; Testerman 1.4.0 documentation</title>
+    
+    <link rel="stylesheet" href="../_static/basic.css" type="text/css" />
+    <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
+    <link rel="stylesheet" href="../_static/css/bootstrap-2.2.1.min.css" type="text/css" />
+    <link rel="stylesheet" href="../_static/bootstrap-sphinx.css" type="text/css" />
+    <link rel="stylesheet" href="../_static/css/bootstrap-responsive-2.2.1.min.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '../',
+        VERSION:     '1.4.0',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true
+      };
+    </script>
+    <script type="text/javascript" src="../_static/jquery.js"></script>
+    <script type="text/javascript" src="../_static/underscore.js"></script>
+    <script type="text/javascript" src="../_static/doctools.js"></script>
+    <script type="text/javascript" src="../_static/js/bootstrap-2.2.1.min.js"></script>
+    <script type="text/javascript" src="../_static/bootstrap-sphinx.js"></script>
+    <link rel="top" title="Testerman 1.4.0 documentation" href="../index.html" />
+    <link rel="prev" title="Testerman Administration Guide" href="TestermanAdministrationGuide.html" />
+<meta charset='utf-8'>
+<meta http-equiv='X-UA-Compatible' content='IE=edge,chrome=1'>
+<meta name='viewport' content='width=device-width, initial-scale=1.0, maximum-scale=1'>
+<meta name="apple-mobile-web-app-capable" content="yes">
+
+  </head>
+  <body>
+<div class="container">
+  
+  <div id="navbar" class="navbar navbar-inverse navbar-fixed-top">
+    <div class="navbar-inner">
+      <!-- .btn-navbar is used as the toggle for collapsed navbar content -->
+      <button class="btn btn-navbar" data-toggle="collapse" data-target=".nav-collapse">
+        <span class="icon-bar"></span>
+        <span class="icon-bar"></span>
+        <span class="icon-bar"></span>
+      </button>
+
+      <a class="brand" href="../index.html">Testerman</a>
+      <span class="navbar-text pull-left"><b>1.4</b></span>
+
+      <div class="nav-collapse">
+        <ul class="nav">
+          <li class="divider-vertical"></li>
+          
+            <li class="dropdown">
+  <a href="../index.html" class="dropdown-toggle" data-toggle="dropdown">Site <b class="caret"></b></a>
+  <ul class="dropdown-menu globaltoc"><ul>
+<li class="toctree-l1"><a class="reference internal" href="About.html">Welcome to Testerman</a></li>
+<li class="toctree-l1"><a class="reference internal" href="About.html#about">About</a></li>
+<li class="toctree-l1"><a class="reference internal" href="About.html#contact">Contact</a></li>
+<li class="toctree-l1"><a class="reference internal" href="GetTesterman.html">Getting Testerman</a></li>
+</ul>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="TestermanOverview.html">Testerman Overview</a></li>
+<li class="toctree-l1"><a class="reference internal" href="TestermanQuickStart.html">Quick Start</a></li>
+<li class="toctree-l1"><a class="reference internal" href="TestermanQuickStart.html#external-resources">External Resources</a></li>
+<li class="toctree-l1"><a class="reference internal" href="QTesterman.html">QTesterman</a></li>
+<li class="toctree-l1"><a class="reference internal" href="TestermanReferenceGuide.html">Testerman Reference Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="TestermanLanguageReference.html">General Concepts</a></li>
+<li class="toctree-l1"><a class="reference internal" href="TestermanLanguageReference.html#reference-testerman-api">Reference: Testerman API</a></li>
+<li class="toctree-l1"><a class="reference internal" href="BestPractices.html">Best Practices</a></li>
+</ul>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../plugins/index.html">Codecs and Probes Overview</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../plugins/index.html#codecs">Codecs</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../plugins/index.html#test-adapters-probes">Test Adapters (Probes)</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../plugins/index.html#codecs-and-probes-references">Codecs and Probes References</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../plugins/index.html#developing-new-codecs-and-probes">Developing New Codecs and Probes</a></li>
+</ul>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="TestermanAdministrationGuide.html">Testerman Administration Guide</a></li>
+</ul>
+<ul class="current">
+<li class="toctree-l1 current"><a class="current reference internal" href="">Testerman Internals</a></li>
+</ul>
+</ul>
+</li>
+            <li class="dropdown">
+  <a href="#" class="dropdown-toggle" data-toggle="dropdown">Page <b class="caret"></b></a>
+  <ul class="dropdown-menu localtoc"><ul>
+<li><a class="reference internal" href="#">Testerman Internals</a><ul>
+<li><a class="reference internal" href="#source-tree-organization">Source Tree Organization</a><ul>
+<li><a class="reference internal" href="#core-files">Core Files</a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#sequence-diagrams">Sequence Diagrams</a><ul>
+<li><a class="reference internal" href="#starting-a-job-with-event-subscriptions">Starting a Job with Event Subscriptions</a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#testerman-internal-protocol">Testerman Internal Protocol</a><ul>
+<li><a class="reference internal" href="#message-format">Message Format</a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#testerman-log-format">Testerman Log Format</a></li>
+<li><a class="reference internal" href="#ws-interface">Ws Interface</a></li>
+</ul>
+</li>
+</ul>
+</ul>
+</li>
+          
+          
+            
+  <li><a href="TestermanAdministrationGuide.html"
+         title="previous chapter">&laquo; Testerman Administration Guide</a></li>
+          
+          
+            <li>
+  <a href="../_sources/main/TestermanInternals.txt"
+     rel="nofollow">Source</a></li>
+          
+        </ul>
+
+        
+          
+<form class="navbar-search pull-right" style="margin-bottom:-3px;" action="../search.html" method="get">
+  <input type="text" name="q" placeholder="Search" />
+  <input type="hidden" name="check_keywords" value="yes" />
+  <input type="hidden" name="area" value="default" />
+</form>
+        
+      </div>
+    </div>
+  </div>
+
+  
+  <div class="section" id="testerman-internals">
+<h1>Testerman Internals<a class="headerlink" href="#testerman-internals" title="Permalink to this headline">¶</a></h1>
+<p>This document provide some entry points if you want
+to contribute to the Testerman code.</p>
+<div class="section" id="source-tree-organization">
+<h2>Source Tree Organization<a class="headerlink" href="#source-tree-organization" title="Permalink to this headline">¶</a></h2>
+<p>The source tree contains the following folders:</p>
+<ul class="simple">
+<li><tt class="docutils literal"><span class="pre">cliclient/</span></tt>: the testerman command line client, useful to
+integrate tests execution from a Makefile or a continuous integration
+system</li>
+<li><tt class="docutils literal"><span class="pre">core/</span></tt>: the core modules and binaries: the Testerman Server,
+the TACS, and all TTCN-3 related librairies used to create the TE</li>
+<li><tt class="docutils literal"><span class="pre">common/</span></tt>: common modules used to create a Testerman Node
+(messages format, testerman protocol handling, etc), including a
+Testerman client</li>
+<li><tt class="docutils literal"><span class="pre">docs/</span></tt>: sphinx-based documentation. This contains this document
+as well as most of the online documentation, managed along the
+source code to maintain consistency. A part of this documentation
+is autogenerated from the plugins (codecs and probes) sources.</li>
+<li><tt class="docutils literal"><span class="pre">plugins/probes/</span></tt>: shared probes implementations, as plugins,
+both usable by a TE (as a local probe) or by a pyagent (as a remote
+probe)</li>
+<li><tt class="docutils literal"><span class="pre">plugins/codecs/</span></tt>: shared codecs implementations, as plugins,
+usable by any shared probes or any ATS</li>
+<li><tt class="docutils literal"><span class="pre">pyagent/</span></tt>: a python-based agent implementation, able to use
+the shared probes above</li>
+<li><tt class="docutils literal"><span class="pre">qtesterman/</span></tt>: the QTesterman rich client, in python + PyQt4</li>
+<li><tt class="docutils literal"><span class="pre">samples/</span></tt>: default samples ATSes and campaigns, to copy to the
+<tt class="docutils literal"><span class="pre">$docroot/repository/samples/</span></tt> during a nominal server installation.
+They should be maintained as carefully as the other files.</li>
+<li><tt class="docutils literal"><span class="pre">docs/</span></tt>: the whole project documentation, based on Sphinx, in
+reStructuredText (rst) format. Also includes some tools to extract
+probe and plugins documentation from their code.</li>
+</ul>
+<p>Notice the source tree is not exactly the same as the server&#8217;s runtime
+tree (cf TestermanAdministrationGuide), even if you should be able to
+run the different components directly from it during their development.</p>
+<div class="section" id="core-files">
+<h3>Core Files<a class="headerlink" href="#core-files" title="Permalink to this headline">¶</a></h3>
+<p>The <tt class="docutils literal"><span class="pre">core/</span></tt> folder contains:</p>
+<ul class="simple">
+<li><tt class="docutils literal"><span class="pre">backends/</span></tt>: FileSystemBackend implementations, as plugins.</li>
+<li><tt class="docutils literal"><span class="pre">CodecManager</span></tt>: main file for codec plugins: contains codec
+plugins interfaces, base classes, factories, and registration
+facilities. This module is adapted by <tt class="docutils literal"><span class="pre">TestermanCD</span></tt> when used by an
+ATS/TE, or by <tt class="docutils literal"><span class="pre">PyTestermanAgent</span></tt> when used from the pyagent.</li>
+<li><tt class="docutils literal"><span class="pre">ConfigManager</span></tt>: server config, as singleton. One instance used
+by the Testerman Server process, another one for the TACS.</li>
+<li><tt class="docutils literal"><span class="pre">CounterManager</span></tt>: for future usage. Will maintain statistics
+counters to expose through Ws, and maybe through SNMP one day.</li>
+<li><tt class="docutils literal"><span class="pre">EventManager</span></tt>: server-side Xc stub, server-side Il stub.</li>
+<li><tt class="docutils literal"><span class="pre">FileSystemBackendManager</span></tt>: main backend dispatcher, according
+to registered backend plugins.</li>
+<li><tt class="docutils literal"><span class="pre">FileSystemBackend</span></tt>: base class for backend plugins
+implementation.</li>
+<li><tt class="docutils literal"><span class="pre">FileSystemManager</span></tt>: the main entry point to any read/write
+access to the repository. Transforms Ws-like file path to something
+lower level, and calls the correct backend to manage these files.</li>
+<li><tt class="docutils literal"><span class="pre">JobManager</span></tt>: the main job queue and job state manager.</li>
+<li><tt class="docutils literal"><span class="pre">ProbeImplementationManager</span></tt>: main file for probe
+implementation plugins: contains probe implementation plugins
+interfaces, base classes, factories, and registration facilities.
+This module is adapted by <tt class="docutils literal"><span class="pre">TestermanSA</span></tt> when used by an ATS/TE (to
+create local probes), or by <tt class="docutils literal"><span class="pre">PyTestermanAgent</span></tt> when used from the
+pyagent (to create remote probes).</li>
+<li><tt class="docutils literal"><span class="pre">ProbeManager</span></tt>: the server-side module responsible for probe
+management functions, using the TACC (server-side Ia client).</li>
+<li><tt class="docutils literal"><span class="pre">SimpleXMLRPCServer</span></tt>: fixed XML-RPC server, for Python &lt; 2.4.</li>
+<li><tt class="docutils literal"><span class="pre">TEFactory</span></tt>: the TE creator, called from the job manager. One
+day, maybe, we&#8217;ll implement a TE factory taking a real TTCN-3 script
+as input.</li>
+<li><tt class="docutils literal"><span class="pre">TestermanAgentControllerClient</span></tt> (or TACC for short): the
+client stub to access the TACS. Used by the TEs, but also by the
+server itself to get an access to the TACS for agent/probe management
+purposes. Client-side Ia client stub.</li>
+<li><tt class="docutils literal"><span class="pre">TestermanAgentControllerServer</span></tt>: the TACS process. Server-side
+Ia server, server-side Xa server, and TACS business logic.</li>
+<li><tt class="docutils literal"><span class="pre">TestermanCD</span></tt>: Codec management part. Manages codecs as
+plugins, and interfaces them when the TTCN3 adaptation module needs
+to call them.</li>
+<li><tt class="docutils literal"><span class="pre">TestermanPA</span></tt>: Platform adapter part: through a TRI-like
+interface, implements a timer library.</li>
+<li><tt class="docutils literal"><span class="pre">TestermanSA</span></tt>: SUT Adapter part: through a TRI-like interface,
+interfaces the probes (via TACC) for the mapped test system interface
+ports. Also provides super classes to create local probes and remote
+probe stubs as plugins.</li>
+<li><tt class="docutils literal"><span class="pre">TestermanServer</span></tt>: the server&#8217;s main module. Initializes
+everything, starts the different components of the server.</li>
+<li><tt class="docutils literal"><span class="pre">TestermanTCI</span></tt>: logging facilities for the TE. Partially
+implements the TCI TTCN-3 interface, in particular the TLI subset
+(Test Logging Interface). Generates log events sent to the TL module
+implemented by EventManager. Client-side Il stub.</li>
+<li><tt class="docutils literal"><span class="pre">TestermanTTCN3</span></tt>: the main TTCN-3 adaptation module, providing
+TTCN-3 features to ATSes. It relies on Testerman{TCI,CD,SA,PA} to
+implement them, though TLI- and TRI-like interfaces.</li>
+<li><tt class="docutils literal"><span class="pre">Tools</span></tt>: some low level tools.</li>
+<li><tt class="docutils literal"><span class="pre">Versions</span></tt>: interfaces and implementations versions.</li>
+<li><tt class="docutils literal"><span class="pre">WebServices</span></tt>: the functions of this module are exposed as
+being part of the WsInterface API.</li>
+</ul>
+</div>
+</div>
+<div class="section" id="sequence-diagrams">
+<h2>Sequence Diagrams<a class="headerlink" href="#sequence-diagrams" title="Permalink to this headline">¶</a></h2>
+<p>These sequence diagrams are limited to remote interactions; they do not
+detail every internal calls within a module.</p>
+<div class="section" id="starting-a-job-with-event-subscriptions">
+<h3>Starting a Job with Event Subscriptions<a class="headerlink" href="#starting-a-job-with-event-subscriptions" title="Permalink to this headline">¶</a></h3>
+<p>(including job states till its completion)</p>
+</div>
+</div>
+<div class="section" id="testerman-internal-protocol">
+<h2>Testerman Internal Protocol<a class="headerlink" href="#testerman-internal-protocol" title="Permalink to this headline">¶</a></h2>
+<p>Most internal interfaces in Testerman, including Xa, uses the same kind
+of protocol and in particular encodes messages the same way.</p>
+<div class="section" id="message-format">
+<h3>Message Format<a class="headerlink" href="#message-format" title="Permalink to this headline">¶</a></h3>
+<p>They are text-based, human-readable messages heavily inspired by
+HTTP-like protocols:</p>
+<div class="highlight-python"><pre>METHOD testerman:probe@agent XA/1.0
+Type: request
+Seq: 1
+Content-Type: application/json
+
+...body...</pre>
+</div>
+<p>Messages are \x00 separated, thus not read based on a content-length.
+As a consequence, you should make sure that \x00 is never transmitted
+as a part of your message. Some classes, such the one as provided by
+source:trunk/common/TestermanNodes.py and
+source:trunk/common/TestermanMessages.py make you sure to use preferred
+methods to encode payloads (using JSON or python pickle) so that the
+problem does not happen.</p>
+<p>The following headers are mandatory:</p>
+<ul class="simple">
+<li>Type: &#8220;request&#8221; or &#8220;notify&#8221;</li>
+<li>Seq: an integer, should be unique (in the system ?)</li>
+<li>Content-Type: indicates what the body deals with.</li>
+</ul>
+<p>Response format:</p>
+<div class="highlight-python"><pre>XA/1.0 200 OK
+Seq: 1
+Content-Type: application/json
+
+...body...</pre>
+</div>
+<p>Just like HTTP (for instance). Notice the Seq header that must match the
+request&#8217;s one.</p>
+<p>The message line separator is a single \n (and not a \r\n).</p>
+</div>
+</div>
+<div class="section" id="testerman-log-format">
+<h2>Testerman Log Format<a class="headerlink" href="#testerman-log-format" title="Permalink to this headline">¶</a></h2>
+<p>Testerman logs, as generated by the server, are formatted as XML file.</p>
+<p>However, they do not use the full feature of the description language,
+in particular they are not structured, and only consist in a series of
+basic &#8220;events&#8221;, where each event is mapped to a particular XML element
+(this is mostly due to the fact that real-time logs send these elements,
+so that the analyzer code for real-time or offline log parsing can be
+the same).</p>
+<p>The following events are managed:</p>
+<table border="1" class="docutils">
+<colgroup>
+<col width="34%" />
+<col width="11%" />
+<col width="19%" />
+<col width="29%" />
+<col width="6%" />
+</colgroup>
+<thead valign="bottom">
+<tr class="row-odd"><th class="head">event</th>
+<th class="head">element</th>
+<th class="head">attributes</th>
+<th class="head">sub-elements</th>
+<th class="head">class</th>
+</tr>
+</thead>
+<tbody valign="top">
+<tr class="row-even"><td>User log</td>
+<td>user</td>
+<td>tc (optional)</td>
+<td>CDATA</td>
+<td>user</td>
+</tr>
+<tr class="row-odd"><td>Internal log (for debug)</td>
+<td>internal</td>
+<td>&nbsp;</td>
+<td>CDATA</td>
+<td>internal</td>
+</tr>
+<tr class="row-even"><td>Message sent between two test component ports</td>
+<td>message-sent</td>
+<td>from-tc, from-port, to-tc, to-port</td>
+<td>message</td>
+<td>event</td>
+</tr>
+<tr class="row-odd"><td>Test Case created</td>
+<td>testcase-started</td>
+<td>id</td>
+<td>&nbsp;</td>
+<td>event</td>
+</tr>
+<tr class="row-even"><td>Test Case started</td>
+<td>testcase-started</td>
+<td>id</td>
+<td>CDATA (title)</td>
+<td>event</td>
+</tr>
+<tr class="row-odd"><td>Test Case stopped</td>
+<td>testcase-stopped</td>
+<td>id, verdict</td>
+<td>CDATA (description, as it can be modified on runtime)</td>
+<td>event</td>
+</tr>
+<tr class="row-even"><td>Timer started</td>
+<td>timer-created</td>
+<td>id, tc, duration</td>
+<td>&nbsp;</td>
+<td>event</td>
+</tr>
+<tr class="row-odd"><td>Timer stopped</td>
+<td>timer-stopped</td>
+<td>id, tc, running-time (float, in s)</td>
+<td>&nbsp;</td>
+<td>event</td>
+</tr>
+<tr class="row-even"><td>Timer expiry</td>
+<td>timer-expiry</td>
+<td>id, tc</td>
+<td>&nbsp;</td>
+<td>event</td>
+</tr>
+<tr class="row-odd"><td>Test Component created</td>
+<td>tc-created</td>
+<td>id</td>
+<td>&nbsp;</td>
+<td>event</td>
+</tr>
+<tr class="row-even"><td>Test Component started</td>
+<td>tc-started</td>
+<td>id, behavior (id as string)</td>
+<td>&nbsp;</td>
+<td>event</td>
+</tr>
+<tr class="row-odd"><td>Test Component stopped</td>
+<td>tc-stopped</td>
+<td>id, verdict</td>
+<td>&nbsp;</td>
+<td>event</td>
+</tr>
+<tr class="row-even"><td>Test Component killed</td>
+<td>tc-killed</td>
+<td>id</td>
+<td>&nbsp;</td>
+<td>event</td>
+</tr>
+<tr class="row-odd"><td>Verdict updated</td>
+<td>verdict-updated</td>
+<td>tc, verdict</td>
+<td>&nbsp;</td>
+<td>event</td>
+</tr>
+<tr class="row-even"><td>Template match</td>
+<td>template-match</td>
+<td>tc, port</td>
+<td>message, template</td>
+<td>event</td>
+</tr>
+<tr class="row-odd"><td>Template mismatch</td>
+<td>template-mismatch</td>
+<td>tc, port</td>
+<td>message, template</td>
+<td>event</td>
+</tr>
+<tr class="row-even"><td>Timeout branch selected</td>
+<td>timeout-branch</td>
+<td>id (the timer id)</td>
+<td>&nbsp;</td>
+<td>event</td>
+</tr>
+<tr class="row-odd"><td>Done branch selected</td>
+<td>done-branch</td>
+<td>id (the tc id)</td>
+<td>&nbsp;</td>
+<td>event</td>
+</tr>
+<tr class="row-even"><td>Killed branch selected</td>
+<td>killed-branch</td>
+<td>id (the tc id)</td>
+<td>&nbsp;</td>
+<td>event</td>
+</tr>
+<tr class="row-odd"><td>Message sent to the SUT (i.e. completely encoded payload)</td>
+<td>system-sent</td>
+<td>tsi-port</td>
+<td>label (string), payload (string)</td>
+<td>system</td>
+</tr>
+<tr class="row-even"><td>Message received from the SUT (i.e. completely encoded payload)</td>
+<td>system-received</td>
+<td>tsi-port</td>
+<td>label (string), payload (string)</td>
+<td>system</td>
+</tr>
+</tbody>
+</table>
+<p>Additionally, all elements have a timestamp element, indicating the time
+of the event as a float unix timestamp, in s.</p>
+<p><tt class="docutils literal"><span class="pre">&lt;message&gt;</span></tt> and <tt class="docutils literal"><span class="pre">&lt;template&gt;</span></tt> sub-elements are encoded as the XML
+representation of any valid Testerman message structure:</p>
+<ul class="simple">
+<li>tuples <tt class="docutils literal"><span class="pre">(a,</span> <span class="pre">b)</span></tt>, corresponding to a TTCN-3 <tt class="docutils literal"><span class="pre">union</span></tt>, are encoded
+as an element:</li>
+</ul>
+<div class="highlight-xml"><div class="highlight"><pre><span class="nt">&lt;c</span> <span class="na">name=</span><span class="s">&quot;a&quot;</span><span class="nt">&gt;</span>b&#39;<span class="nt">&lt;/c&gt;</span>
+</pre></div>
+</div>
+<p>where <tt class="docutils literal"><span class="pre">b'</span></tt> is the XML serialization of <tt class="docutils literal"><span class="pre">b</span></tt> (the tag <tt class="docutils literal"><span class="pre">c</span></tt> is a
+shortcut for <tt class="docutils literal"><span class="pre">choice</span></tt>).</p>
+<ul class="simple">
+<li>dict <tt class="docutils literal"><span class="pre">{a:</span> <span class="pre">b,</span> <span class="pre">c:</span> <span class="pre">d}</span></tt>, corresponding to a TTCN-3 <tt class="docutils literal"><span class="pre">record</span></tt>, are
+encoded as an element:</li>
+</ul>
+<div class="highlight-xml"><div class="highlight"><pre><span class="nt">&lt;r&gt;</span>
+  <span class="nt">&lt;f</span> <span class="na">name=</span><span class="s">&quot;a&quot;</span><span class="nt">&gt;</span>b&#39;<span class="nt">&lt;/f&gt;</span>
+  <span class="nt">&lt;f</span> <span class="na">name=</span><span class="s">&quot;c&quot;</span><span class="nt">&gt;</span>d&#39;<span class="nt">&lt;/f&gt;</span>
+<span class="nt">&lt;/r&gt;</span>
+</pre></div>
+</div>
+<p>where <tt class="docutils literal"><span class="pre">b'</span></tt>, <tt class="docutils literal"><span class="pre">c'</span></tt> are the XML serializations of <tt class="docutils literal"><span class="pre">b</span></tt>, <tt class="docutils literal"><span class="pre">c</span></tt> (the tag
+<tt class="docutils literal"><span class="pre">f</span></tt> is a shortcut for <tt class="docutils literal"><span class="pre">field</span></tt>, <tt class="docutils literal"><span class="pre">r</span></tt> is a shortcut for <tt class="docutils literal"><span class="pre">record</span></tt>).</p>
+<ul class="simple">
+<li>lists <tt class="docutils literal"><span class="pre">[</span> <span class="pre">a,</span> <span class="pre">b,</span> <span class="pre">...]</span></tt>, corresponding to a TTCN-3 <tt class="docutils literal"><span class="pre">record</span> <span class="pre">of</span></tt>, are
+encoded as an element:</li>
+</ul>
+<div class="highlight-xml"><div class="highlight"><pre><span class="nt">&lt;l&gt;</span>
+  <span class="nt">&lt;i&gt;</span>a&#39;<span class="nt">&lt;/i&gt;</span>
+  <span class="nt">&lt;i&gt;</span>b&#39;<span class="nt">&lt;/i&gt;</span>
+<span class="nt">&lt;/l&gt;</span>
+</pre></div>
+</div>
+<p>where <tt class="docutils literal"><span class="pre">a'</span></tt>, <tt class="docutils literal"><span class="pre">b'</span></tt> are the XML serializations of <tt class="docutils literal"><span class="pre">a</span></tt>, <tt class="docutils literal"><span class="pre">b</span></tt> (the tag
+<tt class="docutils literal"><span class="pre">l</span></tt> is a shortcut for <tt class="docutils literal"><span class="pre">list</span></tt>, <tt class="docutils literal"><span class="pre">i</span></tt> is a shortcut for <tt class="docutils literal"><span class="pre">item</span></tt>).</p>
+</div>
+<div class="section" id="ws-interface">
+<h2>Ws Interface<a class="headerlink" href="#ws-interface" title="Permalink to this headline">¶</a></h2>
+<p>For now, you can directly browse the [source:/trunk/core/WebServices.py
+WebServices] file that contains, normally, all the required
+documentation for the Ws interface.</p>
+</div>
+</div>
+
+
+</div>
+<footer class="footer">
+  <div class="container">
+    <p class="pull-right">
+      <a href="#">Back to top</a>
+      
+    </p>
+    <p>
+        &copy; Copyright 2009-2013, Sébastien Lefèvre.<br/>
+      Created using <a href="http://sphinx.pocoo.org/">Sphinx</a> 1.1.3.<br/>
+    </p>
+  </div>
+</footer>
+  </body>
+</html>

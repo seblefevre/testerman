@@ -1,0 +1,279 @@
+
+<!DOCTYPE html>
+
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>Oracle Probe &mdash; Testerman 1.4.0 documentation</title>
+    
+    <link rel="stylesheet" href="../../_static/basic.css" type="text/css" />
+    <link rel="stylesheet" href="../../_static/pygments.css" type="text/css" />
+    <link rel="stylesheet" href="../../_static/css/bootstrap-2.2.1.min.css" type="text/css" />
+    <link rel="stylesheet" href="../../_static/bootstrap-sphinx.css" type="text/css" />
+    <link rel="stylesheet" href="../../_static/css/bootstrap-responsive-2.2.1.min.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '../../',
+        VERSION:     '1.4.0',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true
+      };
+    </script>
+    <script type="text/javascript" src="../../_static/jquery.js"></script>
+    <script type="text/javascript" src="../../_static/underscore.js"></script>
+    <script type="text/javascript" src="../../_static/doctools.js"></script>
+    <script type="text/javascript" src="../../_static/js/bootstrap-2.2.1.min.js"></script>
+    <script type="text/javascript" src="../../_static/bootstrap-sphinx.js"></script>
+    <link rel="top" title="Testerman 1.4.0 documentation" href="../../index.html" />
+    <link rel="up" title="&lt;no title&gt;" href="toc.html" />
+    <link rel="next" title="MySQL Probe" href="ProbeSqlMysql.html" />
+    <link rel="prev" title="LDAP Probe" href="ProbeLdapClient.html" />
+<meta charset='utf-8'>
+<meta http-equiv='X-UA-Compatible' content='IE=edge,chrome=1'>
+<meta name='viewport' content='width=device-width, initial-scale=1.0, maximum-scale=1'>
+<meta name="apple-mobile-web-app-capable" content="yes">
+
+  </head>
+  <body>
+<div class="container">
+  
+  <div id="navbar" class="navbar navbar-inverse navbar-fixed-top">
+    <div class="navbar-inner">
+      <!-- .btn-navbar is used as the toggle for collapsed navbar content -->
+      <button class="btn btn-navbar" data-toggle="collapse" data-target=".nav-collapse">
+        <span class="icon-bar"></span>
+        <span class="icon-bar"></span>
+        <span class="icon-bar"></span>
+      </button>
+
+      <a class="brand" href="../../index.html">Testerman</a>
+      <span class="navbar-text pull-left"><b>1.4</b></span>
+
+      <div class="nav-collapse">
+        <ul class="nav">
+          <li class="divider-vertical"></li>
+          
+            <li class="dropdown">
+  <a href="../../index.html" class="dropdown-toggle" data-toggle="dropdown">Site <b class="caret"></b></a>
+  <ul class="dropdown-menu globaltoc"><ul>
+<li class="toctree-l1"><a class="reference internal" href="../../main/About.html">Welcome to Testerman</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../main/About.html#about">About</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../main/About.html#contact">Contact</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../main/GetTesterman.html">Getting Testerman</a></li>
+</ul>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../main/TestermanOverview.html">Testerman Overview</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../main/TestermanQuickStart.html">Quick Start</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../main/TestermanQuickStart.html#external-resources">External Resources</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../main/QTesterman.html">QTesterman</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../main/TestermanReferenceGuide.html">Testerman Reference Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../main/TestermanLanguageReference.html">General Concepts</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../main/TestermanLanguageReference.html#reference-testerman-api">Reference: Testerman API</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../main/BestPractices.html">Best Practices</a></li>
+</ul>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../index.html">Codecs and Probes Overview</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../index.html#codecs">Codecs</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../index.html#test-adapters-probes">Test Adapters (Probes)</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../index.html#codecs-and-probes-references">Codecs and Probes References</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../index.html#developing-new-codecs-and-probes">Developing New Codecs and Probes</a></li>
+</ul>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../main/TestermanAdministrationGuide.html">Testerman Administration Guide</a></li>
+</ul>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../main/TestermanInternals.html">Testerman Internals</a></li>
+</ul>
+</ul>
+</li>
+            <li class="dropdown">
+  <a href="#" class="dropdown-toggle" data-toggle="dropdown">Page <b class="caret"></b></a>
+  <ul class="dropdown-menu localtoc"><ul>
+<li><a class="reference internal" href="#">Oracle Probe</a><ul>
+<li><a class="reference internal" href="#overview">Overview</a><ul>
+<li><a class="reference internal" href="#availability">Availability</a></li>
+<li><a class="reference internal" href="#dependencies">Dependencies</a></li>
+<li><a class="reference internal" href="#see-also">See Also</a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#ttcn-3-types-equivalence">TTCN-3 Types Equivalence</a></li>
+</ul>
+</li>
+</ul>
+</ul>
+</li>
+          
+          
+            
+  <li><a href="ProbeLdapClient.html"
+         title="previous chapter">&laquo; LDAP Probe</a></li>
+  <li><a href="ProbeSqlMysql.html"
+         title="next chapter">MySQL Probe &raquo;</a></li>
+          
+          
+            <li>
+  <a href="../../_sources/plugins/autogen/ProbeSqlOracle.txt"
+     rel="nofollow">Source</a></li>
+          
+        </ul>
+
+        
+          
+<form class="navbar-search pull-right" style="margin-bottom:-3px;" action="../../search.html" method="get">
+  <input type="text" name="q" placeholder="Search" />
+  <input type="hidden" name="check_keywords" value="yes" />
+  <input type="hidden" name="area" value="default" />
+</form>
+        
+      </div>
+    </div>
+  </div>
+
+  
+  <div class="section" id="oracle-probe">
+<h1>Oracle Probe<a class="headerlink" href="#oracle-probe" title="Permalink to this headline">¶</a></h1>
+<p>Oracle Database client.</p>
+<p>= Identification and Properties =</p>
+<p>Probe Type ID: <tt class="docutils literal"><span class="pre">sql.oracle</span></tt></p>
+<p>Properties:</p>
+<table border="1" class="docutils">
+<colgroup>
+<col width="25%" />
+<col width="25%" />
+<col width="25%" />
+<col width="25%" />
+</colgroup>
+<thead valign="bottom">
+<tr class="row-odd"><th class="head">Name</th>
+<th class="head">Type</th>
+<th class="head">Default value</th>
+<th class="head">Description</th>
+</tr>
+</thead>
+<tbody valign="top">
+<tr class="row-even"><td><tt class="docutils literal"><span class="pre">host</span></tt></td>
+<td>string</td>
+<td><tt class="docutils literal"><span class="pre">'localhost'</span></tt></td>
+<td>The Oracle server IP address or hostname. Must be the same as defined in the TSN on the server&#8217;s connector.</td>
+</tr>
+<tr class="row-odd"><td><tt class="docutils literal"><span class="pre">port</span></tt></td>
+<td>integer</td>
+<td><tt class="docutils literal"><span class="pre">1521</span></tt></td>
+<td>The Oracle TCP listening port on <tt class="docutils literal"><span class="pre">host</span></tt></td>
+</tr>
+<tr class="row-even"><td><tt class="docutils literal"><span class="pre">sid</span></tt></td>
+<td>string</td>
+<td>(empty)</td>
+<td>The Oracle System ID corresponding to your instance</td>
+</tr>
+<tr class="row-odd"><td><tt class="docutils literal"><span class="pre">user</span></tt></td>
+<td>string</td>
+<td>(empty)</td>
+<td>The user to use to connect to the database <tt class="docutils literal"><span class="pre">db</span></tt> above</td>
+</tr>
+<tr class="row-even"><td><tt class="docutils literal"><span class="pre">password</span></tt></td>
+<td>string</td>
+<td>(empty)</td>
+<td>The password to use, if required to connect to the database <tt class="docutils literal"><span class="pre">db</span></tt> above for user <tt class="docutils literal"><span class="pre">user</span></tt></td>
+</tr>
+</tbody>
+</table>
+<div class="section" id="overview">
+<h2>Overview<a class="headerlink" href="#overview" title="Permalink to this headline">¶</a></h2>
+<p>This probes allows to connect to an Oracle database and perform any valid SQL command
+that are valid for this DBS. Just send the SQL request as a string through a port bound
+to the probe.</p>
+<p>As a result, you should expect a <tt class="docutils literal"><span class="pre">SqlResult</span></tt> choice structure, whose <tt class="docutils literal"><span class="pre">'error'</span></tt> arm is a simple
+charstring indicating an error (connection- or SQL- related), and <tt class="docutils literal"><span class="pre">result</span></tt> indicates a
+successful query.</p>
+<p>In case of a non-SELECT query, <tt class="docutils literal"><span class="pre">result</span></tt> is an empty list. In case of a SELECT query,
+it contains a list of dictionaries corresponding to the selected entries, whose keys are the
+names of the returned columns. The associated values are natural Python equivalent to
+SQL types. However, the following types have not been tested yet:</p>
+<ul class="simple">
+<li><tt class="docutils literal"><span class="pre">NULL</span></tt></li>
+<li>blobs</li>
+<li>date/time</li>
+</ul>
+<p>(If you encounter any problem with these SQL types or other ones, please contact us or
+create a ticket).</p>
+<p>These structures and mechanisms are common to all <tt class="docutils literal"><span class="pre">sql.*</span></tt> probe types.</p>
+<p>The supported Oracle versions depend on the underlying Oracle libs you are using, and are
+independent from the probe.</p>
+<p>It has been tested successfully against a Oracle 10g R2 and 11g R2 servers.</p>
+<div class="section" id="availability">
+<h3>Availability<a class="headerlink" href="#availability" title="Permalink to this headline">¶</a></h3>
+<p>All platforms.</p>
+</div>
+<div class="section" id="dependencies">
+<h3>Dependencies<a class="headerlink" href="#dependencies" title="Permalink to this headline">¶</a></h3>
+<p>This probe requires the cx_Oracle Python module, than can be found at <a class="reference external" href="http://cx-oracle.sourceforge.net">http://cx-oracle.sourceforge.net</a>.</p>
+<p>The cx_Oracle module is a wrapper that requires Oracle librairies.</p>
+<p>Here is a possible path to a working probe:</p>
+<ul class="simple">
+<li>Get the Oracle Instant Client from the <a class="reference external" href="http://www.oracle.com/technology/tech/oci/instantclient/index.html">Oracle site</a>
+(requires free registration) for the platform that will run the probe (the Basic Lite version is sufficient)</li>
+<li>Decompress it wherever you want</li>
+<li>Under Windows, copy <tt class="docutils literal"><span class="pre">oraociicus11.dll</span></tt> and <tt class="docutils literal"><span class="pre">oci.dll</span></tt> to a directory included in the <tt class="docutils literal"><span class="pre">PYTHONPATH</span></tt> of the agent
+(in particular, you may put them into its <tt class="docutils literal"><span class="pre">plugins/probes/</span></tt> directory)</li>
+<li>Under Linux, copy <tt class="docutils literal"><span class="pre">?.so</span></tt> and <tt class="docutils literal"><span class="pre">oci.so</span></tt> to <tt class="docutils literal"><span class="pre">plugins/probes/</span></tt> under your agent tree, but be sure to
+add a LD_LIBRARY_PATH to this path before restarting your agent. To make the probe work from the TE (i.e. not
+hosted on a agent), you should copy them to the <tt class="docutils literal"><span class="pre">core/</span></tt> Testerman directory, since it is automatically included
+in all TE&#8217;s <tt class="docutils literal"><span class="pre">LD_LIBRARY_PATH</span></tt>.</li>
+</ul>
+<p>Make sure to download Oracle Instant Client and a cx_Oracle module that are compatible with each other and
+with your Oracle database version.</p>
+<p>As far as it has been tested, using libs for Oracle 11g correctly works with a Oracle 10g server.</p>
+</div>
+<div class="section" id="see-also">
+<h3>See Also<a class="headerlink" href="#see-also" title="Permalink to this headline">¶</a></h3>
+<ul class="simple">
+<li><a class="reference internal" href="ProbeSqlMysql.html"><em>MySQL Probe</em></a>, a probe to access a MySQL database.</li>
+</ul>
+</div>
+</div>
+<div class="section" id="ttcn-3-types-equivalence">
+<h2>TTCN-3 Types Equivalence<a class="headerlink" href="#ttcn-3-types-equivalence" title="Permalink to this headline">¶</a></h2>
+<p>The test system interface port bound to such a probe complies with the <tt class="docutils literal"><span class="pre">SqlPortType</span></tt> port type as specified below:</p>
+<div class="highlight-python"><pre>type charstring SqlRequest;
+
+type union Result
+{
+  charstring error,
+  record of SqlResult result
+}
+
+type record SqlResult
+{
+  any &lt;field name&gt;* // according to your request
+}
+
+type port SqlPortType message
+{
+  in SqlRequest,
+  out SqlResult
+}</pre>
+</div>
+</div>
+</div>
+
+
+</div>
+<footer class="footer">
+  <div class="container">
+    <p class="pull-right">
+      <a href="#">Back to top</a>
+      
+    </p>
+    <p>
+        &copy; Copyright 2009-2013, Sébastien Lefèvre.<br/>
+      Created using <a href="http://sphinx.pocoo.org/">Sphinx</a> 1.1.3.<br/>
+    </p>
+  </div>
+</footer>
+  </body>
+</html>

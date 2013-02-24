@@ -1,0 +1,408 @@
+
+<!DOCTYPE html>
+
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>RTP Probe &mdash; Testerman 1.4.0 documentation</title>
+    
+    <link rel="stylesheet" href="../../_static/basic.css" type="text/css" />
+    <link rel="stylesheet" href="../../_static/pygments.css" type="text/css" />
+    <link rel="stylesheet" href="../../_static/css/bootstrap-2.2.1.min.css" type="text/css" />
+    <link rel="stylesheet" href="../../_static/bootstrap-sphinx.css" type="text/css" />
+    <link rel="stylesheet" href="../../_static/css/bootstrap-responsive-2.2.1.min.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '../../',
+        VERSION:     '1.4.0',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true
+      };
+    </script>
+    <script type="text/javascript" src="../../_static/jquery.js"></script>
+    <script type="text/javascript" src="../../_static/underscore.js"></script>
+    <script type="text/javascript" src="../../_static/doctools.js"></script>
+    <script type="text/javascript" src="../../_static/js/bootstrap-2.2.1.min.js"></script>
+    <script type="text/javascript" src="../../_static/bootstrap-sphinx.js"></script>
+    <link rel="top" title="Testerman 1.4.0 documentation" href="../../index.html" />
+    <link rel="up" title="&lt;no title&gt;" href="toc.html" />
+    <link rel="next" title="RTSP Probe" href="ProbeRtspClient.html" />
+    <link rel="prev" title="Configuration File Probe" href="ProbeConfigurationFile.html" />
+<meta charset='utf-8'>
+<meta http-equiv='X-UA-Compatible' content='IE=edge,chrome=1'>
+<meta name='viewport' content='width=device-width, initial-scale=1.0, maximum-scale=1'>
+<meta name="apple-mobile-web-app-capable" content="yes">
+
+  </head>
+  <body>
+<div class="container">
+  
+  <div id="navbar" class="navbar navbar-inverse navbar-fixed-top">
+    <div class="navbar-inner">
+      <!-- .btn-navbar is used as the toggle for collapsed navbar content -->
+      <button class="btn btn-navbar" data-toggle="collapse" data-target=".nav-collapse">
+        <span class="icon-bar"></span>
+        <span class="icon-bar"></span>
+        <span class="icon-bar"></span>
+      </button>
+
+      <a class="brand" href="../../index.html">Testerman</a>
+      <span class="navbar-text pull-left"><b>1.4</b></span>
+
+      <div class="nav-collapse">
+        <ul class="nav">
+          <li class="divider-vertical"></li>
+          
+            <li class="dropdown">
+  <a href="../../index.html" class="dropdown-toggle" data-toggle="dropdown">Site <b class="caret"></b></a>
+  <ul class="dropdown-menu globaltoc"><ul>
+<li class="toctree-l1"><a class="reference internal" href="../../main/About.html">Welcome to Testerman</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../main/About.html#about">About</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../main/About.html#contact">Contact</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../main/GetTesterman.html">Getting Testerman</a></li>
+</ul>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../main/TestermanOverview.html">Testerman Overview</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../main/TestermanQuickStart.html">Quick Start</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../main/TestermanQuickStart.html#external-resources">External Resources</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../main/QTesterman.html">QTesterman</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../main/TestermanReferenceGuide.html">Testerman Reference Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../main/TestermanLanguageReference.html">General Concepts</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../main/TestermanLanguageReference.html#reference-testerman-api">Reference: Testerman API</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../main/BestPractices.html">Best Practices</a></li>
+</ul>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../index.html">Codecs and Probes Overview</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../index.html#codecs">Codecs</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../index.html#test-adapters-probes">Test Adapters (Probes)</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../index.html#codecs-and-probes-references">Codecs and Probes References</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../index.html#developing-new-codecs-and-probes">Developing New Codecs and Probes</a></li>
+</ul>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../main/TestermanAdministrationGuide.html">Testerman Administration Guide</a></li>
+</ul>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../main/TestermanInternals.html">Testerman Internals</a></li>
+</ul>
+</ul>
+</li>
+            <li class="dropdown">
+  <a href="#" class="dropdown-toggle" data-toggle="dropdown">Page <b class="caret"></b></a>
+  <ul class="dropdown-menu localtoc"><ul>
+<li><a class="reference internal" href="#">RTP Probe</a><ul>
+<li><a class="reference internal" href="#identification-and-properties">Identification and Properties</a></li>
+<li><a class="reference internal" href="#overview">Overview</a><ul>
+<li><a class="reference internal" href="#availability">Availability</a></li>
+<li><a class="reference internal" href="#dependencies">Dependencies</a></li>
+<li><a class="reference internal" href="#see-also">See Also</a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#ttcn-3-types-equivalence">TTCN-3 Types Equivalence</a></li>
+</ul>
+</li>
+</ul>
+</ul>
+</li>
+          
+          
+            
+  <li><a href="ProbeConfigurationFile.html"
+         title="previous chapter">&laquo; Configuration File Probe</a></li>
+  <li><a href="ProbeRtspClient.html"
+         title="next chapter">RTSP Probe &raquo;</a></li>
+          
+          
+            <li>
+  <a href="../../_sources/plugins/autogen/ProbeRtp.txt"
+     rel="nofollow">Source</a></li>
+          
+        </ul>
+
+        
+          
+<form class="navbar-search pull-right" style="margin-bottom:-3px;" action="../../search.html" method="get">
+  <input type="text" name="q" placeholder="Search" />
+  <input type="hidden" name="check_keywords" value="yes" />
+  <input type="hidden" name="area" value="default" />
+</form>
+        
+      </div>
+    </div>
+  </div>
+
+  
+  <div class="section" id="rtp-probe">
+<h1>RTP Probe<a class="headerlink" href="#rtp-probe" title="Permalink to this headline">¶</a></h1>
+<p>Send/receive RTP streams.</p>
+<div class="section" id="identification-and-properties">
+<h2>Identification and Properties<a class="headerlink" href="#identification-and-properties" title="Permalink to this headline">¶</a></h2>
+<p>Probe Type ID: <tt class="docutils literal"><span class="pre">rtp</span></tt></p>
+<p>Properties:</p>
+<table border="1" class="docutils">
+<colgroup>
+<col width="25%" />
+<col width="25%" />
+<col width="25%" />
+<col width="25%" />
+</colgroup>
+<thead valign="bottom">
+<tr class="row-odd"><th class="head">Name</th>
+<th class="head">Type</th>
+<th class="head">Default value</th>
+<th class="head">Description</th>
+</tr>
+</thead>
+<tbody valign="top">
+<tr class="row-even"><td><tt class="docutils literal"><span class="pre">listening_ip</span></tt></td>
+<td>string</td>
+<td><tt class="docutils literal"><span class="pre">'0.0.0.0'</span></tt></td>
+<td>Default listening IP address, when starting listening without providing one explicitly</td>
+</tr>
+<tr class="row-odd"><td><tt class="docutils literal"><span class="pre">listening_port</span></tt></td>
+<td>integer</td>
+<td><tt class="docutils literal"><span class="pre">0</span></tt></td>
+<td>Default listening UDP port, when starting listening without providing one expliclity. <tt class="docutils literal"><span class="pre">0</span></tt> means a system-assigned port.</td>
+</tr>
+<tr class="row-even"><td><tt class="docutils literal"><span class="pre">local_ip</span></tt></td>
+<td>string</td>
+<td>(empty)</td>
+<td>Default source IP address when sending packets, if not provided explicitly when starting sending. An empty value means a system-assigned IP address.</td>
+</tr>
+<tr class="row-odd"><td><tt class="docutils literal"><span class="pre">local_port</span></tt></td>
+<td>integer</td>
+<td><tt class="docutils literal"><span class="pre">0</span></tt></td>
+<td>Default UDP source port when sending packets, if not provided explicitly when starting sending. An empty value means a system-assigned port.</td>
+</tr>
+<tr class="row-even"><td><tt class="docutils literal"><span class="pre">stream_timeout</span></tt></td>
+<td>float</td>
+<td><tt class="docutils literal"><span class="pre">0.5</span></tt></td>
+<td>The maximum interruption interval allowed, in second, before considering an incoming stream has been stopped</td>
+</tr>
+<tr class="row-odd"><td><tt class="docutils literal"><span class="pre">ssrc</span></tt></td>
+<td>integer</td>
+<td><tt class="docutils literal"><span class="pre">1000</span></tt></td>
+<td>The default SSRC to use in sent RTP packets, if not provided explicitly when starting sending a stream</td>
+</tr>
+<tr class="row-even"><td><tt class="docutils literal"><span class="pre">payload_type</span></tt></td>
+<td>integer</td>
+<td><tt class="docutils literal"><span class="pre">8</span></tt></td>
+<td>The default payload type to use in sent RTP packets, if not provided explicitly when starting sending a stream</td>
+</tr>
+<tr class="row-odd"><td><tt class="docutils literal"><span class="pre">frame_size</span></tt></td>
+<td>integer</td>
+<td><tt class="docutils literal"><span class="pre">20</span></tt></td>
+<td>The default frame size to use when sending RTP packets, if not provided explicitly when starting sending a stream</td>
+</tr>
+<tr class="row-even"><td><tt class="docutils literal"><span class="pre">packet_size</span></tt></td>
+<td>integer</td>
+<td><tt class="docutils literal"><span class="pre">160</span></tt></td>
+<td>The default packet size to use when sending RTP packets, if not provided explicitly when starting sending a stream</td>
+</tr>
+<tr class="row-odd"><td><tt class="docutils literal"><span class="pre">sample_rate</span></tt></td>
+<td>integer</td>
+<td><tt class="docutils literal"><span class="pre">8000</span></tt></td>
+<td>The default sample rate to use in sent RTP packets, if not provided explicitly when starting sending a stream</td>
+</tr>
+</tbody>
+</table>
+<p>The default payload type/frame size/packet size/sample rate values are chosen
+to enable a default stream in G.711 a-law (PCMA) / 20.</p>
+</div>
+<div class="section" id="overview">
+<h2>Overview<a class="headerlink" href="#overview" title="Permalink to this headline">¶</a></h2>
+<p>Through this probe, you can control sending and receiving RTP (Real Time Protocol)
+streams.</p>
+<p>It can be used as a probe companion of a UDP transport probe to simulate a SIP
+endpoint, or with a RTSP probe to act as a , and of course any other cases where
+controlling sending and receiving of RTP streams is required, without requiring to
+inspect each RTP packets individually.</p>
+<p>This probe is based on &#8220;signals&#8221; that change its state. You can:</p>
+<ul class="simple">
+<li>start sending a new RTP stream to a remote destination, setting the payload characteristics that will be used until the stream is stopped,</li>
+<li>stop sending a started stream</li>
+<li>start listening for, i.e. waiting for a possible incoming stream</li>
+<li>stop listening</li>
+</ul>
+<p>And you may receive the following &#8220;notifications&#8221; if the probe was in listening state:</p>
+<ul class="simple">
+<li><tt class="docutils literal"><span class="pre">StartedReceivingEvent</span></tt>, indicating the payload properties (source ip/port, ssrc, payload type), when a new stream is detected or has been updated,</li>
+<li><tt class="docutils literal"><span class="pre">StoppedReceivingEvent</span></tt>, when a stream being received was interrupted (or updated its properties</li>
+</ul>
+<p>Additionally, you may inject at any time while sending RTP
+a recorded payload using the <tt class="docutils literal"><span class="pre">PlayCommand</span></tt>. Currently the probe only supports:</p>
+<ul class="simple">
+<li>WAV file format:      the contained payload must be encoded with the correct codec (payload type). The probe won&#8217;t check it.</li>
+<li>raw format: the payload is encoded using the correct codec, no header, no container.</li>
+</ul>
+<p>The probe sticks to packetize the payload according
+to the current frame size parameter. No transcoding mechanism is provided.</p>
+<p>By default, when starting sending a RTP stream, a default sound is played according
+to the payload type:</p>
+<table border="1" class="docutils">
+<colgroup>
+<col width="50%" />
+<col width="50%" />
+</colgroup>
+<thead valign="bottom">
+<tr class="row-odd"><th class="head">Payload type</th>
+<th class="head">Default sound</th>
+</tr>
+</thead>
+<tbody valign="top">
+<tr class="row-even"><td>0 (PCMU/G711 u-law)</td>
+<td>a tone</td>
+</tr>
+<tr class="row-odd"><td>8 (PCMA/G711 a-law)</td>
+<td>another tone</td>
+</tr>
+<tr class="row-even"><td>Other codecs</td>
+<td>Some very scratchy sound</td>
+</tr>
+</tbody>
+</table>
+<p>Anyway, the idea is that, by default, the probe makes some sound or noise.</p>
+<p>If you prefer start sending a silent sound, you should set the argument <tt class="docutils literal"><span class="pre">defaultPayload</span></tt> of
+<tt class="docutils literal"><span class="pre">startSendingRtp</span></tt> to what fits your need according to the codec. For reference:</p>
+<table border="1" class="docutils">
+<colgroup>
+<col width="50%" />
+<col width="50%" />
+</colgroup>
+<thead valign="bottom">
+<tr class="row-odd"><th class="head">Payload type</th>
+<th class="head">Payload to use for a silence</th>
+</tr>
+</thead>
+<tbody valign="top">
+<tr class="row-even"><td>0 (PCMU/G711 u-law)</td>
+<td><tt class="docutils literal"><span class="pre">'\xff'</span></tt></td>
+</tr>
+<tr class="row-odd"><td>8 (PCMA/G711 a-law)</td>
+<td><tt class="docutils literal"><span class="pre">'\x00'</span></tt></td>
+</tr>
+<tr class="row-even"><td>Other codecs</td>
+<td>...</td>
+</tr>
+</tbody>
+</table>
+<p>You may, of course, inject another payload as a default sound.</p>
+<p>Notes:</p>
+<ul class="simple">
+<li>A probe can send/receive at most one stream in a way (i.e. can send, receive, or send+receive).</li>
+<li>No RTCP support for now</li>
+<li>No RFC2833 support for now (excepted by playing a wav file with RFC2833 payload, but this is not integrated enough to be usable)</li>
+</ul>
+<div class="section" id="availability">
+<h3>Availability<a class="headerlink" href="#availability" title="Permalink to this headline">¶</a></h3>
+<p>All platforms. Tested on Linux (kernel 2.6), Solaris 8, Solaris 10.</p>
+</div>
+<div class="section" id="dependencies">
+<h3>Dependencies<a class="headerlink" href="#dependencies" title="Permalink to this headline">¶</a></h3>
+<p>None.</p>
+</div>
+<div class="section" id="see-also">
+<h3>See Also<a class="headerlink" href="#see-also" title="Permalink to this headline">¶</a></h3>
+</div>
+</div>
+<div class="section" id="ttcn-3-types-equivalence">
+<h2>TTCN-3 Types Equivalence<a class="headerlink" href="#ttcn-3-types-equivalence" title="Permalink to this headline">¶</a></h2>
+<p>The test system interface port bound to such a probe complies with the <tt class="docutils literal"><span class="pre">RtpPortType</span></tt> port type as specified below:</p>
+<div class="highlight-python"><pre>type record StartSendingCommand
+{
+  integer payloadType optional, // default: payload_type (8)
+  integer frameSize optional, // default: frame_size (20 (ms))
+  integer ssrc optional, // default: ssrc (1000)
+  integer packetSize optional, // default: packet_size (160 bytes, corresponding to 20ms in G711a/u)
+  integer sampleRate optional, // default: sample_rate (8000 (Hz))
+
+  // Local port may be controlled dynamically - useful when negotiating ports via SDP, etc
+  integer fromPort optional, // default: local_port
+  charstring fromIp optional, // default: local_ip
+
+  // Default payload to play (infinite loop)
+  octetstring defaultPayload optional, // default: see above, according to the codec
+  charstring defaultPayloadFormat optional, // choice in wav, raw ; default: wav
+}
+
+type record StopSendingCommand
+{
+}
+
+type record StartListeningCommand
+{
+  // Should we control the listening ip/port dynamically ? ...
+  integer onPort optional, // default: listening_port
+  charstring onIp optional, // default: listening_ip
+  integer timeout optional, // timeout to detect interrupted incoming stream, in s
+}
+
+type record StopListeningCommand
+{
+}
+
+type record StartedReceivingEvent
+{
+  integer fromPort,
+  charstring fromIp,
+  integer payloadType,
+  integer ssrc,
+}
+
+type record StoppedReceivingEvent
+{
+  integer fromPort,
+  charstring fromIp,
+  enum { interrupted, updated } reason,
+}
+
+type record PlayCommand
+{
+  octetstring payload,
+  integer loopCount optional, // default: 1
+  charstring format optional, // choice in wav, raw ; default: wav
+}
+
+type union Command
+{
+  StartSendingCommand startSendingRtp,
+  StopSendingCommand stopSendingRtp,
+  StartListeningCommand startListeningRtp,
+  StopListeningCommand stopListeningRtp,
+  PlayCommand play
+}
+
+type union Notification
+{
+  StartedReceivingNotification startedReceivingRtp,
+  StoppedReceivingNotification stoppedReceivingRtp
+}
+
+type port message RtpPortType
+{
+  in Command,
+  out Notification
+}</pre>
+</div>
+</div>
+</div>
+
+
+</div>
+<footer class="footer">
+  <div class="container">
+    <p class="pull-right">
+      <a href="#">Back to top</a>
+      
+    </p>
+    <p>
+        &copy; Copyright 2009-2013, Sébastien Lefèvre.<br/>
+      Created using <a href="http://sphinx.pocoo.org/">Sphinx</a> 1.1.3.<br/>
+    </p>
+  </div>
+</footer>
+  </body>
+</html>
