@@ -19,18 +19,17 @@ a reference version for all of them, are released from time to time.
 Releases
 --------
 
-Testerman is currently hosted on http://testerman.fr, and
-releases are available from http://testerman.fr/testerman/wiki/GetTesterman.
+Testerman releases can be downloaded from http://testerman.fr.
 
 Development versions
 --------------------
 
 If you want the latest probes or component enhancement, you may download the current Testerman version using anonymous git
-access:
+access on github:
 
 ::
 
-    git clone http://testerman.fr/git/testerman.git
+    git clone https://github.com/seblefevre/testerman.git
 
 The anonymous git access is read-only. If you want to contribute and get
 a read-write access, feel free to `contact me <About>`__.
