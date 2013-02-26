@@ -2646,6 +2646,8 @@ class contains(ConditionTemplate):
 	def __init__(self, template):
 		self._template = template
 	def match(self, message, path = ''):
+		if isinstance(message, basestring) and isinstance(self._template, basestring):
+			return message in self._template
 		if not isinstance(message, list):
 			return False
 		# At least one match
