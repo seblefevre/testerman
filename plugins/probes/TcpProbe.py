@@ -279,10 +279,14 @@ The test system interface port bound to such a probe complies with the ``Transpo
 		# Second fallback, useful for servers with a single incoming connection
 		if not sutAddress:
 			self._lock()
-			conns = self._connections.values()
-			if len(conns) == 1:
-				# A single connection exist. Auto select it.
-				sutAddress = "%s:%s" % conns[0].peerAddress
+			try:
+				conns = self._connections.values()
+				if len(conns) == 1:
+					# A single connection exist. Auto select it.
+					sutAddress = "%s:%s" % conns[0].peerAddress
+			except Exception, e:
+				self._unlock()
+				raise Exception("Cannot find a valid existing connection to send data by default (%s)" % str(e))
 			self._unlock()
 
 		if (isinstance(message, tuple) or isinstance(message, list)) and len(message) == 2:
