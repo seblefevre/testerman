@@ -1353,38 +1353,11 @@ class WPythonCodeEditor(sci.QsciScintilla):
 
 		# Lexer/Highlighter settings
 		lexer = PythonLexer(self)
-		defaultFont = QFont("courier", 8)
-		defaultFont.setFixedPitch(True)
-		lexer.setDefaultFont(defaultFont)
-		# The quotes font's pointSize is not impacted by the default font... lexer bug ?
-		f = lexer.font(sci.QsciLexerPython.SingleQuotedString)
-		f.setPointSize(8)
-		lexer.setFont(f, sci.QsciLexerPython.Default)
-		lexer.setFont(f, sci.QsciLexerPython.Comment)
-		lexer.setFont(f, sci.QsciLexerPython.Number)
-		lexer.setFont(f, sci.QsciLexerPython.DoubleQuotedString)
-		lexer.setFont(f, sci.QsciLexerPython.SingleQuotedString)
-		lexer.setFont(f, sci.QsciLexerPython.Keyword)
-		lexer.setFont(f, sci.QsciLexerPython.TripleSingleQuotedString)
-		lexer.setFont(f, sci.QsciLexerPython.TripleDoubleQuotedString)
-		lexer.setFont(f, sci.QsciLexerPython.ClassName)
-		lexer.setFont(f, sci.QsciLexerPython.FunctionMethodName)
-		lexer.setFont(f, sci.QsciLexerPython.Operator)
-		lexer.setFont(f, sci.QsciLexerPython.Identifier)
-		lexer.setFont(f, sci.QsciLexerPython.CommentBlock)
-		lexer.setFont(f, sci.QsciLexerPython.UnclosedString)
-		lexer.setFont(f, sci.QsciLexerPython.HighlightedIdentifier)
-		lexer.setFont(f, sci.QsciLexerPython.Decorator)
-
-		f.setBold(True)
-		lexer.setFont(f, sci.QsciLexerPython.Keyword)
-		lexer.setFont(f, sci.QsciLexerPython.Number)
+		self.setLexer(lexer)
 
 		self.setBraceMatching(sci.QsciScintilla.SloppyBraceMatch)
 
 		lexer.setIndentationWarning(sci.QsciLexerPython.Inconsistent)
-
-		self.setLexer(lexer)
 
 		self.setUtf8(True)
 		self.setAutoIndent(True)
@@ -1431,10 +1404,48 @@ class WPythonCodeEditor(sci.QsciScintilla):
 		self.menu = self.createStandardContextMenu()
 		self.createActions()
 		
-		# Colors
+		# Colors & Fonts
 		self.setColors()
+		self.setFonts()
 
 		self.connect(QApplication.instance().get('gui.mainwindow'), SIGNAL("editorColorsUpdated()"), self.setColors)
+		self.connect(QApplication.instance().get('gui.mainwindow'), SIGNAL("editorFontsUpdated()"), self.setFonts)
+
+	def setFonts(self):
+		"""
+		Load and applies fonts from the saved settings.
+		"""
+		settings = QSettings()
+		
+		lexer = self.lexer()
+
+		# Lexer/Highlighter settings
+		defaultFont = QFont()
+		defaultFont.fromString(settings.value('editor/defaultFont', QVariant(QFont("courier", 8).toString())).toString())
+		defaultFont.setFixedPitch(True)
+		lexer.setDefaultFont(defaultFont)
+		f = defaultFont
+		lexer.setFont(f, sci.QsciLexerPython.Default)
+		lexer.setFont(f, sci.QsciLexerPython.Comment)
+		lexer.setFont(f, sci.QsciLexerPython.Number)
+		lexer.setFont(f, sci.QsciLexerPython.DoubleQuotedString)
+		lexer.setFont(f, sci.QsciLexerPython.SingleQuotedString)
+		lexer.setFont(f, sci.QsciLexerPython.Keyword)
+		lexer.setFont(f, sci.QsciLexerPython.TripleSingleQuotedString)
+		lexer.setFont(f, sci.QsciLexerPython.TripleDoubleQuotedString)
+		lexer.setFont(f, sci.QsciLexerPython.ClassName)
+		lexer.setFont(f, sci.QsciLexerPython.FunctionMethodName)
+		lexer.setFont(f, sci.QsciLexerPython.Operator)
+		lexer.setFont(f, sci.QsciLexerPython.Identifier)
+		lexer.setFont(f, sci.QsciLexerPython.CommentBlock)
+		lexer.setFont(f, sci.QsciLexerPython.UnclosedString)
+		lexer.setFont(f, sci.QsciLexerPython.HighlightedIdentifier)
+		lexer.setFont(f, sci.QsciLexerPython.Decorator)
+
+		f.setBold(True)
+		lexer.setFont(f, sci.QsciLexerPython.Keyword)
+		lexer.setFont(f, sci.QsciLexerPython.Number)
+
 
 	def setColors(self):
 		"""

@@ -7,6 +7,10 @@ KNOWN BUGS:
 - The script properties editor does not reselect the parameter you just
   updated.
 
+1.4.10:
+- Added: the default editor's font can now be changed.
+  (Preferences > User Interface)
+
 
 1.4.9:
 - Fixed: the selected line in log viewer is kept visible

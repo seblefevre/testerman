@@ -427,14 +427,38 @@ class WEditorSettings(WSettings):
 		self._autocompletionCheckBox.setChecked(autocompletion)
 		layout.addWidget(self._autocompletionCheckBox)
 
+		fontString = settings.value('editor/defaultFont', QVariant(QFont("courier", 8).toString())).toString()
+		self._defaultFont = QFont()
+		self._defaultFont.fromString(fontString)
+		self._defaultFontLabel = QLabel()
+		hlayout = QHBoxLayout()
+		hlayout.addWidget(self._defaultFontLabel)
+		hlayout.addStretch()
+		self.updateFontLabel()
+		button = QPushButton("Change...")
+		self.connect(button, SIGNAL("clicked()"), self.showFontSelector)
+		
+		hlayout.addWidget(button)
+		layout.addLayout(hlayout)
+
 		layout.addStretch()
 		self.setLayout(layout)
+
+	def updateFontLabel(self):
+		self._defaultFontLabel.setText("Default font: %s, %s pt" % (self._defaultFont.family(), self._defaultFont.pointSize()))
+
+	def showFontSelector(self):
+		font, ok = QFontDialog.getFont(self._defaultFont)
+		if ok:
+			self._defaultFont = font
+			self.updateFontLabel()
 
 	def updateModel(self):
 		# We save them as settings
 		settings = QSettings()
 		autocompletion = self._autocompletionCheckBox.isChecked()
 		settings.setValue('editor/autocompletion', QVariant(autocompletion))
+		settings.setValue('editor/defaultFont', QVariant(self._defaultFont.toString()))
 
 
 ###############################################################################
