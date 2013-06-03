@@ -2,10 +2,15 @@ This is QTesterman, a PyQt4-based Rich Client for Testerman.
 ============================================================
 
 KNOWN BUGS:
-- Profiles management is minimal for now: no way to rename one,
+- Profiles management is minimal: no way to rename one,
   and it is not possible to remove parameters in a profile.
 - The script properties editor does not reselect the parameter you just
   updated.
+
+
+1.5.0:
+- Fixed: QTesterman versions comparisons were incorrect.
+
 
 1.4.10:
 - Added: the default editor's font can now be changed.

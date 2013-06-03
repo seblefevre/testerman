@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 ##
 # This file is part of Testerman, a test automation system.
-# Copyright (c) 2009 QTesterman contributors
+# Copyright (c) 2009-2013 QTesterman contributors
 #
 # This program is free software; you can redistribute it and/or modify it under
 # the terms of the GNU General Public License as published by the Free Software
@@ -22,6 +22,8 @@
 
 
 from PyQt4.Qt import *
+
+import TestermanClient
 
 ################################################################################
 # Restarter/Reinitializer facility
@@ -92,14 +94,8 @@ def checkAndUpdateComponent(proxy, destinationPath, component, currentVersion = 
 	print "Available updates:"
 	print "\n".join([ "%s (%s)" % (x['version'], x['branch']) for x in updates])
 
-	# Versions rules
-	# A.B.C < A+n.b.c
-	# A.B.C < A.B+n.c
-	# A.B.C < A.B.C+n
-	# (ie when comparing A.B.C and a.b.c, lexicographic order is ok)
-	
 	# Let's check if we have a better version than the current one
-	if not currentVersion or (currentVersion < updates[0]['version']):
+	if not currentVersion or (TestermanClient.compareVersions(currentVersion, updates[0]['version']) < 0):
 		newerVersion = updates[0]['version']
 		url = updates[0]['url']
 		branch = updates[0]['branch']
@@ -143,14 +139,8 @@ def getNewVersionInfo(proxy, component, currentVersion = None, branches = [ "sta
 	print "Available updates:"
 	print "\n".join([ "%s (%s)" % (x['version'], x['branch']) for x in updates])
 
-	# Versions rules
-	# A.B.C < A+n.b.c
-	# A.B.C < A.B+n.c
-	# A.B.C < A.B.C+n
-	# (ie when comparing A.B.C and a.b.c, lexicographic order is ok)
-	
 	# Let's check if we have a better version than the current one
-	if not currentVersion or (currentVersion < updates[0]['version']):
+	if not currentVersion or (TestermanClient.compareVersions(currentVersion < updates[0]['version']) < 0):
 		newerVersion = updates[0]['version']
 		url = updates[0]['url']
 		branch = updates[0]['branch']
@@ -169,3 +159,4 @@ def updateComponent(proxy, url, destinationPath):
 	QMessageBox.information(None, "Update manager", "Update succesfully installed.")
 	# Let the caller propose a restart
 	return True
+

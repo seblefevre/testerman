@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 ##
 # This file is part of Testerman, a test automation system.
-# Copyright (c) 2008-2009 Sebastien Lefevre and other contributors
+# Copyright (c) 2008-2013 Sebastien Lefevre and other contributors
 #
 # This program is free software; you can redistribute it and/or modify it under
 # the terms of the GNU General Public License as published by the Free Software
@@ -32,6 +32,7 @@ import threading
 import logging
 import cStringIO as StringIO
 import tarfile
+import re
 
 
 ################################################################################
@@ -221,7 +222,46 @@ class ProbeImplementationAdapter(ProbeImplementationManager.IProbeImplementation
 		self.__probeImplementation.onTriSAReset()
 		
 	
+################################################################################
+# Testerman components versions comparator
+################################################################################
+
+def compareVersions(versionA, versionB):
+	"""
+	# Version scheme rules:
+	# A version is A.B.C[-N] with A, B, C integers and N a string.
+	# A.B.C < A+n.b.c
+	# A.B.C < A.B+n.c
+	# A.B.C < A.B.C+n
+	# A.B.C-p < A.B.C-q with p < q considering a lexicographic order
+	# A.B.C-p < A.B.C (so that 1.0.0-test is < 1.0.0 (which is a "final" version))
 	
+	returns 0 if vA == vB or if one version is incorrectly formatted
+	returns 1 if vA > vB
+	returns -1 if vA < vB
+	"""
+	if not versionA: return 0
+	if not versionB: return 0
+	
+	a = re.match("([0-9]+)\.([0-9]+)\.([0-9]+)(\-.*)?", versionA)
+	if not a: return 0
+	b = re.match("([0-9]+)\.([0-9]+)\.([0-9]+)(\-.*)?", versionB)
+	if not b: return 0
+	
+	va = (int(a.group(1)), int(a.group(2)), int(a.group(3)))
+	vb = (int(b.group(1)), int(b.group(2)), int(b.group(3)))
+
+	if va < vb: return -1
+	if va > vb: return 1
+	
+	# va = vb when it comes to digits. Let's check extensions
+	if not a.group(4) and not b.group(4): return 0 # no extensions at all
+	if not a.group(4): return 1 # no extensions on a. a is greater
+	if not b.group(4): return -1 # no extensions on b. b is greater.
+	# lexicographic order
+	if a.group(4) < b.group(4): return -1
+	if a.group(4) > b.group(4): return 1
+	return 0
 
 ################################################################################
 # The Agent itself
@@ -594,7 +634,7 @@ class Agent(Nodes.ConnectingNode):
 			ret = []
 
 		# Sort the results
-		ret.sort(key = operator.itemgetter('version'))
+		ret.sort(key = operator.itemgetter('version'), cmp = compareVersions)
 		ret.reverse()
 		return ret
 
@@ -686,12 +726,7 @@ class Agent(Nodes.ConnectingNode):
 		else:
 			# No preferred version: take the most recent one in the selected branches
 			# Let's check if we have a better version than the current one
-			# Versions rules
-			# A.B.C < A+n.b.c
-			# A.B.C < A.B+n.c
-			# A.B.C < A.B.C+n
-			# (ie when comparing A.B.C and a.b.c, lexicographic order is ok)
-			if not currentVersion or (currentVersion < updates[0]['version']):
+			if not currentVersion or (compareVersions(currentVersion < updates[0]['version']) < 0):
 				selectedVersion = updates[0]['version']
 				url = updates[0]['url']
 				selectedBranch = updates[0]['branch']
@@ -739,7 +774,7 @@ def scanPlugins(paths, label):
 				except Exception, e:
 					getLogger().warning("Unable to import %s %s: %s" % (m, label, str(e)))
 		except Exception, e:
-			getLogger().warning("Unable to scan %s path for %ss: %s" % (path, label, str(e)))
+			getLogger().info("Unable to scan %s path for %ss: %s" % (path, label, str(e)))
 
 ################################################################################
 # Main

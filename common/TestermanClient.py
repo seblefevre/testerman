@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 ##
 # This file is part of Testerman, a test automation system.
-# Copyright (c) 2008,2009,2010 Sebastien Lefevre and other contributors
+# Copyright (c) 2008-2013 Sebastien Lefevre and other contributors
 #
 # This program is free software; you can redistribute it and/or modify it under
 # the terms of the GNU General Public License as published by the Free Software
@@ -24,6 +24,7 @@ import TestermanMessages as Messages
 import TestermanNodes as Nodes
 
 import base64
+import re
 import tarfile
 import threading
 import time
@@ -97,6 +98,52 @@ class DummyLogger:
 	def error(self, txt):
 		print "%s - ERROR - %s" % (self.formatTimestamp(time.time()), txt)
 
+
+
+##
+# Convenience functions
+##
+def compareVersions(versionA, versionB):
+	"""
+	Version scheme rules for Testerman components:
+	A version is A.B.C[-N] with A, B, C integers and N a string.
+	A.B.C < A+n.b.c
+	A.B.C < A.B+n.c
+	A.B.C < A.B.C+n
+	A.B.C-p < A.B.C-q with p < q considering a lexicographic order
+	A.B.C-p < A.B.C (so that 1.0.0-test is < 1.0.0 (which is a "final" version))
+	
+	returns 0 if vA == vB or if one version is incorrectly formatted
+	returns 1 if vA > vB
+	returns -1 if vA < vB
+	"""
+	if not versionA: return 0
+	if not versionB: return 0
+	
+	a = re.match("([0-9]+)\.([0-9]+)\.([0-9]+)(\-.*)?", versionA)
+	if not a: return 0
+	b = re.match("([0-9]+)\.([0-9]+)\.([0-9]+)(\-.*)?", versionB)
+	if not b: return 0
+	
+	va = (int(a.group(1)), int(a.group(2)), int(a.group(3)))
+	vb = (int(b.group(1)), int(b.group(2)), int(b.group(3)))
+
+	if va < vb: return -1
+	if va > vb: return 1
+	
+	# va = vb when it comes to digits. Let's check extensions
+	if not a.group(4) and not b.group(4): return 0 # no extensions at all
+	if not a.group(4): return 1 # no extensions on a. a is greater
+	if not b.group(4): return -1 # no extensions on b. b is greater.
+	# lexicographic order
+	if a.group(4) < b.group(4): return -1
+	if a.group(4) > b.group(4): return 1
+	return 0
+
+
+##
+# Actual Testerman Client (Ws and Xc accesses)
+##
 class Client(Nodes.ConnectingNode):
 	"""
 	This class interfaces both Ws and Xc accesses.
@@ -1014,8 +1061,8 @@ class Client(Nodes.ConnectingNode):
 			self.getLogger().warning("Error while parsing update metadata file: %s" % str(e))
 			ret = []
 
-		# Sort the results
-		ret.sort(key = operator.itemgetter('version'))
+		# Sort the results - the latest version first
+		ret.sort(key = operator.itemgetter('version'), cmp = compareVersions)
 		ret.reverse()
 		return ret
 	
@@ -1270,13 +1317,33 @@ class Client(Nodes.ConnectingNode):
 		self.getLogger().debug("getVariables(): " + str(res))
 		return res
 
+##
+# Unit tests
+##
+import unittest
+class VersionsTestSequence(unittest.TestCase):
+	def test_versionComparisons(self):
+		self.assertEqual(compareVersions(None, None), 0)
+		self.assertEqual(compareVersions("1.0.0", None), 0)
+		self.assertEqual(compareVersions(None, "1.0.0"), 0)
+		self.assertEqual(compareVersions("1.0.0", "1.0.0"), 0)
+		self.assertEqual(compareVersions("1.0.0-test", "1.0.0-test"), 0)
 
-# Basic test
+		self.assertEqual(compareVersions("1.0.0-test", "1.0.0"), -1)
+		self.assertEqual(compareVersions("1.0.0-test", "1.0.0-test2"), -1)
+		self.assertEqual(compareVersions("1.0.0", "1.0.1"), -1)
+		self.assertEqual(compareVersions("1.0.9", "1.0.10"), -1)
+		self.assertEqual(compareVersions("1.0.0", "1.1.0"), -1)
+		self.assertEqual(compareVersions("1.9.0", "1.10.0"), -1)
+		self.assertEqual(compareVersions("1.0.0", "2.0.0"), -1)
+		self.assertEqual(compareVersions("1.0.1", "1.1.0"), -1)
+		self.assertEqual(compareVersions("1.1.1", "2.0.0"), -1)
+		self.assertEqual(compareVersions("1.1.1-b", "1.1.2-a"), -1)
+
 if __name__ == "__main__":
-	import sys
-	c = Client("test", "ClientTester/1.0", sys.argv[1])
-#	c.start()
-	print str(c.getRegisteredProbes())
-#	c.stop()
-	
+	unittest.main()		
+	# Another basic test - not automated this time...
+	#import sys
+	#c = Client("test", "ClientTester/1.0", sys.argv[1])
+	#print str(c.getRegisteredProbes())
 	

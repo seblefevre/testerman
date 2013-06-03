@@ -1245,12 +1245,52 @@ class ConnectingNode(BaseNode):
 
 def getBacktrace():
 	import traceback
-	import StringIO
 	backtrace = StringIO.StringIO()
 	traceback.print_exc(None, backtrace)
 	ret = backtrace.getvalue()
 	backtrace.close()
 	return ret
+
+################################################################################
+# Testerman components versions comparator
+################################################################################
+
+def compareVersions(versionA, versionB):
+	"""
+	# Version scheme rules:
+	# A version is A.B.C[-N] with A, B, C integers and N a string.
+	# A.B.C < A+n.b.c
+	# A.B.C < A.B+n.c
+	# A.B.C < A.B.C+n
+	# A.B.C-p < A.B.C-q with p < q considering a lexicographic order
+	# A.B.C-p < A.B.C (so that 1.0.0-test is < 1.0.0 (which is a "final" version))
+	
+	returns 0 if vA == vB or if one version is incorrectly formatted
+	returns 1 if vA > vB
+	returns -1 if vA < vB
+	"""
+	if not versionA: return 0
+	if not versionB: return 0
+	
+	a = re.match("([0-9]+)\.([0-9]+)\.([0-9]+)(\-.*)?", versionA)
+	if not a: return 0
+	b = re.match("([0-9]+)\.([0-9]+)\.([0-9]+)(\-.*)?", versionB)
+	if not b: return 0
+	
+	va = (int(a.group(1)), int(a.group(2)), int(a.group(3)))
+	vb = (int(b.group(1)), int(b.group(2)), int(b.group(3)))
+
+	if va < vb: return -1
+	if va > vb: return 1
+	
+	# va = vb when it comes to digits. Let's check extensions
+	if not a.group(4) and not b.group(4): return 0 # no extensions at all
+	if not a.group(4): return 1 # no extensions on a. a is greater
+	if not b.group(4): return -1 # no extensions on b. b is greater.
+	# lexicographic order
+	if a.group(4) < b.group(4): return -1
+	if a.group(4) > b.group(4): return 1
+	return 0
 
 ################################################################################
 # The Agent Installer
@@ -1367,7 +1407,7 @@ class AgentInstaller(ConnectingNode):
 			ret = []
 
 		# Sort the results
-		ret.sort(key = operator.itemgetter('version'))
+		ret.sort(key = operator.itemgetter('version'), cmp = compareVersions)
 		ret.reverse()
 		return ret
 
@@ -1436,7 +1476,7 @@ class AgentInstaller(ConnectingNode):
 			branches = None
 		else:
 			branches = preferredBranches
-		currentVersion = "0.0.0"
+		currentVersion = None
 
 		basepath = os.path.normpath(os.path.realpath(installDir))
 	
@@ -1465,19 +1505,10 @@ class AgentInstaller(ConnectingNode):
 				self.getLogger().warning("Preferred version %s is not available. Cannot install it." % preferredVersion)
 		else:
 			# No preferred version: take the most recent one in the selected branches
-			# Let's check if we have a better version than the current one
-			# Versions rules
-			# A.B.C < A+n.b.c
-			# A.B.C < A.B+n.c
-			# A.B.C < A.B.C+n
-			# (ie when comparing A.B.C and a.b.c, lexicographic order is ok)
-			if not currentVersion or (currentVersion < updates[0]['version']):
-				selectedVersion = updates[0]['version']
-				url = updates[0]['url']
-				selectedBranch = updates[0]['branch']
-				self.getLogger().info("New version available: %s, in branch %s. Installing." % (selectedVersion, selectedBranch))
-			else:
-				self.getLogger().info("No new version available. Not installing.")
+			selectedVersion = updates[0]['version']
+			url = updates[0]['url']
+			selectedBranch = updates[0]['branch']
+			self.getLogger().info("Latest available version: %s, in branch %s. Installing." % (selectedVersion, selectedBranch))
 
 		# OK, now if we have selected a version, let's update.		
 		if url:
