@@ -482,8 +482,8 @@ class HttpResponseCodec(CodecManager.IncrementalCodec):
 					# Truncate the body
 					ret['body'] = ret['body'][:cl]
 			else:
-				# No chunk, no content-length: wait until the end of the connection if we can
-				if not complete:
+				# No chunk, no content-length: maybe this is normal (204, 304 and 1xx) or we wait until the end of the connection if we can
+				if not complete and not (ret['status'] in [204, 304] or ret['status'] <= 199):
 					return self.needMoreData()
 		
 		return self.decoded(ret, self.getSummary(ret))
