@@ -337,19 +337,19 @@ class Variable(StateManager):
 class TestermanException(Exception): pass
 
 # Control-oriented exceptions
-class TestermanKillException(Exception): pass
+class TestermanKillException(TestermanException): pass
 
-class TestermanStopException(Exception):
+class TestermanStopException(TestermanException):
 	def __init__(self, retcode = None):
 		"""
 		Retcode is used as a return code for the ATS.
 		"""
 		self.retcode = retcode
 
-class TestermanCancelException(Exception): pass
+class TestermanCancelException(TestermanException): pass
 
 # Exception for TTCN-3 related problems
-class TestermanTtcn3Exception(Exception): pass
+class TestermanTtcn3Exception(TestermanException): pass
 
 
 ################################################################################
@@ -2088,11 +2088,11 @@ def alt(alternatives):
 						raise
 					
 	#			if r: logInternal("activity detected on port(s) %s" % r)
-	except:
-		logInternal("exception in alt()")
+	except Exception, e:
+		logInternal("exception in alt(): %s (%s)" % (str(e), repr(e)))
 		if systemQueueWatched:
 			_getSystemQueue()._unregisterListener()
-		raise
+		raise e
 
 	if systemQueueWatched:
 		_getSystemQueue()._unregisterListener()
