@@ -1502,7 +1502,8 @@ class WTextualLogView(QTreeWidget):
 		for l in self.labels:
 			labels.append(l)
 		self.setHeaderLabels(labels)
-		self.setColumnWidth(0, 140) # "time" sizing - well.. it may depends on the font
+		fm = QFontMetrics(self.font())
+		self.setColumnWidth(0, fm.width("000000000 00:00:00.000")) # "time" sizing made dependent on font
 		self.setContextMenuPolicy(Qt.CustomContextMenu)
 		self.connect(self, SIGNAL("customContextMenuRequested(const QPoint&)"), self.onPopupMenu)
 		self.connect(self, SIGNAL("itemActivated(QTreeWidgetItem*, int)"), self.onItemActivated)
