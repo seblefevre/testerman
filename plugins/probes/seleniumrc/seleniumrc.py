@@ -22,7 +22,7 @@ import httplib
 import urllib
 import re
 
-class selenium:
+class seleniumrc:
     """
     Defines an object that runs Selenium commands.
     

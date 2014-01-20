@@ -7,7 +7,7 @@
 
 import ProbeImplementationManager
 
-import selenium
+import seleniumrc
 
 
 # Automatically generated from selenium.py
@@ -255,7 +255,7 @@ The test system interface port bound to such a probe complies with the ``Seleniu
 		# Automatically start browsing if a default url is provided
 		url = self['server_url']
 		if url:
-			self._selenium = selenium.selenium(self['rc_host'], int(self['rc_port']), self['browser'], self['server_url'])
+			self._selenium = seleniumrc.seleniumrc(self['rc_host'], int(self['rc_port']), self['browser'], self['server_url'])
 			self._selenium.start()
 	
 	def onTriUnmap(self):
