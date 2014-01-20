@@ -22,7 +22,7 @@ enable_debug_logs()
 
 class TC_SELENIUM_PROBE(TestCase):
 	"""
-	Query testerman from google.com via Selenium, and make sure testerman.fr appears in the results.
+	Query testerman from Bing.com via Selenium RC, and make sure testerman.fr appears in the results.
 	"""
 	def body(self):
 		sel = self.mtc['sel']
@@ -31,25 +31,25 @@ class TC_SELENIUM_PROBE(TestCase):
 		t = Timer(15.0)
 		t.start()
 
-		# Let's search "testerman TTCN-3" from google, and expect testerman.fr to be listed in the results
+		# Let's search "testerman TTCN-3" from bing, and expect testerman.fr to be listed in the results
 		# Notice that we are using RC verbs, not something like clickAndWait which is only available from the Selenium IDE.
 		sel.send( ('open', { 'target': '/' }) )
-		sel.send( ('type', { 'target': 'q', 'value': 'testerman TTCN-3' }) )
-		sel.send( ('clickAndWait', { 'target': 'btnG' }) )
+		sel.send( ('type', { 'target': 'id=sb_form_q', 'value': 'testerman TTCN-3' }) )
+		sel.send( ('clickAndWait', { 'target': 'id=sb_form_go'}) )
 		# Use isTextPresent that "returns" a bool instead of assertTextPresent that will raise an exception if not present.
 		# This enables to get the test logic back into Testerman.
 		sel.send( ('isTextPresent', { 'target': '*testerman.fr*' }) )
-		
+
 		alt([
 			[ sel.RECEIVE(True),
-				lambda: log("OK, testerman.fr is correctly indexed by Google"),
+				lambda: log("OK, testerman.fr is correctly indexed by Bing"),
 				lambda: setverdict(PASS),
 			],
 			[ sel.RECEIVE(),
-				lambda: log("Oops, testerman.fr is not indexed by Google anymore ! This must be a (Google) regression, don't you think ?"),
+				lambda: log("Oops, testerman.fr is not indexed by Bing anymore ! This must be a (Bing) regression, don't you think ?"),
 				lambda: setverdict(FAIL),
 			],
-			[ t.TIMEOUT, 
+			[ t.TIMEOUT,
 				lambda: setverdict(INCONC),
 				lambda: stop()
 			],
@@ -62,7 +62,7 @@ class TC_SELENIUM_PROBE(TestCase):
 ##
 
 conf = TestAdapterConfiguration('local')
-conf.bind('selenium_rc', 'probe:selenium', 'selenium', server_url = 'http://www.google.com', rc_host = get_variable('PX_SELENIUM_RC_HOST'), rc_port = get_variable('PX_SELENIUM_RC_PORT'), browser = 'firefox')
+conf.bind('selenium_rc', 'probe:selenium', 'selenium', server_url = 'http://www.bing.com', rc_host = get_variable('PX_SELENIUM_RC_HOST'), rc_port = get_variable('PX_SELENIUM_RC_PORT'), browser = 'firefox')
 
 ##
 # Control definition
