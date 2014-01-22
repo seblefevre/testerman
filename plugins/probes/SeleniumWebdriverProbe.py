@@ -152,7 +152,8 @@ class SeleniumWebdriverProbe(ProbeImplementationManager.ProbeImplementation):
 
 	def _reset(self):
 		if self.driver:
-			self.driver.quit()
+			if self['auto_shutdown']:
+					self.driver.quit()
 			self.driver = None
 
 ProbeImplementationManager.registerProbeImplementationClass('selenium.webdriver', SeleniumWebdriverProbe)
