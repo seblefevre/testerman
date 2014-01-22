@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 
 ##
-# A probe that can control a Selenium WebDriver.
+# A probe that can control a Selenium WebDriver via the Selenium RC Server.
 ##
 
 import ProbeImplementationManager
@@ -14,23 +14,36 @@ class SeleniumWebdriverProbe(ProbeImplementationManager.ProbeImplementation):
 		ProbeImplementationManager.ProbeImplementation.__init__(self)
 		self.setDefaultProperty('auto_shutdown', True)
 		self.setDefaultProperty('implicitly_wait', 30)
+		self.setDefaultProperty('rc_host', 'localhost')
+		self.setDefaultProperty('rc_port', '4444')
+		self.setDefaultProperty('browser', 'firefox')
 		self.driver = None
-		self.sutAddresString = ""
 		self.locatorPattern = re.compile("^(xpath|css|id|link|name|tag_name)=(.*)$")
 		self.retValuePattern = re.compile("^(is|get).") # assumption!
 
 	def onTriMap(self):
 		self._reset()
 		# Note: the following lines might be needed if you don't use the standalone server (a.k.a. remote webdriver)
-		#import os
+		#[import os]
 		#if not os.environ.has_key('PATH') or os.environ['PATH'] == '':
 		#	os.environ['PATH'] = os.defpath
 		#if not os.environ.has_key('DISPLAY') or not os.environ['DISPLAY']:
 		#	# Linux specific (?)
 		#	os.environ['DISPLAY'] = ":0"
 		#self.driver = webdriver.Firefox()
-		self.driver = webdriver.Remote("http://localhost:4444/wd/hub", webdriver.DesiredCapabilities.FIREFOX.copy())
-		self.driver.implicitly_wait(self['implicitly_wait'])
+		b = self['browser'].upper()
+		if hasattr(webdriver.DesiredCapabilities, b):
+			caps = getattr(webdriver.DesiredCapabilities, b)
+			self.driver = webdriver.Remote(self._getRemotAddr(b, self['rc_host'], self['rc_port']), caps.copy())
+			self.driver.implicitly_wait(self['implicitly_wait'])
+		else:
+			self._probe.getLogger().error("No support for browser '%s'" % b)
+
+	def _getRemotAddr(self, browser, host, port):
+		addr = ("http://%s:%s") % (host, port)
+		if (browser.upper() == "FIREFOX"):
+			addr += "/wd/hub"
+		return str(addr)
 
 	def onTriUnmap(self):
 		self._reset()
