@@ -55,14 +55,16 @@ class SeleniumWebdriverProbe(ProbeImplementationManager.ProbeImplementation):
 		self._reset()
 
 	def onTriSend(self, message, sutAddress):
-		if not isinstance(message, dict) or not message.has_key('command'):
+		if (not isinstance(message, list) and not isinstance(tuple)) or len(message) < 1:
 			raise Exception("Invalid message")
 		if not self.driver:
 			raise Exception("Webdriver isntance not availabe")
+		if isinstance(message, tuple):
+			message = list(message)
 
-		cmd = message['command']
-		target = message.get('target', None)
-		value = message.get('value', None)
+		cmd = message[0]
+		target = message[1] if len(message) > 1 else None
+		value = message[2] if len(message) > 2 else None
 
 		obj, attr = self._getObjAndAttr(cmd, target)
 		if callable(attr):
