@@ -1400,9 +1400,14 @@ class TextualLogItem(QTreeWidgetItem):
 			self._class = "discarded"
 			self._message = "TestCase %s (%s) created" % (self._domElement.attribute('id'), self._domElement.text())
 		elif self._element == "verdict-updated":
-			# Discarded in this viewer for now.
-			self._class = "discarded"
-			self._message = "TC local verdict updated to %s on %s" % (self._domElement.attribute('verdict'), self._domElement.attribute('tc'))
+			verdict = self._domElement.attribute('verdict')
+			if verdict == "fail":
+				self._message = "TC local verdict updated to %s on %s" % (self._domElement.attribute('verdict'), self._domElement.attribute('tc'))
+				self.setForeground(2, QBrush(QColor(Qt.red)))
+			else:
+				# Discarded in this viewer for now.
+				self._class = "discarded"
+				self._message = "TC local verdict updated to %s on %s" % (self._domElement.attribute('verdict'), self._domElement.attribute('tc'))
 		elif self._element == "testcase-started":
 			self._message = "TestCase %s (%s) started" % (self._domElement.attribute('id'), self._domElement.text())
 			f = self.font(2)
