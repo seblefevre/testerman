@@ -160,9 +160,14 @@ The test system interface port bound to such a probe complies with the ``Seleniu
 		"""
 		if locatorType == "css":
 			locatorType = "css_selector"
-		find = getattr(self.driver, "find_element_by_" + locatorType)
-		webelement = find(locatorString)
-		return webelement
+		elif locatorType == "link":
+			locatorType = "link_text"
+		try:
+			find = getattr(self.driver, "find_element_by_" + locatorType)
+			webelement = find(locatorString)
+			return webelement
+		except:
+			raise Exception("Unable to find element: %s=%s" % (locatorType, locatorString))
 
 	def _getNumParams(self, method):
 		"""
