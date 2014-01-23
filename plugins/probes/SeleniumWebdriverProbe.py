@@ -115,7 +115,7 @@ The test system interface port bound to such a probe complies with the ``Seleniu
 		if (not isinstance(message, list) and not isinstance(tuple)) or len(message) < 1:
 			raise Exception("Invalid message")
 		if not self.driver:
-			raise Exception("Webdriver isntance not availabe")
+			raise Exception("Webdriver instance not availabe")
 		if isinstance(message, tuple):
 			message = list(message)
 
