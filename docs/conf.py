@@ -41,7 +41,7 @@ master_doc = 'index'
 
 # General information about the project.
 project = u'Testerman'
-copyright = u'2009-2013, Sébastien Lefèvre'
+copyright = u'2009-2014, Sébastien Lefevre and Testerman contributors'
 
 # The version info for the project you're documenting, acts as replacement for
 # |version| and |release|, also used in various other places throughout the
@@ -242,7 +242,7 @@ man_pages = [
 #  dir menu entry, description, category)
 texinfo_documents = [
   ('index', 'Testerman', u'Testerman Documentation',
-   u'Sébastien Lefèvre', 'Testerman', 'One line description of project.',
+   u'Sébastien Lefevre', 'Testerman', 'One line description of project.',
    'Miscellaneous'),
 ]
 
@@ -260,9 +260,9 @@ texinfo_documents = [
 
 # Bibliographic Dublin Core info.
 epub_title = u'Testerman'
-epub_author = u'Sébastien Lefèvre'
-epub_publisher = u'Sébastien Lefèvre'
-epub_copyright = u'2013, Sébastien Lefèvre'
+epub_author = u'Sébastien Lefevre'
+epub_publisher = u'Sébastien Lefevre'
+epub_copyright = u'2014, Sébastien Lefevre'
 
 # The language of the text. It defaults to the language option
 # or en if the language is not set.
