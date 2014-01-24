@@ -1,0 +1,60 @@
+Selenium Probe (WebDriver)
+==========================
+
+A Web driver using Selenium WebDriver.
+
+Identification and Properties
+-----------------------------
+
+Probe Type ID: ``selenium.webdriver``
+
+Properties:
+
+.. csv-table::
+   :header: "Name","Type","Default value","Description"
+
+   "``rc_host``","string","``localhost``","Selenium server hostname or IP address"
+   "``rc_port``","integer","``4444``","Selenium server port"
+   "``browser``","string","``firefox``","The browser Selenium should use on the Selenium host"
+   "``server_url``","string","``None``","The server URL to browse when opening the browser. Providing it is mandatory."
+   "``auto_shutdown``","boolean","``True``","When set, Selenium closes the browser window when the test case is over. It may be convenient to set it to False to leave this window open to debug a test case on error."
+
+Overview
+--------
+
+This probe enables Testerman to perform Selenium-based tests through the Selenium Webdriver using a standalone Selenium Server.
+
+The probe automatically starts the browser on the host as soon as it is mapped, and everything is cleaned up once the test case is over.
+
+A basic example is available in ``samples/selenium_webdriver.ats``.
+
+Availability
+~~~~~~~~~~~~
+
+All platforms.
+
+Dependencies
+~~~~~~~~~~~~
+
+The probe needs a configured (and running) Selenium Server that it can reach (depending on the browser, you may need different servers).[[BR]]
+You may install it on the host you want to run the browsers from.
+
+TTCN-3 Types Equivalence
+------------------------
+
+The test system interface port bound to such a probe complies with the ``SeleniumWebdriverProbePortType`` port type as specified below:
+
+::
+
+  type record SeleniumSelenese
+  {
+   charstring command,
+   charstring target optional,
+   charstring value optinal
+  }
+
+  type SeleniumWebdriverProbePortType
+  {
+    in SeleniumSelenes
+    out any; // depends on the invoked command
+  }

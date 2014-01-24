@@ -180,8 +180,8 @@
 message structures.</p>
 <p>Limitations:</p>
 <ul class="simple">
-<li>comments, entity nodes are not decoded (nor can be encoded)</li>
-<li>nested elements are only reported if not preceded by a text. In
+<li>Comments, entity nodes are not decoded (nor can be encoded)</li>
+<li>Nested elements are only reported if not preceded by a text. In
 particular, this makes this codec unsuitable for full XHTML parsing,
 but should make it more convenient in most testing cases</li>
 </ul>
@@ -244,21 +244,22 @@ consider CodecXerLite.</p>
 </div>
 <div class="section" id="ttcn-3-types-equivalence">
 <h2>TTCN-3 Types Equivalence<a class="headerlink" href="#ttcn-3-types-equivalence" title="Permalink to this headline">¶</a></h2>
-<div class="highlight-python"><pre>type record Element
+<div class="highlight-python"><pre>      type record Element
+      {
+      Attributes attributes,
+      // if children is present, cdata and value are not present.
+      // if cdata and value are present, children it not present.
+      boolean cdata optional,
+      universal charstring value optional,
+      record of Element children optional
+      }
+
+type record Attributes
 {
-Attributes attributes,
-// if children is present, cdata and value are not present.
-// if cdata and value are present, children it not present.
-boolean cdata optional,
-universal charstring value optional,
-record of Element children optional
+  // field name depends on the available attributes. All types are universal charstring
+  universal charstring name
 }</pre>
 </div>
-<p>type record Attributes
-{
-// field name depends on the available attributes. All types are universal charstring
-universal charstring name
-}</p>
 </div>
 </div>
 

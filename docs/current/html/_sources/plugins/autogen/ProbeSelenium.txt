@@ -1,7 +1,7 @@
 Selenium Probe
 ==============
 
-A Web driver using Selenium RC.
+A Web driver using Selenium.
 
 Identification and Properties
 -----------------------------

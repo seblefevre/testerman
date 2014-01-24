@@ -19,3 +19,4 @@
    ProbeSqlMysql.rst
    ProbeHttpClient.rst
    ProbeSelenium.rst
+   ProbeSeleniumWebdriver.rst
