@@ -38,12 +38,12 @@ class TC_SELENIUM_PROBE(TestCase):
 		t.start()
 
 		# Let's search "testerman TTCN-3" from bing, and expect testerman.fr to be listed in the results
-		# Notice that we are using RC verbs, not something like clickAndWait which is only available from the Selenium IDE.
-		sel.send(["get", PX_SELENIUM_SERVER_URL])
-		sel.send(["send_keys", "id=sb_form_q", "testerman TTCN-3"])
-		sel.send(["click", "id=sb_form_go"])
+		# Commands are either send to the driver directly or a webelement (identified by the 2nd [target] argument)
+		sel.send(["get", PX_SELENIUM_SERVER_URL]) # access driver
+		sel.send(["send_keys", "id=sb_form_q", "testerman TTCN-3"]) # access webelement
+		sel.send(["click", "id=sb_form_go"]) # access webelement
 		# Get the source of the result page and check whether a link exists.
-		sel.send(["page_source"])
+		sel.send(["page_source"]) # access driver
 		alt([
 			[ sel.RECEIVE(template = pattern(r'testerman.fr')),
 				lambda: log("OK, testerman.fr is correctly indexed by Bing"),
