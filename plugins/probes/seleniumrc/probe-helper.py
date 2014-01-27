@@ -1,6 +1,6 @@
 # Helper to build the Selenium Testerman Probe.
 #
-# Turns some parts of the selenium.py source code into something usable to build
+# Turns some parts of the seleniumrc.py source code into something usable to build
 # a Testerman probe.
 
 

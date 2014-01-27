@@ -27,7 +27,8 @@ PLUGINS = [
 ("Oracle Probe", "Oracle Database client", "probes/SqlOracleProbe.py", "OracleProbe", "ProbeSqlOracle"),
 ("MySQL Probe", "MySQL Database client", "probes/SqlMysqlProbe.py", "MySqlProbe", "ProbeSqlMysql"),
 ("HTTP Probe", "A simple HTTP client", "probes/HttpClientProbe.py", "HttpClientProbe", "ProbeHttpClient"),
-("Selenium Probe", "A Web driver using Selenium RC", "probes/selenium/SeleniumProbe.py", "SeleniumProbe", "ProbeSelenium"),
+("Selenium Probe", "A Web driver using Selenium", "probes/seleniumrc/SeleniumProbe.py", "SeleniumProbe", "ProbeSelenium"),
+("Selenium Probe (WebDriver)", "A Web driver using Selenium WebDriver", "probes/SeleniumWebdriverProbe.py", "SeleniumWebdriverProbe", "ProbeSeleniumWebdriver"),
 ]
 
 
