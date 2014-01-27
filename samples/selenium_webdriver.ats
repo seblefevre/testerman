@@ -1,0 +1,77 @@
+# __METADATA__BEGIN__
+# <?xml version="1.0" encoding="utf-8" ?>
+# <metadata version="1.0">
+# <description>description</description>
+# <prerequisites>prerequisites</prerequisites>
+# <api>1</api>
+# <parameters>
+# <parameter name="PX_SELENIUM_BROWSER" default="firefox" type="string"><![CDATA[]]></parameter>
+# <parameter name="PX_SELENIUM_CLOSE_BROWSER" default="1" type="integer"><![CDATA[]]></parameter>
+# <parameter name="PX_SELENIUM_RC_HOST" default="localhost" type="string"><![CDATA[]]></parameter>
+# <parameter name="PX_SELENIUM_RC_PORT" default="4444" type="string"><![CDATA[]]></parameter>
+# <parameter name="PX_SELENIUM_SERVER_URL" default="http://www.bing.com/" type="string"><![CDATA[]]></parameter>
+# </parameters>
+# <groups>
+# </groups>
+# </metadata>
+# __METADATA__END__
+##
+# Sample script, demonstrating (and basically testing)
+# the selenium webdriver probe.
+#
+# To run this test, you should have a running Selenium SERVER on PX_SELENIUM_RC_HOST:PX_SELENIUM_RC_PORT and firefox available
+# on this host.
+#
+##
+
+enable_debug_logs()
+
+class TC_SELENIUM_PROBE(TestCase):
+	"""
+	Query testerman from Bing.com via Selenium RC, and make sure testerman.fr appears in the results.
+	"""
+	def body(self):
+		sel = self.mtc['sel']
+		port_map(sel, self.system['selenium_wd'])
+
+		t = Timer(15.0)
+		t.start()
+
+		# Let's search "testerman TTCN-3" from bing, and expect testerman.fr to be listed in the results
+		# Notice that we are using RC verbs, not something like clickAndWait which is only available from the Selenium IDE.
+		sel.send(["get", PX_SELENIUM_SERVER_URL])
+		sel.send(["send_keys", "id=sb_form_q", "testerman TTCN-3"])
+		sel.send(["click", "id=sb_form_go"])
+		# Get the source of the result page and check whether a link exists.
+		sel.send(["page_source"])
+		alt([
+			[ sel.RECEIVE(template = pattern(r'testerman.fr')),
+				lambda: log("OK, testerman.fr is correctly indexed by Bing"),
+				lambda: setverdict(PASS),
+			],
+			[ sel.RECEIVE(),
+				lambda: log("Oops, testerman.fr is not indexed by Bing anymore ! This must be a (Bing) regression, don't you think ?"),
+				lambda: setverdict(FAIL),
+			],
+			[ t.TIMEOUT,
+				lambda: setverdict(INCONC),
+				lambda: stop()
+			],
+		]
+		)
+
+		port_unmap(sel, self.system['selenium_wb'])
+
+##
+# Test Adapter Configurations
+##
+
+conf = TestAdapterConfiguration('local')
+conf.bind('selenium_wd', 'probe:selenium.webdriver', 'selenium.webdriver', server_url = PX_SELENIUM_SERVER_URL, rc_host = PX_SELENIUM_RC_HOST, rc_port = PX_SELENIUM_RC_PORT, browser = PX_SELENIUM_BROWSER, auto_shutdown = PX_SELENIUM_CLOSE_BROWSER)
+
+##
+# Control definition
+##
+with_test_adapter_configuration('local')
+TC_SELENIUM_PROBE().execute()
+
