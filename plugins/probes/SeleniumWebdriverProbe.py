@@ -7,7 +7,15 @@
 import ProbeImplementationManager
 
 from selenium import webdriver
+from selenium.common.exceptions import NoSuchElementException
+from selenium.common.exceptions import NoAlertPresentException
 import re, inspect
+
+customSelenese = {
+	#name of selenes : [name_probe_method, has_return_value]
+	'is_element_present' : ['_isElementPresent', 1],
+	'is_alert_present' : ['_isAlertPresent', 1]
+}
 
 class SeleniumWebdriverProbe(ProbeImplementationManager.ProbeImplementation):
 	"""
@@ -122,25 +130,39 @@ The test system interface port bound to such a probe complies with the ``Seleniu
 		cmd = message[0]
 		target = message[1] if len(message) > 1 else None
 		value = message[2] if len(message) > 2 else None
+		args = []
+		if (target != None):
+			args.append(target)
+		if (value != None):
+			args.append(value)
 
-		obj, attr = self._getObjAndAttr(cmd, target)
-		if callable(attr):
-			numParams = self._getNumParams(attr)
-			if numParams == 2: # this method has parameters (self, arg)
-				arg = target if self._isWebdriverObj(obj) else value
-				self._logSent(obj, cmd, target, value, hasParams = True)
-				ret = attr(arg)
-			elif numParams == 1:
-				self._logSent(obj, cmd, target, value, hasParams = False)
-				ret = attr()
-			else:
-				raise Exception("Unable to call this method: %s" % attr)
+		if (cmd in customSelenese):
+			self.logSentPayload("%s(%s)" % (cmd, target), payload = '', sutAddress = '%s:%s' % (self['rc_host'], self['rc_port']))
+			methodName, hasRetValue = customSelenese[cmd]
+			method = getattr(self, methodName)
+			ret = method(*args)
+			if (hasRetValue):
+				self.logReceivedPayload("received '%s'" % ret, payload = ret, sutAddress = '%s:%s' % (self['rc_host'], self['rc_port']))
+				self.triEnqueueMsg(ret)
 		else:
-			self._logSent(obj, cmd, target, value, isCalled = False)
-			ret = attr
-		if self._hasRetValue(attr):
-			self.logReceivedPayload("received '%s'" % ret, payload = ret, sutAddress = '%s:%s' % (self['rc_host'], self['rc_port']))
-			self.triEnqueueMsg(ret)
+			obj, attr = self._getObjAndAttr(cmd, target)
+			if callable(attr):
+				numParams = self._getNumParams(attr)
+				if numParams == 2: # this method has parameters (self, arg)
+					arg = target if self._isWebdriverObj(obj) else value
+					self._logSent(obj, cmd, target, value, hasParams = True)
+					ret = attr(arg)
+				elif numParams == 1:
+					self._logSent(obj, cmd, target, value, hasParams = False)
+					ret = attr()
+				else:
+					raise Exception("Unable to call this method: %s" % attr)
+			else:
+				self._logSent(obj, cmd, target, value, isCalled = False)
+				ret = attr
+			if self._hasRetValue(attr):
+				self.logReceivedPayload("received '%s'" % ret, payload = ret, sutAddress = '%s:%s' % (self['rc_host'], self['rc_port']))
+				self.triEnqueueMsg(ret)
 
 	def _getObjAndAttr(self, cmd, target):
 		"""
@@ -150,14 +172,16 @@ The test system interface port bound to such a probe complies with the ``Seleniu
 		if target:
 			match = self.locatorPattern.search(target)
 			if match:
-				obj = self._getWebelement(*match.groups())
+				obj = self._getWebelement(target)
 		attr = getattr(obj, cmd)
 		return obj, attr
 
-	def _getWebelement(self, locatorType, locatorString):
+	def _getWebelement(self, target):
 		"""
 		Return a WebElement.
 		"""
+		match = self.locatorPattern.search(target)
+		locatorType, locatorString = match.groups()
 		if locatorType == "css":
 			locatorType = "css_selector"
 		elif locatorType == "link":
@@ -167,7 +191,7 @@ The test system interface port bound to such a probe complies with the ``Seleniu
 			webelement = find(locatorString)
 			return webelement
 		except:
-			raise Exception("Unable to find element: %s=%s" % (locatorType, locatorString))
+			raise NoSuchElementException("Unable to find element: %s" % target)
 
 	def _getNumParams(self, method):
 		"""
@@ -211,6 +235,20 @@ The test system interface port bound to such a probe complies with the ``Seleniu
 		if self.retValuePattern.search(attr.__name__):
 			return True
 		return False
+
+	def _isElementPresent(self, target):
+		try:
+			self._getWebelement(target)
+		except NoSuchElementException, e:
+			return False
+		return True
+
+	def _isAlertPresent(self):
+		try:
+			self.driver.switch_to_alert()
+		except NoAlertPresentException, e:
+			return False
+		return True
 
 	def _reset(self):
 		if self.driver:
