@@ -38,7 +38,7 @@ this.options = {
 	superClass: "TestCase",
 	initialIndents: '2',
 	indent: 'tab',
-	tsiPort: 'selenium-port', // TestSystemInterfacePortName
+	tsiPort: 'selenium_rc', // TestSystemInterfacePortName
 	probeType: 'selenium', // probe type (for future "webdriver" or "remotecrontrol" selenium probe
 	probeUri: 'probe:selenium',
 	//staticPxParameters: (this.options['staticPxParameters'] ? this.options['staticPxParameters'] : ""),
@@ -102,7 +102,7 @@ this.options.getHeader = function(testCase) {
 	indents(1) + '# here might be python docstrings\n' + 
 	indents(1) + 'def body(self):\n' +
 	indents(2) + '#set up (port mapping)\n' +
-	indents(2) + '${receiver} = self.mtc[\'port\']\n' +
+	indents(2) + '${receiver} = self.mtc[\'sel\']\n' +
 	indents(2) + 'port_map(${receiver}, self.system[\'${tsiPort}\'])\n' +
 	indents(2) + '\n' + indents(2) + '#selenium commands\n' +
 	(hooks.beforeFistSeleniumCommand ? hooks.beforeFistSeleniumCommand(testCase) : "")
