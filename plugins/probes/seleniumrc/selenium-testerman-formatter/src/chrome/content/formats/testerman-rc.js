@@ -18,7 +18,7 @@ subScriptLoader.loadSubScript('chrome://selenium-ide/content/formats/remoteContr
 this.hooks = {};
 
 // Load our own options.js for optins, header, footer, config form
-subScriptLoader.loadSubScript('chrome://testerman-formatter/content/formats/options.js', this);
+subScriptLoader.loadSubScript('chrome://testerman-formatter/content/formats/options-rc.js', this);
 
 this.name = "testerman";
 this.timerCount = 0; // number of timers in this test (used to generate a unique variable name)

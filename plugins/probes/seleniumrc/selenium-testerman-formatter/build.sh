@@ -1,24 +1,18 @@
 #!/bin/bash
- 
-APP_NAME=testerman-formatter	# xpi name
-APP_VERSION=1.1 		# plugin version
- 
-SRC_DIR=$APP_NAME
+
+SRC_DIR=./src
 TMP_DIR=build
- 
+VERSION=`grep -o '<em:version>[^<]*' $SRC_DIR/install.rdf | grep -o '[0-9].*'`
+FILE_NAME="testerman-formatter-${VERSION}.xpi"
+
 # remove any left-over files from previous build
-rm -f $APP_NAME.xpi
- 
-mkdir -p $TMP_DIR/chrome/content/formats
- 
-cp -r $SRC_DIR/chrome/content $TMP_DIR/chrome
-cp $SRC_DIR/install.rdf $TMP_DIR
-cp $SRC_DIR/chrome.manifest $TMP_DIR
- 
-# generate the plugin
+rm -f $FILE_NAME > /dev/null
+
+mkdir -p $TMP_DIR
+cp -r $SRC_DIR/* $TMP_DIR
 cd $TMP_DIR
-echo "Generating $APP_NAME-$APP_VERSION.xpi..."
-zip -r ../$APP_NAME-$APP_VERSION.xpi * -x '*/.svn/*'
+echo "Generating $FILE_NAME ..."
+zip -r ../$FILE_NAME *
 
 cd - > /dev/null
 rm -rf $TMP_DIR
