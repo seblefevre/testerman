@@ -608,7 +608,7 @@ class TestermanCliClient:
 		
 		print "Extracting %s to %s..." % (path, filename)
 		try:
-			contents = self.__client.createPackageFile("/repository/%s" % path)
+			contents = self.__client.exportPackage("/repository/%s" % path)
 			if contents is None:
 				raise Exception("Package %s not found" % path)
 			f = open(filename, 'wb')
