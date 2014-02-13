@@ -3,17 +3,23 @@
 # <metadata version="1.0">
 # <description>description</description>
 # <prerequisites>prerequisites</prerequisites>
+# <api>1</api>
 # <parameters>
+# <parameter name="PX_SELENIUM_BROWSER" default="firefox" type="string"><![CDATA[]]></parameter>
+# <parameter name="PX_SELENIUM_CLOSE_BROWSER" default="1" type="integer"><![CDATA[]]></parameter>
 # <parameter name="PX_SELENIUM_RC_HOST" default="localhost" type="string"><![CDATA[]]></parameter>
 # <parameter name="PX_SELENIUM_RC_PORT" default="4444" type="string"><![CDATA[]]></parameter>
+# <parameter name="PX_SELENIUM_SERVER_URL" default="http://www.bing.com/" type="string"><![CDATA[]]></parameter>
 # </parameters>
+# <groups>
+# </groups>
 # </metadata>
 # __METADATA__END__
 ##
 # Sample script, demonstrating (and basically testing)
-# the selenium probe.
+# the selenium webdriver probe.
 #
-# To run this test, you should have a running Selenium RC on PX_SELENIUM_RC_HOST:PX_SELENIUM_RC_PORT and firefox available
+# To run this test, you should have a running Selenium SERVER on PX_SELENIUM_RC_HOST:PX_SELENIUM_RC_PORT and firefox available
 # on this host.
 #
 ##
@@ -26,22 +32,20 @@ class TC_SELENIUM_PROBE(TestCase):
 	"""
 	def body(self):
 		sel = self.mtc['sel']
-		port_map(sel, self.system['selenium_rc'])
+		port_map(sel, self.system['selenium_wd'])
 
 		t = Timer(15.0)
 		t.start()
 
 		# Let's search "testerman TTCN-3" from bing, and expect testerman.fr to be listed in the results
-		# Notice that we are using RC verbs, not something like clickAndWait which is only available from the Selenium IDE.
-		sel.send( ('open', { 'target': '/' }) )
-		sel.send( ('type', { 'target': 'id=sb_form_q', 'value': 'testerman TTCN-3' }) )
-		sel.send( ('clickAndWait', { 'target': 'id=sb_form_go'}) )
-		# Use isTextPresent that "returns" a bool instead of assertTextPresent that will raise an exception if not present.
-		# This enables to get the test logic back into Testerman.
-		sel.send( ('isTextPresent', { 'target': '*testerman.fr*' }) )
-
+		# Commands are either send to the driver directly or a webelement (identified by the 2nd [target] argument)
+		sel.send(["get", PX_SELENIUM_SERVER_URL]) # access driver
+		sel.send(["send_keys", "id=sb_form_q", "testerman TTCN-3"]) # access webelement
+		sel.send(["click", "id=sb_form_go"]) # access webelement
+		# Get the source of the result page and check whether a link exists.
+		sel.send(["page_source"]) # access driver
 		alt([
-			[ sel.RECEIVE(True),
+			[ sel.RECEIVE(template = pattern(r'testerman.fr')),
 				lambda: log("OK, testerman.fr is correctly indexed by Bing"),
 				lambda: setverdict(PASS),
 			],
@@ -56,13 +60,14 @@ class TC_SELENIUM_PROBE(TestCase):
 		]
 		)
 
+		port_unmap(sel, self.system['selenium_wb'])
 
 ##
 # Test Adapter Configurations
 ##
 
 conf = TestAdapterConfiguration('local')
-conf.bind('selenium_rc', 'probe:selenium', 'selenium', server_url = 'http://www.bing.com', rc_host = get_variable('PX_SELENIUM_RC_HOST'), rc_port = get_variable('PX_SELENIUM_RC_PORT'), browser = 'firefox')
+conf.bind('selenium_wd', 'probe:selenium.webdriver', 'selenium.webdriver', server_url = PX_SELENIUM_SERVER_URL, rc_host = PX_SELENIUM_RC_HOST, rc_port = PX_SELENIUM_RC_PORT, browser = PX_SELENIUM_BROWSER, auto_shutdown = PX_SELENIUM_CLOSE_BROWSER)
 
 ##
 # Control definition
