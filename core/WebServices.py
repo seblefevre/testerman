@@ -1062,7 +1062,7 @@ def schedulePackage(path, username, session, at, script = None, profileName = No
 			script = metadata['default-script']
 
 		scriptFilename = "%s/src/%s" % (path, script)
-		scriptPath = os.path.split(scriptFilename)[0]
+		scriptPath = scriptFilename
 		
 		label = "%s:%s" % ('/'.join(path.split('/')[2:]), script)
 		

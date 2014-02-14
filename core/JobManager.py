@@ -643,6 +643,20 @@ class AtsJob(Job):
 		self._teCommandLine = None
 		self._teFilename = None
 
+	def __repr__(self):
+		return """ATS:
+Job: %s
+path: %s
+tePreparedPackageDirectory: %s
+baseDocRootDirectory: %s
+baseName: %s
+baseDirectory: %s
+tePackageDirectory: %s
+teCommandLine: %s
+teFilename: %s
+""" % (str(self), self._path, self._tePreparedPackageDirectory, self._baseDocRootDirectory, self._baseName,
+self._baseDirectory, self._tePackageDirectory, self._teCommandLine, self._teFilename)
+
 	def toDict(self, detailed = False):
 		"""
 		Returns the job info as a dict
@@ -740,6 +754,7 @@ class AtsJob(Job):
 			self.setState(self.STATE_ERROR)
 			raise PrepareException(desc)
 		
+		getLogger().debug("%s: preparing job %s" % (str(self), repr(self)))
 
 		# Check the metadata and the language API
 		metadata = TEFactory.getMetadata(self._source)
@@ -925,6 +940,12 @@ Description:
 Keywords: testerman
 Platform: UNKNOWN
 """
+		# For ATS from anonymous packages, the atsPath (self._path) is a local path, not
+		# a relative path to the package:src/ folder.
+		# We need to take this into account and do some substitution
+		atsDirInTePackage = os.path.split(self._path)[0]
+		if packagePath:
+			atsDirInTePackage = os.path.normpath('/repository/%s' % atsDirInTePackage[len(packagePath+'/src/'):])
 		bootstrapCode = """##
 # This bootstrap code enables to start the main_te.
 # Doing an import ats.main_te (provided the ats folder is turned into a Python package)
@@ -940,13 +961,13 @@ home = os.path.realpath(os.path.dirname(sys.modules[globals()['__name__']].__fil
 sys.path.insert(0, os.path.join(home, 'ats'))
 # userland modules that were in the same folder as the ATS are copied to /repository/path/to/ats.
 # Let's make sure that such modules will be find first
-sys.path.insert(0, os.path.join(home, 'ats%(atsPath)s'))
+sys.path.insert(0, os.path.join(home, 'ats%(atsDirInTePackage)s'))
 # userland modules are copied to a repository subfolder, so add it to the PYTHONPATH
 # so that the ats/TE can find its repository-level userland dependencies
 sys.path.insert(0, os.path.join(home, 'ats/repository'))
 
 import main_te
-""" % dict(atsPath = os.path.split(self._path)[0])
+""" % dict(atsDirInTePackage = atsDirInTePackage)
 
 		try:
 			# The Python egg __main__ is in the base dir
