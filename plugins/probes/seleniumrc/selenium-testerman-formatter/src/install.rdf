@@ -2,7 +2,7 @@
 <RDF xmlns="http://www.w3.org/1999/02/22-rdf-syntax-ns#" 
 		xmlns:em="http://www.mozilla.org/2004/em-rdf#">
 	<Description about="urn:mozilla:install-manifest">
-		<em:id>testerman-formatter@github.com</em:id>
+		<em:id>testerman-formatters@github.com</em:id>
 		<em:name>Selenium IDE: Testerman ATS Formatter</em:name>
 		<em:version>1.1</em:version>
 		<em:creator>Rolf Schroder</em:creator>

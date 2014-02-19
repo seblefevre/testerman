@@ -7,7 +7,8 @@
 	<script type="application/x-javascript" src="chrome://selenium-ide/content/api.js"/>
 	<html:script type="application/javascript">
 		var ide_api = new API();
-		ide_api.addPlugin("testerman-formatter@github.com");
-		ide_api.addPluginProvidedFormatter("testerman-rc", "Testerman ATS / Remote Control", "chrome://testerman-formatter/content/formats/testerman-rc.js");
+		ide_api.addPlugin("testerman-formatters@github.com");
+		ide_api.addPluginProvidedFormatter("testerman-rc", "Testerman ATS / Remote Control", "chrome://testerman-formatters/content/formats/testerman-rc.js");
+		ide_api.addPluginProvidedFormatter("testerman-wd", "Testerman ATS / Webdriver", "chrome://testerman-formatters/content/formats/testerman-wd.js");
 	</html:script>
 </overlay>

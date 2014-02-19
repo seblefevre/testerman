@@ -18,7 +18,7 @@ subScriptLoader.loadSubScript('chrome://selenium-ide/content/formats/remoteContr
 this.hooks = {};
 
 // Load our own options.js for optins, header, footer, config form
-subScriptLoader.loadSubScript('chrome://testerman-formatter/content/formats/options-rc.js', this);
+subScriptLoader.loadSubScript('chrome://testerman-formatters/content/formats/options-rc.js', this);
 
 this.name = "testerman";
 this.timerCount = 0; // number of timers in this test (used to generate a unique variable name)
@@ -410,7 +410,7 @@ string = function(value) {
  * TODO?: We use Python's str() to convert the parameter. If it's an integer and no conversion
  * is done, template matching doesn't seem to work (e.g. Selenium returns a string but the template
  * expects an integer). Another workaround would be to define parameters always as string, like
- * #<parameter name="PX_... type="string" ... (see printDynamicPxParameters() in chrome://testerman-formatter/content/formats/options.js)
+ * #<parameter name="PX_... type="string" ... (see printDynamicPxParameters() in chrome://testerman-formatters/content/formats/options.js)
  * It seemed to be more flexible to set the right type at the beginning (for manually coding after export).
  */
 this.variableName = function(value) {
@@ -752,17 +752,22 @@ function variableNameIsPxParameter(name) {
  */
 CallSelenium.prototype.send = function() {
 	var result = '';
-	if (options.receiver) {
-		result += options.receiver + '.';
+	if (this.modifyCall) {
+		result = this.modifyCall();
 	}
-	result += 'send([';
-	result += "\"" + this.message + "\"";
-	if (this.args.length > 0) {
-		for (var i = 0; i < this.args.length; i++) {
-			result += ", " + this.args[i];
+	if (result == '') {
+		if (options.receiver) {
+			result = options.receiver + '.';
 		}
+		result += 'send([';
+		result += "\"" + this.message + "\"";
+		if (this.args.length > 0) {
+			for (var i = 0; i < this.args.length; i++) {
+				result += ", " + this.args[i];
+			}
+		}
+		result += '])';
 	}
-	result += '])';
 	return result;
 }
 
