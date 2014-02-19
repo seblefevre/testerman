@@ -104,7 +104,7 @@ this.options.getHeader = function(testCase) {
 	indents(2) + '#set up (port mapping)\n' +
 	indents(2) + '${receiver} = self.mtc[\'sel\']\n' +
 	indents(2) + 'port_map(${receiver}, self.system[\'${tsiPort}\'])\n' +
-	indents(2) + '\n' + indents(2) + '#selenium commands\n' +
+	'\n' + indents(2) + '#selenium commands\n' +
 	(hooks.beforeFistSeleniumCommand ? hooks.beforeFistSeleniumCommand(testCase) : "")
 	'';
 	return result;
