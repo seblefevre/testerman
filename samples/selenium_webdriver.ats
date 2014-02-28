@@ -39,18 +39,44 @@ class TC_SELENIUM_PROBE(TestCase):
 
 		# Let's search "testerman TTCN-3" from bing, and expect testerman.fr to be listed in the results
 		# Commands are either send to the driver directly or a webelement (identified by the 2nd [target] argument)
-		sel.send(["get", PX_SELENIUM_SERVER_URL]) # access driver
-		sel.send(["send_keys", "id=sb_form_q", "testerman TTCN-3"]) # access webelement
-		sel.send(["click", "id=sb_form_go"]) # access webelement
+		sel.send(["get", PX_SELENIUM_SERVER_URL]) # access driver method
+		sel.send(["send_keys", "id=sb_form_q", "testerman TTCN-3"]) # access webelement's method
+		sel.send(["click", "id=sb_form_go"]) # access webelement's method
 		# Get the source of the result page and check whether a link exists.
-		sel.send(["page_source"]) # access driver
+		sel.send(["page_source"]) # access driver property
 		alt([
 			[ sel.RECEIVE(template = pattern(r'testerman.fr')),
 				lambda: log("OK, testerman.fr is correctly indexed by Bing"),
-				lambda: setverdict(PASS),
 			],
 			[ sel.RECEIVE(),
 				lambda: log("Oops, testerman.fr is not indexed by Bing anymore ! This must be a (Bing) regression, don't you think ?"),
+				lambda: setverdict(FAIL),
+			],
+			[ t.TIMEOUT,
+				lambda: setverdict(INCONC),
+				lambda: stop()
+			],
+		]
+		)
+		
+		# The probe abstracts the Webdriver so we cannot exploit the object-oriented approach and other advanteges
+		# introduced by Selenium Webdriver. If for any reason, you want to access the Webdriver object directly,
+		# you may do so by the following:
+		sel.send(["driver"]) # get driver
+		sel.receive(value = 'driver')
+		driver = value('driver')
+		driver.back() # return to index
+		
+		# Note that you have 'is_element_present' and 'is_alert_present' in addition to all predefined Webdriver/
+		# Webelement methods:
+		sel.send(["is_element_present", "id=sb_form_q"])
+		alt([
+			[ sel.RECEIVE(template = True),
+				lambda: log("Good, Bing is still Bing"),
+				lambda: setverdict(PASS),
+			],
+			[ sel.RECEIVE(),
+				lambda: log("Oh no, what happened to search?"),
 				lambda: setverdict(FAIL),
 			],
 			[ t.TIMEOUT,
