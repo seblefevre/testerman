@@ -508,7 +508,7 @@ this.parse = function(testCase, source) {
 			dummyTitle = m[1];
 			testCase.description = m[2];
 		}
-		m = reSeleniumBaseURL(line);
+		m = reSeleniumBaseURL.exec(line);
 		if (m) {
 			testCase.setBaseURL(m[1]);
 		}
