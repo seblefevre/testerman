@@ -17,16 +17,19 @@ exactly that: convert the recorded list into source code for a specific
 language.
 
 The Testerman ATS Formatter let's you export your recorded interactions
-directly to a Testerman test script (\*.ats). The generated code will
-use the :doc:`autogen/ProbeSelenium` to control the browser.
+directly to a Testerman test script (\*.ats). The generated code will use the
+:doc:`autogen/ProbeSelenium` or the :doc:`autogen/ProbeSeleniumWebdriver` to
+control the browser. This document covers only Selenium RC but the usage of the
+Selenium Webdriver probe is largely equivalent.
 
 Install
 ~~~~~~~
 
 The formatter is a Firefox plugin, you have to install it on top of the
-Selenium IDE plugin. It is attached at the bottom of this page (you can
-get it from the svn tree, too). Install it via Firefox: Select File ->
-Open File ... and select the \*.xpi file.
+Selenium IDE plugin. You may find a build script in
+plugin/probes/seleniumrc/selenium-testerman-formatter. Run the script and
+install the install via Firefox: Select File -> Open File ... and select the
+\*.xpi file.
 
 Installing a newer versions of the formatter
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -53,10 +56,10 @@ exporting), too. You will find a lot of documentation for Selenium IDE
 Understanding Selenium
 ^^^^^^^^^^^^^^^^^^^^^^
 
-Selenium is a suite of different tools. We will use Selenium IDE
-(recording user interactions with a web interface) and Selenium RC
-(remote executing of "simulated" user actions on a web interface,
-acutally, this is done by the :doc:`autogen/ProbeSelenium`).
+Selenium is a suite of different tools. We will use Selenium IDE (recording
+user interactions with a web interface) and Selenium RC (remote executing of
+"simulated" user actions on a web interface, acutally, this is done by the
+:doc:`autogen/ProbeSelenium`/:doc:`autogen/ProbeSeleniumWebdriver`).
 
 Selenium RC has a set of different type of commands. There are commands
 like click(myButton), type(myInput, blablub), getText(myElement),
