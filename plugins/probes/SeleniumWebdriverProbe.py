@@ -14,7 +14,8 @@ import re, inspect
 customSelenese = {
 	#name of selenes : [name_probe_method, has_return_value]
 	'is_element_present' : ['_isElementPresent', 1],
-	'is_alert_present' : ['_isAlertPresent', 1]
+	'is_alert_present' : ['_isAlertPresent', 1],
+	'driver' : ['_getDriverObj', 1]
 }
 
 class SeleniumWebdriverProbe(ProbeImplementationManager.ProbeImplementation):
@@ -249,6 +250,9 @@ The test system interface port bound to such a probe complies with the ``Seleniu
 		except NoAlertPresentException, e:
 			return False
 		return True
+
+	def _getDriverObj(self):
+		return self.driver
 
 	def _reset(self):
 		if self.driver:
