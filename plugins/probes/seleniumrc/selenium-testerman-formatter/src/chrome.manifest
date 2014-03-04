@@ -1,0 +1,3 @@
+content testerman-formatters chrome/content/
+
+overlay chrome://selenium-ide/content/selenium-ide-overlay.xul chrome://testerman-formatters/content/formats/format-loader.xul
