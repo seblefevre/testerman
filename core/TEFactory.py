@@ -218,6 +218,10 @@ def createCommandLine(jobId, teFilename, logFilename, inputSessionFilename, outp
 	pythonPath = '%(root)s/modules' % dict(
 		root = cm.get_transient("ts.server_root"),
 		egg = teFilename)
+	additionalPythonPath = cm.get("testerman.te.python.additional_pythonpath")
+	if additionalPythonPath:
+		pythonPath += ':' + additionalPythonPath
+
 	libraryPath = '%(root)s:$LD_LIBRARY_PATH' % dict(root = cm.get_transient("ts.server_root"))
 	ret['env'] = { 'LD_LIBRARY_PATH': libraryPath, 'PYTHONPATH': pythonPath }
 

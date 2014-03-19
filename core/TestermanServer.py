@@ -324,6 +324,7 @@ def main():
 	cm.register("testerman.te.probe_paths", "%s/plugins/probes" % testerman_home, xform = splitPaths)
 	cm.register("testerman.te.python.interpreter", "/usr/bin/python", dynamic = True)
 	cm.register("testerman.te.python.ttcn3module", "TestermanTTCN3", dynamic = True) # TTCN3 adaptation lib (enable the easy use of previous versions to keep script compatibility)
+	cm.register("testerman.te.python.additional_pythonpath", "", dynamic = True) # Additional search paths for system-wide modules (non-userland/in repository)
 	cm.register("testerman.te.log.max_payload_size", 64*1024, dynamic = True) # the maximum dumpable payload in log (as a single value). Bigger payloads are truncated to this size, in bytes.
 	cm.register("ts.webui.theme", "default", dynamic = True)
 	cm.register("wcs.webui.theme", "default", dynamic = True)

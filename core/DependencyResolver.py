@@ -73,8 +73,18 @@ def python_getDependencyFilenames(source, sourceFilename, recursive = True, modu
 	@rtype: list of strings
 	@returns: a list of docroot-path to dependencies (no duplicate).
 	"""
-
 	getLogger().info("Resolving dependencies for file %s" % sourceFilename)
+
+	# This is the PYTHONPATH that will be used to run the TE.
+	# Will be used as a fallback if an import cannot be found in userland (ie in the repo)
+	pythonPath = '%(root)s/modules' % dict(
+		root = cm.get_transient("ts.server_root"))
+	additionalPythonPath = cm.get("testerman.te.python.additional_pythonpath")
+	if additionalPythonPath:
+		pythonPath += ':' + additionalPythonPath
+	pythonPath = pythonPath.split(':')
+
+	# Will only include userland dependencies. System dependencies found in PYTHONPATH won't be included.
 	ret = []
 
 	# Bootstrap the deps (stored as (list of imported modules, path of the importing file) )
@@ -133,25 +143,31 @@ def python_getDependencyFilenames(source, sourceFilename, recursive = True, modu
 				found = depFilename
 				break
 		if not found:
-			getLogger().debug("Resolving import %s from %s: failed, not available in the repository, searched in paths:\n%s" % (dep, fromFilename, "\n".join(modulePaths)))
-			raise Exception('Missing module: %s (imported from %s) is not available in the repository (search path: %s)' % (dep, fromFilename, modulePaths))
+			getLogger().debug("Resolving import %s from %s: not available in repository, searched in paths:\n%s" % (dep, fromFilename, "\n".join(modulePaths)))
+			try:
+				imp.find_module(dep, pythonPath)
+			except:
+				getLogger().debug("Resolving import %s from %s: not available in PYTHONPATH either, searched paths:\n%s" % (dep, fromFilename, "\n".join(pythonPath)))
+				raise Exception('Missing module: %s (imported from %s) is not available in userland (repository, searched paths: %s) or in TE PYTHONPATH (searched paths: %s)' % (dep, fromFilename, modulePaths, pythonPath))
+			getLogger().debug("Resolving import %s from %s: OK, found in PYTHONPATH, won't be included in userland dependencies")
 
-		# OK, we resolved a file.
-		resolvedSoFar[(dep, fromFilename)] = depFilename
-		getLogger().debug("Resolving import %s from %s: resolved as %s" % (dep, fromFilename, depFilename))
-		if not depFilename in ret:
-			ret.append(depFilename)
-			getLogger().debug("Script %s is now using the following files:\n%s" % (sourceFilename, "\n".join(ret)))
+		if found:
+			# OK, we resolved a file.
+			resolvedSoFar[(dep, fromFilename)] = depFilename
+			getLogger().debug("Resolving import %s from %s: resolved as %s" % (dep, fromFilename, depFilename))
+			if not depFilename in ret:
+				ret.append(depFilename)
+				getLogger().debug("Script %s is now using the following files:\n%s" % (sourceFilename, "\n".join(ret)))
 
-		# Now, analyze the resolved file and add its own dependencies to the list to resolve,
-		# if not already resolved
-		if recursive:
-			importedModules = python_getImportedUserlandModules(depSource, depFilename)
-			for im in importedModules:
-				if not (im, depFilename) in resolvedSoFar:
-					toResolve.append((im, depFilename))
-				else:
-					getLogger().debug("Resolving import %s from %s: already resolved" % (im, depFilename))
+			# Now, analyze the resolved file and add its own dependencies to the list to resolve,
+			# if not already resolved
+			if recursive:
+				importedModules = python_getImportedUserlandModules(depSource, depFilename)
+				for im in importedModules:
+					if not (im, depFilename) in resolvedSoFar:
+						toResolve.append((im, depFilename))
+					else:
+						getLogger().debug("Resolving import %s from %s: already resolved" % (im, depFilename))
 
 	return ret	
 
