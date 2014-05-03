@@ -169,7 +169,11 @@ The test system interface port bound to such a probe complies with the `FileWatc
 		if cmd == 'startWatchingFiles':
 			self._checkArgs(args, [ ('files', None), ('interval', 1.0), ('patterns', [ r'.*' ])] )
 			compiledPatterns = [ re.compile(x) for x in args['patterns']]
-			self.startWatching(files = args['files'], interval = args['interval'], patterns = compiledPatterns)
+			# Glob files here - glob.glob() blocks when called from the watching thread (?! - blocked in fnmatch.filter: import os,posixpath)
+			files = []
+			for arg in args['files']:
+				files += glob.glob(arg)
+			self.startWatching(files = files, interval = args['interval'], patterns = compiledPatterns)
 		elif cmd == 'stopWatchingFiles':
 			self.stopWatching()
 		else:
@@ -206,16 +210,16 @@ class WatchingThread(threading.Thread):
 		self._watchedFiles = {}
 		# First pass: register watched files at the moment we start watching
 		try:
-			for f in self._files:
-				for filename in glob.glob(f):
-					if not self._watchedFiles.has_key(filename):
-						# First look at the file. Just reference file info
-						try:
-							if os.path.isfile(filename):
-								self._watchedFiles[filename] = os.stat(filename)
-								self._probe.getLogger().debug("New file %s registered for watching" % filename)
-						except Exception, e:
-							self._probe.getLogger().debug("Unable to registered file %s: %s" % (filename, str(e)))
+			for filename in self._files:
+				self._probe.getLogger().debug("Registering files to watch: %s" % filename)
+				if not self._watchedFiles.has_key(filename):
+					# First look at the file. Just reference file info
+					try:
+						if os.path.isfile(filename):
+							self._watchedFiles[filename] = os.stat(filename)
+							self._probe.getLogger().debug("New file %s registered for watching" % filename)
+					except Exception, e:
+						self._probe.getLogger().debug("Unable to registered file %s: %s" % (filename, str(e)))
 		except Exception, e:
 			self._probe.getLogger().debug("Error while registered watched files: %s" % str(e))
 
