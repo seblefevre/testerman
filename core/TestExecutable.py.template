@@ -15,6 +15,16 @@ import signal
 import sys
 import time
 
+# Update python path to search for modules in the initial path where the ATS was
+# located, and in repository root.
+__home = os.path.realpath(os.path.dirname(sys.modules[globals()['__name__']].__file__))
+# userland modules that were in the same folder as the ATS are copied to /repository/path/to/ats.
+# Let's make sure that such modules will be find first
+sys.path.insert(0, os.path.join(__home, '${atsDirInTePackage}'))
+# userland modules are copied to a repository subfolder, so add it to the PYTHONPATH
+# so that the ats/TE can find its repository-level userland dependencies
+sys.path.insert(0, os.path.join(__home, 'repository'))
+
 ################################################################################
 # Some constants
 ################################################################################

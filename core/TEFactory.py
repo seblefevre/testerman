@@ -104,7 +104,7 @@ def smartReindent(code, indentCharacter = '\t', reindentCount = 1):
 
 	return ''.join(ret)
 
-def createTestExecutable(name, ats):
+def createTestExecutable(name, ats, atsDirInTePackage):
 	"""
 	Creates a complete, command-line parameterized TE from a source ATS.
 	This basically replaces specific fields in the TE template with
@@ -177,6 +177,7 @@ def createTestExecutable(name, ats):
 		ts_name = cm.get('ts.name'),
 		gen_timestamp = now,
 		gen_time = time.strftime('%Y%m%d %H:%M:%S UTC', time.gmtime(now)),
+		atsDirInTePackage = atsDirInTePackage,
 		)
 	try:
 		te = substituteVariables(template, variables)
