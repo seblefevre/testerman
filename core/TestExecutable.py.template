@@ -165,7 +165,7 @@ def __parseArgs():
 			if options.sessionParameters:
 				for var in options.sessionParameters.split(','):
 					try:
-						(key, val) = var.split('=', 2)
+						(key, val) = var.split('=', 1)
 						inputSession[key] = val
 					except:
 						pass
