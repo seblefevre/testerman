@@ -1,4 +1,3 @@
-
 <!DOCTYPE html>
 
 
@@ -387,16 +386,18 @@ ATSes or campaign depending on the execution status of the current job.</p>
 <h4>Campaign Definition<a class="headerlink" href="#campaign-definition" title="Permalink to this headline">¶</a></h4>
 <p>A campaign is defined in clear text, declaring a job tree based on
 indentation:</p>
-<div class="highlight-python"><pre>job
+<div class="highlight-python"><div class="highlight"><pre>job
  job
  job
   job
-job</pre>
+job
+</pre></div>
 </div>
 <p>The indentation is defined by the number of indent characters. Valid
 indent characters are <tt class="docutils literal"><span class="pre">\t</span></tt> and <tt class="docutils literal"><span class="pre">'</span> <span class="pre">'</span></tt>.</p>
 <p>A job line is formatted as:</p>
-<div class="highlight-python"><pre>[&lt;branch&gt; ]&lt;type&gt; &lt;path&gt; [groups &lt;groups&gt;] [with &lt;mapping&gt;]</pre>
+<div class="highlight-python"><div class="highlight"><pre>[&lt;branch&gt; ]&lt;type&gt; &lt;path&gt; [groups &lt;groups&gt;] [with &lt;mapping&gt;]
+</pre></div>
 </div>
 <p>where:</p>
 <ul class="simple">
@@ -423,12 +424,13 @@ from the current context&#8217;s parameters. See
 </ul>
 <p>Comments are indicated with a #.</p>
 <p>Example:</p>
-<div class="highlight-python"><pre># Sample campaign
+<div class="highlight-python"><div class="highlight"><pre># Sample campaign
 ats class5/call_forward_unconditional.ats # job1
  ats class5/call_forward_busy.ats         # job2
  ats class5/call_forward_no_answer.ats    # job3
 ats clip/clip_base.ats                    # job4
-ats clip/clir_base.ats                    # job5</pre>
+ats clip/clir_base.ats                    # job5
+</pre></div>
 </div>
 <p>reads:</p>
 <ul class="simple">
@@ -459,7 +461,8 @@ takes two parameters: <tt class="docutils literal"><span class="pre">PX_SUT_IP</
 <tt class="docutils literal"><span class="pre">PX_SUT_PORT</span></tt>, defaulted to 5060, and <tt class="docutils literal"><span class="pre">PX_SOURCE_URI</span></tt>, defaulted to
 <tt class="docutils literal"><span class="pre">'sip:john&#64;testerman.fr'</span></tt>.
 In a campaign defined as:</p>
-<div class="highlight-python"><pre>ats class5/call_forward_unconditional.ats with PX_SUT_IP=192.168.1.1,PX_SOURCE_URI=sip:campaign@somewhere.com</pre>
+<div class="highlight-python"><div class="highlight"><pre>ats class5/call_forward_unconditional.ats with PX_SUT_IP=192.168.1.1,PX_SOURCE_URI=sip:campaign@somewhere.com
+</pre></div>
 </div>
 <p>the ATS will be executed with explicitly provided <tt class="docutils literal"><span class="pre">PX_SUT_IP</span></tt> and
 <tt class="docutils literal"><span class="pre">PX_SOURCE_URI</span></tt> values, but keeping the default ATS value for
@@ -467,19 +470,22 @@ In a campaign defined as:</p>
 <p>However, hardcoding SUT-dependent values is probably not a good idea.
 Instead, we&#8217;d probably define the <tt class="docutils literal"><span class="pre">PX_SUT_IP</span></tt> parameter at campaign
 level, and set it on run or via its default value.</p>
-<div class="highlight-python"><pre>ats class5/call_forward_unconditional.ats with PX_SOURCE_URI=sip:campaign@somewhere.com</pre>
+<div class="highlight-python"><div class="highlight"><pre>ats class5/call_forward_unconditional.ats with PX_SOURCE_URI=sip:campaign@somewhere.com
+</pre></div>
 </div>
 <p>with a <tt class="docutils literal"><span class="pre">PX_SUT_IP</span></tt> defined as a parameter for the campaign.</p>
 <p><strong>Note</strong>: this is equivalent to:</p>
-<div class="highlight-python"><pre>ats class5/call_forward_unconditional.ats with PX_SUT_IP=${PX_SUT_IP},PX_SOURCE_URI=sip:campaign@somewhere.com</pre>
+<div class="highlight-python"><div class="highlight"><pre>ats class5/call_forward_unconditional.ats with PX_SUT_IP=${PX_SUT_IP},PX_SOURCE_URI=sip:campaign@somewhere.com
+</pre></div>
 </div>
 <p>Now, if you have several ATSes using the same parameter names for
 different purposes, for instance PX_SUT_IP, used to defined a SIP
 server in one ATS, and used to defined a LDAP interface in another ATS,
 you can design different parameters at campaign levels and map them to
 their local names when needed:</p>
-<div class="highlight-python"><pre>ats class5/sip_test.ats with PX_SUT_IP=${PX_SIP_SUT_IP}
-ats class5/ldap_provisioning_test.ats with PX_SUT_IP=${PX_LDAP_SUT_IP}</pre>
+<div class="highlight-python"><div class="highlight"><pre>ats class5/sip_test.ats with PX_SUT_IP=${PX_SIP_SUT_IP}
+ats class5/ldap_provisioning_test.ats with PX_SUT_IP=${PX_LDAP_SUT_IP}
+</pre></div>
 </div>
 <p>and defining <tt class="docutils literal"><span class="pre">PX_SIP_SUT_IP</span></tt> and <tt class="docutils literal"><span class="pre">PX_LDAP_SUT_IP</span></tt> as parameters for
 the campaign.</p>
@@ -490,7 +496,8 @@ substitution occurs (<tt class="docutils literal"><span class="pre">'${UNKNOWN_P
 <p>As it is a mere string substitution, you may design campaigns whose
 parameterization is more user-friendly than the ATSes (or campaigns)
 they embed:</p>
-<div class="highlight-python"><pre>ats another_test.ats with PX_PROBE_URI=probe:_@${PX_AGENT}</pre>
+<div class="highlight-python"><div class="highlight"><pre>ats another_test.ats with PX_PROBE_URI=probe:_@${PX_AGENT}
+</pre></div>
 </div>
 <p>The ATS <tt class="docutils literal"><span class="pre">another_test.ats</span></tt> was designed to make the whole probe URI
 configurable. In the campaign, only the agent is, indirectly reducing
@@ -789,44 +796,52 @@ define the same tag <tt class="docutils literal"><span class="pre">purpose</span
 <p>A tag value can be written over multiple lines. Actually, the current
 tags value only stops when another tag is started or when the docstring
 ends:</p>
-<div class="highlight-python"><pre>@purpose: This test verifies that an SNMP trap
-is actually sent when rebooting the server.</pre>
+<div class="highlight-python"><div class="highlight"><pre>@purpose: This test verifies that an SNMP trap
+is actually sent when rebooting the server.
+</pre></div>
 </div>
 <p>Resulting in a tag value:</p>
-<div class="highlight-python"><pre>This test verifies that an SNMP trap is actually sent when rebooting the server.</pre>
+<div class="highlight-python"><div class="highlight"><pre>This test verifies that an SNMP trap is actually sent when rebooting the server.
+</pre></div>
 </div>
 <p>Notice that leading and trailing spaces are stripped, so that this is
 equivalent to:</p>
-<div class="highlight-python"><pre>@purpose:
+<div class="highlight-python"><div class="highlight"><pre>@purpose:
 This test verifies that an SNMP trap
-is actually sent when rebooting the server.</pre>
+is actually sent when rebooting the server.
+</pre></div>
 </div>
 <p>If you need to create a value that contains carriage returns, you must
 either leave an empty line or starts a new line with at least one blank
 character (space(s), tab(s)):</p>
-<div class="highlight-python"><pre>@steps:
+<div class="highlight-python"><div class="highlight"><pre>@steps:
 We first listen for a trap,
 then we reboot a machine using ssh reboot.
-We then should get our trap within 30 seconds.</pre>
+We then should get our trap within 30 seconds.
+</pre></div>
 </div>
 <p>Resulting in the following tag value:</p>
-<div class="highlight-python"><pre>We first listen for a trap, then we reboot a machine using ssh reboot. We then should get our trap within 30 seconds.</pre>
+<div class="highlight-python"><div class="highlight"><pre>We first listen for a trap, then we reboot a machine using ssh reboot. We then should get our trap within 30 seconds.
+</pre></div>
 </div>
 <p>Which is not really readable. So let’s use:</p>
-<div class="highlight-python"><pre>@steps:
+<div class="highlight-python"><div class="highlight"><pre>@steps:
 We first listen for a trap,
 then we reboot a machine using ssh reboot.
 
-We then should get our trap within 30 seconds.</pre>
+We then should get our trap within 30 seconds.
+</pre></div>
 </div>
 <p>Or</p>
-<div class="highlight-python"><pre>@steps:
+<div class="highlight-python"><div class="highlight"><pre>@steps:
 We first listen for a trap, then we reboot a machine using ssh reboot.
-We then should get our trap within 30 seconds.</pre>
+We then should get our trap within 30 seconds.
+</pre></div>
 </div>
 <p>Leading to:</p>
-<div class="highlight-python"><pre>We first listen for a trap, then we reboot a machine using ssh reboot.
-We then should get our trap within 30 seconds.</pre>
+<div class="highlight-python"><div class="highlight"><pre>We first listen for a trap, then we reboot a machine using ssh reboot.
+We then should get our trap within 30 seconds.
+</pre></div>
 </div>
 </div>
 </div>
@@ -842,7 +857,7 @@ We then should get our trap within 30 seconds.</pre>
     </p>
     <p>
         &copy; Copyright 2009-2014, Sébastien Lefevre and Testerman contributors.<br/>
-      Created using <a href="http://sphinx.pocoo.org/">Sphinx</a> 1.1.3.<br/>
+      Created using <a href="http://sphinx.pocoo.org/">Sphinx</a> 1.2.2.<br/>
     </p>
   </div>
 </footer>

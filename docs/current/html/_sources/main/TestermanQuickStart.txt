@@ -242,7 +242,7 @@ New to Python ? try these:
    based on the most recent Python version at date, some features may be
    not available on most Testerman deployments, running Python 2.4 or
    2.5 as provided with your distribution
--  `Dive into Python <http://diveintopython.org/toc/index.html>`__ is a
+-  `Dive into Python <http://www.diveintopython.net>`__ is a
    book by Mark Pilgrim that is freely available online. A good reading,
    too.
 

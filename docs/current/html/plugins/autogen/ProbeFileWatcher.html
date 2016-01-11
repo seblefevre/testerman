@@ -1,4 +1,3 @@
-
 <!DOCTYPE html>
 
 
@@ -75,11 +74,11 @@
 <li class="toctree-l1"><a class="reference internal" href="../../main/TestermanLanguageReference.html#reference-testerman-api">Reference: Testerman API</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../main/BestPractices.html">Best Practices</a></li>
 </ul>
-<ul>
+<ul class="current">
 <li class="toctree-l1"><a class="reference internal" href="../index.html">Codecs and Probes Overview</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../index.html#codecs">Codecs</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../index.html#test-adapters-probes">Test Adapters (Probes)</a></li>
-<li class="toctree-l1"><a class="reference internal" href="../index.html#codecs-and-probes-references">Codecs and Probes References</a></li>
+<li class="toctree-l1 current"><a class="reference internal" href="../index.html#codecs-and-probes-references">Codecs and Probes References</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../index.html#developing-new-codecs-and-probes">Developing New Codecs and Probes</a></li>
 </ul>
 <ul>
@@ -204,7 +203,7 @@ reported, instead of reporting all the lines of the file.</p>
 <div class="section" id="ttcn-3-types-equivalence">
 <h2>TTCN-3 Types Equivalence<a class="headerlink" href="#ttcn-3-types-equivalence" title="Permalink to this headline">¶</a></h2>
 <p>The test system interface port bound to such a probe complies with the <cite>FileWatcherPortType</cite> port type as specified below:</p>
-<div class="highlight-python"><pre>type union WatchingCommand
+<div class="highlight-python"><div class="highlight"><pre>type union WatchingCommand
 {
   StartWatchingFile startWatchingFiles,
   anytype           stopWatchingFiles
@@ -213,7 +212,7 @@ reported, instead of reporting all the lines of the file.</p>
 type record StartWatchingFiles
 {
   record of charstring files,
-  record of charstring patterns optional, // defaulted to [ '.*' ]
+  record of charstring patterns optional, // defaulted to [ &#39;.*&#39; ]
   float interval optional, // defaulted to 1.0, in second
 }
 
@@ -228,7 +227,8 @@ type port FileWatcherPortType message
 {
   in  WatchingCommand;
   out Notification;
-}</pre>
+}
+</pre></div>
 </div>
 </div>
 </div>
@@ -243,7 +243,7 @@ type port FileWatcherPortType message
     </p>
     <p>
         &copy; Copyright 2009-2014, Sébastien Lefevre and Testerman contributors.<br/>
-      Created using <a href="http://sphinx.pocoo.org/">Sphinx</a> 1.1.3.<br/>
+      Created using <a href="http://sphinx.pocoo.org/">Sphinx</a> 1.2.2.<br/>
     </p>
   </div>
 </footer>

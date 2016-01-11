@@ -1,4 +1,3 @@
-
 <!DOCTYPE html>
 
 
@@ -213,46 +212,47 @@ classes before it, leading to the following advised ATS layout:</p>
 <li>Control part</li>
 </ol>
 <p>For instance:</p>
-<div class="highlight-python"><pre>##
-# Some comments here
-##
+<div class="highlight-python"><div class="highlight"><pre><span class="c">##</span>
+<span class="c"># Some comments here</span>
+<span class="c">##</span>
 
 
-# Let's import some stuff shared with our colleages
-from myteam.SharedFunctions_2_3 as CommonTeam
-import mysite.utils as Utils
+<span class="c"># Let&#39;s import some stuff shared with our colleages</span>
+<span class="kn">from</span> <span class="nn">myteam.SharedFunctions_2_3</span> <span class="nn">as</span> <span class="nn">CommonTeam</span>
+<span class="kn">import</span> <span class="nn">mysite.utils</span> <span class="kn">as</span> <span class="nn">Utils</span>
 
 
-# We define some templates and functions
-def mw_myTemplate(text, minsize = 10, author = any()):
-  return { 'text': text, 'size': greater_than(minsize), 'author': author }
+<span class="c"># We define some templates and functions</span>
+<span class="k">def</span> <span class="nf">mw_myTemplate</span><span class="p">(</span><span class="n">text</span><span class="p">,</span> <span class="n">minsize</span> <span class="o">=</span> <span class="mi">10</span><span class="p">,</span> <span class="n">author</span> <span class="o">=</span> <span class="nb">any</span><span class="p">()):</span>
+  <span class="k">return</span> <span class="p">{</span> <span class="s">&#39;text&#39;</span><span class="p">:</span> <span class="n">text</span><span class="p">,</span> <span class="s">&#39;size&#39;</span><span class="p">:</span> <span class="n">greater_than</span><span class="p">(</span><span class="n">minsize</span><span class="p">),</span> <span class="s">&#39;author&#39;</span><span class="p">:</span> <span class="n">author</span> <span class="p">}</span>
 
-def f_sleep(duration):
-  t_sleep = Timer(duration)
-  t_sleep.start()
-  t_sleep.timeout()
-
-
-# Now, let's define some test cases
-class TC_MY_TESTCASE(TestCase):
-  """
-  A first test case.
-  """
-  def body(self):
-    ...
-
-# Another one
-class TC_MY_SECOND_TESTCASE(TestCase):
-  """
-  Don't forget to document me.
-  """
-  def body(self, loopCount = 10):
-    ...
+<span class="k">def</span> <span class="nf">f_sleep</span><span class="p">(</span><span class="n">duration</span><span class="p">):</span>
+  <span class="n">t_sleep</span> <span class="o">=</span> <span class="n">Timer</span><span class="p">(</span><span class="n">duration</span><span class="p">)</span>
+  <span class="n">t_sleep</span><span class="o">.</span><span class="n">start</span><span class="p">()</span>
+  <span class="n">t_sleep</span><span class="o">.</span><span class="n">timeout</span><span class="p">()</span>
 
 
-# Finally, the control part
-TC_MY_TESTCASE().execute()
-TC_MY_SECOND_TESTCASE().execute(loopCount = 20)</pre>
+<span class="c"># Now, let&#39;s define some test cases</span>
+<span class="k">class</span> <span class="nc">TC_MY_TESTCASE</span><span class="p">(</span><span class="n">TestCase</span><span class="p">):</span>
+  <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">  A first test case.</span>
+<span class="sd">  &quot;&quot;&quot;</span>
+  <span class="k">def</span> <span class="nf">body</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+    <span class="o">...</span>
+
+<span class="c"># Another one</span>
+<span class="k">class</span> <span class="nc">TC_MY_SECOND_TESTCASE</span><span class="p">(</span><span class="n">TestCase</span><span class="p">):</span>
+  <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">  Don&#39;t forget to document me.</span>
+<span class="sd">  &quot;&quot;&quot;</span>
+  <span class="k">def</span> <span class="nf">body</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">loopCount</span> <span class="o">=</span> <span class="mi">10</span><span class="p">):</span>
+    <span class="o">...</span>
+
+
+<span class="c"># Finally, the control part</span>
+<span class="n">TC_MY_TESTCASE</span><span class="p">()</span><span class="o">.</span><span class="n">execute</span><span class="p">()</span>
+<span class="n">TC_MY_SECOND_TESTCASE</span><span class="p">()</span><span class="o">.</span><span class="n">execute</span><span class="p">(</span><span class="n">loopCount</span> <span class="o">=</span> <span class="mi">20</span><span class="p">)</span>
+</pre></div>
 </div>
 <p>In the ATS control section, TTCN-3 allows several basic operations, and
 so does Testerman:</p>
@@ -1428,7 +1428,8 @@ current one, if it is repeated.</li>
 matched a template, using the <tt class="docutils literal"><span class="pre">-&gt;</span></tt> syntax and <tt class="docutils literal"><span class="pre">value</span></tt> (and
 <tt class="docutils literal"><span class="pre">sender</span></tt>) keywords.
 For instance:</p>
-<div class="highlight-python"><pre>port.receive(my_template) -&gt; value m, sender s;</pre>
+<div class="highlight-python"><div class="highlight"><pre>port.receive(my_template) -&gt; value m, sender s;
+</pre></div>
 </div>
 <p>will store the received message that matched the template
 <tt class="docutils literal"><span class="pre">my_template</span></tt> to the local variable <tt class="docutils literal"><span class="pre">m</span></tt>, and the address of the
@@ -1438,7 +1439,7 @@ Once stored, you may traverse the received message as any other
 structured value to find the field of interest. For instance, if we
 assumed we received a SIP request to which we should reply with a
 response using the same call-id, we may use:</p>
-<div class="highlight-python"><pre>type record SipRequestType {
+<div class="highlight-python"><div class="highlight"><pre>type record SipRequestType {
   charstring method,
   ...
   charstring callId,
@@ -1463,7 +1464,8 @@ callId := request.callId
 // Now reinject the callId into a response
 
 resp = m_sipResponse(callId)
-// ...</pre>
+// ...
+</pre></div>
 </div>
 <p>Testerman offers a similar mechanism to match the complete received
 message (and the associated sender, if needed). The syntax, however, is
@@ -1913,7 +1915,7 @@ verdict from anywhere):</p>
     </p>
     <p>
         &copy; Copyright 2009-2014, Sébastien Lefevre and Testerman contributors.<br/>
-      Created using <a href="http://sphinx.pocoo.org/">Sphinx</a> 1.1.3.<br/>
+      Created using <a href="http://sphinx.pocoo.org/">Sphinx</a> 1.2.2.<br/>
     </p>
   </div>
 </footer>

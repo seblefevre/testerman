@@ -1,4 +1,3 @@
-
 <!DOCTYPE html>
 
 
@@ -75,11 +74,11 @@
 <li class="toctree-l1"><a class="reference internal" href="../../main/TestermanLanguageReference.html#reference-testerman-api">Reference: Testerman API</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../main/BestPractices.html">Best Practices</a></li>
 </ul>
-<ul>
+<ul class="current">
 <li class="toctree-l1"><a class="reference internal" href="../index.html">Codecs and Probes Overview</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../index.html#codecs">Codecs</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../index.html#test-adapters-probes">Test Adapters (Probes)</a></li>
-<li class="toctree-l1"><a class="reference internal" href="../index.html#codecs-and-probes-references">Codecs and Probes References</a></li>
+<li class="toctree-l1 current"><a class="reference internal" href="../index.html#codecs-and-probes-references">Codecs and Probes References</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../index.html#developing-new-codecs-and-probes">Developing New Codecs and Probes</a></li>
 </ul>
 <ul>
@@ -98,9 +97,7 @@
 <li><a class="reference internal" href="#overview">Overview</a><ul>
 <li><a class="reference internal" href="#availability">Availability</a></li>
 <li><a class="reference internal" href="#dependencies">Dependencies</a></li>
-<li><a class="reference internal" href="#see-also">See Also</a><ul>
-</ul>
-</li>
+<li><a class="reference internal" href="#see-also">See Also</a></li>
 </ul>
 </li>
 <li><a class="reference internal" href="#extensions">Extensions</a></li>
@@ -225,7 +222,7 @@ You may install it on the host you want to run the browsers from.</p>
 <div class="section" id="ttcn-3-types-equivalence">
 <h2>TTCN-3 Types Equivalence<a class="headerlink" href="#ttcn-3-types-equivalence" title="Permalink to this headline">¶</a></h2>
 <p>The test system interface port bound to such a probe complies with the <tt class="docutils literal"><span class="pre">SeleniumProbePortType</span></tt> port type as specified below:</p>
-<div class="highlight-python"><pre>type union SeleniumStrictCommand
+<div class="highlight-python"><div class="highlight"><pre>type union SeleniumStrictCommand
 {
   record { charstring key, charstring value } addCustomRequestHeader,
   record { charstring strategyName, charstring functionDefinition } addLocationStrategy,
@@ -364,7 +361,7 @@ You may install it on the host you want to run the browsers from.</p>
 }
 
 
-// With this "simplified" model, the command can be anything
+// With this &quot;simplified&quot; model, the command can be anything
 // (assumed to be valid for Selenium), and its arguments
 // are made of 0, 1 or 2 arguments (none, target, or target + value)
 type union SeleniumLooseCommand
@@ -377,7 +374,8 @@ type SeleniumProbePortType
   in SeleniumStrictCommand;
   in SeleniumLooseCommand;
   out any; // depends on the invoked command
-}</pre>
+}
+</pre></div>
 </div>
 </div>
 </div>
@@ -392,7 +390,7 @@ type SeleniumProbePortType
     </p>
     <p>
         &copy; Copyright 2009-2014, Sébastien Lefevre and Testerman contributors.<br/>
-      Created using <a href="http://sphinx.pocoo.org/">Sphinx</a> 1.1.3.<br/>
+      Created using <a href="http://sphinx.pocoo.org/">Sphinx</a> 1.2.2.<br/>
     </p>
   </div>
 </footer>

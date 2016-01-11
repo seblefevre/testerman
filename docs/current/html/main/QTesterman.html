@@ -1,4 +1,3 @@
-
 <!DOCTYPE html>
 
 
@@ -336,7 +335,7 @@ define your owns.</p>
 <div class="section" id="comments">
 <h4>Comments<a class="headerlink" href="#comments" title="Permalink to this headline">¶</a></h4>
 <p>The following template</p>
-<div class="highlight-python"><pre>You won't see the following lines.
+<div class="highlight-python"><div class="highlight"><pre>You won&#39;t see the following lines.
 ## This is a single-line comment
 
 #*
@@ -345,23 +344,27 @@ is a multi-line
 comment
 #*
 
-Use \# to escape the pound sign.</pre>
+Use \# to escape the pound sign.
+</pre></div>
 </div>
 <p>will result in:</p>
-<div class="highlight-python"><pre>You won't see the following lines.
+<div class="highlight-python"><div class="highlight"><pre>You won&#39;t see the following lines.
 
 
-Use # to escape the pound sign.</pre>
+Use # to escape the pound sign.
+</pre></div>
 </div>
 </div>
 <div class="section" id="variable-assignments">
 <h4>Variable Assignments<a class="headerlink" href="#variable-assignments" title="Permalink to this headline">¶</a></h4>
 <p>you can create variables in a template dynamically:</p>
-<div class="highlight-python"><pre>#set($foo = "QTesterman")
-Hello $foo World!</pre>
+<div class="highlight-python"><div class="highlight"><pre>#set($foo = &quot;QTesterman&quot;)
+Hello $foo World!
+</pre></div>
 </div>
 <p>Leads to:</p>
-<div class="highlight-python"><pre>Hello QTesterman World!</pre>
+<div class="highlight-python"><div class="highlight"><pre>Hello QTesterman World!
+</pre></div>
 </div>
 </div>
 <div class="section" id="variable-references">
@@ -369,69 +372,79 @@ Hello $foo World!</pre>
 <p>You may reference a context variable at any time with a <tt class="docutils literal"><span class="pre">$myvar</span></tt> or
 <tt class="docutils literal"><span class="pre">${myvar}</span></tt> syntax.</p>
 <p>The available context variables for each plugin are defined below.</p>
-<div class="highlight-python"><pre>My variable: $my_variable
+<div class="highlight-python"><div class="highlight"><pre>My variable: $my_variable
 Another variable available in my context: ${another_variable}
-Say_${within_a_word}_here</pre>
+Say_${within_a_word}_here
+</pre></div>
 </div>
 <p>If a reference is not found when applying the template, the template
 code is unchanged. For instance, with the template above, if
 <tt class="docutils literal"><span class="pre">my_variable</span></tt> evaluates to <tt class="docutils literal"><span class="pre">2</span></tt>, <tt class="docutils literal"><span class="pre">within_a_word</span></tt> to <tt class="docutils literal"><span class="pre">&quot;hello&quot;</span></tt>,
 but <tt class="docutils literal"><span class="pre">another_variable</span></tt> is not found, this will produce:</p>
-<div class="highlight-python"><pre>My variable: 2
+<div class="highlight-python"><div class="highlight"><pre>My variable: 2
 Another variable available in my context: ${another_variable}
-Say_hello_here</pre>
+Say_hello_here
+</pre></div>
 </div>
 <p>To substitude the placeholder with a blank instead of leaving the
 original template code, use a <tt class="docutils literal"><span class="pre">$my_var</span></tt> syntax:</p>
-<div class="highlight-python"><pre>Missing variable: $!{missing}</pre>
+<div class="highlight-python"><div class="highlight"><pre>Missing variable: $!{missing}
+</pre></div>
 </div>
 <p>Would generate:</p>
-<div class="highlight-python"><pre>Missing variable:</pre>
+<div class="highlight-python"><div class="highlight"><pre>Missing variable:
+</pre></div>
 </div>
 <p>If a variable cannot be evaluated to a string representation, an
 exception string is injected instead.</p>
 <p>Some object referenced by such variables may expose additional
 properties or methods. In this case, you can access them with a
 dot-based notation:</p>
-<div class="highlight-python"><pre>This is an object attribute: ${testcase.id}
+<div class="highlight-python"><div class="highlight"><pre>This is an object attribute: ${testcase.id}
 ## Also works without {}:
 $testcase.title
 ## And also with methods
 ## Assuming $a is a string:
-$a.replace('\\n', '&lt;br /&gt;')</pre>
+$a.replace(&#39;\\n&#39;, &#39;&lt;br /&gt;&#39;)
+</pre></div>
 </div>
 <p>Actually, you can also reference a call to an exposed function directly.
 Let&#8217;s assume that a function <tt class="docutils literal"><span class="pre">toHtml(s)</span></tt> that escapes the usual HTML
 characters is provided in the current context:</p>
-<div class="highlight-python"><pre>&lt;p&gt;Description: $toHtml($description)
-&lt;/p&gt;</pre>
+<div class="highlight-python"><div class="highlight"><pre>&lt;p&gt;Description: $toHtml($description)
+&lt;/p&gt;
+</pre></div>
 </div>
 <p>Applied with <tt class="docutils literal"><span class="pre">$description</span></tt> that evaluates to
 <tt class="docutils literal"><span class="pre">&quot;check</span> <span class="pre">that</span> <span class="pre">100</span> <span class="pre">&gt;</span> <span class="pre">10,\nthen</span> <span class="pre">make</span> <span class="pre">sure</span> <span class="pre">that</span> <span class="pre">the</span> <span class="pre">function</span> <span class="pre">returns</span> <span class="pre">within</span> <span class="pre">10s&quot;</span></tt>:</p>
-<div class="highlight-python"><pre>&lt;p&gt;Description: check that 100 &amp;gt; 10,&lt;br /&gt;then make sure that the function returns within 10s
-&lt;/p&gt;</pre>
+<div class="highlight-python"><div class="highlight"><pre>&lt;p&gt;Description: check that 100 &amp;gt; 10,&lt;br /&gt;then make sure that the function returns within 10s
+&lt;/p&gt;
+</pre></div>
 </div>
 </div>
 <div class="section" id="iteration-within-a-sequence">
 <h4>Iteration within a Sequence<a class="headerlink" href="#iteration-within-a-sequence" title="Permalink to this headline">¶</a></h4>
 <p>Some variables are evaluated to a list of items. In this case, you may
 use the <tt class="docutils literal"><span class="pre">#foreach</span></tt> directive to iterate through them:</p>
-<div class="highlight-python"><pre>#foreach ($testcase in $testcases)
+<div class="highlight-python"><div class="highlight"><pre>#foreach ($testcase in $testcases)
 Testcase Identifier: $testcase.id
-#end</pre>
+#end
+</pre></div>
 </div>
 </div>
 <div class="section" id="conditions">
 <h4>Conditions<a class="headerlink" href="#conditions" title="Permalink to this headline">¶</a></h4>
 <p>A if/elseif/else mechanism is available:</p>
-<div class="highlight-python"><pre>#if ($name)
+<div class="highlight-python"><div class="highlight"><pre>#if ($name)
 Test case name: ${name}
 #else
 Undefined test case name
-#end</pre>
+#end
+</pre></div>
 </div>
 <p>The usual operators are supported: &lt;, &gt;, &lt;=, &gt;=, ==, <cite>=</cite>, &amp;&amp; (and), || (or), ! (not).</p>
-<div class="highlight-python"><pre>this is#if ($a &gt; 10) large#elseif ($a &gt; 5) medium#else small#end, don't you think ?</pre>
+<div class="highlight-python"><div class="highlight"><pre>this is#if ($a &gt; 10) large#elseif ($a &gt; 5) medium#else small#end, don&#39;t you think ?
+</pre></div>
 </div>
 <p>Notice how you can mix directives and the normal text to procude the
 desired output.</p>
@@ -507,7 +520,7 @@ additional information about it</li>
     </p>
     <p>
         &copy; Copyright 2009-2014, Sébastien Lefevre and Testerman contributors.<br/>
-      Created using <a href="http://sphinx.pocoo.org/">Sphinx</a> 1.1.3.<br/>
+      Created using <a href="http://sphinx.pocoo.org/">Sphinx</a> 1.2.2.<br/>
     </p>
   </div>
 </footer>

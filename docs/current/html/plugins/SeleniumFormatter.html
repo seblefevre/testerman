@@ -1,4 +1,3 @@
-
 <!DOCTYPE html>
 
 
@@ -75,11 +74,11 @@
 <li class="toctree-l1"><a class="reference internal" href="../main/TestermanLanguageReference.html#reference-testerman-api">Reference: Testerman API</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../main/BestPractices.html">Best Practices</a></li>
 </ul>
-<ul>
+<ul class="current">
 <li class="toctree-l1"><a class="reference internal" href="index.html">Codecs and Probes Overview</a></li>
 <li class="toctree-l1"><a class="reference internal" href="index.html#codecs">Codecs</a></li>
 <li class="toctree-l1"><a class="reference internal" href="index.html#test-adapters-probes">Test Adapters (Probes)</a></li>
-<li class="toctree-l1"><a class="reference internal" href="index.html#codecs-and-probes-references">Codecs and Probes References</a></li>
+<li class="toctree-l1 current"><a class="reference internal" href="index.html#codecs-and-probes-references">Codecs and Probes References</a></li>
 <li class="toctree-l1"><a class="reference internal" href="index.html#developing-new-codecs-and-probes">Developing New Codecs and Probes</a></li>
 </ul>
 <ul>
@@ -164,15 +163,18 @@ libraries to remote control a browser. Selenium IDE formatters do
 exactly that: convert the recorded list into source code for a specific
 language.</p>
 <p>The Testerman ATS Formatter let&#8217;s you export your recorded interactions
-directly to a Testerman test script (*.ats). The generated code will
-use the <a class="reference internal" href="autogen/ProbeSelenium.html"><em>Selenium Probe</em></a> to control the browser.</p>
+directly to a Testerman test script (*.ats). The generated code will use the
+<a class="reference internal" href="autogen/ProbeSelenium.html"><em>Selenium Probe</em></a> or the <a class="reference internal" href="autogen/ProbeSeleniumWebdriver.html"><em>Selenium Probe (WebDriver)</em></a> to
+control the browser. This document covers only Selenium RC but the usage of the
+Selenium Webdriver probe is largely equivalent.</p>
 </div>
 <div class="section" id="install">
 <h2>Install<a class="headerlink" href="#install" title="Permalink to this headline">¶</a></h2>
 <p>The formatter is a Firefox plugin, you have to install it on top of the
-Selenium IDE plugin. It is attached at the bottom of this page (you can
-get it from the svn tree, too). Install it via Firefox: Select File -&gt;
-Open File ... and select the *.xpi file.</p>
+Selenium IDE plugin. You may find a build script in
+plugin/probes/seleniumrc/selenium-testerman-formatter. Run the script and
+install the install via Firefox: Select File -&gt; Open File ... and select the
+*.xpi file.</p>
 <div class="section" id="installing-a-newer-versions-of-the-formatter">
 <h3>Installing a newer versions of the formatter<a class="headerlink" href="#installing-a-newer-versions-of-the-formatter" title="Permalink to this headline">¶</a></h3>
 <p>Before installing a newer version, make sure to reset the options
@@ -194,10 +196,10 @@ exporting), too. You will find a lot of documentation for Selenium IDE
 <a class="reference external" href="http://seleniumhq.org/docs/02_selenium_ide.html">here</a>.</p>
 <div class="section" id="understanding-selenium">
 <h3>Understanding Selenium<a class="headerlink" href="#understanding-selenium" title="Permalink to this headline">¶</a></h3>
-<p>Selenium is a suite of different tools. We will use Selenium IDE
-(recording user interactions with a web interface) and Selenium RC
-(remote executing of &#8220;simulated&#8221; user actions on a web interface,
-acutally, this is done by the <a class="reference internal" href="autogen/ProbeSelenium.html"><em>Selenium Probe</em></a>).</p>
+<p>Selenium is a suite of different tools. We will use Selenium IDE (recording
+user interactions with a web interface) and Selenium RC (remote executing of
+&#8220;simulated&#8221; user actions on a web interface, acutally, this is done by the
+<a class="reference internal" href="autogen/ProbeSelenium.html"><em>Selenium Probe</em></a>/<a class="reference internal" href="autogen/ProbeSeleniumWebdriver.html"><em>Selenium Probe (WebDriver)</em></a>).</p>
 <p>Selenium RC has a set of different type of commands. There are commands
 like click(myButton), type(myInput, blablub), getText(myElement),
 isEditable(myInput).</p>
@@ -227,16 +229,18 @@ but it doesn&#8217;t know your expectations concering returned results.</p>
 text after clicking on the submit button. During recording, you would
 type your text into the form and click the button. Selenium will list
 something like this:</p>
-<div class="highlight-python"><pre>commands        target          value
+<div class="highlight-python"><div class="highlight"><pre>commands        target          value
 type            id=input_pw     1234
-click           id=login</pre>
+click           id=login
+</pre></div>
 </div>
 <p>Now, to check whether your expected text appears on the following page,
 right-click on the element where the text should appear (or select the
 text, ...). The context menu will propose you a range of commands to
 check the elements content. After selecting one command, Selenium IDE
 will list something like this:</p>
-<div class="highlight-python"><pre>verifyText      id=header   Login successful</pre>
+<div class="highlight-python"><div class="highlight"><pre>verifyText      id=header   Login successful
+</pre></div>
 </div>
 <p>The command will become &#8220;getText(id=header)&#8221; for Selenium RC. If you had
 used assertText() instead, the outcoming Selenium RC commands would have
@@ -265,9 +269,10 @@ dumped. Remember that the parameter&#8217;s value can be overwritten by the
 campaign configuration (when launching a campaing in Testerman).</p>
 <p>The Format is &#8220;name:value:type\n&#8221;. The name has to match
 <strong>/!^PX_[_A-Z0-9]+$/</strong>. Examples:</p>
-<div class="highlight-python"><pre>PX_DB_SERVER:string:127.0.0.1
+<div class="highlight-python"><div class="highlight"><pre>PX_DB_SERVER:string:127.0.0.1
 PX_DB_PASSWORD:string:1234
-PX_MAX_CONNECT:integer:10</pre>
+PX_MAX_CONNECT:integer:10
+</pre></div>
 </div>
 <p>On the other hand, &#8220;dynamic&#8221; parameters are set up within the actual
 selenese. After recording your actions with Selenium IDE and before
@@ -277,16 +282,18 @@ parameter name (and it&#8217;s default value), the test can be adapted to
 another test environment. To define a dynamic parameter, replace the
 original value by ${PX_PARA_NAME:orginalValue}.</p>
 <p>Example:</p>
-<div class="highlight-python"><pre>commands        target          value
-type            id=input_pw     1234</pre>
+<div class="highlight-python"><div class="highlight"><pre>commands        target          value
+type            id=input_pw     1234
+</pre></div>
 </div>
 <p>The above command generates:</p>
 <div class="highlight-python"><div class="highlight"><pre><span class="n">sel</span><span class="o">.</span><span class="n">send</span><span class="p">([</span><span class="s">&quot;type&quot;</span><span class="p">,</span> <span class="s">&quot;id=input_pw&quot;</span><span class="p">,</span> <span class="s">&quot;1234&quot;</span><span class="p">])</span>
 </pre></div>
 </div>
 <p>Now consider the following</p>
-<div class="highlight-python"><pre>commands        target          value
-type            id=input_pw     ${PX_PASSWORD:1234} ** define parameter name and default value before export **</pre>
+<div class="highlight-python"><div class="highlight"><pre>commands        target          value
+type            id=input_pw     ${PX_PASSWORD:1234} ** define parameter name and default value before export **
+</pre></div>
 </div>
 <p>generates:</p>
 <div class="highlight-python"><div class="highlight"><pre><span class="c"># &lt;parameter name=&quot;PX_PASSWORD&quot; default=&quot;1234&quot; type=&quot;integer&quot;&gt;&lt;![CDATA[]]&gt;&lt;/parameter&gt;</span>
@@ -301,9 +308,10 @@ campaing config as mentioned before. Of course, you do/can not redefine
 the same parameter several times. Once, your PX_XXX is defined you can
 use in later commands:</p>
 <p>old:</p>
-<div class="highlight-python"><pre>commands        target      value
+<div class="highlight-python"><div class="highlight"><pre>commands        target      value
 type            id=input_pw     1234
-assertValue     id=blub     1234</pre>
+assertValue     id=blub     1234
+</pre></div>
 </div>
 <p>generates:</p>
 <div class="highlight-python"><div class="highlight"><pre><span class="n">sel</span><span class="o">.</span><span class="n">send</span><span class="p">([</span><span class="s">&quot;type&quot;</span><span class="p">,</span> <span class="s">&quot;id=input_pw&quot;</span><span class="p">,</span> <span class="s">&quot;1234&quot;</span><span class="p">])</span>
@@ -314,9 +322,10 @@ assertValue     id=blub     1234</pre>
 </pre></div>
 </div>
 <p>new:</p>
-<div class="highlight-python"><pre>commands        target          value
+<div class="highlight-python"><div class="highlight"><pre>commands        target          value
 type            id=input_pw     ${PX_PASSWORD:1234}
-assertValue     id=blub         ${PX_PASSWORD}</pre>
+assertValue     id=blub         ${PX_PASSWORD}
+</pre></div>
 </div>
 <p>generates:</p>
 <div class="highlight-python"><div class="highlight"><pre><span class="c"># &lt;parameter name=&quot;PX_PASSWORD&quot; default=&quot;1234&quot; type=&quot;integer&quot;&gt;&lt;![CDATA[]]&gt;&lt;/parameter&gt;</span>
@@ -345,8 +354,9 @@ command (often called &#8220;pattern&#8221; in Selenium IDE).</p>
 <p>The px parameters can be used in conjunction with regular expressions.
 The value field is <tt class="docutils literal"><span class="pre">regexp:${PX_VAR_NAME:the_actual_expression}</span></tt>.
 Fur further details see the section for regular expressions.</p>
-<div class="highlight-python"><pre>commands        target      value
-assertValue     id=blub     regexp:${PX_PASSWORD:[a-z]?}</pre>
+<div class="highlight-python"><div class="highlight"><pre>commands        target      value
+assertValue     id=blub     regexp:${PX_PASSWORD:[a-z]?}
+</pre></div>
 </div>
 </div>
 <div class="section" id="store-commands">
@@ -359,9 +369,10 @@ using storeXXX(), the second argument of the command is the name of the
 variable to which the value will be assigned. There are two
 possibilities to store values. Either you use a &#8220;normal&#8221; variable name
 or you use a name like PX_XXX (matching the abouve regexp).</p>
-<div class="highlight-python"><pre>commands        target      value
+<div class="highlight-python"><div class="highlight"><pre>commands        target      value
 storeText       link=home   myvari
-storeText       link=home   PX_MYVAR</pre>
+storeText       link=home   PX_MYVAR
+</pre></div>
 </div>
 <p>The generated code will be as follows:</p>
 <div class="highlight-python"><div class="highlight"><pre><span class="c"># store (selinium): myvari = getText(link=home)</span>
@@ -379,8 +390,9 @@ storeText       link=home   PX_MYVAR</pre>
 <p>To refer to the stored variables, use the <strong>${nameOfTheVariable}</strong>
 syntax as mentioned above. If you used a PX_XXX variable you could even
 store a value and define a default value in the metadata block:</p>
-<div class="highlight-python"><pre>commands        target      value
-storeText       link=home   ${PX_MYVAR:42}</pre>
+<div class="highlight-python"><div class="highlight"><pre>commands        target      value
+storeText       link=home   ${PX_MYVAR:42}
+</pre></div>
 </div>
 <p>The generated code will be as follows:</p>
 <div class="highlight-python"><div class="highlight"><pre><span class="c"># &lt;parameter name=&quot;PX_MY_VAR&quot; default=&quot;42&quot; type=&quot;integer&quot;&gt;&lt;![CDATA[]]&gt;&lt;/parameter&gt;</span>
@@ -397,12 +409,13 @@ before storing it. Of course, it&#8217;s pretty hard to find a use case ;)</p>
 <p>Let&#8217;s take another example. Imagine you want to change a value on the
 web interface, check that the settings are saved correctly and then
 reset the original value. The naive command list would be:</p>
-<div class="highlight-python"><pre>commands        target            value
+<div class="highlight-python"><div class="highlight"><pre>commands        target            value
 type            name=port         12345
 clickAndWait    id=submit_button
 assertValue     name=port         12345
 type            name=port         1234 (supposing the original value was 1234)
-clickAndWait    id=submit_button</pre>
+clickAndWait    id=submit_button
+</pre></div>
 </div>
 <p>While this is pretty forward (and easily recordable), it is not very
 flexible. When you are not sure of the system&#8217;s state before test
@@ -410,13 +423,14 @@ execution, it will be hard to reset the &#8220;right&#8221; default value (in th
 case, the original value was 9999 or so). Use storeXXX() to copy and
 paste. After recording your test with Selenium IDE and before exporting
 to an ats file, change the following:</p>
-<div class="highlight-python"><pre>commands        target            value
+<div class="highlight-python"><div class="highlight"><pre>commands        target            value
 storeValue      name=port         PX_DEFAULT_PORT
 type            name=port         ${PX_NEW_PORT:12345}
 clickAndWait    id=submit_button
 assertValue     name=port         ${PX_NEW_PORT}
 type            name=port         ${PX_DEFAULT_PORT}
-clickAndWait    id=submit_button</pre>
+clickAndWait    id=submit_button
+</pre></div>
 </div>
 <p>Just save the value before changing it, then, during &#8220;cleanup&#8221; reuse the
 given name. The above example will produce the following code:</p>
@@ -461,11 +475,12 @@ expected pattern. Selenium IDE has build-in support for regular
 expression (in fact, it says [in our case] to the formatter, that the
 user wants to use a regexp). The following example should answer all
 questions:</p>
-<div class="highlight-python"><pre>commands            target         value
+<div class="highlight-python"><div class="highlight"><pre>commands            target         value
 assertValue         name=search    blub
 assertValue         name=search    regexp:^[A-Z]?$
 assertValue         name=search    regexp:${PX_MYPATTERN}
-assertTextPresent   regexp:[a-z].?</pre>
+assertTextPresent   regexp:[a-z].?
+</pre></div>
 </div>
 <p>generates:</p>
 <div class="highlight-python"><div class="highlight"><pre><span class="n">sel</span><span class="o">.</span><span class="n">send</span><span class="p">([</span><span class="s">&quot;getValue&quot;</span><span class="p">,</span> <span class="s">&quot;name=search&quot;</span><span class="p">])</span>
@@ -487,8 +502,9 @@ assertTextPresent   regexp:[a-z].?</pre>
 </pre></div>
 </div>
 <p>You can combine px parameter definitions with regexp:</p>
-<div class="highlight-python"><pre>commands        target      value
-assertValue     name=search regexp:${PX_REGEXP:[a-e]?}  ** define new px parameter (with default value) and it use it as regexp **</pre>
+<div class="highlight-python"><div class="highlight"><pre>commands        target      value
+assertValue     name=search regexp:${PX_REGEXP:[a-e]?}  ** define new px parameter (with default value) and it use it as regexp **
+</pre></div>
 </div>
 <p>Regular expression are a bit tricky though. In fact, Selenium RC
 supports regexp by itself and Testerman does so (vie Python&#8217;s
@@ -601,7 +617,7 @@ The formatter will warn you.</p>
     </p>
     <p>
         &copy; Copyright 2009-2014, Sébastien Lefevre and Testerman contributors.<br/>
-      Created using <a href="http://sphinx.pocoo.org/">Sphinx</a> 1.1.3.<br/>
+      Created using <a href="http://sphinx.pocoo.org/">Sphinx</a> 1.2.2.<br/>
     </p>
   </div>
 </footer>

@@ -1,4 +1,3 @@
-
 <!DOCTYPE html>
 
 
@@ -170,29 +169,33 @@ it as root.</p>
 <li>Get the current development snapshot using subversion (here
 &#8220;installed&#8221; to <tt class="docutils literal"><span class="pre">testerman-svn</span></tt>):</li>
 </ol>
-<div class="highlight-python"><pre>git clone http://testerman.fr/git/testerman.git testerman-git
-cd testerman-git</pre>
+<div class="highlight-python"><div class="highlight"><pre>git clone http://testerman.fr/git/testerman.git testerman-git
+cd testerman-git
+</pre></div>
 </div>
 <p>2. Set up a document root (in this example, we are using the default, as
 configured in <tt class="docutils literal"><span class="pre">conf/testerman.conf</span></tt>: <tt class="docutils literal"><span class="pre">~/testerman</span></tt>) and a repository
 that will contain your shared test cases; we also fill it with some
 samples (WARNING: existing samples will be replaced with the one from
 the SVN tree):</p>
-<div class="highlight-python"><pre>bin/testerman-admin setup document-root</pre>
+<div class="highlight-python"><div class="highlight"><pre>bin/testerman-admin setup document-root
+</pre></div>
 </div>
 <p>3. Publish the current (SVN version) QTesterman client and PyAgent on
 this server, advertising them as stable versions:</p>
-<div class="highlight-python"><pre>bin/testerman-admin -c testerman/components source-publish component qtesterman branch stable
-bin/testerman-admin -c testerman/components source-publish component pyagent branch stable</pre>
+<div class="highlight-python"><div class="highlight"><pre>bin/testerman-admin -c testerman/components source-publish component qtesterman branch stable
+bin/testerman-admin -c testerman/components source-publish component pyagent branch stable
+</pre></div>
 </div>
 <ol class="arabic simple" start="4">
 <li>You may check the published components with:</li>
 </ol>
-<div class="highlight-python"><pre>user@testermanserver$ bin/testerman-admin -c testerman/components show
+<div class="highlight-python"><div class="highlight"><pre>user@testermanserver$ bin/testerman-admin -c testerman/components show
 Component  | Version | Branch | Archive File                  | Status
 -----------------------------------------------------------------------
 pyagent    | 1.1.3   | stable | /updates/pyagent-1.1.3.tgz    | OK
-qtesterman | 1.2.0   | stable | /updates/qtesterman-1.2.0.tgz | OK</pre>
+qtesterman | 1.2.0   | stable | /updates/qtesterman-1.2.0.tgz | OK
+</pre></div>
 </div>
 </div>
 </div>
@@ -203,14 +206,16 @@ directory where you installed or checked out Testerman (in the procedure
 above, into <tt class="docutils literal"><span class="pre">~/testerman-svn</span></tt>), and start the Testerman components,
 i.e. the Testerman Agent Controller Server (TACS) and the Testerman
 Server, with:</p>
-<div class="highlight-python"><pre>user@testermanserver$ bin/testerman-admin start all</pre>
+<div class="highlight-python"><div class="highlight"><pre>user@testermanserver$ bin/testerman-admin start all
+</pre></div>
 </div>
 <p>You may check that both processes are running with:</p>
-<div class="highlight-python"><pre>user@testermanserver$ bin/testerman-admin status
+<div class="highlight-python"><div class="highlight"><pre>user@testermanserver$ bin/testerman-admin status
  Component | Management Address    | Status  | PID
 -----------------------------------------------------
  server    | http://localhost:8080 | running | 6625
- tacs      | 127.0.0.1:8087        | running | 6670</pre>
+ tacs      | 127.0.0.1:8087        | running | 6670
+</pre></div>
 </div>
 <p>By default, the Testerman Server listens on <tt class="docutils literal"><span class="pre">tcp/8080</span></tt> (Ws interface,
 XML-RPC based Web Services), <tt class="docutils literal"><span class="pre">tcp/8082</span></tt> (Xc interface, a text-based
@@ -234,7 +239,8 @@ Server component.</p>
 <p>You may need to deploy some Testerman agents to host probes remotely.</p>
 <p>You may directly start a Python-based agent, dubbed PyAgent, from the
 installation root:</p>
-<div class="highlight-python"><pre>bin/testerman-agent --name localagent --log-filename myagent.log -d</pre>
+<div class="highlight-python"><div class="highlight"><pre>bin/testerman-agent --name localagent --log-filename myagent.log -d
+</pre></div>
 </div>
 <p>where <tt class="docutils literal"><span class="pre">localagent</span></tt> is a friendly identifier that will be used as the
 domain part in probe URIs when defining test adapter configurations. The
@@ -254,20 +260,23 @@ requirements may appear. Please see CodecsAndProbes.</li>
 <h3>The Easiest Way<a class="headerlink" href="#the-easiest-way" title="Permalink to this headline">¶</a></h3>
 <p>Assuming <tt class="docutils literal"><span class="pre">wget</span></tt> is installed on your target machine, you can retrieve
 a pre-configured pyagent installer from the Testerman server with:</p>
-<div class="highlight-python"><pre>wget http://&lt;server&gt;:8080/pyagentinstaller</pre>
+<div class="highlight-python"><div class="highlight"><pre>wget http://&lt;server&gt;:8080/pyagentinstaller
+</pre></div>
 </div>
 <p>where <tt class="docutils literal"><span class="pre">&lt;server&gt;</span></tt> is your Testerman server hostname or IP address.</p>
 <p>This fetches a Python script that is pre-configured to download and
 install the latest stable pyagent package from the server you provided
 in this url. Just execute it with:</p>
-<div class="highlight-python"><pre>python ./pyagentinstaller</pre>
+<div class="highlight-python"><div class="highlight"><pre>python ./pyagentinstaller
+</pre></div>
 </div>
 <p>(for other options, in particular to install a specific pyagent version
 or a testing version, see the inline help with
 <tt class="docutils literal"><span class="pre">python</span> <span class="pre">./pyagentinstaller</span> <span class="pre">--help</span></tt>)</p>
 <p>Once done, your pyagent is ready to be executed from your current
 directory with:</p>
-<div class="highlight-python"><pre>./testerman-agent.py -c testermanserver --name remoteagent [-d] [--log-filename remoteagent.log]</pre>
+<div class="highlight-python"><div class="highlight"><pre>./testerman-agent.py -c testermanserver --name remoteagent [-d] [--log-filename remoteagent.log]
+</pre></div>
 </div>
 <p>where <tt class="docutils literal"><span class="pre">testermanserver</span></tt> is the Testerman server hostname or IP
 address, and <tt class="docutils literal"><span class="pre">remoteagent</span></tt> the name that will identify this agent on
@@ -284,8 +293,9 @@ the agent (you can also fetch this file from
 <tt class="docutils literal"><span class="pre">http://&lt;testermanserver&gt;:8080/components.vm</span></tt>).</p>
 <p>Once <tt class="docutils literal"><span class="pre">pyagent-X.X.X.tgz</span></tt> has been copied, just untar it (it will
 create a directory named <tt class="docutils literal"><span class="pre">pyagent</span></tt>) and execute the agent:</p>
-<div class="highlight-python"><pre>cd pyagent
-python ./testerman-agent.py -c testermanserver --name remoteagent --log-filename remoteagent.log -d</pre>
+<div class="highlight-python"><div class="highlight"><pre>cd pyagent
+python ./testerman-agent.py -c testermanserver --name remoteagent --log-filename remoteagent.log -d
+</pre></div>
 </div>
 <p>where <tt class="docutils literal"><span class="pre">testermanserver</span></tt> is the hostname or IP address of the server
 the TACS is running on and <tt class="docutils literal"><span class="pre">remoteagent</span></tt> the name you want to assign
@@ -295,11 +305,12 @@ case of a connection failure) and will show up in QTesterman&#8217;s probe
 manager when available.</p>
 <p>Alternatively, you may check the correct agent deployment from the
 server&#8217;s installation root with:</p>
-<div class="highlight-python"><pre>user@testermanserver$ bin/testerman-admin -c testerman/probes show all
+<div class="highlight-python"><div class="highlight"><pre>user@testermanserver$ bin/testerman-admin -c testerman/probes show all
 URI                    | Type    | Location      | Version
 --------------------------------------------------------------------------
 agent:remoteagent      | pyagent | 192.168.13.17 | PyTestermanAgent/1.1.3
-agent:localagent       | pyagent | 127.0.0.1     | PyTestermanAgent/1.1.3</pre>
+agent:localagent       | pyagent | 127.0.0.1     | PyTestermanAgent/1.1.3
+</pre></div>
 </div>
 <p>And voila ! You are now ready to play with some samples from the
 QTesterman interface.</p>
@@ -337,7 +348,7 @@ tutorial</a>. However, since it is
 based on the most recent Python version at date, some features may be
 not available on most Testerman deployments, running Python 2.4 or
 2.5 as provided with your distribution</li>
-<li><a class="reference external" href="http://diveintopython.org/toc/index.html">Dive into Python</a> is a
+<li><a class="reference external" href="http://www.diveintopython.net">Dive into Python</a> is a
 book by Mark Pilgrim that is freely available online. A good reading,
 too.</li>
 </ul>
@@ -354,7 +365,7 @@ too.</li>
     </p>
     <p>
         &copy; Copyright 2009-2014, Sébastien Lefevre and Testerman contributors.<br/>
-      Created using <a href="http://sphinx.pocoo.org/">Sphinx</a> 1.1.3.<br/>
+      Created using <a href="http://sphinx.pocoo.org/">Sphinx</a> 1.2.2.<br/>
     </p>
   </div>
 </footer>
