@@ -1242,9 +1242,9 @@ class ConnectingNode(BaseNode):
 		self._setConnector(connector)
 		BaseNode.initialize(self)
 
+import traceback
 
 def getBacktrace():
-	import traceback
 	backtrace = StringIO.StringIO()
 	traceback.print_exc(None, backtrace)
 	ret = backtrace.getvalue()

@@ -64,6 +64,8 @@ import SocketServer
 import time
 import os
 import sys
+import traceback
+import StringIO
 
 KEEP_ALIVE_PDU = 'KA'
 
@@ -72,8 +74,6 @@ KEEP_ALIVE_PDU = 'KA'
 ################################################################################
 
 def getBacktrace():
-	import traceback
-	import StringIO
 	backtrace = StringIO.StringIO()
 	traceback.print_exc(None, backtrace)
 	ret = backtrace.getvalue()

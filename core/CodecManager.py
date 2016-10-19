@@ -30,12 +30,12 @@ class CodecNotFoundException(Exception): pass
 ##
 # Utilities
 ##
+import traceback
+import StringIO
 def getBacktrace():
 	"""
 	Returns the current backtrace.
 	"""
-	import traceback
-	import StringIO
 	backtrace = StringIO.StringIO()
 	traceback.print_exc(None, backtrace)
 	ret = backtrace.getvalue()

@@ -37,10 +37,10 @@
 
 import sys
 import shlex
+import traceback
+import StringIO
 
 def getBacktrace():
-	import traceback
-	import StringIO
 	backtrace = StringIO.StringIO()
 	traceback.print_exc(None, backtrace)
 	ret = backtrace.getvalue()

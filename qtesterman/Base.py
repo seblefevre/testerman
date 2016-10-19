@@ -28,7 +28,7 @@ import re
 import Resources
 
 import Version
-
+import TestermanNodes
 
 ################################################################################
 # Versioning
@@ -56,7 +56,6 @@ def log(txt):
 	logging.getLogger().info(txt)
 
 def getBacktrace():
-	import TestermanNodes
 	return TestermanNodes.getBacktrace()
 
 ################################################################################

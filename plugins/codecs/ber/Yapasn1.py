@@ -143,12 +143,12 @@ BMPSTRING_TAG = 0x1E
 class BerDecodingError(Exception): pass
 class BerEncodingError(Exception): pass
 
+import traceback
+import StringIO
 def getBacktrace():
 	"""
 	Returns the current backtrace.
 	"""
-	import traceback
-	import StringIO
 	backtrace = StringIO.StringIO()
 	traceback.print_exc(None, backtrace)
 	ret = backtrace.getvalue()
