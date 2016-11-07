@@ -148,8 +148,8 @@ class HttpRequestCodec(CodecManager.IncrementalCodec):
 				ret.append(chunk(body))
 			else:
 				ret.append(body)
-		
-		ret.append('')
+		else:		
+			ret.append('')
 
 		ret = '\r\n'.join(ret)
 		return (ret, self.getSummary(template))
@@ -381,8 +381,8 @@ class HttpResponseCodec(CodecManager.IncrementalCodec):
 				ret.append(chunk(body))
 			else:
 				ret.append(body)
-
-		ret.append('')
+		else:
+			ret.append('')
 		
 		return ('\r\n'.join(ret), self.getSummary(template))
 
