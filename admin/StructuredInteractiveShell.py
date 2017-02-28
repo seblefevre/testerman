@@ -340,6 +340,38 @@ class IntegerNode(SyntaxNode):
 				raise InvalidSyntax("integer value expected")
 			return [], False, tokens[1:]
 
+class BooleanNode(SyntaxNode):
+	"""
+	Simple boolean node (true/false)
+	"""
+	
+	_typeName = "<boolean>"
+	
+	def __init__(self, description = "a boolean value"):
+		SyntaxNode.__init__(self)
+		self._description = description
+
+	def parse(self, tokens):
+		ret = False
+		if not tokens:
+			raise MissingToken("missing value") 
+		if tokens[0].lowercase() in [ 'true', 't', '1' ]:
+			ret = True
+		if tokens[0].lowercase() in[ 'false', 'f', '0' ]:
+			ret = False
+		except:
+			raise InvalidSyntax("integer value expected")
+		return (ret, tokens[1:])
+
+	def suggestNextTokens(self, tokens):
+		if not tokens:
+			# Suggest to enter an integer value
+			return [ ('true', self._description), ('false', self._description) ], True, tokens
+		else:
+			if not tokens[0].lowercase() in [ 'true', 't', '1', 'false', 'f', '0']:
+				raise InvalidSyntax("boolean value expected (true/false/t/f/0/1)")
+			return [], False, tokens[1:]
+
 
 class NullNode(SyntaxNode):
 	"""
@@ -358,6 +390,9 @@ class NullNode(SyntaxNode):
 		# nothing to suggest
 		return [], False, tokens
 
+##
+# More advanced syntax nodes
+##
 
 class SequenceNode(SyntaxNode):
 	"""
@@ -486,6 +521,53 @@ class SequenceNode(SyntaxNode):
 			# our level (i.e. in this node branch) anymore
 			return [], False, nextTokens
 
+class SequenceOfNode(SyntaxNode):
+	"""
+	Equivalent of a ASN.1 SEQUENCE OF.
+	
+	MyType ::= SEQUENCE OF <other SyntaxNode>
+	
+	translates into:
+	MyType = SequenceOfNode(OtherSyntaxNode)
+	"""
+	
+	_typeName = "<sequenceOf>"
+	
+	def __init__(self, itemSyntaxNode):
+		SyntaxNode.__init__(self)
+		self.itemSyntaxNode = itemSyntaxNode
+
+	def parse(self, tokens):
+		"""
+		Parse tokens as itemSyntaxNode until no longer possible (i.e. error)
+		"""
+		remainingTokens = tokens
+		res = []
+		while remainingTokens:
+			try:
+				val, remainingTokens = self.itemSyntaxNode.parse(remainingTokens)
+				res.append(val)
+			except:
+				break
+		return (val, remainingTokens)
+
+	def suggestNextTokens(self, tokens):
+		remainingTokens = tokens
+		# Suggest to add an element to the sequence of.
+		suggestions, _, _ = self.itemSyntaxNode.suggestNextTokens([])
+		incomplete = False
+		
+		# check the existing sequence up to where we have an issue.
+		# Either we consume exactly all our tokens, or we have an exception before.
+		# So normally this is not an infinite loop.
+		while remainingTokens:
+			try:
+				suggestions, incomplete, remainingTokens = self.itemSyntaxNode.suggestNextTokens(remainingTokens)
+			except, e:
+				raise e
+			if incomplete:
+				return suggestions, incomplete, remainingTokens
+		return suggestions, incomplete, remainingTokens
 
 class ChoiceNode(SyntaxNode):
 	"""
