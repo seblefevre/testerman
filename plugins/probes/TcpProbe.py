@@ -550,8 +550,11 @@ The test system interface port bound to such a probe complies with the ``Transpo
 		return sockets
 	
 	def _getActiveSockets(self):
+		"""
+		Return a dict of socket: peerAddress to make it convenient for select calls and quick association to a peer.
+		"""
 		self._lock()
-		sockets = [conn.socket for conn in self._connections.values()]
+		sockets = dict([(conn.socket, conn.peerAddress) for conn in self._connections.values()])
 		self._unlock()
 		return sockets
 		
@@ -655,8 +658,9 @@ class PollingThread(threading.Thread):
 		while not self._stopEvent.isSet():
 			try:
 				listening = self._probe._getListeningSockets()
+				# active is a dict of socket: peerAddress
 				active = self._probe._getActiveSockets()
-				rset = listening + active
+				rset = listening + active.keys()
 
 				r, w, e = select.select(rset, [], [], 0.001)
 				for s in r:
@@ -669,7 +673,10 @@ class PollingThread(threading.Thread):
 							self._probe._onIncomingConnection(sock, addr)
 							# Raise a new connection notification event - soon
 						else:
-							addr = s.getpeername()
+							# Active socket. We get its peername from its registration, not via s.getpeername()
+							# as the remote endpoint might have sent a RST and disconnected, while we still have some data to read for it.
+							# Calling s.getpeername() would then fail, preventing us from reading that remaining data.
+							addr = active.get(s)
 							self._probe.getLogger().debug("New data to read from %s" % str(addr))
 							data = s.recv(65535)
 							if not data:
