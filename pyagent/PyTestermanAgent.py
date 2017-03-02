@@ -57,8 +57,6 @@ class Restarter:
 	argv = None
 	
 	def initialize():
-		import os
-		import sys
 		Restarter.env = os.environ
 		Restarter.argv = sys.argv
 		Restarter.executable = sys.executable
@@ -67,8 +65,6 @@ class Restarter:
 	initialize = staticmethod(initialize)
 
 	def restart():
-		import os
-		import sys
 		args = [ Restarter.executable ] + Restarter.argv
 		if sys.platform in [ 'win32', 'win64' ]:
 			# we need to quote arguments containing spaces... why ?
@@ -726,7 +722,7 @@ class Agent(Nodes.ConnectingNode):
 		else:
 			# No preferred version: take the most recent one in the selected branches
 			# Let's check if we have a better version than the current one
-			if not currentVersion or (compareVersions(currentVersion < updates[0]['version']) < 0):
+			if not currentVersion or (compareVersions(currentVersion, updates[0]['version']) < 0):
 				selectedVersion = updates[0]['version']
 				url = updates[0]['url']
 				selectedBranch = updates[0]['branch']
