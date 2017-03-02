@@ -21,6 +21,7 @@ import CodecManager
 
 import pickle
 import base64
+import json
 
 class PickleCodec(CodecManager.Codec):
 	def encode(self, template):
@@ -39,3 +40,13 @@ class Base64Codec(CodecManager.Codec):
 		return (base64.decodestring(data), None)
 
 CodecManager.registerCodecClass('base64', Base64Codec)
+
+
+class JsonCodec(CodecManager.Codec):
+	def encode(self, template):
+		return (json.dumps(template), 'json data')
+
+	def decode(self, data):
+		return (json.loads(data), None)
+
+CodecManager.registerCodecClass('json', JsonCodec)
