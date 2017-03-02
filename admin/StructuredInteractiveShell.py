@@ -344,31 +344,32 @@ class BooleanNode(SyntaxNode):
 	"""
 	Simple boolean node (true/false)
 	"""
-	
+
 	_typeName = "<boolean>"
-	
-	def __init__(self, description = "a boolean value"):
+
+	def __init__(self, trueDescription = "", falseDescription = ""):
 		SyntaxNode.__init__(self)
-		self._description = description
+		self._trueDescription = trueDescription
+		self._falseDescription = falseDescription
 
 	def parse(self, tokens):
 		ret = False
 		if not tokens:
-			raise MissingToken("missing value") 
-		if tokens[0].lowercase() in [ 'true', 't', '1' ]:
+			raise MissingToken("missing value")
+		if tokens[0].lower() in [ 'true', 't', '1' ]:
 			ret = True
-		if tokens[0].lowercase() in[ 'false', 'f', '0' ]:
+		elif tokens[0].lower() in[ 'false', 'f', '0' ]:
 			ret = False
-		except:
+		else:
 			raise InvalidSyntax("integer value expected")
 		return (ret, tokens[1:])
 
 	def suggestNextTokens(self, tokens):
 		if not tokens:
 			# Suggest to enter an integer value
-			return [ ('true', self._description), ('false', self._description) ], True, tokens
+			return [ ('true', self._trueDescription), ('false', self._falseDescription) ], True, tokens
 		else:
-			if not tokens[0].lowercase() in [ 'true', 't', '1', 'false', 'f', '0']:
+			if not tokens[0].lower() in [ 'true', 't', '1', 'false', 'f', '0']:
 				raise InvalidSyntax("boolean value expected (true/false/t/f/0/1)")
 			return [], False, tokens[1:]
 
@@ -524,50 +525,72 @@ class SequenceNode(SyntaxNode):
 class SequenceOfNode(SyntaxNode):
 	"""
 	Equivalent of a ASN.1 SEQUENCE OF.
-	
+
 	MyType ::= SEQUENCE OF <other SyntaxNode>
-	
+
 	translates into:
 	MyType = SequenceOfNode(OtherSyntaxNode)
 	"""
-	
+
 	_typeName = "<sequenceOf>"
-	
+
 	def __init__(self, itemSyntaxNode):
 		SyntaxNode.__init__(self)
 		self.itemSyntaxNode = itemSyntaxNode
 
 	def parse(self, tokens):
 		"""
-		Parse tokens as itemSyntaxNode until no longer possible (i.e. error)
+		Parse tokens as itemSyntaxNode until no longer possible (i.e. error).
+		Note: a way to start a new item when the item is a SEQUENCE is to provide
+		a new value for a field of the sequence.
+		For instance for a SEQUENCE (name String, value String, description String optional),
+		you can use:
+		name name1 value v1 name name2 value v2 description d2 value v3 name3
+
+		The duplicate field will end the SEQUENCE syntax node parsing.
 		"""
 		remainingTokens = tokens
 		res = []
+		logging.debug("parsing sequenceOf")
 		while remainingTokens:
 			try:
+				logging.debug(remainingTokens)
 				val, remainingTokens = self.itemSyntaxNode.parse(remainingTokens)
+
 				res.append(val)
-			except:
+				logging.debug("Captured: " + str(val))
+			except Exception, e:
+				logging.debug("Exception " + str(e))
 				break
-		return (val, remainingTokens)
+		return (res, remainingTokens)
 
 	def suggestNextTokens(self, tokens):
 		remainingTokens = tokens
 		# Suggest to add an element to the sequence of.
-		suggestions, _, _ = self.itemSyntaxNode.suggestNextTokens([])
+		itemSuggestions, _, _ = self.itemSyntaxNode.suggestNextTokens([])
+		suggestions = []
 		incomplete = False
-		
 		# check the existing sequence up to where we have an issue.
 		# Either we consume exactly all our tokens, or we have an exception before.
 		# So normally this is not an infinite loop.
 		while remainingTokens:
 			try:
+				logging.debug("sequenceOf suggestions with remaining tokens " + str(remainingTokens))
 				suggestions, incomplete, remainingTokens = self.itemSyntaxNode.suggestNextTokens(remainingTokens)
-			except, e:
-				raise e
+			except Exception, e:
+				logging.debug("sequenceOf suggestions: " + str(e))
+				break
 			if incomplete:
 				return suggestions, incomplete, remainingTokens
-		return suggestions, incomplete, remainingTokens
+
+		# Complete with a new itemSyntaxNode if the current started node is also OK (no exception, no incomplete)
+		# But only if we don't have remainingTokens behind us - letting the parent manage them in that case,
+		# and not allowing further completion at our level.
+		if not remainingTokens:
+			return suggestions + itemSuggestions, False, remainingTokens
+		else:
+			return [], False, remainingTokens
+
 
 class ChoiceNode(SyntaxNode):
 	"""
