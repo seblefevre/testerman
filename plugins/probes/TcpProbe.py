@@ -89,7 +89,7 @@ Properties:
 
 .. csv-table::
    :header: "Name","Type","Default value","Description"
-	 
+
    "``local_ip``","string","(empty - system assigned)","Local IP address to use when sending packets"
    "``local_port``","integer","``0`` (system assigned)","Local port to use when sending packets"
    "``listening_ip``","string","``0.0.0.0``","Listening IP address, if listening mode is activated (see below)"
@@ -101,9 +101,11 @@ Properties:
    "``default_decoder``","string","``None``","If set, must be a valid codec name (aliases are currently not supported). This codec is then used to decode all incoming packets, and only the probe only raises an incoming message when the codec successfully decoded something. This is particular convenient when used with an incremental codec (such as ``'http.request'``) that will then be responsible for identifying the actual application PDU in the TCP stream."
    "``default_encoder``","string","``None``","If set, must be a valid codec name (aliases are currently not supported). This codec is then used to encode all outgoing packets, without a need to use it when sending the message through the port mapped to this probe."
    "``use_ssl``","boolean","``False``","If set, all outgoing and incoming traffic through is probe is transported over SSLv3. All TLS negotiations are performed by the probe. However, ..."
-   "``ssl_key``","string","``None``","The SSL key to use if ``use_ssl``is set to ``True``. Contains a private key associated to ``ssl_certificate``, in base64 format. If not provided, a default sample private key is used."
-   "``ssl_certificate``","string","``None``","The SSL certificate to use if ``use_ssl``is set to ``True``. Contains a certificate in PEM format that will be used when a certificate is needed by the probe connection(s). If not provided, a default one that matches the default private key, is used."
+   "``ssl_key``","string","``None``","The SSL key to use if ``use_ssl`` is set to ``True``. Contains a private key associated to ``ssl_certificate``, in base64 format. If not provided, a default sample private key is used."
+   "``ssl_certificate``","string","``None``","The SSL certificate to use if ``use_ssl`` is set to ``True``. Contains a certificate in PEM format that will be used when a certificate is needed by the probe connection(s). If not provided, a default one that matches the default private key, is used."
    "``connection_timeout``","float","``5.0``","The connection timeout, in s, when trying to connect to a remote party."
+   "``auto_connect``","boolean","``True``","When sending a message, autoconnect to the provided address if there is no existing connections with this peer yet."
+   "``ssl_require_client_cert_ca``","string","``None``","When ``use_ssl`` is set to ``True`` and the probe is used on server side (``listening_port`` > 0), request the SSL client to provide a client-side certificate issued by one of the CA whose certificate is provided as base64 in this property. This enables to test mutual SSL authentication."
    "``auto_connect``","boolean","``True``","When sending a message, autoconnect to the provided address if there is no existing connections with this peer yet."
 
 Overview
@@ -194,13 +196,13 @@ The test system interface port bound to such a probe complies with the ``Transpo
     record { octetstring certificate optional } connectionConfirm, // connection request OK
     charstring connectionError, // contains a human readable error after a connection request
   }
-  
+
   type union RequestType
   {
     any connectionRequest, // request a new tcp-connection
     any disconnectionRequest, // request a disconnection. Except a disconnectionNotification later
   }
-  
+
   type TransportProbePortType
   {
     in RequestType;
@@ -231,9 +233,10 @@ The test system interface port bound to such a probe complies with the ``Transpo
 		self.setDefaultProperty('use_ssl', None)
 		self.setDefaultProperty('ssl_key', DEFAULT_SSL_PRIVATE_KEY)
 		self.setDefaultProperty('ssl_certificate', DEFAULT_SSL_CERTIFICATE)
+		self.setDefaultProperty('ssl_require_client_cert_ca', None)
 		self.setDefaultProperty('connection_timeout', 5.0)
 		self.setDefaultProperty('auto_connect', True)
-	
+
 	# ProbeImplementation reimplementation
 	def onTriMap(self):
 		self._reset()
@@ -242,18 +245,18 @@ The test system interface port bound to such a probe complies with the ``Transpo
 		if port:
 			self._startListening()
 		self._startPollingThread()
-	
+
 	def onTriUnmap(self):
 		self._reset()
-	
+
 	def onTriSAReset(self):
 		self._reset()
-	
+
 	def onTriExecuteTestCase(self):
 		self._reset()
 
 	# Specific implementation
-	def _reset(self):	
+	def _reset(self):
 		self._stopPollingThread()
 		self._stopListening()
 		self._disconnectOutgoingConnections()
@@ -275,7 +278,7 @@ The test system interface port bound to such a probe complies with the ``Transpo
 		# default SUT address (useful for outgoing connections)
 		if not sutAddress:
 			sutAddress = self['default_sut_address']
-		
+
 		# Second fallback, useful for servers with a single incoming connection
 		if not sutAddress:
 			self._lock()
@@ -315,7 +318,7 @@ The test system interface port bound to such a probe complies with the ``Transpo
 					self._send(conn, message)
 			else:
 				raise Exception("Unsupported request (%s)" % cmd)
-		
+
 		elif isinstance(message, basestring) or self['default_encoder']:
 			addr = self._checkSutAddress(sutAddress)
 			conn = self._getConnection(addr)
@@ -324,20 +327,21 @@ The test system interface port bound to such a probe complies with the ``Transpo
 			if conn:
 				# Now we can send our payload
 				self._send(conn, message)
-		
+
 		else:
 			raise Exception("Unsupported message type")
-	
+
 	def _lock(self):
 		self._mutex.acquire()
-	
+
 	def _unlock(self):
 		self._mutex.release()
-	
+
 	def _toSsl(self, sock, serverSide):
 		try:
 			keyfile = None
 			certfile = None
+			cafile = None
 
 			ssl_key = self['ssl_key']
 			if ssl_key:
@@ -358,19 +362,19 @@ The test system interface port bound to such a probe complies with the ``Transpo
 				tmpcert.write(ssl_certificate)
 				tmpcert.close()
 
-			s = ssl.wrap_socket(sock, keyfile = keyfile, certfile = certfile, server_side = serverSide)
-			if keyfile:
-				try:
-					os.remove(keyfile)
-				except:
-					pass
-			if certfile:
-				try:
-					os.remove(certfile)
-				except:
-					pass
+			if serverSide and self['ssl_require_client_cert_ca']:
+				(tmpca, cafile) = tempfile.mkstemp()
+				tmpca = os.fdopen(tmpca, 'w')
+				tmpca.write(self['ssl_require_client_cert_ca'])
+				tmpca.close()
+
+			s = ssl.wrap_socket(sock, keyfile = keyfile, certfile = certfile, server_side = serverSide,
+				ca_certs = cafile, cert_reqs=(cafile is not None and ssl.CERT_REQUIRED or ssl.CERT_NONE))
+
 			return s
 		except ssl.SSLError, e:
+			raise Exception("SSL Error: %s" % e)
+		finally:
 			if keyfile:
 				try:
 					os.remove(keyfile)
@@ -381,7 +385,11 @@ The test system interface port bound to such a probe complies with the ``Transpo
 					os.remove(certfile)
 				except:
 					pass
-			raise Exception("SSL Error: %s" % e)
+			if cafile:
+				try:
+					os.remove(cafile)
+				except:
+					pass
 
 	def _connect(self, to):
 		"""
@@ -415,7 +423,7 @@ The test system interface port bound to such a probe complies with the ``Transpo
 		if conn:
 			self.getLogger().info("Connected to %s" % str(to))
 		return conn
-	
+
 	def _registerOutgoingConnection(self, sock, addr):
 		c = Connection()
 		c.socket = sock
@@ -425,7 +433,7 @@ The test system interface port bound to such a probe complies with the ``Transpo
 		self._connections[addr] = c
 		self._unlock()
 		return c
-	
+
 	def _registerIncomingConnection(self, sock, addr):
 		c = Connection()
 		c.socket = sock
@@ -435,7 +443,7 @@ The test system interface port bound to such a probe complies with the ``Transpo
 		self._connections[addr] = c
 		self._unlock()
 		return c
-	
+
 	def _getConnection(self, peerAddress):
 		conn = None
 		self._lock()
@@ -443,7 +451,7 @@ The test system interface port bound to such a probe complies with the ``Transpo
 			conn = self._connections[peerAddress]
 		self._unlock()
 		return conn
-	
+
 	def _send(self, conn, data):
 		encoder = self['default_encoder']
 		if encoder:
@@ -473,35 +481,35 @@ The test system interface port bound to such a probe complies with the ``Transpo
 		# Disconnection notification
 		if self['enable_notifications']:
 			self.triEnqueueMsg(('disconnectionNotification', reason), "%s:%s" % addr)
-	
+
 	def _disconnectIncomingConnections(self):
 		self._lock()
 		connections = self._connections.values()
 		self._unlock()
-		
+
 		for conn in connections:
 			if conn.incoming:
 				self._disconnect(conn.peerAddress, reason = 'disconnected by local user')
-	
+
 	def _disconnectOutgoingConnections(self):
 		self._lock()
 		connections = self._connections.values()
 		self._unlock()
-		
+
 		for conn in connections:
 			if not conn.incoming:
 				self._disconnect(conn.peerAddress, reason = 'disconnected by local user')
-	
+
 	def _startListening(self):
 		if self['use_ssl']:
 			try:
 				ssl
 			except:
 				raise Exception("SSL Support is not available on this host. It requires Python 2.6+.")
-	
+
 		addr = (self['listening_ip'], self['listening_port'])
 		self.getLogger().info("Starting listening on %s" % (str(addr)))
-		
+
 		# Should be mutex-protected
 		self._lock()
 		try:
@@ -513,7 +521,7 @@ The test system interface port bound to such a probe complies with the ``Transpo
 			self._unlock()
 			raise e
 		self._unlock()
-	
+
 	def _stopListening(self):
 		self._disconnectIncomingConnections()
 		# Should be mutex-protected
@@ -527,7 +535,7 @@ The test system interface port bound to such a probe complies with the ``Transpo
 		except Exception, e:
 			pass
 		self._unlock()
-	
+
 	def _startPollingThread(self):
 		if not self._pollingThread:
 			self._pollingThread = PollingThread(self)
@@ -548,7 +556,7 @@ The test system interface port bound to such a probe complies with the ``Transpo
 			sockets.append(self._listeningSocket)
 		self._unlock()
 		return sockets
-	
+
 	def _getActiveSockets(self):
 		"""
 		Return a dict of socket: peerAddress to make it convenient for select calls and quick association to a peer.
@@ -557,7 +565,7 @@ The test system interface port bound to such a probe complies with the ``Transpo
 		sockets = dict([(conn.socket, conn.peerAddress) for conn in self._connections.values()])
 		self._unlock()
 		return sockets
-		
+
 	def _feedData(self, addr, data):
 		conn = self._getConnection(addr)
 		if not conn:
@@ -567,7 +575,7 @@ The test system interface port bound to such a probe complies with the ``Transpo
 			# (size, timeout, separator)
 			conn.buffer += data
 			msg = None
-			
+
 			size = self['size']
 			separator = self['separator']
 
@@ -610,7 +618,7 @@ The test system interface port bound to such a probe complies with the ``Transpo
 					self.logReceivedPayload(summary, buf[:consumedSize], addr)
 					self.triEnqueueMsg(decodedMessage, addr)
 					# make sure we update the local loop buffer, too
-					buf = conn.decodingBuffer 
+					buf = conn.decodingBuffer
 				else: # status == CodecManager.IncrementalCodec.DECODING_ERROR:
 					self.getLogger().error("Unable to decode raw data with the default decoder (codec %s). Ignoring the segment." % decoder)
 					break
@@ -620,7 +628,7 @@ The test system interface port bound to such a probe complies with the ``Transpo
 				# disconnected is set if and only if the new data is empty - don't send this empty message
 				self.logReceivedPayload("TCP data", msg, addr)
 				self.triEnqueueMsg(msg, addr)
-	
+
 	def _onIncomingConnection(self, sock, addr):
 		self._registerIncomingConnection(sock, addr)
 		if self['enable_notifications']:
@@ -636,7 +644,7 @@ class PollingThread(threading.Thread):
 	This is a worker thread that pools all existing
 	connections, based on their sockets.
 	It also waits for incoming connections on listening sockets.
-	
+
 	These sockets are extracted from the probe when needed, that's why
 	the probe implements the following interface:
 		_getListeningSockets()
@@ -648,11 +656,11 @@ class PollingThread(threading.Thread):
 		threading.Thread.__init__(self)
 		self._probe = probe
 		self._stopEvent = threading.Event()
-	
+
 	def stop(self):
 		self._stopEvent.set()
 		self.join()
-	
+
 	def run(self):
 		# Main poll loop
 		while not self._stopEvent.isSet():
@@ -689,12 +697,12 @@ class PollingThread(threading.Thread):
 
 					except Exception, e:
 						self._probe.getLogger().warning("exception while polling active/listening sockets: %s" % str(e) + ProbeImplementationManager.getBacktrace())
-					
+
 			except Exception, e:
 				self._probe.getLogger().warning("exception while polling active/listening sockets: %s" % str(e))
 				# Avoid 100% CPU usage when select() raises an error
-				time.sleep(0.01)	
-					
+				time.sleep(0.01)
+
 
 
 ProbeImplementationManager.registerProbeImplementationClass('tcp', TcpProbe)
