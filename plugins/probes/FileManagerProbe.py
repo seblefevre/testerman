@@ -55,6 +55,7 @@ This probe performs basic local file management operations:
 * file creation (with content injection)
 * file move, deletion, renaming
 * link creation, deletion
+* file content read (the content is returned as a result choice, set to None if nothing can be read)
 
 One of its primary purposes is providing the ability to create
 files on the fly from resources that were embedded in your ATS or its
@@ -91,51 +92,58 @@ The test system interface port bound to such a probe complies with the ``FileMan
     RemoveCommand remove,
     MoveCommand move,
     CopyCommand copy,
+    ReadCommand read,
   }
-  
+
   type record CreateFileCommand
   {
     universal charstring name,
     octetstring content optional, // defaulted to an empty content
     boolean autorevert optional,  // backup existing file, restore it on unmap, defaulted to False
   }
-  
+
   type record RemoveCommand
   {
     universal charstring path,
   }
-  
+
   type record MoveCommand
   {
     universal charstring source,
     universal charstring destination,
   }
-  
+
   type record CopyCommand
   {
     universal charstring source,
     universal charstring destination,
   }
-  
+
   type record CreateLinkCommand
   {
     universal charstring name,
     universal charstring target,
     boolean autorevert optional, // backup existing file, restore it on unmap, defaulted to False
   }
-  
+
+  type record ReadCommand
+  {
+    universal charstring path,
+  }
+
   type record CommandStatus
   {
     integer status,
     universal charstring errorMessage optional, // only if status > 0
   }
-  
+
   type union FileManagementResponse
   {
     CommandStatus status,
+    universal charstring result, // for read command, null if the file could not be read
     // more to come: fileExists response, fileType response, ...
   }
-  
+
   type port FileManagerPortType message
   {
     in  FileManagementCommand;
@@ -158,11 +166,11 @@ The test system interface port bound to such a probe complies with the ``FileMan
 
 	def onTriMap(self):
 		self.getLogger().debug("onTriMap()")
-	
+
 	def onTriSAReset(self):
 		self.getLogger().debug("onTriSAReset()")
 		self._cleanup()
-	
+
 	def onTriExecuteTestCase(self):
 		self.getLogger().debug("onTriExecuteTestCase()")
 		self._cleanup()
@@ -173,15 +181,15 @@ The test system interface port bound to such a probe complies with the ``FileMan
 		if not isinstance(message, (list, tuple)) and not len(message) == 2:
 			raise Exception("Invalid message format - please read the file.manager probe documentation")
 		command, args = message
-		
+
 		if command == 'createFile':
 			self._checkArgs(args, [ ('name', None), ('content', ''), ('autorevert', False) ])
 			self.createFile(args['name'], args['content'], args['autorevert'])
-		
+
 		elif command == 'remove':
 			self._checkArgs(args, [ ('path', None), ('autorevert', False) ])
 			self.remove(args['path'], args['autorevert'])
-		
+
 		elif command == 'createLink':
 			self._checkArgs(args, [ ('name', None), ('target', None), ('autorevert', False) ])
 			self.createLink(args['name'], args['target'], args['autorevert'])
@@ -202,6 +210,10 @@ The test system interface port bound to such a probe complies with the ``FileMan
 			self._checkArgs(args, [ ('path', None), ('mode', None), ('autorevert', False) ])
 			self.chmod(args['path'], args['mode'], args['autorevert'])
 
+		elif command == 'read':
+			self._checkArgs(args, [ ('path', None) ])
+			self.read(args['path'])
+
 		else:
 			raise Exception("Invalid command (%s)" % command)
 
@@ -211,7 +223,7 @@ The test system interface port bound to such a probe complies with the ``FileMan
 	def createFile(self, name, content, autorevert):
 		if autorevert:
 			self._backupFile(name)
-		
+
 		dirname, filename = os.path.split(name)
 		if not fileExists(dirname):
 			os.makedirs(dirname)
@@ -226,7 +238,7 @@ The test system interface port bound to such a probe complies with the ``FileMan
 			shutil.rmtree(path)
 		else:
 			os.unlink(path)
-	
+
 	def chown(self, path, user, group, autorevert):
 		if autorevert:
 			self._backupFile(path)
@@ -240,12 +252,12 @@ The test system interface port bound to such a probe complies with the ``FileMan
 		if autorevert:
 			self._backupFile(path)
 		os.chmod(path, mode)
-	
+
 	def createLink(self, name, target, autorevert):
 		if autorevert:
 			self._backupFile(name)
 		os.symlink(target, name)
-	
+
 	def copy(self, source, destination, autorevert):
 		if autorevert:
 			self._backupFile(destination)
@@ -256,15 +268,25 @@ The test system interface port bound to such a probe complies with the ``FileMan
 			self._backupFile(destination)
 		shutil.move(source, destination)
 
+	def read(self, path):
+		content = None
+		try:
+			with open(path, 'rb') as f:
+				content = f.read()
+		except:
+			pass
+		result = ('result', content)
+		self.triEnqueueMsg(result)
+
 	def _lock(self):
 		self._mutex.acquire()
-	
+
 	def _unlock(self):
 		self._mutex.release()
 
 	def __del__(self):
 		self._cleanup()
-	
+
 	def _cleanup(self):
 		"""
 		Reverts modified files/deletes created files.
@@ -275,7 +297,7 @@ The test system interface port bound to such a probe complies with the ``FileMan
 #				shutil.rmtree(path)
 			except Exception, e:
 				self.getLogger().warning("Unable to remove added file %s: %s" % (path, str(e)))
-		
+
 		for path in self._modifiedFiles:
 			try:
 				self.getLogger().debug("Restoring modified/deleted file %s..." % path)
@@ -285,7 +307,7 @@ The test system interface port bound to such a probe complies with the ``FileMan
 
 		self._addedFiles = []
 		self._modifiedFiles = []
-	
+
 	def _backupFileToDelete(self, path):
 		if not path in self._addedFiles + self._modifiedFiles:
 			pass
@@ -295,12 +317,11 @@ The test system interface port bound to such a probe complies with the ``FileMan
 #			self.getLogger().info("Backup up file to delete %s -> %s" % (path, target)
 #			shutil.move(path, target)
 #			self._deletedFiles.append(path)
-	
+
 	def _backupFile(self, path):
 		if not path in self._addedFiles + self._modifiedFiles:
 			# if fileExists(path):
 			pass
-			
-		
-ProbeImplementationManager.registerProbeImplementationClass('file.manager', FileManagerProbe)
 
+
+ProbeImplementationManager.registerProbeImplementationClass('file.manager', FileManagerProbe)
