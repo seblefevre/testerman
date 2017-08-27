@@ -37,7 +37,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 
   </head>
-  <body>
+  <body role="document">
 <div class="container">
   
   <div id="navbar" class="navbar navbar-inverse navbar-fixed-top">
@@ -140,7 +140,7 @@
 <p>A Web driver using Selenium.</p>
 <div class="section" id="identification-and-properties">
 <h2>Identification and Properties<a class="headerlink" href="#identification-and-properties" title="Permalink to this headline">¶</a></h2>
-<p>Probe Type ID: <tt class="docutils literal"><span class="pre">selenium</span></tt></p>
+<p>Probe Type ID: <code class="docutils literal"><span class="pre">selenium</span></code></p>
 <p>Properties:</p>
 <table border="1" class="docutils">
 <colgroup>
@@ -157,29 +157,29 @@
 </tr>
 </thead>
 <tbody valign="top">
-<tr class="row-even"><td><tt class="docutils literal"><span class="pre">rc_host</span></tt></td>
+<tr class="row-even"><td><code class="docutils literal"><span class="pre">rc_host</span></code></td>
 <td>string</td>
-<td><tt class="docutils literal"><span class="pre">localhost</span></tt></td>
+<td><code class="docutils literal"><span class="pre">localhost</span></code></td>
 <td>Selenium-RC hostname or IP address</td>
 </tr>
-<tr class="row-odd"><td><tt class="docutils literal"><span class="pre">rc_port</span></tt></td>
+<tr class="row-odd"><td><code class="docutils literal"><span class="pre">rc_port</span></code></td>
 <td>integer</td>
-<td><tt class="docutils literal"><span class="pre">4444</span></tt></td>
+<td><code class="docutils literal"><span class="pre">4444</span></code></td>
 <td>Selenium-RC port</td>
 </tr>
-<tr class="row-even"><td><tt class="docutils literal"><span class="pre">browser</span></tt></td>
+<tr class="row-even"><td><code class="docutils literal"><span class="pre">browser</span></code></td>
 <td>string</td>
-<td><tt class="docutils literal"><span class="pre">firefox</span></tt></td>
+<td><code class="docutils literal"><span class="pre">firefox</span></code></td>
 <td>The browser Selenium should use on the Selenium host</td>
 </tr>
-<tr class="row-odd"><td><tt class="docutils literal"><span class="pre">server_url</span></tt></td>
+<tr class="row-odd"><td><code class="docutils literal"><span class="pre">server_url</span></code></td>
 <td>string</td>
-<td><tt class="docutils literal"><span class="pre">None</span></tt></td>
+<td><code class="docutils literal"><span class="pre">None</span></code></td>
 <td>The server URL to browse when opening the browser. Providing it is mandatory.</td>
 </tr>
-<tr class="row-even"><td><tt class="docutils literal"><span class="pre">auto_shutdown</span></tt></td>
+<tr class="row-even"><td><code class="docutils literal"><span class="pre">auto_shutdown</span></code></td>
 <td>boolean</td>
-<td><tt class="docutils literal"><span class="pre">True</span></tt></td>
+<td><code class="docutils literal"><span class="pre">True</span></code></td>
 <td>When set, Selenium closes the browser window when the test case is over. It may be convenient to set it to False to leave this window open to debug a test case on error.</td>
 </tr>
 </tbody>
@@ -193,9 +193,9 @@
 <li>a &#8220;loose command&#8221; approach that enables to trigger any actions you may record via the Selenium IDE - in this case all commands have at most two optional parameters: target, and value. Adapting a Selenium IDE script to Testerman   is in this case trivial and a QTesterman plugin will be made available soon to do it for you.</li>
 <li>a &#8220;strict command&#8221; approach that enables to name the different parameters a Selenium command supports. Only commands specified in the TTCN-3 equivalence below are supported in this mode.</li>
 </ul>
-<p>In both cases, some commands may return a result (for instance, isTextPresent returns a boolean result). You may expect such a result in a <tt class="docutils literal"><span class="pre">alt()</span></tt> loop as usual.</p>
+<p>In both cases, some commands may return a result (for instance, isTextPresent returns a boolean result). You may expect such a result in a <code class="docutils literal"><span class="pre">alt()</span></code> loop as usual.</p>
 <p>The probe automatically starts the browser on the RC host as soon as it is mapped, and everything is cleaned up once the test case is over.</p>
-<p>A basic example is available in <tt class="docutils literal"><span class="pre">samples/selenium.ats</span></tt>.</p>
+<p>A basic example is available in <code class="docutils literal"><span class="pre">samples/selenium.ats</span></code>.</p>
 <p>Limitations: for now, only the &#8220;loose command&#8221; mode is implemented.</p>
 <div class="section" id="availability">
 <h3>Availability<a class="headerlink" href="#availability" title="Permalink to this headline">¶</a></h3>
@@ -221,7 +221,7 @@ You may install it on the host you want to run the browsers from.</p>
 </div>
 <div class="section" id="ttcn-3-types-equivalence">
 <h2>TTCN-3 Types Equivalence<a class="headerlink" href="#ttcn-3-types-equivalence" title="Permalink to this headline">¶</a></h2>
-<p>The test system interface port bound to such a probe complies with the <tt class="docutils literal"><span class="pre">SeleniumProbePortType</span></tt> port type as specified below:</p>
+<p>The test system interface port bound to such a probe complies with the <code class="docutils literal"><span class="pre">SeleniumProbePortType</span></code> port type as specified below:</p>
 <div class="highlight-python"><div class="highlight"><pre>type union SeleniumStrictCommand
 {
   record { charstring key, charstring value } addCustomRequestHeader,
@@ -390,7 +390,7 @@ type SeleniumProbePortType
     </p>
     <p>
         &copy; Copyright 2009-2014, Sébastien Lefevre and Testerman contributors.<br/>
-      Created using <a href="http://sphinx.pocoo.org/">Sphinx</a> 1.2.2.<br/>
+      Created using <a href="http://sphinx.pocoo.org/">Sphinx</a> 1.3.6.<br/>
     </p>
   </div>
 </footer>

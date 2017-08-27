@@ -36,7 +36,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 
   </head>
-  <body>
+  <body role="document">
 <div class="container">
   
   <div id="navbar" class="navbar navbar-inverse navbar-fixed-top">
@@ -140,23 +140,23 @@ server processes to store local repository files, component updates,
 built test executables and execution logs.</p>
 <p>The document hierarchy is:</p>
 <ul class="simple">
-<li><tt class="docutils literal"><span class="pre">repository/</span></tt>: this directory is the root directory exposed to the
+<li><code class="docutils literal"><span class="pre">repository/</span></code>: this directory is the root directory exposed to the
 user through the Ws interface. This is the local directory that is
 mounted as / in the exposed virtual file system. It typically
 contains all user ATS and module files, unless you configured
 additional file system backends to point to other locations or
 backend types. Since it contains user data, this is a directory to
 backup.</li>
-<li><tt class="docutils literal"><span class="pre">MOTD</span></tt>: the Message Of The Day optional file. If present, it is
+<li><code class="docutils literal"><span class="pre">MOTD</span></code>: the Message Of The Day optional file. If present, it is
 retrieved by QTesterman clients and displayed on startup. You may use
 it to communicate about the server administrations, updates or
 maintenance announcements, etc.</li>
-<li><tt class="docutils literal"><span class="pre">archives/</span></tt>: this directory contains executed ATSes, as Test
+<li><code class="docutils literal"><span class="pre">archives/</span></code>: this directory contains executed ATSes, as Test
 Executables and associated log execution files. If you need to
 troubleshoot a TE, you may need to access this folder. It can also be
 browsed through the Ws interface, and is actually interfaces by
 QTesterman, so that the user can retrieve any archived execution log.</li>
-<li><tt class="docutils literal"><span class="pre">updates.xml</span></tt>: this file is used to describe available component
+<li><code class="docutils literal"><span class="pre">updates.xml</span></code>: this file is used to describe available component
 updates for component that supports autoupdates (for instance,
 QTesterman (via Ws) and the PyAgent (via Xa)). This file is mandatory
 to enable updates distribution.</li>
@@ -164,24 +164,24 @@ to enable updates distribution.</li>
 <p>Additionally, when distribution updates from the servers, we suggest you
 use the following convention:</p>
 <ul class="simple">
-<li><tt class="docutils literal"><span class="pre">updates/</span></tt>: store component update packages (tar or tar.gz files).
+<li><code class="docutils literal"><span class="pre">updates/</span></code>: store component update packages (tar or tar.gz files).
 The complete path within the document root to the update is provided
-within the <tt class="docutils literal"><span class="pre">updates.xml</span></tt>, so it is not mandatory to use this folder
+within the <code class="docutils literal"><span class="pre">updates.xml</span></code>, so it is not mandatory to use this folder
 name. However, distributable packages must be located below the
 document root.</li>
 </ul>
 <p>This document root is typically used by both the Testerman Server and
 the Testerman Agent Controller Server (TACS). However, since the TACS
 only uses it for distributing updates to agents, you may create a
-document root dedicated to it, containing at least a <tt class="docutils literal"><span class="pre">updates.xml</span></tt>
-file, and typically a <tt class="docutils literal"><span class="pre">updates/</span></tt> folder with the agent packages
+document root dedicated to it, containing at least a <code class="docutils literal"><span class="pre">updates.xml</span></code>
+file, and typically a <code class="docutils literal"><span class="pre">updates/</span></code> folder with the agent packages
 referred by the xml file.</p>
 </div>
 <div class="section" id="update-management">
 <h2>Update Management<a class="headerlink" href="#update-management" title="Permalink to this headline">¶</a></h2>
 <div class="section" id="updates-metadata-format">
 <h3>Updates Metadata Format<a class="headerlink" href="#updates-metadata-format" title="Permalink to this headline">¶</a></h3>
-<p>The file <tt class="docutils literal"><span class="pre">docroot/updates.xml</span></tt> provides all the needed information to
+<p>The file <code class="docutils literal"><span class="pre">docroot/updates.xml</span></code> provides all the needed information to
 update an agent or a client. It is a xml file whose structure is
 something like:</p>
 <div class="highlight-xml"><div class="highlight"><pre>&lt;?xml version=&quot;1.0&quot; encoding=&quot;utf-8&quot; ?&gt;
@@ -199,28 +199,28 @@ something like:</p>
 </div>
 <p>Whenever you want to make a new update available to agents/clients, you
 should update this file to declare the new update, providing the
-followinf information as attributes to the <tt class="docutils literal"><span class="pre">update</span></tt> element:</p>
+followinf information as attributes to the <code class="docutils literal"><span class="pre">update</span></code> element:</p>
 <ul class="simple">
-<li><tt class="docutils literal"><span class="pre">component</span></tt>: a name identifying the component the update refers to.
+<li><code class="docutils literal"><span class="pre">component</span></code>: a name identifying the component the update refers to.
 This name depends on the client/agent. See below for details.</li>
-<li><tt class="docutils literal"><span class="pre">branch</span></tt>: a branch classifies an update. By convention, it is
-either <tt class="docutils literal"><span class="pre">stable</span></tt> (well tested update), <tt class="docutils literal"><span class="pre">testing</span></tt> (should be OK in
+<li><code class="docutils literal"><span class="pre">branch</span></code>: a branch classifies an update. By convention, it is
+either <code class="docutils literal"><span class="pre">stable</span></code> (well tested update), <code class="docutils literal"><span class="pre">testing</span></code> (should be OK in
 most cases, but the user should be aware of some remaining potential
-problems with it - early deployment), or <tt class="docutils literal"><span class="pre">experimental</span></tt> (beta or
+problems with it - early deployment), or <code class="docutils literal"><span class="pre">experimental</span></code> (beta or
 alpha testing, specific purposes). These branches enables you to
 deploy updates without impacting all production users (using only
 stable updates), while leaving the opportunity to some users to test
 new probes or new QTesterman features (testing or experimental, when
 testing very specific updates with one or two users). Once a version
-has been correctly tested, you may switch its branch from <tt class="docutils literal"><span class="pre">testing</span></tt>
-to <tt class="docutils literal"><span class="pre">stable</span></tt> (or anything else).</li>
-<li><tt class="docutils literal"><span class="pre">version</span></tt>: the version of a component. Must be formatted as
-<tt class="docutils literal"><span class="pre">A.B.C</span></tt> (for instance <tt class="docutils literal"><span class="pre">1.0.1</span></tt>, <tt class="docutils literal"><span class="pre">2.10.13</span></tt>). The meaning of each
+has been correctly tested, you may switch its branch from <code class="docutils literal"><span class="pre">testing</span></code>
+to <code class="docutils literal"><span class="pre">stable</span></code> (or anything else).</li>
+<li><code class="docutils literal"><span class="pre">version</span></code>: the version of a component. Must be formatted as
+<code class="docutils literal"><span class="pre">A.B.C</span></code> (for instance <code class="docutils literal"><span class="pre">1.0.1</span></code>, <code class="docutils literal"><span class="pre">2.10.13</span></code>). The meaning of each
 digit is your own choice for the component you developed. For
 components distributed with the project, C is a incremented on bugfix
 or small enhancement (A.B fixed), B on normal enhancement (A fixed, C
 reset to 0), A on major changes (B, C reset to 0).</li>
-<li><tt class="docutils literal"><span class="pre">url</span></tt>: the location of the update archive within the document root.
+<li><code class="docutils literal"><span class="pre">url</span></code>: the location of the update archive within the document root.
 Must be a file format supported by the component.</li>
 </ul>
 <p>Additional, optional properties may be defined. In this case, they are
@@ -247,15 +247,15 @@ through the system above:</p>
 </tr>
 </thead>
 <tbody valign="top">
-<tr class="row-even"><td><tt class="docutils literal"><span class="pre">qtesterman</span></tt></td>
+<tr class="row-even"><td><code class="docutils literal"><span class="pre">qtesterman</span></code></td>
 <td>The QTesterman rich client</td>
-<td><tt class="docutils literal"><span class="pre">tar</span></tt>, <tt class="docutils literal"><span class="pre">tar.gz</span></tt></td>
+<td><code class="docutils literal"><span class="pre">tar</span></code>, <code class="docutils literal"><span class="pre">tar.gz</span></code></td>
 <td>(none)</td>
-<td>The archive file must contain files in a <tt class="docutils literal"><span class="pre">qtesterman/</span></tt> base folder. Updated through Ws.</td>
+<td>The archive file must contain files in a <code class="docutils literal"><span class="pre">qtesterman/</span></code> base folder. Updated through Ws.</td>
 </tr>
-<tr class="row-odd"><td><tt class="docutils literal"><span class="pre">pyagent</span></tt></td>
+<tr class="row-odd"><td><code class="docutils literal"><span class="pre">pyagent</span></code></td>
 <td>The Python Testerman Agent (with probes)</td>
-<td><tt class="docutils literal"><span class="pre">tar</span></tt>, <tt class="docutils literal"><span class="pre">tar.gz</span></tt></td>
+<td><code class="docutils literal"><span class="pre">tar</span></code>, <code class="docutils literal"><span class="pre">tar.gz</span></code></td>
 <td>(none)</td>
 <td>The archive must contain a (single) subdir containing the file to update. Updated through Xa.</td>
 </tr>
@@ -277,7 +277,7 @@ this infrastructure as well.</p>
     </p>
     <p>
         &copy; Copyright 2009-2014, Sébastien Lefevre and Testerman contributors.<br/>
-      Created using <a href="http://sphinx.pocoo.org/">Sphinx</a> 1.2.2.<br/>
+      Created using <a href="http://sphinx.pocoo.org/">Sphinx</a> 1.3.6.<br/>
     </p>
   </div>
 </footer>

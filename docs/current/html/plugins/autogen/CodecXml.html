@@ -37,7 +37,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 
   </head>
-  <body>
+  <body role="document">
 <div class="container">
   
   <div id="navbar" class="navbar navbar-inverse navbar-fixed-top">
@@ -138,7 +138,7 @@
 <p>Encode/decode XML payloads.</p>
 <div class="section" id="identification-and-properties">
 <h2>Identification and Properties<a class="headerlink" href="#identification-and-properties" title="Permalink to this headline">¶</a></h2>
-<p>Codec ID: <tt class="docutils literal"><span class="pre">xml</span></tt></p>
+<p>Codec ID: <code class="docutils literal"><span class="pre">xml</span></code></p>
 <p>Properties:</p>
 <table border="1" class="docutils">
 <colgroup>
@@ -155,19 +155,19 @@
 </tr>
 </thead>
 <tbody valign="top">
-<tr class="row-even"><td><tt class="docutils literal"><span class="pre">encoding</span></tt></td>
+<tr class="row-even"><td><code class="docutils literal"><span class="pre">encoding</span></code></td>
 <td>string</td>
-<td><tt class="docutils literal"><span class="pre">utf-8</span></tt></td>
+<td><code class="docutils literal"><span class="pre">utf-8</span></code></td>
 <td>encoding: use this to encode the payload. Decoding: assumes the payload follows this encoding if the xml prolog encoding attribute is missing.</td>
 </tr>
-<tr class="row-odd"><td><tt class="docutils literal"><span class="pre">write_prolog</span></tt></td>
+<tr class="row-odd"><td><code class="docutils literal"><span class="pre">write_prolog</span></code></td>
 <td>boolean</td>
-<td><tt class="docutils literal"><span class="pre">True</span></tt></td>
-<td>encoding: if True, write the <tt class="docutils literal"><span class="pre">&lt;?xml</span> <span class="pre">version=&quot;1.0&quot;</span> <span class="pre">encoding=&quot;...&quot;?&gt;</span></tt> prolog.</td>
+<td><code class="docutils literal"><span class="pre">True</span></code></td>
+<td>encoding: if True, write the <code class="docutils literal"><span class="pre">&lt;?xml</span> <span class="pre">version=&quot;1.0&quot;</span> <span class="pre">encoding=&quot;...&quot;?&gt;</span></code> prolog.</td>
 </tr>
-<tr class="row-even"><td><tt class="docutils literal"><span class="pre">prettyprint</span></tt></td>
+<tr class="row-even"><td><code class="docutils literal"><span class="pre">prettyprint</span></code></td>
 <td>boolean</td>
-<td><tt class="docutils literal"><span class="pre">False</span></tt></td>
+<td><code class="docutils literal"><span class="pre">False</span></code></td>
 <td>encoding: if True, pretty print the XML (carriage returns, hard tabs)</td>
 </tr>
 </tbody>
@@ -185,19 +185,19 @@ particular, this makes this codec unsuitable for full XHTML parsing,
 but should make it more convenient in most testing cases</li>
 </ul>
 <p>Something like</p>
-<div class="highlight-html"><div class="highlight"><pre><span class="nt">&lt;p&gt;</span>In this text, <span class="nt">&lt;i&gt;</span>some elements<span class="nt">&lt;/i&gt;</span> are nested<span class="nt">&lt;/p&gt;</span>
+<div class="highlight-html"><div class="highlight"><pre><span class="p">&lt;</span><span class="nt">p</span><span class="p">&gt;</span>In this text, <span class="p">&lt;</span><span class="nt">i</span><span class="p">&gt;</span>some elements<span class="p">&lt;/</span><span class="nt">i</span><span class="p">&gt;</span> are nested<span class="p">&lt;/</span><span class="nt">p</span><span class="p">&gt;</span>
 </pre></div>
 </div>
 <p>will be decoded to:</p>
-<div class="highlight-python"><div class="highlight"><pre><span class="p">(</span><span class="s">&#39;p&#39;</span><span class="p">,</span> <span class="p">{</span> <span class="s">&#39;value&#39;</span><span class="p">:</span> <span class="s">u&quot;In this text, &lt;i&gt;some elements&lt;/i&gt; are nested&quot;</span> <span class="p">})</span>
+<div class="highlight-python"><div class="highlight"><pre><span class="p">(</span><span class="s1">&#39;p&#39;</span><span class="p">,</span> <span class="p">{</span> <span class="s1">&#39;value&#39;</span><span class="p">:</span> <span class="s2">u&quot;In this text, &lt;i&gt;some elements&lt;/i&gt; are nested&quot;</span> <span class="p">})</span>
 </pre></div>
 </div>
 <p>I.e. the nested element won&#8217;t be constructed; whereas:</p>
-<div class="highlight-html"><div class="highlight"><pre><span class="nt">&lt;p&gt;&lt;i&gt;</span>nested element<span class="nt">&lt;/i&gt;&lt;/p&gt;</span>
+<div class="highlight-html"><div class="highlight"><pre><span class="p">&lt;</span><span class="nt">p</span><span class="p">&gt;&lt;</span><span class="nt">i</span><span class="p">&gt;</span>nested element<span class="p">&lt;/</span><span class="nt">i</span><span class="p">&gt;&lt;/</span><span class="nt">p</span><span class="p">&gt;</span>
 </pre></div>
 </div>
 <p>will be decoded to</p>
-<div class="highlight-python"><div class="highlight"><pre><span class="p">(</span><span class="s">&#39;p&#39;</span><span class="p">,</span> <span class="p">{</span> <span class="s">&#39;children&#39;</span><span class="p">:</span> <span class="p">[</span> <span class="p">(</span><span class="s">&#39;i&#39;</span><span class="p">,</span> <span class="s">&#39;value&#39;</span><span class="p">:</span> <span class="s">u&quot;nested element&quot;</span><span class="p">)</span> <span class="p">]</span> <span class="p">})</span>
+<div class="highlight-python"><div class="highlight"><pre><span class="p">(</span><span class="s1">&#39;p&#39;</span><span class="p">,</span> <span class="p">{</span> <span class="s1">&#39;children&#39;</span><span class="p">:</span> <span class="p">[</span> <span class="p">(</span><span class="s1">&#39;i&#39;</span><span class="p">,</span> <span class="s1">&#39;value&#39;</span><span class="p">:</span> <span class="s2">u&quot;nested element&quot;</span><span class="p">)</span> <span class="p">]</span> <span class="p">})</span>
 </pre></div>
 </div>
 <p>If you don&#8217;t need to manage attributes and CDATA sections, you may
@@ -205,40 +205,40 @@ consider CodecXerLite.</p>
 <div class="section" id="decoding">
 <h3>Decoding<a class="headerlink" href="#decoding" title="Permalink to this headline">¶</a></h3>
 <p>Input:</p>
-<div class="highlight-html"><div class="highlight"><pre><span class="nt">&lt;element</span> <span class="na">attr=</span><span class="s">&quot;attrval&quot;</span><span class="nt">&gt;</span>
-  <span class="nt">&lt;subelement&gt;</span>subvalue<span class="nt">&lt;/subelement&gt;</span>
-  <span class="nt">&lt;subelement2&gt;</span><span class="cp">&lt;![CDATA[cdata value]]&gt;</span><span class="nt">&lt;/subelement2&gt;</span>
-<span class="nt">&lt;/element&gt;</span>
+<div class="highlight-html"><div class="highlight"><pre><span class="p">&lt;</span><span class="nt">element</span> <span class="na">attr</span><span class="o">=</span><span class="s">&quot;attrval&quot;</span><span class="p">&gt;</span>
+  <span class="p">&lt;</span><span class="nt">subelement</span><span class="p">&gt;</span>subvalue<span class="p">&lt;/</span><span class="nt">subelement</span><span class="p">&gt;</span>
+  <span class="p">&lt;</span><span class="nt">subelement2</span><span class="p">&gt;</span><span class="cp">&lt;![CDATA[cdata value]]&gt;</span><span class="p">&lt;/</span><span class="nt">subelement2</span><span class="p">&gt;</span>
+<span class="p">&lt;/</span><span class="nt">element</span><span class="p">&gt;</span>
 </pre></div>
 </div>
 <p>Decoded message:</p>
-<div class="highlight-python"><div class="highlight"><pre><span class="p">(</span><span class="s">&#39;element&#39;</span><span class="p">,</span> <span class="p">{</span> <span class="s">&#39;attributes&#39;</span><span class="p">:</span> <span class="p">{</span> <span class="s">&#39;attr&#39;</span><span class="p">:</span> <span class="s">&#39;attrval&#39;</span> <span class="p">},</span> <span class="s">&#39;children&#39;</span><span class="p">:</span> <span class="p">[</span>
-  <span class="p">(</span><span class="s">&#39;subelement&#39;</span><span class="p">,</span> <span class="p">{</span> <span class="s">&#39;value&#39;</span><span class="p">:</span> <span class="s">&#39;subvalue&#39;</span><span class="p">,</span> <span class="s">&#39;cdata&#39;</span><span class="p">:</span> <span class="bp">False</span> <span class="p">}),</span>
-    <span class="p">(</span><span class="s">&#39;subelement2&#39;</span><span class="p">,</span> <span class="p">{</span> <span class="s">&#39;value&#39;</span><span class="p">:</span> <span class="s">&#39;cdata value&#39;</span><span class="p">,</span> <span class="s">&#39;cdata&#39;</span><span class="p">:</span> <span class="bp">True</span> <span class="p">}),</span>
+<div class="highlight-python"><div class="highlight"><pre><span class="p">(</span><span class="s1">&#39;element&#39;</span><span class="p">,</span> <span class="p">{</span> <span class="s1">&#39;attributes&#39;</span><span class="p">:</span> <span class="p">{</span> <span class="s1">&#39;attr&#39;</span><span class="p">:</span> <span class="s1">&#39;attrval&#39;</span> <span class="p">},</span> <span class="s1">&#39;children&#39;</span><span class="p">:</span> <span class="p">[</span>
+  <span class="p">(</span><span class="s1">&#39;subelement&#39;</span><span class="p">,</span> <span class="p">{</span> <span class="s1">&#39;value&#39;</span><span class="p">:</span> <span class="s1">&#39;subvalue&#39;</span><span class="p">,</span> <span class="s1">&#39;cdata&#39;</span><span class="p">:</span> <span class="bp">False</span> <span class="p">}),</span>
+    <span class="p">(</span><span class="s1">&#39;subelement2&#39;</span><span class="p">,</span> <span class="p">{</span> <span class="s1">&#39;value&#39;</span><span class="p">:</span> <span class="s1">&#39;cdata value&#39;</span><span class="p">,</span> <span class="s1">&#39;cdata&#39;</span><span class="p">:</span> <span class="bp">True</span> <span class="p">}),</span>
   <span class="p">]}</span>
 <span class="p">)</span>
 </pre></div>
 </div>
-<p><tt class="docutils literal"><span class="pre">cdata</span></tt> is always provided during decoding.</p>
+<p><code class="docutils literal"><span class="pre">cdata</span></code> is always provided during decoding.</p>
 </div>
 <div class="section" id="encoding">
 <h3>Encoding<a class="headerlink" href="#encoding" title="Permalink to this headline">¶</a></h3>
 <p>Input:</p>
-<div class="highlight-python"><div class="highlight"><pre><span class="p">(</span><span class="s">&#39;element&#39;</span><span class="p">,</span> <span class="p">{</span> <span class="s">&#39;attributes&#39;</span><span class="p">:</span> <span class="p">{</span> <span class="s">&#39;attr&#39;</span><span class="p">:</span> <span class="s">&#39;attrval&#39;</span> <span class="p">},</span> <span class="s">&#39;children&#39;</span><span class="p">:</span> <span class="p">[</span>
-  <span class="p">(</span><span class="s">&#39;subelement&#39;</span><span class="p">,</span> <span class="p">{</span> <span class="s">&#39;value&#39;</span><span class="p">:</span> <span class="s">&#39;subvalue&#39;</span> <span class="p">}),</span>
-  <span class="p">(</span><span class="s">&#39;subelement2&#39;</span><span class="p">,</span> <span class="p">{</span> <span class="s">&#39;value&#39;</span><span class="p">:</span> <span class="s">&#39;cdata value&#39;</span><span class="p">,</span> <span class="s">&#39;cdata&#39;</span><span class="p">:</span> <span class="bp">True</span> <span class="p">}),</span>
+<div class="highlight-python"><div class="highlight"><pre><span class="p">(</span><span class="s1">&#39;element&#39;</span><span class="p">,</span> <span class="p">{</span> <span class="s1">&#39;attributes&#39;</span><span class="p">:</span> <span class="p">{</span> <span class="s1">&#39;attr&#39;</span><span class="p">:</span> <span class="s1">&#39;attrval&#39;</span> <span class="p">},</span> <span class="s1">&#39;children&#39;</span><span class="p">:</span> <span class="p">[</span>
+  <span class="p">(</span><span class="s1">&#39;subelement&#39;</span><span class="p">,</span> <span class="p">{</span> <span class="s1">&#39;value&#39;</span><span class="p">:</span> <span class="s1">&#39;subvalue&#39;</span> <span class="p">}),</span>
+  <span class="p">(</span><span class="s1">&#39;subelement2&#39;</span><span class="p">,</span> <span class="p">{</span> <span class="s1">&#39;value&#39;</span><span class="p">:</span> <span class="s1">&#39;cdata value&#39;</span><span class="p">,</span> <span class="s1">&#39;cdata&#39;</span><span class="p">:</span> <span class="bp">True</span> <span class="p">}),</span>
 <span class="p">]})</span>
 </pre></div>
 </div>
 <p>Encoded message:</p>
-<div class="highlight-html"><div class="highlight"><pre><span class="nt">&lt;element</span> <span class="na">attr=</span><span class="s">&quot;attrval&quot;</span><span class="nt">&gt;</span>
-  <span class="nt">&lt;subelement&gt;</span>subvalue<span class="nt">&lt;/subelement&gt;</span>
-  <span class="nt">&lt;subelement2&gt;</span><span class="cp">&lt;![CDATA[cdata value]]&gt;</span><span class="nt">&lt;/subelement2&gt;</span>
-<span class="nt">&lt;/element&gt;</span>
+<div class="highlight-html"><div class="highlight"><pre><span class="p">&lt;</span><span class="nt">element</span> <span class="na">attr</span><span class="o">=</span><span class="s">&quot;attrval&quot;</span><span class="p">&gt;</span>
+  <span class="p">&lt;</span><span class="nt">subelement</span><span class="p">&gt;</span>subvalue<span class="p">&lt;/</span><span class="nt">subelement</span><span class="p">&gt;</span>
+  <span class="p">&lt;</span><span class="nt">subelement2</span><span class="p">&gt;</span><span class="cp">&lt;![CDATA[cdata value]]&gt;</span><span class="p">&lt;/</span><span class="nt">subelement2</span><span class="p">&gt;</span>
+<span class="p">&lt;/</span><span class="nt">element</span><span class="p">&gt;</span>
 </pre></div>
 </div>
-<p>If <tt class="docutils literal"><span class="pre">cdata</span></tt> is not present during a value element encoding, it is assumed to be <tt class="docutils literal"><span class="pre">False</span></tt>.</p>
-<p>If both <tt class="docutils literal"><span class="pre">children</span></tt> and <tt class="docutils literal"><span class="pre">value</span></tt> are provided, <tt class="docutils literal"><span class="pre">children</span></tt> has a greater precedence and <tt class="docutils literal"><span class="pre">value</span></tt> will be ignored.</p>
+<p>If <code class="docutils literal"><span class="pre">cdata</span></code> is not present during a value element encoding, it is assumed to be <code class="docutils literal"><span class="pre">False</span></code>.</p>
+<p>If both <code class="docutils literal"><span class="pre">children</span></code> and <code class="docutils literal"><span class="pre">value</span></code> are provided, <code class="docutils literal"><span class="pre">children</span></code> has a greater precedence and <code class="docutils literal"><span class="pre">value</span></code> will be ignored.</p>
 </div>
 </div>
 <div class="section" id="ttcn-3-types-equivalence">
@@ -273,7 +273,7 @@ type record Attributes
     </p>
     <p>
         &copy; Copyright 2009-2014, Sébastien Lefevre and Testerman contributors.<br/>
-      Created using <a href="http://sphinx.pocoo.org/">Sphinx</a> 1.2.2.<br/>
+      Created using <a href="http://sphinx.pocoo.org/">Sphinx</a> 1.3.6.<br/>
     </p>
   </div>
 </footer>

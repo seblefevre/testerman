@@ -37,7 +37,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 
   </head>
-  <body>
+  <body role="document">
 <div class="container">
   
   <div id="navbar" class="navbar navbar-inverse navbar-fixed-top">
@@ -139,7 +139,7 @@
 <p>Act as a RTSP client over TCP.</p>
 <div class="section" id="identification-and-properties">
 <h2>Identification and Properties<a class="headerlink" href="#identification-and-properties" title="Permalink to this headline">¶</a></h2>
-<p>Probe Type ID: <tt class="docutils literal"><span class="pre">rtsp.client</span></tt></p>
+<p>Probe Type ID: <code class="docutils literal"><span class="pre">rtsp.client</span></code></p>
 <p>Properties:</p>
 <table border="1" class="docutils">
 <colgroup>
@@ -156,49 +156,49 @@
 </tr>
 </thead>
 <tbody valign="top">
-<tr class="row-even"><td><tt class="docutils literal"><span class="pre">strict_mode</span></tt></td>
+<tr class="row-even"><td><code class="docutils literal"><span class="pre">strict_mode</span></code></td>
 <td>boolean</td>
-<td><tt class="docutils literal"><span class="pre">False</span></tt></td>
-<td>When <tt class="docutils literal"><span class="pre">True</span></tt>, disables automatic CSeq management (generation and check on response), and transfer response headers as is, without modifying the case (use this mode for protocol-oriented testing). When <tt class="docutils literal"><span class="pre">False</span></tt>, CSeq is automatically generated if not provided, checked when receiving a response, and reponse header names are converted to lower case to make matching easier.</td>
+<td><code class="docutils literal"><span class="pre">False</span></code></td>
+<td>When <code class="docutils literal"><span class="pre">True</span></code>, disables automatic CSeq management (generation and check on response), and transfer response headers as is, without modifying the case (use this mode for protocol-oriented testing). When <code class="docutils literal"><span class="pre">False</span></code>, CSeq is automatically generated if not provided, checked when receiving a response, and reponse header names are converted to lower case to make matching easier.</td>
 </tr>
-<tr class="row-odd"><td><tt class="docutils literal"><span class="pre">version</span></tt></td>
+<tr class="row-odd"><td><code class="docutils literal"><span class="pre">version</span></code></td>
 <td>string</td>
-<td><tt class="docutils literal"><span class="pre">RTSP/1.0</span></tt></td>
+<td><code class="docutils literal"><span class="pre">RTSP/1.0</span></code></td>
 <td>The RSTP version string to use in the request line</td>
 </tr>
-<tr class="row-even"><td><tt class="docutils literal"><span class="pre">auto_connect</span></tt></td>
+<tr class="row-even"><td><code class="docutils literal"><span class="pre">auto_connect</span></code></td>
 <td>boolean</td>
-<td><tt class="docutils literal"><span class="pre">False</span></tt></td>
-<td>If set to <tt class="docutils literal"><span class="pre">True</span></tt>, tcp-connect on mapping, otherwise only connect hen sending a message. Has no effect for udp transport.</td>
+<td><code class="docutils literal"><span class="pre">False</span></code></td>
+<td>If set to <code class="docutils literal"><span class="pre">True</span></code>, tcp-connect on mapping, otherwise only connect hen sending a message. Has no effect for udp transport.</td>
 </tr>
-<tr class="row-odd"><td><tt class="docutils literal"><span class="pre">maintain_connection</span></tt></td>
+<tr class="row-odd"><td><code class="docutils literal"><span class="pre">maintain_connection</span></code></td>
 <td>boolean</td>
-<td><tt class="docutils literal"><span class="pre">False</span></tt></td>
-<td>If set to <tt class="docutils literal"><span class="pre">True</span></tt>, does not tcp-disconnect once a response has been received. Has no effect for udp transport.</td>
+<td><code class="docutils literal"><span class="pre">False</span></code></td>
+<td>If set to <code class="docutils literal"><span class="pre">True</span></code>, does not tcp-disconnect once a response has been received. Has no effect for udp transport.</td>
 </tr>
-<tr class="row-even"><td><tt class="docutils literal"><span class="pre">host</span></tt></td>
+<tr class="row-even"><td><code class="docutils literal"><span class="pre">host</span></code></td>
 <td>string</td>
-<td><tt class="docutils literal"><span class="pre">localhost</span></tt></td>
+<td><code class="docutils literal"><span class="pre">localhost</span></code></td>
 <td>The IP address or hostname of the RTSP server</td>
 </tr>
-<tr class="row-odd"><td><tt class="docutils literal"><span class="pre">port</span></tt></td>
+<tr class="row-odd"><td><code class="docutils literal"><span class="pre">port</span></code></td>
 <td>integer</td>
-<td><tt class="docutils literal"><span class="pre">554</span></tt></td>
+<td><code class="docutils literal"><span class="pre">554</span></code></td>
 <td>The transport port of the RTSP server</td>
 </tr>
-<tr class="row-even"><td><tt class="docutils literal"><span class="pre">transport</span></tt></td>
-<td>string in <tt class="docutils literal"><span class="pre">'tcp',</span> <span class="pre">'udp'</span></tt></td>
-<td><tt class="docutils literal"><span class="pre">tcp</span></tt></td>
-<td>The transport to use to reach the RTSP server. Only <tt class="docutils literal"><span class="pre">tcp</span></tt> is implemented for now</td>
+<tr class="row-even"><td><code class="docutils literal"><span class="pre">transport</span></code></td>
+<td>string in <code class="docutils literal"><span class="pre">'tcp',</span> <span class="pre">'udp'</span></code></td>
+<td><code class="docutils literal"><span class="pre">tcp</span></code></td>
+<td>The transport to use to reach the RTSP server. Only <code class="docutils literal"><span class="pre">tcp</span></code> is implemented for now</td>
 </tr>
-<tr class="row-odd"><td><tt class="docutils literal"><span class="pre">local_ip</span></tt></td>
+<tr class="row-odd"><td><code class="docutils literal"><span class="pre">local_ip</span></code></td>
 <td>string</td>
-<td><tt class="docutils literal"><span class="pre">''</span></tt> (empty)</td>
+<td><code class="docutils literal"><span class="pre">''</span></code> (empty)</td>
 <td>The local IP address (or hostname) to use for outgoing packets. Leave it empty for automatic selection by the system. For udp transport, this is also the address the probe listens for a response on</td>
 </tr>
-<tr class="row-even"><td><tt class="docutils literal"><span class="pre">local_port</span></tt></td>
+<tr class="row-even"><td><code class="docutils literal"><span class="pre">local_port</span></code></td>
 <td>integer</td>
-<td><tt class="docutils literal"><span class="pre">0</span></tt></td>
+<td><code class="docutils literal"><span class="pre">0</span></code></td>
 <td>The local port for the outgoing packets. Leave it to 0 for automatic port selection by the system. For udp transport, this is also the port the probe listens for a response on</td>
 </tr>
 </tbody>
@@ -209,7 +209,7 @@
 <p>This probe implements a very simple RTSP encoder/decoder over tcp.
 It encapsulates the <a class="reference internal" href="CodecsRtsp.html"><em>RTSP codecs</em></a>, feeding it only when the whole payload has been received
 (that&#8217;s why a probe is required), and is based on <a class="reference external" href="http://www.ietf.org/rfc/rfc2326.txt">RFC 2326</a>.</p>
-<p>Optionally, the probe can manage CSeq generation and correlation on response (see the <tt class="docutils literal"><span class="pre">strict_mode</span></tt> property),
+<p>Optionally, the probe can manage CSeq generation and correlation on response (see the <code class="docutils literal"><span class="pre">strict_mode</span></code> property),
 enabling both high-level and more procotol-oriented testing.</p>
 <div class="section" id="availability">
 <h3>Availability<a class="headerlink" href="#availability" title="Permalink to this headline">¶</a></h3>
@@ -227,7 +227,7 @@ or  with a <a class="reference internal" href="ProbeTcp.html"><em>TCP probe</em>
 </div>
 <div class="section" id="ttcn-3-types-equivalence">
 <h2>TTCN-3 Types Equivalence<a class="headerlink" href="#ttcn-3-types-equivalence" title="Permalink to this headline">¶</a></h2>
-<p>The test system interface port bound to such a probe complies with the <tt class="docutils literal"><span class="pre">RtspClientPortType</span></tt> port type as specified below:</p>
+<p>The test system interface port bound to such a probe complies with the <code class="docutils literal"><span class="pre">RtspClientPortType</span></code> port type as specified below:</p>
 <div class="highlight-python"><div class="highlight"><pre>type record RtspRequest
 {
   charstring method,
@@ -266,7 +266,7 @@ type port RtspClientPortType message
     </p>
     <p>
         &copy; Copyright 2009-2014, Sébastien Lefevre and Testerman contributors.<br/>
-      Created using <a href="http://sphinx.pocoo.org/">Sphinx</a> 1.2.2.<br/>
+      Created using <a href="http://sphinx.pocoo.org/">Sphinx</a> 1.3.6.<br/>
     </p>
   </div>
 </footer>

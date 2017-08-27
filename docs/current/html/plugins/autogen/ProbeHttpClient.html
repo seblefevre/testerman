@@ -37,7 +37,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 
   </head>
-  <body>
+  <body role="document">
 <div class="container">
   
   <div id="navbar" class="navbar navbar-inverse navbar-fixed-top">
@@ -139,7 +139,7 @@
 <p>A simple HTTP client.</p>
 <div class="section" id="identification-and-properties">
 <h2>Identification and Properties<a class="headerlink" href="#identification-and-properties" title="Permalink to this headline">¶</a></h2>
-<p>Probe Type ID: <tt class="docutils literal"><span class="pre">tcp</span></tt></p>
+<p>Probe Type ID: <code class="docutils literal"><span class="pre">tcp</span></code></p>
 <p>Properties:</p>
 <table border="1" class="docutils">
 <colgroup>
@@ -156,44 +156,44 @@
 </tr>
 </thead>
 <tbody valign="top">
-<tr class="row-even"><td><tt class="docutils literal"><span class="pre">local_ip</span></tt></td>
+<tr class="row-even"><td><code class="docutils literal"><span class="pre">local_ip</span></code></td>
 <td>string</td>
 <td>(empty - system assigned)</td>
 <td>Local IP address to use when sending HTTP requests.</td>
 </tr>
-<tr class="row-odd"><td><tt class="docutils literal"><span class="pre">local_port</span></tt></td>
+<tr class="row-odd"><td><code class="docutils literal"><span class="pre">local_port</span></code></td>
 <td>integer</td>
-<td><tt class="docutils literal"><span class="pre">0</span></tt> (system assigned)</td>
+<td><code class="docutils literal"><span class="pre">0</span></code> (system assigned)</td>
 <td>Local port to use when sending HTTP requests.</td>
 </tr>
-<tr class="row-even"><td><tt class="docutils literal"><span class="pre">host</span></tt></td>
+<tr class="row-even"><td><code class="docutils literal"><span class="pre">host</span></code></td>
 <td>string</td>
-<td><tt class="docutils literal"><span class="pre">localhost</span></tt></td>
+<td><code class="docutils literal"><span class="pre">localhost</span></code></td>
 <td>The HTTP server&#8217;s hostname or IP address.</td>
 </tr>
-<tr class="row-odd"><td><tt class="docutils literal"><span class="pre">port</span></tt></td>
+<tr class="row-odd"><td><code class="docutils literal"><span class="pre">port</span></code></td>
 <td>integer</td>
-<td><tt class="docutils literal"><span class="pre">80</span></tt></td>
+<td><code class="docutils literal"><span class="pre">80</span></code></td>
 <td>The HTTP server&#8217;s port.</td>
 </tr>
-<tr class="row-even"><td><tt class="docutils literal"><span class="pre">version</span></tt></td>
+<tr class="row-even"><td><code class="docutils literal"><span class="pre">version</span></code></td>
 <td>string</td>
-<td><tt class="docutils literal"><span class="pre">HTTP/1.0</span></tt></td>
+<td><code class="docutils literal"><span class="pre">HTTP/1.0</span></code></td>
 <td>The HTTP version to use in requests.</td>
 </tr>
-<tr class="row-odd"><td><tt class="docutils literal"><span class="pre">protocol</span></tt></td>
+<tr class="row-odd"><td><code class="docutils literal"><span class="pre">protocol</span></code></td>
 <td>string</td>
-<td><tt class="docutils literal"><span class="pre">http</span></tt></td>
-<td>The HTTP variant:<tt class="docutils literal"><span class="pre">http</span></tt> or <tt class="docutils literal"><span class="pre">https</span></tt>. For now, only <tt class="docutils literal"><span class="pre">http</span></tt> is supported.</td>
+<td><code class="docutils literal"><span class="pre">http</span></code></td>
+<td>The HTTP variant:<code class="docutils literal"><span class="pre">http</span></code> or <code class="docutils literal"><span class="pre">https</span></code>. For now, only <code class="docutils literal"><span class="pre">http</span></code> is supported.</td>
 </tr>
-<tr class="row-even"><td><tt class="docutils literal"><span class="pre">maintain_connection</span></tt></td>
+<tr class="row-even"><td><code class="docutils literal"><span class="pre">maintain_connection</span></code></td>
 <td>boolean</td>
-<td><tt class="docutils literal"><span class="pre">False</span></tt></td>
+<td><code class="docutils literal"><span class="pre">False</span></code></td>
 <td>If set to True and HTTP version is 1.1, the probe keeps the tcp connection opened once a response has been received, until the server closes it.</td>
 </tr>
-<tr class="row-odd"><td><tt class="docutils literal"><span class="pre">connection_timeout</span></tt></td>
+<tr class="row-odd"><td><code class="docutils literal"><span class="pre">connection_timeout</span></code></td>
 <td>float</td>
-<td><tt class="docutils literal"><span class="pre">5.0</span></tt></td>
+<td><code class="docutils literal"><span class="pre">5.0</span></code></td>
 <td>The connection timeout, in s, when trying to connect to a remote party.</td>
 </tr>
 </tbody>
@@ -201,11 +201,11 @@
 </div>
 <div class="section" id="overview">
 <h2>Overview<a class="headerlink" href="#overview" title="Permalink to this headline">¶</a></h2>
-<p>This probe acts as a simple HTTP client and is fully based on <a class="reference internal" href="ProbeTcp.html"><em>TCP Probe</em></a> with <tt class="xref doc docutils literal"><span class="pre">HTTP</span> <span class="pre">codecs</span></tt>.</p>
+<p>This probe acts as a simple HTTP client and is fully based on <a class="reference internal" href="ProbeTcp.html"><em>TCP Probe</em></a> with <code class="xref doc docutils literal"><span class="pre">HTTP</span> <span class="pre">codecs</span></code>.</p>
 <p>It can be used to connect to an HTTP server, send and receive requests at low-level. This client won&#8217;t follow HTTP redirections, enable authentication, or anything fancy.
-However, it is able to maintain the TCP connection between requests (set <tt class="docutils literal"><span class="pre">maintain_connection</span></tt> to <tt class="docutils literal"><span class="pre">True</span></tt>) and
-manageq a connection timeout to automatically fails the probe after a given delay (see the <tt class="docutils literal"><span class="pre">connection_timeout</span></tt> property).</p>
-<p>For HTTPS connectivity, you should consider using <a class="reference internal" href="ProbeTcp.html"><em>TCP Probe</em></a> with <tt class="xref doc docutils literal"><span class="pre">HTTP</span> <span class="pre">codecs</span></tt> as default codecs instead.</p>
+However, it is able to maintain the TCP connection between requests (set <code class="docutils literal"><span class="pre">maintain_connection</span></code> to <code class="docutils literal"><span class="pre">True</span></code>) and
+manageq a connection timeout to automatically fails the probe after a given delay (see the <code class="docutils literal"><span class="pre">connection_timeout</span></code> property).</p>
+<p>For HTTPS connectivity, you should consider using <a class="reference internal" href="ProbeTcp.html"><em>TCP Probe</em></a> with <code class="xref doc docutils literal"><span class="pre">HTTP</span> <span class="pre">codecs</span></code> as default codecs instead.</p>
 <div class="section" id="availability">
 <h3>Availability<a class="headerlink" href="#availability" title="Permalink to this headline">¶</a></h3>
 <p>All platforms.</p>
@@ -216,13 +216,13 @@ manageq a connection timeout to automatically fails the probe after a given dela
 </div>
 <div class="section" id="see-also">
 <h3>See Also<a class="headerlink" href="#see-also" title="Permalink to this headline">¶</a></h3>
-<p>Instead of using the probe, you may consider a <a class="reference internal" href="ProbeTcp.html"><em>TCP Probe</em></a> with some <tt class="xref doc docutils literal"><span class="pre">HTTP</span> <span class="pre">codecs</span></tt> set as default encoder/decoders, which offer
-a greater control and support HTTPS as well (with <tt class="docutils literal"><span class="pre">use_ssl</span></tt> set to <tt class="docutils literal"><span class="pre">True</span></tt>).</p>
+<p>Instead of using the probe, you may consider a <a class="reference internal" href="ProbeTcp.html"><em>TCP Probe</em></a> with some <code class="xref doc docutils literal"><span class="pre">HTTP</span> <span class="pre">codecs</span></code> set as default encoder/decoders, which offer
+a greater control and support HTTPS as well (with <code class="docutils literal"><span class="pre">use_ssl</span></code> set to <code class="docutils literal"><span class="pre">True</span></code>).</p>
 </div>
 </div>
 <div class="section" id="ttcn-3-types-equivalence">
 <h2>TTCN-3 Types Equivalence<a class="headerlink" href="#ttcn-3-types-equivalence" title="Permalink to this headline">¶</a></h2>
-<p>The test system interface port bound to such a probe complies with the <tt class="docutils literal"><span class="pre">HttpClientPortType</span></tt> port type as specified below:</p>
+<p>The test system interface port bound to such a probe complies with the <code class="docutils literal"><span class="pre">HttpClientPortType</span></code> port type as specified below:</p>
 <div class="highlight-python"><div class="highlight"><pre>type record HttpRequest
 {
   charstring method optional, // default: &#39;GET&#39;
@@ -260,7 +260,7 @@ type port HttpClientPortType
     </p>
     <p>
         &copy; Copyright 2009-2014, Sébastien Lefevre and Testerman contributors.<br/>
-      Created using <a href="http://sphinx.pocoo.org/">Sphinx</a> 1.2.2.<br/>
+      Created using <a href="http://sphinx.pocoo.org/">Sphinx</a> 1.3.6.<br/>
     </p>
   </div>
 </footer>

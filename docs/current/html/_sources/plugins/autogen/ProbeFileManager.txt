@@ -20,6 +20,7 @@ This probe performs basic local file management operations:
 * file creation (with content injection)
 * file move, deletion, renaming
 * link creation, deletion
+* file content read (the content is returned as a result choice, set to None if nothing can be read)
 
 One of its primary purposes is providing the ability to create
 files on the fly from resources that were embedded in your ATS or its
@@ -56,6 +57,7 @@ The test system interface port bound to such a probe complies with the ``FileMan
     RemoveCommand remove,
     MoveCommand move,
     CopyCommand copy,
+    ReadCommand read,
   }
 
   type record CreateFileCommand
@@ -89,6 +91,11 @@ The test system interface port bound to such a probe complies with the ``FileMan
     boolean autorevert optional, // backup existing file, restore it on unmap, defaulted to False
   }
 
+  type record ReadCommand
+  {
+    universal charstring path,
+  }
+
   type record CommandStatus
   {
     integer status,
@@ -98,6 +105,7 @@ The test system interface port bound to such a probe complies with the ``FileMan
   type union FileManagementResponse
   {
     CommandStatus status,
+    universal charstring result, // for read command, null if the file could not be read
     // more to come: fileExists response, fileType response, ...
   }
 

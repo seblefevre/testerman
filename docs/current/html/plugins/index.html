@@ -36,7 +36,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 
   </head>
-  <body>
+  <body role="document">
 <div class="container">
   
   <div id="navbar" class="navbar navbar-inverse navbar-fixed-top">
@@ -177,16 +177,16 @@ not test-dependent).</p>
 </tr>
 </thead>
 <tbody valign="top">
-<tr class="row-even"><td><tt class="docutils literal"><span class="pre">xml</span></tt></td>
+<tr class="row-even"><td><code class="docutils literal"><span class="pre">xml</span></code></td>
 <td><a class="reference internal" href="autogen/CodecXml.html"><em>a simple XML coder/decoder</em></a> - you may also have a look to CodecXerLite</td>
 </tr>
-<tr class="row-odd"><td><tt class="docutils literal"><span class="pre">xer.lite</span></tt></td>
+<tr class="row-odd"><td><code class="docutils literal"><span class="pre">xer.lite</span></code></td>
 <td>CodecXerLite, a XER (XML Encoding Rules)-like codec that only uses a subset of XML capabilities (no attributes)</td>
 </tr>
-<tr class="row-even"><td><tt class="docutils literal"><span class="pre">http</span></tt></td>
+<tr class="row-even"><td><code class="docutils literal"><span class="pre">http</span></code></td>
 <td>CodecHttp, HTTP request/response codecs</td>
 </tr>
-<tr class="row-odd"><td><tt class="docutils literal"><span class="pre">soap11.ds</span></tt></td>
+<tr class="row-odd"><td><code class="docutils literal"><span class="pre">soap11.ds</span></code></td>
 <td>CodecSoapDs, a codec that enables to sign (and verify signatures of) SOAP 1.1 message, using Ws-Security standards.</td>
 </tr>
 </tbody>
@@ -205,10 +205,10 @@ not test-dependent).</p>
 </tr>
 </thead>
 <tbody valign="top">
-<tr class="row-even"><td><tt class="docutils literal"><span class="pre">rtsp.*</span></tt></td>
+<tr class="row-even"><td><code class="docutils literal"><span class="pre">rtsp.*</span></code></td>
 <td><a class="reference internal" href="autogen/CodecsRtsp.html"><em>RTSP Codecs</em></a></td>
 </tr>
-<tr class="row-odd"><td><tt class="docutils literal"><span class="pre">sdp</span></tt></td>
+<tr class="row-odd"><td><code class="docutils literal"><span class="pre">sdp</span></code></td>
 <td>CodecSdp, a RFC4566 SDP (Session Description Protocol) codec</td>
 </tr>
 </tbody>
@@ -227,22 +227,22 @@ not test-dependent).</p>
 </tr>
 </thead>
 <tbody valign="top">
-<tr class="row-even"><td><tt class="docutils literal"><span class="pre">sua</span></tt></td>
+<tr class="row-even"><td><code class="docutils literal"><span class="pre">sua</span></code></td>
 <td>CodecSua, a RFC3868 SUA (SCCP User Adaptation) codec</td>
 </tr>
-<tr class="row-odd"><td><tt class="docutils literal"><span class="pre">tcap</span></tt></td>
+<tr class="row-odd"><td><code class="docutils literal"><span class="pre">tcap</span></code></td>
 <td>CodecTcap, a TCAP (ITU) codec</td>
 </tr>
-<tr class="row-even"><td><tt class="docutils literal"><span class="pre">map.*</span></tt></td>
+<tr class="row-even"><td><code class="docutils literal"><span class="pre">map.*</span></code></td>
 <td>CodecMap, a collection of codecs for MAP Phase 2+ PDUs</td>
 </tr>
-<tr class="row-odd"><td><tt class="docutils literal"><span class="pre">sms.tpdu.*</span></tt></td>
+<tr class="row-odd"><td><code class="docutils literal"><span class="pre">sms.tpdu.*</span></code></td>
 <td>CodecSmsTpdu, a collection of codecs for SMS TPDU SM-TL layer (GSM 030.40)</td>
 </tr>
-<tr class="row-even"><td><tt class="docutils literal"><span class="pre">tbcd</span></tt></td>
+<tr class="row-even"><td><code class="docutils literal"><span class="pre">tbcd</span></code></td>
 <td>A telephony BCD codec</td>
 </tr>
-<tr class="row-odd"><td><tt class="docutils literal"><span class="pre">packed.7bit</span></tt></td>
+<tr class="row-odd"><td><code class="docutils literal"><span class="pre">packed.7bit</span></code></td>
 <td>A codec for 7-bit packed strings (useful for SMS encoding)</td>
 </tr>
 </tbody>
@@ -280,13 +280,13 @@ to execute them locally, but interactively</li>
 when an entry has been added/removed (useful to check if a lock file
 was created/removed, ...)</li>
 <li><a class="reference internal" href="autogen/ProbeFileWatcher.html"><em>File Watcher Probe</em></a>, a probe that monitors an ascii file and notifies
-you of new lines (think of it as a combination of <tt class="docutils literal"><span class="pre">tail</span> <span class="pre">-f</span></tt> and
-<tt class="docutils literal"><span class="pre">grep</span></tt>, useful to check log files for instance)</li>
+you of new lines (think of it as a combination of <code class="docutils literal"><span class="pre">tail</span> <span class="pre">-f</span></code> and
+<code class="docutils literal"><span class="pre">grep</span></code>, useful to check log files for instance)</li>
 <li><a class="reference internal" href="autogen/ProbeConfigurationFile.html"><em>Configuration File Probe</em></a>, a probe that can access in read-write to
 configuration files, supporting most used configuration formats and
 extensible to match your needs (useful to prepare a SUT for testing
 in particular configuration conditions)</li>
-<li><tt class="xref doc docutils literal"><span class="pre">autogen/ProbeXmlRpc</span></tt>, a probe to invoke remote operations via XML-RPC</li>
+<li><code class="xref doc docutils literal"><span class="pre">autogen/ProbeXmlRpc</span></code>, a probe to invoke remote operations via XML-RPC</li>
 <li><a class="reference internal" href="autogen/ProbeLdapClient.html"><em>LDAP Probe</em></a>, a probe to access a LDAP directory</li>
 <li><a class="reference internal" href="autogen/ProbeSelenium.html"><em>Selenium Probe</em></a>, a probe to execute web-oriented tests through Selenium
 RC</li>
@@ -341,7 +341,7 @@ additional dependencies at runtime)</li>
     </p>
     <p>
         &copy; Copyright 2009-2014, Sébastien Lefevre and Testerman contributors.<br/>
-      Created using <a href="http://sphinx.pocoo.org/">Sphinx</a> 1.2.2.<br/>
+      Created using <a href="http://sphinx.pocoo.org/">Sphinx</a> 1.3.6.<br/>
     </p>
   </div>
 </footer>

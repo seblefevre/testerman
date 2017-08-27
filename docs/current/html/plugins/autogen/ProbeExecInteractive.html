@@ -37,7 +37,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 
   </head>
-  <body>
+  <body role="document">
 <div class="container">
   
   <div id="navbar" class="navbar navbar-inverse navbar-fixed-top">
@@ -139,7 +139,7 @@
 <p>Execute a command in a local shell and interact with it.</p>
 <div class="section" id="identification-and-properties">
 <h2>Identification and Properties<a class="headerlink" href="#identification-and-properties" title="Permalink to this headline">¶</a></h2>
-<p>Probe Type ID: <tt class="docutils literal"><span class="pre">exec.interactive</span></tt></p>
+<p>Probe Type ID: <code class="docutils literal"><span class="pre">exec.interactive</span></code></p>
 <p>Properties:</p>
 <table border="1" class="docutils">
 <colgroup>
@@ -156,19 +156,19 @@
 </tr>
 </thead>
 <tbody valign="top">
-<tr class="row-even"><td><tt class="docutils literal"><span class="pre">separator</span></tt></td>
+<tr class="row-even"><td><code class="docutils literal"><span class="pre">separator</span></code></td>
 <td>string</td>
-<td><tt class="docutils literal"><span class="pre">None</span></tt></td>
+<td><code class="docutils literal"><span class="pre">None</span></code></td>
 <td>Should we notify only complete lines (or whatever) based on this separator ?</td>
 </tr>
-<tr class="row-odd"><td><tt class="docutils literal"><span class="pre">timeout</span></tt></td>
+<tr class="row-odd"><td><code class="docutils literal"><span class="pre">timeout</span></code></td>
 <td>float</td>
-<td><tt class="docutils literal"><span class="pre">0.5</span></tt></td>
+<td><code class="docutils literal"><span class="pre">0.5</span></code></td>
 <td>Maximum amount of time to wait for new data before notifying of it, when no separator is used</td>
 </tr>
-<tr class="row-even"><td><tt class="docutils literal"><span class="pre">encoding</span></tt></td>
+<tr class="row-even"><td><code class="docutils literal"><span class="pre">encoding</span></code></td>
 <td>string</td>
-<td><tt class="docutils literal"><span class="pre">'utf-8'</span></tt></td>
+<td><code class="docutils literal"><span class="pre">'utf-8'</span></code></td>
 <td>The encoding to use to turn the output into unicode (also used to encode data sent to the started process)</td>
 </tr>
 </tbody>
@@ -185,19 +185,19 @@ prompts).</p>
 <ul class="simple">
 <li>CLI testing</li>
 <li>Program output watching, for instance something that can dump real-time traces to stdout, avoiding the use of
-combined <tt class="docutils literal"><span class="pre">exec</span></tt> (that executes a blocking program whose output is redirected to a temp file) and <tt class="docutils literal"><span class="pre">file.watcher</span></tt>
+combined <code class="docutils literal"><span class="pre">exec</span></code> (that executes a blocking program whose output is redirected to a temp file) and <code class="docutils literal"><span class="pre">file.watcher</span></code>
 (that watches the temp file created by the program we should watch the output from) probes.</li>
 </ul>
 <p>Basically you just specify a command to start that will be executed within a shell, providing an optional
-list of regular expressions the output must match before being sent to userland (a <tt class="docutils literal"><span class="pre">egrep</span></tt> equivalent).[[BR]]
-Whenever you output to stdout/stderr is detected, based on <tt class="docutils literal"><span class="pre">separator</span></tt> and <tt class="docutils literal"><span class="pre">timeout</span></tt> properties, it checks that
-it matches at least one of the regular expressions provided above before enqueing a <tt class="docutils literal"><span class="pre">OutputNotification</span></tt> message
+list of regular expressions the output must match before being sent to userland (a <code class="docutils literal"><span class="pre">egrep</span></code> equivalent).[[BR]]
+Whenever you output to stdout/stderr is detected, based on <code class="docutils literal"><span class="pre">separator</span></code> and <code class="docutils literal"><span class="pre">timeout</span></code> properties, it checks that
+it matches at least one of the regular expressions provided above before enqueing a <code class="docutils literal"><span class="pre">OutputNotification</span></code> message
 to userland. If the matched regular expression contains named groups, corresponding fields are automatically
 added in this message (as for the ProbeFileWatcher).</p>
-<p>At any time, you may send some input to the started process using the <tt class="docutils literal"><span class="pre">input</span></tt> choice of the <tt class="docutils literal"><span class="pre">InteractiveExecCommand</span></tt>
+<p>At any time, you may send some input to the started process using the <code class="docutils literal"><span class="pre">input</span></code> choice of the <code class="docutils literal"><span class="pre">InteractiveExecCommand</span></code>
 message (don&#8217;t forget possible trailing carriage returns, as they are not sent automatically) or send a
-signal using its POSIX integer value and the <tt class="docutils literal"><span class="pre">signal</span></tt> choice of the <tt class="docutils literal"><span class="pre">InteractiveExecCommand</span></tt> message.</p>
-<p>When the process is over (for whatever reason), a <tt class="docutils literal"><span class="pre">ExecStatus</span></tt> message is enqueued, containing the execution status
+signal using its POSIX integer value and the <code class="docutils literal"><span class="pre">signal</span></code> choice of the <code class="docutils literal"><span class="pre">InteractiveExecCommand</span></code> message.</p>
+<p>When the process is over (for whatever reason), a <code class="docutils literal"><span class="pre">ExecStatus</span></code> message is enqueued, containing the execution status
 as a shell executing the command would have provided.</p>
 <p>Limitations:</p>
 <ul class="simple">
@@ -222,7 +222,7 @@ as a shell executing the command would have provided.</p>
 </div>
 <div class="section" id="ttcn-3-types-equivalence">
 <h2>TTCN-3 Types Equivalence<a class="headerlink" href="#ttcn-3-types-equivalence" title="Permalink to this headline">¶</a></h2>
-<p>The test system interface port bound to such a probe complies with the <tt class="docutils literal"><span class="pre">InteractiveExecPortType</span></tt> port type as specified below:</p>
+<p>The test system interface port bound to such a probe complies with the <code class="docutils literal"><span class="pre">InteractiveExecPortType</span></code> port type as specified below:</p>
 <div class="highlight-python"><div class="highlight"><pre>type union InteractiveExecCommand
 {
   StartCommand start,
@@ -268,7 +268,7 @@ type port InteractiveExecPortType message
     </p>
     <p>
         &copy; Copyright 2009-2014, Sébastien Lefevre and Testerman contributors.<br/>
-      Created using <a href="http://sphinx.pocoo.org/">Sphinx</a> 1.2.2.<br/>
+      Created using <a href="http://sphinx.pocoo.org/">Sphinx</a> 1.3.6.<br/>
     </p>
   </div>
 </footer>

@@ -37,7 +37,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 
   </head>
-  <body>
+  <body role="document">
 <div class="container">
   
   <div id="navbar" class="navbar navbar-inverse navbar-fixed-top">
@@ -139,7 +139,7 @@
 <p>Send/receive RTP streams.</p>
 <div class="section" id="identification-and-properties">
 <h2>Identification and Properties<a class="headerlink" href="#identification-and-properties" title="Permalink to this headline">¶</a></h2>
-<p>Probe Type ID: <tt class="docutils literal"><span class="pre">rtp</span></tt></p>
+<p>Probe Type ID: <code class="docutils literal"><span class="pre">rtp</span></code></p>
 <p>Properties:</p>
 <table border="1" class="docutils">
 <colgroup>
@@ -156,54 +156,54 @@
 </tr>
 </thead>
 <tbody valign="top">
-<tr class="row-even"><td><tt class="docutils literal"><span class="pre">listening_ip</span></tt></td>
+<tr class="row-even"><td><code class="docutils literal"><span class="pre">listening_ip</span></code></td>
 <td>string</td>
-<td><tt class="docutils literal"><span class="pre">'0.0.0.0'</span></tt></td>
+<td><code class="docutils literal"><span class="pre">'0.0.0.0'</span></code></td>
 <td>Default listening IP address, when starting listening without providing one explicitly</td>
 </tr>
-<tr class="row-odd"><td><tt class="docutils literal"><span class="pre">listening_port</span></tt></td>
+<tr class="row-odd"><td><code class="docutils literal"><span class="pre">listening_port</span></code></td>
 <td>integer</td>
-<td><tt class="docutils literal"><span class="pre">0</span></tt></td>
-<td>Default listening UDP port, when starting listening without providing one expliclity. <tt class="docutils literal"><span class="pre">0</span></tt> means a system-assigned port.</td>
+<td><code class="docutils literal"><span class="pre">0</span></code></td>
+<td>Default listening UDP port, when starting listening without providing one expliclity. <code class="docutils literal"><span class="pre">0</span></code> means a system-assigned port.</td>
 </tr>
-<tr class="row-even"><td><tt class="docutils literal"><span class="pre">local_ip</span></tt></td>
+<tr class="row-even"><td><code class="docutils literal"><span class="pre">local_ip</span></code></td>
 <td>string</td>
 <td>(empty)</td>
 <td>Default source IP address when sending packets, if not provided explicitly when starting sending. An empty value means a system-assigned IP address.</td>
 </tr>
-<tr class="row-odd"><td><tt class="docutils literal"><span class="pre">local_port</span></tt></td>
+<tr class="row-odd"><td><code class="docutils literal"><span class="pre">local_port</span></code></td>
 <td>integer</td>
-<td><tt class="docutils literal"><span class="pre">0</span></tt></td>
+<td><code class="docutils literal"><span class="pre">0</span></code></td>
 <td>Default UDP source port when sending packets, if not provided explicitly when starting sending. An empty value means a system-assigned port.</td>
 </tr>
-<tr class="row-even"><td><tt class="docutils literal"><span class="pre">stream_timeout</span></tt></td>
+<tr class="row-even"><td><code class="docutils literal"><span class="pre">stream_timeout</span></code></td>
 <td>float</td>
-<td><tt class="docutils literal"><span class="pre">0.5</span></tt></td>
+<td><code class="docutils literal"><span class="pre">0.5</span></code></td>
 <td>The maximum interruption interval allowed, in second, before considering an incoming stream has been stopped</td>
 </tr>
-<tr class="row-odd"><td><tt class="docutils literal"><span class="pre">ssrc</span></tt></td>
+<tr class="row-odd"><td><code class="docutils literal"><span class="pre">ssrc</span></code></td>
 <td>integer</td>
-<td><tt class="docutils literal"><span class="pre">1000</span></tt></td>
+<td><code class="docutils literal"><span class="pre">1000</span></code></td>
 <td>The default SSRC to use in sent RTP packets, if not provided explicitly when starting sending a stream</td>
 </tr>
-<tr class="row-even"><td><tt class="docutils literal"><span class="pre">payload_type</span></tt></td>
+<tr class="row-even"><td><code class="docutils literal"><span class="pre">payload_type</span></code></td>
 <td>integer</td>
-<td><tt class="docutils literal"><span class="pre">8</span></tt></td>
+<td><code class="docutils literal"><span class="pre">8</span></code></td>
 <td>The default payload type to use in sent RTP packets, if not provided explicitly when starting sending a stream</td>
 </tr>
-<tr class="row-odd"><td><tt class="docutils literal"><span class="pre">frame_size</span></tt></td>
+<tr class="row-odd"><td><code class="docutils literal"><span class="pre">frame_size</span></code></td>
 <td>integer</td>
-<td><tt class="docutils literal"><span class="pre">20</span></tt></td>
+<td><code class="docutils literal"><span class="pre">20</span></code></td>
 <td>The default frame size to use when sending RTP packets, if not provided explicitly when starting sending a stream</td>
 </tr>
-<tr class="row-even"><td><tt class="docutils literal"><span class="pre">packet_size</span></tt></td>
+<tr class="row-even"><td><code class="docutils literal"><span class="pre">packet_size</span></code></td>
 <td>integer</td>
-<td><tt class="docutils literal"><span class="pre">160</span></tt></td>
+<td><code class="docutils literal"><span class="pre">160</span></code></td>
 <td>The default packet size to use when sending RTP packets, if not provided explicitly when starting sending a stream</td>
 </tr>
-<tr class="row-odd"><td><tt class="docutils literal"><span class="pre">sample_rate</span></tt></td>
+<tr class="row-odd"><td><code class="docutils literal"><span class="pre">sample_rate</span></code></td>
 <td>integer</td>
-<td><tt class="docutils literal"><span class="pre">8000</span></tt></td>
+<td><code class="docutils literal"><span class="pre">8000</span></code></td>
 <td>The default sample rate to use in sent RTP packets, if not provided explicitly when starting sending a stream</td>
 </tr>
 </tbody>
@@ -228,11 +228,11 @@ inspect each RTP packets individually.</p>
 </ul>
 <p>And you may receive the following &#8220;notifications&#8221; if the probe was in listening state:</p>
 <ul class="simple">
-<li><tt class="docutils literal"><span class="pre">StartedReceivingEvent</span></tt>, indicating the payload properties (source ip/port, ssrc, payload type), when a new stream is detected or has been updated,</li>
-<li><tt class="docutils literal"><span class="pre">StoppedReceivingEvent</span></tt>, when a stream being received was interrupted (or updated its properties</li>
+<li><code class="docutils literal"><span class="pre">StartedReceivingEvent</span></code>, indicating the payload properties (source ip/port, ssrc, payload type), when a new stream is detected or has been updated,</li>
+<li><code class="docutils literal"><span class="pre">StoppedReceivingEvent</span></code>, when a stream being received was interrupted (or updated its properties</li>
 </ul>
 <p>Additionally, you may inject at any time while sending RTP
-a recorded payload using the <tt class="docutils literal"><span class="pre">PlayCommand</span></tt>. Currently the probe only supports:</p>
+a recorded payload using the <code class="docutils literal"><span class="pre">PlayCommand</span></code>. Currently the probe only supports:</p>
 <ul class="simple">
 <li>WAV file format:      the contained payload must be encoded with the correct codec (payload type). The probe won&#8217;t check it.</li>
 <li>raw format: the payload is encoded using the correct codec, no header, no container.</li>
@@ -264,8 +264,8 @@ to the payload type:</p>
 </tbody>
 </table>
 <p>Anyway, the idea is that, by default, the probe makes some sound or noise.</p>
-<p>If you prefer start sending a silent sound, you should set the argument <tt class="docutils literal"><span class="pre">defaultPayload</span></tt> of
-<tt class="docutils literal"><span class="pre">startSendingRtp</span></tt> to what fits your need according to the codec. For reference:</p>
+<p>If you prefer start sending a silent sound, you should set the argument <code class="docutils literal"><span class="pre">defaultPayload</span></code> of
+<code class="docutils literal"><span class="pre">startSendingRtp</span></code> to what fits your need according to the codec. For reference:</p>
 <table border="1" class="docutils">
 <colgroup>
 <col width="50%" />
@@ -278,10 +278,10 @@ to the payload type:</p>
 </thead>
 <tbody valign="top">
 <tr class="row-even"><td>0 (PCMU/G711 u-law)</td>
-<td><tt class="docutils literal"><span class="pre">'\xff'</span></tt></td>
+<td><code class="docutils literal"><span class="pre">'\xff'</span></code></td>
 </tr>
 <tr class="row-odd"><td>8 (PCMA/G711 a-law)</td>
-<td><tt class="docutils literal"><span class="pre">'\x00'</span></tt></td>
+<td><code class="docutils literal"><span class="pre">'\x00'</span></code></td>
 </tr>
 <tr class="row-even"><td>Other codecs</td>
 <td>...</td>
@@ -309,7 +309,7 @@ to the payload type:</p>
 </div>
 <div class="section" id="ttcn-3-types-equivalence">
 <h2>TTCN-3 Types Equivalence<a class="headerlink" href="#ttcn-3-types-equivalence" title="Permalink to this headline">¶</a></h2>
-<p>The test system interface port bound to such a probe complies with the <tt class="docutils literal"><span class="pre">RtpPortType</span></tt> port type as specified below:</p>
+<p>The test system interface port bound to such a probe complies with the <code class="docutils literal"><span class="pre">RtpPortType</span></code> port type as specified below:</p>
 <div class="highlight-python"><div class="highlight"><pre>type record StartSendingCommand
 {
   integer payloadType optional, // default: payload_type (8)
@@ -400,7 +400,7 @@ type port message RtpPortType
     </p>
     <p>
         &copy; Copyright 2009-2014, Sébastien Lefevre and Testerman contributors.<br/>
-      Created using <a href="http://sphinx.pocoo.org/">Sphinx</a> 1.2.2.<br/>
+      Created using <a href="http://sphinx.pocoo.org/">Sphinx</a> 1.3.6.<br/>
     </p>
   </div>
 </footer>

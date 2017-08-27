@@ -36,7 +36,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 
   </head>
-  <body>
+  <body role="document">
 <div class="container">
   
   <div id="navbar" class="navbar navbar-inverse navbar-fixed-top">
@@ -175,121 +175,121 @@ context:</p>
 <tbody valign="top">
 <tr class="row-even"><td>message template</td>
 <td>mixedCase</td>
-<td><tt class="docutils literal"><span class="pre">m_</span></tt></td>
-<td><tt class="docutils literal"><span class="pre">m_sipInvite</span></tt></td>
+<td><code class="docutils literal"><span class="pre">m_</span></code></td>
+<td><code class="docutils literal"><span class="pre">m_sipInvite</span></code></td>
 <td>These templates are both usable as sending and receiving templates. This naming convention applies to both templates functions and templates constants.</td>
 </tr>
 <tr class="row-odd"><td>message template with wildcard or matching expression</td>
 <td>mixedCase</td>
-<td><tt class="docutils literal"><span class="pre">mw_</span></tt></td>
-<td><tt class="docutils literal"><span class="pre">mw_sipInviteResponse</span></tt></td>
+<td><code class="docutils literal"><span class="pre">mw_</span></code></td>
+<td><code class="docutils literal"><span class="pre">mw_sipInviteResponse</span></code></td>
 <td>These templates are (typically) only valid as receiving templates, as wilcards and maching mechanisms may prevent from valuating them when sending them. This naming convention applies to both templates functions and templates constants.</td>
 </tr>
 <tr class="row-even"><td>port</td>
 <td>mixedCase</td>
 <td>(none)</td>
-<td><tt class="docutils literal"><span class="pre">ssh</span></tt>, <tt class="docutils literal"><span class="pre">rtp01</span></tt>, <tt class="docutils literal"><span class="pre">sipSignalling</span></tt></td>
+<td><code class="docutils literal"><span class="pre">ssh</span></code>, <code class="docutils literal"><span class="pre">rtp01</span></code>, <code class="docutils literal"><span class="pre">sipSignalling</span></code></td>
 <td>&nbsp;</td>
 </tr>
 <tr class="row-odd"><td>port name</td>
 <td>mixedCase</td>
 <td>(none)</td>
-<td><tt class="docutils literal"><span class="pre">system['iscInterface']</span></tt>, <tt class="docutils literal"><span class="pre">mtc['sipSignalling']</span></tt></td>
+<td><code class="docutils literal"><span class="pre">system['iscInterface']</span></code>, <code class="docutils literal"><span class="pre">mtc['sipSignalling']</span></code></td>
 <td>&nbsp;</td>
 </tr>
 <tr class="row-even"><td>test component</td>
 <td>mixedCase</td>
 <td>(none)</td>
-<td><tt class="docutils literal"><span class="pre">endpoint01</span></tt>, <tt class="docutils literal"><span class="pre">hlrSimulator</span></tt></td>
+<td><code class="docutils literal"><span class="pre">endpoint01</span></code>, <code class="docutils literal"><span class="pre">hlrSimulator</span></code></td>
 <td>&nbsp;</td>
 </tr>
 <tr class="row-odd"><td>function</td>
 <td>mixedCase</td>
-<td><tt class="docutils literal"><span class="pre">f_</span></tt></td>
-<td><tt class="docutils literal"><span class="pre">f_executeCommand</span></tt></td>
+<td><code class="docutils literal"><span class="pre">f_</span></code></td>
+<td><code class="docutils literal"><span class="pre">f_executeCommand</span></code></td>
 <td>&nbsp;</td>
 </tr>
 <tr class="row-even"><td>timer</td>
 <td>mixedCase</td>
-<td><tt class="docutils literal"><span class="pre">t_</span></tt></td>
-<td><tt class="docutils literal"><span class="pre">t_watchogTimer</span></tt></td>
+<td><code class="docutils literal"><span class="pre">t_</span></code></td>
+<td><code class="docutils literal"><span class="pre">t_watchogTimer</span></code></td>
 <td>&nbsp;</td>
 </tr>
 <tr class="row-odd"><td>ATS parameter</td>
 <td>upper case, _ as word separator</td>
-<td><tt class="docutils literal"><span class="pre">PX_</span></tt></td>
-<td><tt class="docutils literal"><span class="pre">PX_HOST_IP_PORT</span></tt></td>
+<td><code class="docutils literal"><span class="pre">PX_</span></code></td>
+<td><code class="docutils literal"><span class="pre">PX_HOST_IP_PORT</span></code></td>
 <td>The QTesterman client enforces this name convention when defining new ATS parameters.</td>
 </tr>
 <tr class="row-even"><td>test case (class name)</td>
 <td>upper case, _ as word separator</td>
-<td><tt class="docutils literal"><span class="pre">TC_</span></tt></td>
-<td><tt class="docutils literal"><span class="pre">TC_ORACLE_CONNECTION_001</span></tt></td>
+<td><code class="docutils literal"><span class="pre">TC_</span></code></td>
+<td><code class="docutils literal"><span class="pre">TC_ORACLE_CONNECTION_001</span></code></td>
 <td>The class name is also used as a test case identifier in log reporters</td>
 </tr>
 <tr class="row-odd"><td>behaviour (class name)</td>
 <td>CamelCase</td>
 <td>(none)</td>
-<td><tt class="docutils literal"><span class="pre">SipEndpoint</span></tt>, <tt class="docutils literal"><span class="pre">HlrSimulator</span></tt></td>
+<td><code class="docutils literal"><span class="pre">SipEndpoint</span></code>, <code class="docutils literal"><span class="pre">HlrSimulator</span></code></td>
 <td>&nbsp;</td>
 </tr>
 <tr class="row-even"><td>constant</td>
 <td>mixedCase</td>
-<td><tt class="docutils literal"><span class="pre">c_</span></tt></td>
-<td><tt class="docutils literal"><span class="pre">c_suaAspActive</span> <span class="pre">=</span> <span class="pre">0x04</span></tt></td>
+<td><code class="docutils literal"><span class="pre">c_</span></code></td>
+<td><code class="docutils literal"><span class="pre">c_suaAspActive</span> <span class="pre">=</span> <span class="pre">0x04</span></code></td>
 <td>&nbsp;</td>
 </tr>
 <tr class="row-odd"><td>parameters (test case, behaviour, functions, ...)</td>
 <td>mixedCase</td>
 <td>(none)</td>
-<td><tt class="docutils literal"><span class="pre">controlPort</span></tt>, <tt class="docutils literal"><span class="pre">autoConnectSctp</span></tt></td>
+<td><code class="docutils literal"><span class="pre">controlPort</span></code>, <code class="docutils literal"><span class="pre">autoConnectSctp</span></code></td>
 <td>&nbsp;</td>
 </tr>
 <tr class="row-even"><td>preamble (class name)</td>
 <td>upper case, _ as word separator</td>
-<td><tt class="docutils literal"><span class="pre">PRE_</span></tt></td>
-<td><tt class="docutils literal"><span class="pre">PRE_VOICEMAIL_INITIALIZATION</span></tt></td>
+<td><code class="docutils literal"><span class="pre">PRE_</span></code></td>
+<td><code class="docutils literal"><span class="pre">PRE_VOICEMAIL_INITIALIZATION</span></code></td>
 <td>&nbsp;</td>
 </tr>
 <tr class="row-odd"><td>postamble (class name)</td>
 <td>upper case, _ as word separator</td>
-<td><tt class="docutils literal"><span class="pre">POST_</span></tt></td>
-<td><tt class="docutils literal"><span class="pre">POST_VOICEMAIL_CLEANUP</span></tt></td>
+<td><code class="docutils literal"><span class="pre">POST_</span></code></td>
+<td><code class="docutils literal"><span class="pre">POST_VOICEMAIL_CLEANUP</span></code></td>
 <td>&nbsp;</td>
 </tr>
 </tbody>
 </table>
 <p>This naming convention is suggested to make a difference between what
 belongs to the userland (user-written) and what is part of the Testerman
-API availablt to the user, which uses a <tt class="docutils literal"><span class="pre">lower_case</span></tt> convention.</p>
+API availablt to the user, which uses a <code class="docutils literal"><span class="pre">lower_case</span></code> convention.</p>
 </div>
 <div class="section" id="paths-and-filenames">
 <h3>Paths and Filenames<a class="headerlink" href="#paths-and-filenames" title="Permalink to this headline">¶</a></h3>
 <p>Some rules on filenames:</p>
 <ul class="simple">
 <li>Use ascii characters and lower case only for ATS and Campaign
-filenames, and <tt class="docutils literal"><span class="pre">_</span></tt> as a word separator: <tt class="docutils literal"><span class="pre">my_sample.ats</span></tt>,
-<tt class="docutils literal"><span class="pre">unconditional_call_forward.ats</span></tt>, <tt class="docutils literal"><span class="pre">class5_services.campaign</span></tt>, ...</li>
+filenames, and <code class="docutils literal"><span class="pre">_</span></code> as a word separator: <code class="docutils literal"><span class="pre">my_sample.ats</span></code>,
+<code class="docutils literal"><span class="pre">unconditional_call_forward.ats</span></code>, <code class="docutils literal"><span class="pre">class5_services.campaign</span></code>, ...</li>
 <li>Use ascii characters and CamelCase (with initial and acronyms
-considered as a word) for module filenames: <tt class="docutils literal"><span class="pre">SipMessages.py</span></tt>,
-<tt class="docutils literal"><span class="pre">DiameterServerBehaviours.py</span></tt>, ...</li>
-<li>Use lower case only for directory names, and <tt class="docutils literal"><span class="pre">_</span></tt> as a word
-separator. In particular, do NOT use a dot (<tt class="docutils literal"><span class="pre">.</span></tt>) in a directory
+considered as a word) for module filenames: <code class="docutils literal"><span class="pre">SipMessages.py</span></code>,
+<code class="docutils literal"><span class="pre">DiameterServerBehaviours.py</span></code>, ...</li>
+<li>Use lower case only for directory names, and <code class="docutils literal"><span class="pre">_</span></code> as a word
+separator. In particular, do NOT use a dot (<code class="docutils literal"><span class="pre">.</span></code>) in a directory
 name. This would prevent modules from being imported correctly.</li>
 </ul>
 <p>Additionally, the following repository structure is advised:</p>
 <ul class="simple">
-<li><tt class="docutils literal"><span class="pre">/</span></tt> : no files in the repository root</li>
-<li><tt class="docutils literal"><span class="pre">/samples/</span></tt>: contains samples (either Testerman&#8217;s provided, or
+<li><code class="docutils literal"><span class="pre">/</span></code> : no files in the repository root</li>
+<li><code class="docutils literal"><span class="pre">/samples/</span></code>: contains samples (either Testerman&#8217;s provided, or
 provided by your teams - in this case creating subdirectories in it
 could be a good idea)</li>
-<li><tt class="docutils literal"><span class="pre">/sandbox/</span></tt>: a place where users can play and save their test
+<li><code class="docutils literal"><span class="pre">/sandbox/</span></code>: a place where users can play and save their test
 documents, without working in a test project context yet (feasibility
 tests, demo, troubleshooting, ...)</li>
-<li><tt class="docutils literal"><span class="pre">/modules/</span></tt>: user created or site-related shared modules, available
+<li><code class="docutils literal"><span class="pre">/modules/</span></code>: user created or site-related shared modules, available
 to all (SIP endpoint behaviours, convenience functions according to
 your organization&#8217;s use of Testerman, ...)</li>
-<li><tt class="docutils literal"><span class="pre">/...</span></tt>: any other directory, according to your organization,
+<li><code class="docutils literal"><span class="pre">/...</span></code>: any other directory, according to your organization,
 projects, teams, etc. Mapping this subtree to a subtree in an
 external test system could be a good idea, too.</li>
 </ul>
@@ -351,7 +351,7 @@ of the objects you design.</p>
     </p>
     <p>
         &copy; Copyright 2009-2014, Sébastien Lefevre and Testerman contributors.<br/>
-      Created using <a href="http://sphinx.pocoo.org/">Sphinx</a> 1.2.2.<br/>
+      Created using <a href="http://sphinx.pocoo.org/">Sphinx</a> 1.3.6.<br/>
     </p>
   </div>
 </footer>

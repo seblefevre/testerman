@@ -36,7 +36,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 
   </head>
-  <body>
+  <body role="document">
 <div class="container">
   
   <div id="navbar" class="navbar navbar-inverse navbar-fixed-top">
@@ -394,31 +394,31 @@ job
 </pre></div>
 </div>
 <p>The indentation is defined by the number of indent characters. Valid
-indent characters are <tt class="docutils literal"><span class="pre">\t</span></tt> and <tt class="docutils literal"><span class="pre">'</span> <span class="pre">'</span></tt>.</p>
+indent characters are <code class="docutils literal"><span class="pre">\t</span></code> and <code class="docutils literal"><span class="pre">'</span> <span class="pre">'</span></code>.</p>
 <p>A job line is formatted as:</p>
 <div class="highlight-python"><div class="highlight"><pre>[&lt;branch&gt; ]&lt;type&gt; &lt;path&gt; [groups &lt;groups&gt;] [with &lt;mapping&gt;]
 </pre></div>
 </div>
 <p>where:</p>
 <ul class="simple">
-<li><tt class="docutils literal"><span class="pre">&lt;branch&gt;</span></tt> indicates the execution branch the job belongs too. Must
+<li><code class="docutils literal"><span class="pre">&lt;branch&gt;</span></code> indicates the execution branch the job belongs too. Must
 be a keyword in &#8216;on_success&#8217;, &#8216;on_error&#8217;, &#8216;*&#8217;, or left empty. If
 not provided or set to &#8216;on_success&#8217;, it indicates that the job is in
 the <em>success</em> branch, and that it should be executed only if its
 parent job returns a 0-result. If set to &#8216;on_error&#8217; or &#8216;*&#8217;, this is
 the &#8216;error&#8217; branch, and the job is executed only if its parent job
 returns a non-0 result.</li>
-<li><tt class="docutils literal"><span class="pre">&lt;type&gt;</span></tt> is a keyword in &#8216;ats&#8217;, &#8216;campaign&#8217;, indicating the type of
+<li><code class="docutils literal"><span class="pre">&lt;type&gt;</span></code> is a keyword in &#8216;ats&#8217;, &#8216;campaign&#8217;, indicating the type of
 the job</li>
-<li><tt class="docutils literal"><span class="pre">&lt;path&gt;</span></tt> is a relative (not starting with a /) or and absolute path
+<li><code class="docutils literal"><span class="pre">&lt;path&gt;</span></code> is a relative (not starting with a /) or and absolute path
 (/-starting) within the repository refering to the ATS or the
 campaign to execute.</li>
-<li><tt class="docutils literal"><span class="pre">&lt;groups&gt;</span></tt> is an optional string formatted as
-<tt class="docutils literal"><span class="pre">GX_GROUP_NAME[,GX_ANOTHER_GROUP]*</span></tt> enabling to select
+<li><code class="docutils literal"><span class="pre">&lt;groups&gt;</span></code> is an optional string formatted as
+<code class="docutils literal"><span class="pre">GX_GROUP_NAME[,GX_ANOTHER_GROUP]*</span></code> enabling to select
 the groups to run in the ATS. This option is only valid for an ATS job.
 By default, all groups are selected.</li>
-<li><tt class="docutils literal"><span class="pre">&lt;mapping&gt;</span></tt> is an optional string formatted as
-<tt class="docutils literal"><span class="pre">key=value[,key=value]*</span></tt> enabling to map or set job&#8217;s parameters
+<li><code class="docutils literal"><span class="pre">&lt;mapping&gt;</span></code> is an optional string formatted as
+<code class="docutils literal"><span class="pre">key=value[,key=value]*</span></code> enabling to map or set job&#8217;s parameters
 from the current context&#8217;s parameters. See
 <a class="reference external" href="#SessionParametersFlowsinCampaigns">below</a> for more details.</li>
 </ul>
@@ -434,10 +434,10 @@ ats clip/clir_base.ats                    # job5
 </div>
 <p>reads:</p>
 <ul class="simple">
-<li>first start executing <tt class="docutils literal"><span class="pre">call_forward_unconditional.ats</span></tt>. If it&#8217;s OK
-(retcode = 0), then execute <tt class="docutils literal"><span class="pre">call_forward_busy.ats</span></tt>, and
-(regardless of its retcode) <tt class="docutils literal"><span class="pre">call_forward_no_answer.ats</span></tt></li>
-<li>always execute <tt class="docutils literal"><span class="pre">clip_base.ats</span></tt> then <tt class="docutils literal"><span class="pre">clir_base.ats</span></tt></li>
+<li>first start executing <code class="docutils literal"><span class="pre">call_forward_unconditional.ats</span></code>. If it&#8217;s OK
+(retcode = 0), then execute <code class="docutils literal"><span class="pre">call_forward_busy.ats</span></code>, and
+(regardless of its retcode) <code class="docutils literal"><span class="pre">call_forward_no_answer.ats</span></code></li>
+<li>always execute <code class="docutils literal"><span class="pre">clip_base.ats</span></code> then <code class="docutils literal"><span class="pre">clir_base.ats</span></code></li>
 </ul>
 </div>
 <div class="section" id="session-parameters-flows-in-campaigns">
@@ -456,24 +456,24 @@ the session output from job1, too (its parent)</li>
 </ul>
 <p>You can also define some local mappings to adjust the parameters to
 pass to a child job.</p>
-<p>Let&#8217;s assume the script <tt class="docutils literal"><span class="pre">class5/call_forward_unconditional.ats</span></tt>
-takes two parameters: <tt class="docutils literal"><span class="pre">PX_SUT_IP</span></tt>, defaulted to 127.0.0.1,
-<tt class="docutils literal"><span class="pre">PX_SUT_PORT</span></tt>, defaulted to 5060, and <tt class="docutils literal"><span class="pre">PX_SOURCE_URI</span></tt>, defaulted to
-<tt class="docutils literal"><span class="pre">'sip:john&#64;testerman.fr'</span></tt>.
+<p>Let&#8217;s assume the script <code class="docutils literal"><span class="pre">class5/call_forward_unconditional.ats</span></code>
+takes two parameters: <code class="docutils literal"><span class="pre">PX_SUT_IP</span></code>, defaulted to 127.0.0.1,
+<code class="docutils literal"><span class="pre">PX_SUT_PORT</span></code>, defaulted to 5060, and <code class="docutils literal"><span class="pre">PX_SOURCE_URI</span></code>, defaulted to
+<code class="docutils literal"><span class="pre">'sip:john&#64;testerman.fr'</span></code>.
 In a campaign defined as:</p>
 <div class="highlight-python"><div class="highlight"><pre>ats class5/call_forward_unconditional.ats with PX_SUT_IP=192.168.1.1,PX_SOURCE_URI=sip:campaign@somewhere.com
 </pre></div>
 </div>
-<p>the ATS will be executed with explicitly provided <tt class="docutils literal"><span class="pre">PX_SUT_IP</span></tt> and
-<tt class="docutils literal"><span class="pre">PX_SOURCE_URI</span></tt> values, but keeping the default ATS value for
-<tt class="docutils literal"><span class="pre">PX_SUT_PORT</span></tt> (5060).</p>
+<p>the ATS will be executed with explicitly provided <code class="docutils literal"><span class="pre">PX_SUT_IP</span></code> and
+<code class="docutils literal"><span class="pre">PX_SOURCE_URI</span></code> values, but keeping the default ATS value for
+<code class="docutils literal"><span class="pre">PX_SUT_PORT</span></code> (5060).</p>
 <p>However, hardcoding SUT-dependent values is probably not a good idea.
-Instead, we&#8217;d probably define the <tt class="docutils literal"><span class="pre">PX_SUT_IP</span></tt> parameter at campaign
+Instead, we&#8217;d probably define the <code class="docutils literal"><span class="pre">PX_SUT_IP</span></code> parameter at campaign
 level, and set it on run or via its default value.</p>
 <div class="highlight-python"><div class="highlight"><pre>ats class5/call_forward_unconditional.ats with PX_SOURCE_URI=sip:campaign@somewhere.com
 </pre></div>
 </div>
-<p>with a <tt class="docutils literal"><span class="pre">PX_SUT_IP</span></tt> defined as a parameter for the campaign.</p>
+<p>with a <code class="docutils literal"><span class="pre">PX_SUT_IP</span></code> defined as a parameter for the campaign.</p>
 <p><strong>Note</strong>: this is equivalent to:</p>
 <div class="highlight-python"><div class="highlight"><pre>ats class5/call_forward_unconditional.ats with PX_SUT_IP=${PX_SUT_IP},PX_SOURCE_URI=sip:campaign@somewhere.com
 </pre></div>
@@ -487,19 +487,19 @@ their local names when needed:</p>
 ats class5/ldap_provisioning_test.ats with PX_SUT_IP=${PX_LDAP_SUT_IP}
 </pre></div>
 </div>
-<p>and defining <tt class="docutils literal"><span class="pre">PX_SIP_SUT_IP</span></tt> and <tt class="docutils literal"><span class="pre">PX_LDAP_SUT_IP</span></tt> as parameters for
+<p>and defining <code class="docutils literal"><span class="pre">PX_SIP_SUT_IP</span></code> and <code class="docutils literal"><span class="pre">PX_LDAP_SUT_IP</span></code> as parameters for
 the campaign.</p>
-<p>You got it, <tt class="docutils literal"><span class="pre">'${NAME}'</span></tt> is the way to reference a session parameter
-named <tt class="docutils literal"><span class="pre">NAME</span></tt>. If such a parameter is not defined when requested, no
-substitution occurs (<tt class="docutils literal"><span class="pre">'${UNKNOWN_PARAM}'</span></tt> will be expanded to
-<tt class="docutils literal"><span class="pre">'${UNKNOW_PARAM}'</span></tt>).</p>
+<p>You got it, <code class="docutils literal"><span class="pre">'${NAME}'</span></code> is the way to reference a session parameter
+named <code class="docutils literal"><span class="pre">NAME</span></code>. If such a parameter is not defined when requested, no
+substitution occurs (<code class="docutils literal"><span class="pre">'${UNKNOWN_PARAM}'</span></code> will be expanded to
+<code class="docutils literal"><span class="pre">'${UNKNOW_PARAM}'</span></code>).</p>
 <p>As it is a mere string substitution, you may design campaigns whose
 parameterization is more user-friendly than the ATSes (or campaigns)
 they embed:</p>
 <div class="highlight-python"><div class="highlight"><pre>ats another_test.ats with PX_PROBE_URI=probe:_@${PX_AGENT}
 </pre></div>
 </div>
-<p>The ATS <tt class="docutils literal"><span class="pre">another_test.ats</span></tt> was designed to make the whole probe URI
+<p>The ATS <code class="docutils literal"><span class="pre">another_test.ats</span></code> was designed to make the whole probe URI
 configurable. In the campaign, only the agent is, indirectly reducing
 the amount of information to set.</p>
 </div>
@@ -514,7 +514,7 @@ server.</p>
 <p>Some clients, for instance QTesterman, provides a user interface to
 control the scheduled or running testerman jobs.</p>
 <p>Jobs are controlled sending <em>signals</em> to them, through the Ws
-interface using the <tt class="docutils literal"><span class="pre">sendSignal(jobId,</span> <span class="pre">signal)</span></tt> API. The job reacts
+interface using the <code class="docutils literal"><span class="pre">sendSignal(jobId,</span> <span class="pre">signal)</span></code> API. The job reacts
 differently according to its state when receiving the signal.</p>
 <table border="1" class="docutils">
 <colgroup>
@@ -687,7 +687,7 @@ you diagnose the problem:</li>
 <tr class="row-even"><td>25</td>
 <td>Preparation: Unable to locate all module dependencies</td>
 <td>error</td>
-<td>Check <tt class="docutils literal"><span class="pre">import</span></tt> statements in ATS and imported modules (you can only import modules that are in the repository or Python system modules). The missing dependencies are reported to some client such as QTesterman. Alternatively, you may look at the server&#8217;s logs.</td>
+<td>Check <code class="docutils literal"><span class="pre">import</span></code> statements in ATS and imported modules (you can only import modules that are in the repository or Python system modules). The missing dependencies are reported to some client such as QTesterman. Alternatively, you may look at the server&#8217;s logs.</td>
 </tr>
 <tr class="row-odd"><td>26</td>
 <td>Preparation: Unable to create the TE</td>
@@ -715,7 +715,7 @@ documentation plugins that extract these information to create a test
 specification document, or to export to a test management system, etc.</p>
 <div class="section" id="raw-documentation">
 <h3>Raw Documentation<a class="headerlink" href="#raw-documentation" title="Permalink to this headline">¶</a></h3>
-<p>Basically, if you need to document a test case named <tt class="docutils literal"><span class="pre">TC_MY_TESTCASE</span></tt>:</p>
+<p>Basically, if you need to document a test case named <code class="docutils literal"><span class="pre">TC_MY_TESTCASE</span></code>:</p>
 <div class="highlight-python"><div class="highlight"><pre><span class="k">class</span> <span class="nc">TC_MY_TESTCASE</span><span class="p">(</span><span class="n">TestCase</span><span class="p">):</span>
   <span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">  This is the test case documentation.</span>
@@ -770,7 +770,7 @@ syntax is (almost) the same:</p>
     <span class="o">...</span>
 </pre></div>
 </div>
-<p><tt class="docutils literal"><span class="pre">&#64;purposes</span></tt>, <tt class="docutils literal"><span class="pre">&#64;steps</span></tt>, <tt class="docutils literal"><span class="pre">&#64;author</span></tt>, <tt class="docutils literal"><span class="pre">&#64;date</span></tt> are used to tag
+<p><code class="docutils literal"><span class="pre">&#64;purposes</span></code>, <code class="docutils literal"><span class="pre">&#64;steps</span></code>, <code class="docutils literal"><span class="pre">&#64;author</span></code>, <code class="docutils literal"><span class="pre">&#64;date</span></code> are used to tag
 different parts of the raw documentation. In this sample, however, we
 left what could be a test case overview untagged, as the &#8220;natural&#8221;,
 basic test case documentation.</p>
@@ -785,11 +785,11 @@ framework, regardless of the way you plan to use it.</p>
 </div>
 <div class="section" id="tag-format">
 <h3>Tag Format<a class="headerlink" href="#tag-format" title="Permalink to this headline">¶</a></h3>
-<p>A tag is defined as an identifier (<tt class="docutils literal"><span class="pre">[a-zA-Z0-9_-]+</span></tt>) following a <tt class="docutils literal"><span class="pre">&#64;</span></tt>
+<p>A tag is defined as an identifier (<code class="docutils literal"><span class="pre">[a-zA-Z0-9_-]+</span></code>) following a <code class="docutils literal"><span class="pre">&#64;</span></code>
 character, starting a new line. Its value starts just after the
-following <tt class="docutils literal"><span class="pre">:</span></tt> character.</p>
-<p>Tags are case-insensitive: for instance, <tt class="docutils literal"><span class="pre">&#64;purpose</span></tt> and <tt class="docutils literal"><span class="pre">&#64;Purpose</span></tt>
-define the same tag <tt class="docutils literal"><span class="pre">purpose</span></tt>.</p>
+following <code class="docutils literal"><span class="pre">:</span></code> character.</p>
+<p>Tags are case-insensitive: for instance, <code class="docutils literal"><span class="pre">&#64;purpose</span></code> and <code class="docutils literal"><span class="pre">&#64;Purpose</span></code>
+define the same tag <code class="docutils literal"><span class="pre">purpose</span></code>.</p>
 </div>
 <div class="section" id="tag-value-format">
 <h3>Tag Value Format<a class="headerlink" href="#tag-value-format" title="Permalink to this headline">¶</a></h3>
@@ -857,7 +857,7 @@ We then should get our trap within 30 seconds.
     </p>
     <p>
         &copy; Copyright 2009-2014, Sébastien Lefevre and Testerman contributors.<br/>
-      Created using <a href="http://sphinx.pocoo.org/">Sphinx</a> 1.2.2.<br/>
+      Created using <a href="http://sphinx.pocoo.org/">Sphinx</a> 1.3.6.<br/>
     </p>
   </div>
 </footer>

@@ -37,7 +37,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 
   </head>
-  <body>
+  <body role="document">
 <div class="container">
   
   <div id="navbar" class="navbar navbar-inverse navbar-fixed-top">
@@ -139,7 +139,7 @@
 <p>Send/receive UDP packets.</p>
 <div class="section" id="identification-and-properties">
 <h2>Identification and Properties<a class="headerlink" href="#identification-and-properties" title="Permalink to this headline">¶</a></h2>
-<p>Probe Type ID: <tt class="docutils literal"><span class="pre">udp</span></tt></p>
+<p>Probe Type ID: <code class="docutils literal"><span class="pre">udp</span></code></p>
 <p>Properties:</p>
 <table border="1" class="docutils">
 <colgroup>
@@ -156,34 +156,34 @@
 </tr>
 </thead>
 <tbody valign="top">
-<tr class="row-even"><td><tt class="docutils literal"><span class="pre">local_ip</span></tt></td>
+<tr class="row-even"><td><code class="docutils literal"><span class="pre">local_ip</span></code></td>
 <td>string</td>
 <td>(empty - system assigned)</td>
 <td>Local IP address to use when sending packets</td>
 </tr>
-<tr class="row-odd"><td><tt class="docutils literal"><span class="pre">local_port</span></tt></td>
+<tr class="row-odd"><td><code class="docutils literal"><span class="pre">local_port</span></code></td>
 <td>integer</td>
 <td>0 (system assigned)</td>
 <td>Local port to use when sending packets</td>
 </tr>
-<tr class="row-even"><td><tt class="docutils literal"><span class="pre">listen_on_send</span></tt></td>
+<tr class="row-even"><td><code class="docutils literal"><span class="pre">listen_on_send</span></code></td>
 <td>boolean</td>
 <td>True</td>
-<td>Once something has been sent (from <tt class="docutils literal"><span class="pre">local_ip</span></tt>:<tt class="docutils literal"><span class="pre">local_port</span></tt>), keep listening for a possible response on this address. Only stops listening on unmapping. When set to False, immediately closes the sending socket once the packet has been sent.</td>
+<td>Once something has been sent (from <code class="docutils literal"><span class="pre">local_ip</span></code>:<code class="docutils literal"><span class="pre">local_port</span></code>), keep listening for a possible response on this address. Only stops listening on unmapping. When set to False, immediately closes the sending socket once the packet has been sent.</td>
 </tr>
-<tr class="row-odd"><td><tt class="docutils literal"><span class="pre">listening_ip</span></tt></td>
+<tr class="row-odd"><td><code class="docutils literal"><span class="pre">listening_ip</span></code></td>
 <td>string</td>
 <td>0.0.0.0</td>
 <td>Listening IP address, if listening mode is activated (see below)</td>
 </tr>
-<tr class="row-even"><td><tt class="docutils literal"><span class="pre">listening_port</span></tt></td>
+<tr class="row-even"><td><code class="docutils literal"><span class="pre">listening_port</span></code></td>
 <td>integer</td>
 <td>0</td>
-<td>Set it to a non-zero port to start listening on mapping. May be the same ip/port as <tt class="docutils literal"><span class="pre">local_ip</span></tt>:<tt class="docutils literal"><span class="pre">local_port</span></tt>. In this case, <tt class="docutils literal"><span class="pre">listen_on_send</span></tt> is meaningless.</td>
+<td>Set it to a non-zero port to start listening on mapping. May be the same ip/port as <code class="docutils literal"><span class="pre">local_ip</span></code>:<code class="docutils literal"><span class="pre">local_port</span></code>. In this case, <code class="docutils literal"><span class="pre">listen_on_send</span></code> is meaningless.</td>
 </tr>
-<tr class="row-odd"><td><tt class="docutils literal"><span class="pre">default_sut_address</span></tt></td>
+<tr class="row-odd"><td><code class="docutils literal"><span class="pre">default_sut_address</span></code></td>
 <td>string (ip:port)</td>
-<td><tt class="docutils literal"><span class="pre">None</span></tt></td>
+<td><code class="docutils literal"><span class="pre">None</span></code></td>
 <td>If set, used as a default SUT address if none provided by the user</td>
 </tr>
 </tbody>
@@ -192,9 +192,9 @@
 <div class="section" id="overview">
 <h2>Overview<a class="headerlink" href="#overview" title="Permalink to this headline">¶</a></h2>
 <p>This probe is a very simple adapter that enables to send and receive UDP packets on the network.</p>
-<p>It can work as a listening probe, raising an event/message each time a new UDP packet is received on its <tt class="docutils literal"><span class="pre">listening_ip</span></tt>:<tt class="docutils literal"><span class="pre">listening_port</span></tt> address, or send an UDP packet to either <tt class="docutils literal"><span class="pre">default_sut_address</span></tt>
-or to an explicit sutAddress if one was provided in the <tt class="docutils literal"><span class="pre">send()</span></tt> port command.</p>
-<p>When sending a packet, the UDP source address is set to <tt class="docutils literal"><span class="pre">local_ip</span></tt>:<tt class="docutils literal"><span class="pre">local_port</span></tt>.</p>
+<p>It can work as a listening probe, raising an event/message each time a new UDP packet is received on its <code class="docutils literal"><span class="pre">listening_ip</span></code>:<code class="docutils literal"><span class="pre">listening_port</span></code> address, or send an UDP packet to either <code class="docutils literal"><span class="pre">default_sut_address</span></code>
+or to an explicit sutAddress if one was provided in the <code class="docutils literal"><span class="pre">send()</span></code> port command.</p>
+<p>When sending a packet, the UDP source address is set to <code class="docutils literal"><span class="pre">local_ip</span></code>:<code class="docutils literal"><span class="pre">local_port</span></code>.</p>
 <p>Listening and sending modes can work in parallel on the same probe.</p>
 <div class="section" id="availability">
 <h3>Availability<a class="headerlink" href="#availability" title="Permalink to this headline">¶</a></h3>
@@ -215,7 +215,7 @@ or to an explicit sutAddress if one was provided in the <tt class="docutils lite
 </div>
 <div class="section" id="ttcn-3-types-equivalence">
 <h2>TTCN-3 Types Equivalence<a class="headerlink" href="#ttcn-3-types-equivalence" title="Permalink to this headline">¶</a></h2>
-<p>The test system interface port bound to such a probe complies with the <tt class="docutils literal"><span class="pre">TransportProbePortType</span></tt> port type as specified below:</p>
+<p>The test system interface port bound to such a probe complies with the <code class="docutils literal"><span class="pre">TransportProbePortType</span></code> port type as specified below:</p>
 <div class="highlight-python"><div class="highlight"><pre>type TransportProbePortType
 {
   in, out octetstring;
@@ -235,7 +235,7 @@ or to an explicit sutAddress if one was provided in the <tt class="docutils lite
     </p>
     <p>
         &copy; Copyright 2009-2014, Sébastien Lefevre and Testerman contributors.<br/>
-      Created using <a href="http://sphinx.pocoo.org/">Sphinx</a> 1.2.2.<br/>
+      Created using <a href="http://sphinx.pocoo.org/">Sphinx</a> 1.3.6.<br/>
     </p>
   </div>
 </footer>

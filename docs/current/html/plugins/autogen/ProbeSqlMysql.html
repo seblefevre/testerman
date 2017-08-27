@@ -37,7 +37,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 
   </head>
-  <body>
+  <body role="document">
 <div class="container">
   
   <div id="navbar" class="navbar navbar-inverse navbar-fixed-top">
@@ -139,7 +139,7 @@
 <p>MySQL Database client.</p>
 <div class="section" id="identification-and-properties">
 <h2>Identification and Properties<a class="headerlink" href="#identification-and-properties" title="Permalink to this headline">¶</a></h2>
-<p>Probe Type ID: <tt class="docutils literal"><span class="pre">sql.mysql</span></tt></p>
+<p>Probe Type ID: <code class="docutils literal"><span class="pre">sql.mysql</span></code></p>
 <p>Properties:</p>
 <table border="1" class="docutils">
 <colgroup>
@@ -156,30 +156,30 @@
 </tr>
 </thead>
 <tbody valign="top">
-<tr class="row-even"><td><tt class="docutils literal"><span class="pre">host</span></tt></td>
+<tr class="row-even"><td><code class="docutils literal"><span class="pre">host</span></code></td>
 <td>string</td>
-<td><tt class="docutils literal"><span class="pre">'localhost'</span></tt></td>
+<td><code class="docutils literal"><span class="pre">'localhost'</span></code></td>
 <td>The MySQL server IP address or hostname</td>
 </tr>
-<tr class="row-odd"><td><tt class="docutils literal"><span class="pre">port</span></tt></td>
+<tr class="row-odd"><td><code class="docutils literal"><span class="pre">port</span></code></td>
 <td>integer</td>
-<td><tt class="docutils literal"><span class="pre">3306</span></tt></td>
-<td>The MySQL service listening port on <tt class="docutils literal"><span class="pre">host</span></tt></td>
+<td><code class="docutils literal"><span class="pre">3306</span></code></td>
+<td>The MySQL service listening port on <code class="docutils literal"><span class="pre">host</span></code></td>
 </tr>
-<tr class="row-even"><td><tt class="docutils literal"><span class="pre">db</span></tt></td>
+<tr class="row-even"><td><code class="docutils literal"><span class="pre">db</span></code></td>
 <td>string</td>
 <td>(empty)</td>
 <td>The database to use</td>
 </tr>
-<tr class="row-odd"><td><tt class="docutils literal"><span class="pre">user</span></tt></td>
+<tr class="row-odd"><td><code class="docutils literal"><span class="pre">user</span></code></td>
 <td>string</td>
 <td>(empty)</td>
-<td>The user to use to connect to the database <tt class="docutils literal"><span class="pre">db</span></tt> above</td>
+<td>The user to use to connect to the database <code class="docutils literal"><span class="pre">db</span></code> above</td>
 </tr>
-<tr class="row-even"><td><tt class="docutils literal"><span class="pre">password</span></tt></td>
+<tr class="row-even"><td><code class="docutils literal"><span class="pre">password</span></code></td>
 <td>string</td>
 <td>(empty)</td>
-<td>The password to use, if required to connect to the database <tt class="docutils literal"><span class="pre">db</span></tt> above for user <tt class="docutils literal"><span class="pre">user</span></tt></td>
+<td>The password to use, if required to connect to the database <code class="docutils literal"><span class="pre">db</span></code> above for user <code class="docutils literal"><span class="pre">user</span></code></td>
 </tr>
 </tbody>
 </table>
@@ -189,21 +189,21 @@
 <p>This probes allows to connect to a MySQL database and perform any valid SQL command
 that are valid for this DBS. Just send the SQL request as a string through a port bound
 to the probe.</p>
-<p>As a result, you should expect a <tt class="docutils literal"><span class="pre">SqlResult</span></tt> choice structure, whose <tt class="docutils literal"><span class="pre">'error'</span></tt> arm is a simple
-charstring indicating an error (connection- or SQL- related), and <tt class="docutils literal"><span class="pre">result</span></tt> indicates a
+<p>As a result, you should expect a <code class="docutils literal"><span class="pre">SqlResult</span></code> choice structure, whose <code class="docutils literal"><span class="pre">'error'</span></code> arm is a simple
+charstring indicating an error (connection- or SQL- related), and <code class="docutils literal"><span class="pre">result</span></code> indicates a
 successful query.</p>
-<p>In case of a non-SELECT query, <tt class="docutils literal"><span class="pre">result</span></tt> is an empty list. In case of a SELECT query,
+<p>In case of a non-SELECT query, <code class="docutils literal"><span class="pre">result</span></code> is an empty list. In case of a SELECT query,
 it contains a list of dictionaries corresponding to the selected entries, whose keys are the
 names of the returned columns. The associated values are natural Python equivalent to
 SQL types. However, the following types have not been tested yet:</p>
 <ul class="simple">
-<li><tt class="docutils literal"><span class="pre">NULL</span></tt></li>
+<li><code class="docutils literal"><span class="pre">NULL</span></code></li>
 <li>blobs</li>
 <li>date/time</li>
 </ul>
 <p>(If you encounter any problem with these SQL types or other ones, please contact us or
 create a ticket).</p>
-<p>These structures and mechanisms are common to all <tt class="docutils literal"><span class="pre">sql.*</span></tt> probe types.</p>
+<p>These structures and mechanisms are common to all <code class="docutils literal"><span class="pre">sql.*</span></code> probe types.</p>
 <p>The supported MySQL versions depend on the underlying MySQL DB libs you are using, and are
 independent from the probe.</p>
 <div class="section" id="availability">
@@ -214,7 +214,7 @@ independent from the probe.</p>
 <h3>Dependencies<a class="headerlink" href="#dependencies" title="Permalink to this headline">¶</a></h3>
 <p>This probe requires the MySQLdb Python module.</p>
 <ul class="simple">
-<li>Debian package: <tt class="docutils literal"><span class="pre">python-mysql</span></tt> (+ dependencies)</li>
+<li>Debian package: <code class="docutils literal"><span class="pre">python-mysql</span></code> (+ dependencies)</li>
 <li>Windows package, egg package, sources available at <a class="reference external" href="http://sourceforge.net/projects/mysql-python">http://sourceforge.net/projects/mysql-python</a>.</li>
 </ul>
 <p>The Windows package also requires a MySQL ODBC connector, as available <a class="reference external" href="http://www.mysql.com/products/connector/odbc/">here</a>.</p>
@@ -228,7 +228,7 @@ independent from the probe.</p>
 </div>
 <div class="section" id="ttcn-3-types-equivalence">
 <h2>TTCN-3 Types Equivalence<a class="headerlink" href="#ttcn-3-types-equivalence" title="Permalink to this headline">¶</a></h2>
-<p>The test system interface port bound to such a probe complies with the <tt class="docutils literal"><span class="pre">SqlPortType</span></tt> port type as specified below:</p>
+<p>The test system interface port bound to such a probe complies with the <code class="docutils literal"><span class="pre">SqlPortType</span></code> port type as specified below:</p>
 <div class="highlight-python"><div class="highlight"><pre>type charstring SqlRequest;
 
 type union Result
@@ -262,7 +262,7 @@ type port SqlPortType message
     </p>
     <p>
         &copy; Copyright 2009-2014, Sébastien Lefevre and Testerman contributors.<br/>
-      Created using <a href="http://sphinx.pocoo.org/">Sphinx</a> 1.2.2.<br/>
+      Created using <a href="http://sphinx.pocoo.org/">Sphinx</a> 1.3.6.<br/>
     </p>
   </div>
 </footer>

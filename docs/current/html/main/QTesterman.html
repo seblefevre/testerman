@@ -36,7 +36,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 
   </head>
-  <body>
+  <body role="document">
 <div class="container">
   
   <div id="navbar" class="navbar navbar-inverse navbar-fixed-top">
@@ -211,8 +211,8 @@ discarding all development tools, documentation, and examples.</p>
 <p>Under Debian and derivatives, you should apt-install the following
 packages (and their dependencies):</p>
 <ul class="simple">
-<li><tt class="docutils literal"><span class="pre">python-qt4</span></tt></li>
-<li><tt class="docutils literal"><span class="pre">python-qscintilla2</span></tt></li>
+<li><code class="docutils literal"><span class="pre">python-qt4</span></code></li>
+<li><code class="docutils literal"><span class="pre">python-qscintilla2</span></code></li>
 </ul>
 <p>QTesterman has been tested on the following distributions, with their
 standard up-to-date packages:</p>
@@ -226,7 +226,7 @@ standard up-to-date packages:</p>
 <p>Under Red-Hat and derivatives (CentOS, Fedora, RHES, Mandriva, ...), you
 should install the following RPM (and their dependencies):</p>
 <ul class="simple">
-<li><tt class="docutils literal"><span class="pre">PyQt4</span></tt></li>
+<li><code class="docutils literal"><span class="pre">PyQt4</span></code></li>
 <li>... ?</li>
 </ul>
 <p>RHES4/CentOS4 only provides Python 2.3, so it won&#8217;t run on them.</p>
@@ -248,7 +248,7 @@ QTesterman Installer.</p>
 <li>Under Windows, double-clicking on it should be OK, unless you
 changed the standard Python associations. In this case, you know
 how to execute it with your favorite interpreter</li>
-<li>Under Linux, run <tt class="docutils literal"><span class="pre">python</span> <span class="pre">Installer.py</span></tt> (<tt class="docutils literal"><span class="pre">./Installer.py</span></tt> may
+<li>Under Linux, run <code class="docutils literal"><span class="pre">python</span> <span class="pre">Installer.py</span></code> (<code class="docutils literal"><span class="pre">./Installer.py</span></code> may
 also work)</li>
 </ul>
 </li>
@@ -257,8 +257,8 @@ you can delete it once executed</li>
 </ul>
 <p>If your dependencies are correctly installed, you should get a
 minimalistic installer window enabling you to select your installation
-directory (in which a folder <tt class="docutils literal"><span class="pre">qtesterman</span></tt> will be created) and provide
-a Testerman server URL (<tt class="docutils literal"><span class="pre">http://your-server:8080</span></tt>).
+directory (in which a folder <code class="docutils literal"><span class="pre">qtesterman</span></code> will be created) and provide
+a Testerman server URL (<code class="docutils literal"><span class="pre">http://your-server:8080</span></code>).
 This server URL should point to a running Testerman server configured
 to deploy a QTesterman component. Your Testerman administrator is
 supposed to configure it for you correctly, or you may have a look to
@@ -267,15 +267,15 @@ TestermanAdministrationGuide to do it yourself.</p>
 version available on the server, and prompt you for an upgrade. Accept,
 wait for the installation to complete.</p>
 <p>Once over, QTesterman is installed in your
-<tt class="docutils literal"><span class="pre">installation</span> <span class="pre">directory/qtesterman</span></tt>. You may create a shortcut to the
-<tt class="docutils literal"><span class="pre">qtesterman.py</span></tt> file contained in it - this is the Python file to run
+<code class="docutils literal"><span class="pre">installation</span> <span class="pre">directory/qtesterman</span></code>. You may create a shortcut to the
+<code class="docutils literal"><span class="pre">qtesterman.py</span></code> file contained in it - this is the Python file to run
 to start the QTesterman client.</p>
-<p>You may delete the downloaded <tt class="docutils literal"><span class="pre">Installer.py</span></tt> file.</p>
+<p>You may delete the downloaded <code class="docutils literal"><span class="pre">Installer.py</span></code> file.</p>
 </div>
 </div>
 <div class="section" id="first-run">
 <h2>First Run<a class="headerlink" href="#first-run" title="Permalink to this headline">¶</a></h2>
-<p>The first time you execute the <tt class="docutils literal"><span class="pre">qtesterman.py</span></tt> script, you&#8217;ll need to
+<p>The first time you execute the <code class="docutils literal"><span class="pre">qtesterman.py</span></code> script, you&#8217;ll need to
 provide the URL of your Testerman Server and a username that will
 identify you on this system.</p>
 <p>For now, this username is not associated to any password since no rights
@@ -328,7 +328,7 @@ Yet, some Velocity features are not implemented, in particular:</p>
 <li>Arithmetics/maths</li>
 <li>Range operator</li>
 <li>Velocity variables (velocityHasNext, velocityCount, ...)</li>
-<li><tt class="docutils literal"><span class="pre">#evaluate</span></tt> directive</li>
+<li><code class="docutils literal"><span class="pre">#evaluate</span></code> directive</li>
 </ul>
 <p>Additionally, there are no built-in/default velocimacros, though you can
 define your owns.</p>
@@ -369,8 +369,8 @@ Hello $foo World!
 </div>
 <div class="section" id="variable-references">
 <h4>Variable References<a class="headerlink" href="#variable-references" title="Permalink to this headline">¶</a></h4>
-<p>You may reference a context variable at any time with a <tt class="docutils literal"><span class="pre">$myvar</span></tt> or
-<tt class="docutils literal"><span class="pre">${myvar}</span></tt> syntax.</p>
+<p>You may reference a context variable at any time with a <code class="docutils literal"><span class="pre">$myvar</span></code> or
+<code class="docutils literal"><span class="pre">${myvar}</span></code> syntax.</p>
 <p>The available context variables for each plugin are defined below.</p>
 <div class="highlight-python"><div class="highlight"><pre>My variable: $my_variable
 Another variable available in my context: ${another_variable}
@@ -379,15 +379,15 @@ Say_${within_a_word}_here
 </div>
 <p>If a reference is not found when applying the template, the template
 code is unchanged. For instance, with the template above, if
-<tt class="docutils literal"><span class="pre">my_variable</span></tt> evaluates to <tt class="docutils literal"><span class="pre">2</span></tt>, <tt class="docutils literal"><span class="pre">within_a_word</span></tt> to <tt class="docutils literal"><span class="pre">&quot;hello&quot;</span></tt>,
-but <tt class="docutils literal"><span class="pre">another_variable</span></tt> is not found, this will produce:</p>
+<code class="docutils literal"><span class="pre">my_variable</span></code> evaluates to <code class="docutils literal"><span class="pre">2</span></code>, <code class="docutils literal"><span class="pre">within_a_word</span></code> to <code class="docutils literal"><span class="pre">&quot;hello&quot;</span></code>,
+but <code class="docutils literal"><span class="pre">another_variable</span></code> is not found, this will produce:</p>
 <div class="highlight-python"><div class="highlight"><pre>My variable: 2
 Another variable available in my context: ${another_variable}
 Say_hello_here
 </pre></div>
 </div>
 <p>To substitude the placeholder with a blank instead of leaving the
-original template code, use a <tt class="docutils literal"><span class="pre">$my_var</span></tt> syntax:</p>
+original template code, use a <code class="docutils literal"><span class="pre">$my_var</span></code> syntax:</p>
 <div class="highlight-python"><div class="highlight"><pre>Missing variable: $!{missing}
 </pre></div>
 </div>
@@ -409,14 +409,14 @@ $a.replace(&#39;\\n&#39;, &#39;&lt;br /&gt;&#39;)
 </pre></div>
 </div>
 <p>Actually, you can also reference a call to an exposed function directly.
-Let&#8217;s assume that a function <tt class="docutils literal"><span class="pre">toHtml(s)</span></tt> that escapes the usual HTML
+Let&#8217;s assume that a function <code class="docutils literal"><span class="pre">toHtml(s)</span></code> that escapes the usual HTML
 characters is provided in the current context:</p>
 <div class="highlight-python"><div class="highlight"><pre>&lt;p&gt;Description: $toHtml($description)
 &lt;/p&gt;
 </pre></div>
 </div>
-<p>Applied with <tt class="docutils literal"><span class="pre">$description</span></tt> that evaluates to
-<tt class="docutils literal"><span class="pre">&quot;check</span> <span class="pre">that</span> <span class="pre">100</span> <span class="pre">&gt;</span> <span class="pre">10,\nthen</span> <span class="pre">make</span> <span class="pre">sure</span> <span class="pre">that</span> <span class="pre">the</span> <span class="pre">function</span> <span class="pre">returns</span> <span class="pre">within</span> <span class="pre">10s&quot;</span></tt>:</p>
+<p>Applied with <code class="docutils literal"><span class="pre">$description</span></code> that evaluates to
+<code class="docutils literal"><span class="pre">&quot;check</span> <span class="pre">that</span> <span class="pre">100</span> <span class="pre">&gt;</span> <span class="pre">10,\nthen</span> <span class="pre">make</span> <span class="pre">sure</span> <span class="pre">that</span> <span class="pre">the</span> <span class="pre">function</span> <span class="pre">returns</span> <span class="pre">within</span> <span class="pre">10s&quot;</span></code>:</p>
 <div class="highlight-python"><div class="highlight"><pre>&lt;p&gt;Description: check that 100 &amp;gt; 10,&lt;br /&gt;then make sure that the function returns within 10s
 &lt;/p&gt;
 </pre></div>
@@ -425,7 +425,7 @@ characters is provided in the current context:</p>
 <div class="section" id="iteration-within-a-sequence">
 <h4>Iteration within a Sequence<a class="headerlink" href="#iteration-within-a-sequence" title="Permalink to this headline">¶</a></h4>
 <p>Some variables are evaluated to a list of items. In this case, you may
-use the <tt class="docutils literal"><span class="pre">#foreach</span></tt> directive to iterate through them:</p>
+use the <code class="docutils literal"><span class="pre">#foreach</span></code> directive to iterate through them:</p>
 <div class="highlight-python"><div class="highlight"><pre>#foreach ($testcase in $testcases)
 Testcase Identifier: $testcase.id
 #end
@@ -464,8 +464,8 @@ desired output.</p>
 </tr>
 </thead>
 <tbody valign="top">
-<tr class="row-even"><td><tt class="docutils literal"><span class="pre">testcases</span></tt></td>
-<td>list of <tt class="docutils literal"><span class="pre">testcase</span></tt> objects</td>
+<tr class="row-even"><td><code class="docutils literal"><span class="pre">testcases</span></code></td>
+<td>list of <code class="docutils literal"><span class="pre">testcase</span></code> objects</td>
 </tr>
 </tbody>
 </table>
@@ -485,8 +485,8 @@ desired output.</p>
 </tr>
 </thead>
 <tbody valign="top">
-<tr class="row-even"><td><tt class="docutils literal"><span class="pre">testcases</span></tt></td>
-<td>list of <tt class="docutils literal"><span class="pre">testcase</span></tt> objects</td>
+<tr class="row-even"><td><code class="docutils literal"><span class="pre">testcases</span></code></td>
+<td>list of <code class="docutils literal"><span class="pre">testcase</span></code> objects</td>
 </tr>
 </tbody>
 </table>
@@ -496,15 +496,15 @@ desired output.</p>
 <div class="section" id="random-tips">
 <h2>Random Tips<a class="headerlink" href="#random-tips" title="Permalink to this headline">¶</a></h2>
 <ul class="simple">
-<li>You may use <tt class="docutils literal"><span class="pre">Ctrl+Mouse</span> <span class="pre">Wheel</span></tt> to zoom in/zoom out in the Visual
+<li>You may use <code class="docutils literal"><span class="pre">Ctrl+Mouse</span> <span class="pre">Wheel</span></code> to zoom in/zoom out in the Visual
 Log Viewer</li>
 <li>This zoom is also available in the main editor, using the same
 shortcuts</li>
 <li>A simple key recording feature is available in the editor: use
-<tt class="docutils literal"><span class="pre">Alt+K</span></tt> to start recording keys, <tt class="docutils literal"><span class="pre">Alt+K</span></tt> again to stop recording,
-<tt class="docutils literal"><span class="pre">Ctrl+K</span></tt> to replay (shamelessly inspired by
+<code class="docutils literal"><span class="pre">Alt+K</span></code> to start recording keys, <code class="docutils literal"><span class="pre">Alt+K</span></code> again to stop recording,
+<code class="docutils literal"><span class="pre">Ctrl+K</span></code> to replay (shamelessly inspired by
 <a class="reference external" href="http://nedit.org">nedit</a>)</li>
-<li><tt class="docutils literal"><span class="pre">Ctrl+Shift+A</span></tt> on a plugin in the Settings window will display some
+<li><code class="docutils literal"><span class="pre">Ctrl+Shift+A</span></code> on a plugin in the Settings window will display some
 additional information about it</li>
 </ul>
 </div>
@@ -520,7 +520,7 @@ additional information about it</li>
     </p>
     <p>
         &copy; Copyright 2009-2014, Sébastien Lefevre and Testerman contributors.<br/>
-      Created using <a href="http://sphinx.pocoo.org/">Sphinx</a> 1.2.2.<br/>
+      Created using <a href="http://sphinx.pocoo.org/">Sphinx</a> 1.3.6.<br/>
     </p>
   </div>
 </footer>

@@ -37,7 +37,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 
   </head>
-  <body>
+  <body role="document">
 <div class="container">
   
   <div id="navbar" class="navbar navbar-inverse navbar-fixed-top">
@@ -139,7 +139,7 @@
 <p>Act as a LDAP client.</p>
 <div class="section" id="identification-and-properties">
 <h2>Identification and Properties<a class="headerlink" href="#identification-and-properties" title="Permalink to this headline">¶</a></h2>
-<p>Probe Type ID: <tt class="docutils literal"><span class="pre">ldap.client</span></tt></p>
+<p>Probe Type ID: <code class="docutils literal"><span class="pre">ldap.client</span></code></p>
 <p>Properties:</p>
 <table border="1" class="docutils">
 <colgroup>
@@ -156,40 +156,40 @@
 </tr>
 </thead>
 <tbody valign="top">
-<tr class="row-even"><td><tt class="docutils literal"><span class="pre">server_url</span></tt></td>
+<tr class="row-even"><td><code class="docutils literal"><span class="pre">server_url</span></code></td>
 <td>string</td>
-<td><tt class="docutils literal"><span class="pre">'ldap://127.0.0.1:389'</span></tt></td>
+<td><code class="docutils literal"><span class="pre">'ldap://127.0.0.1:389'</span></code></td>
 <td>LDAP server url, including protocol to use (ldap or ldaps)</td>
 </tr>
-<tr class="row-odd"><td><tt class="docutils literal"><span class="pre">ldap_version</span></tt></td>
+<tr class="row-odd"><td><code class="docutils literal"><span class="pre">ldap_version</span></code></td>
 <td>integer</td>
-<td><tt class="docutils literal"><span class="pre">2</span></tt></td>
+<td><code class="docutils literal"><span class="pre">2</span></code></td>
 <td>LDAP server version</td>
 </tr>
-<tr class="row-even"><td><tt class="docutils literal"><span class="pre">bind_dn</span></tt></td>
+<tr class="row-even"><td><code class="docutils literal"><span class="pre">bind_dn</span></code></td>
 <td>string</td>
-<td><tt class="docutils literal"><span class="pre">None</span></tt> (undefined)</td>
+<td><code class="docutils literal"><span class="pre">None</span></code> (undefined)</td>
 <td>The DN entry to bind, if not provided through a request</td>
 </tr>
-<tr class="row-odd"><td><tt class="docutils literal"><span class="pre">password</span></tt></td>
+<tr class="row-odd"><td><code class="docutils literal"><span class="pre">password</span></code></td>
 <td>string</td>
 <td>(empty)</td>
 <td>The password to use by default for binding</td>
 </tr>
-<tr class="row-even"><td><tt class="docutils literal"><span class="pre">timeout</span></tt></td>
+<tr class="row-even"><td><code class="docutils literal"><span class="pre">timeout</span></code></td>
 <td>float</td>
-<td><tt class="docutils literal"><span class="pre">60.0</span></tt></td>
+<td><code class="docutils literal"><span class="pre">60.0</span></code></td>
 <td>The maximum amount of time allowed to perform a search/write/delete operation before raising an error response</td>
 </tr>
-<tr class="row-odd"><td><tt class="docutils literal"><span class="pre">base_dn</span></tt></td>
+<tr class="row-odd"><td><code class="docutils literal"><span class="pre">base_dn</span></code></td>
 <td>string</td>
 <td>(empty)</td>
 <td>A base DN to suffix all DNs used in search/write/delete operations. It is not used for the</td>
 </tr>
-<tr class="row-even"><td><tt class="docutils literal"><span class="pre">username</span></tt></td>
+<tr class="row-even"><td><code class="docutils literal"><span class="pre">username</span></code></td>
 <td>string</td>
-<td><tt class="docutils literal"><span class="pre">None</span></tt> (undefined)</td>
-<td>Deprecated. Use <tt class="docutils literal"><span class="pre">bind_dn</span></tt> instead.</td>
+<td><code class="docutils literal"><span class="pre">None</span></code> (undefined)</td>
+<td>Deprecated. Use <code class="docutils literal"><span class="pre">bind_dn</span></code> instead.</td>
 </tr>
 </tbody>
 </table>
@@ -208,10 +208,10 @@ to perform the following LDAP operations:</p>
 <p>It can connect to LDAP v2 and v3 servers, using a standard or a secure (ldaps, SSL/TLS)
 connection.</p>
 <p>SASL connections are currently not interfaced.</p>
-<p>By default, the probe automatically binds using the properties <tt class="docutils literal"><span class="pre">bind_dn</span></tt> and <tt class="docutils literal"><span class="pre">password</span></tt> prior
+<p>By default, the probe automatically binds using the properties <code class="docutils literal"><span class="pre">bind_dn</span></code> and <code class="docutils literal"><span class="pre">password</span></code> prior
 to executing a search/write/delete command, unless an explicit bind command was performed by the user before.</p>
 <p>The probe automatically unbinds on unmap.</p>
-<p>To add or update an entry, use a <tt class="docutils literal"><span class="pre">WriteCommand</span></tt> message. The probe
+<p>To add or update an entry, use a <code class="docutils literal"><span class="pre">WriteCommand</span></code> message. The probe
 automatically detects if it should be a new entry (don&#8217;t forget mandatory
 attributes according to the entry&#8217;s schema) or an update. In case of an update:</p>
 <ul class="simple">
@@ -219,20 +219,20 @@ attributes according to the entry&#8217;s schema) or an update. In case of an up
 <li>all values of the existing attributes are replaced with the new ones (no values merge)</li>
 <li>you can delete an attribute by specifying an empty value list for it</li>
 </ul>
-<p>To make ATSes more portable and more simple to manage, you may use the <tt class="docutils literal"><span class="pre">base_dn</span></tt> property
+<p>To make ATSes more portable and more simple to manage, you may use the <code class="docutils literal"><span class="pre">base_dn</span></code> property
 to set a DN that will be appended to all DNs in use in:</p>
 <ul class="simple">
-<li>delete operation (<tt class="docutils literal"><span class="pre">dn</span></tt> parameter)</li>
-<li>write operation (<tt class="docutils literal"><span class="pre">dn</span></tt> parameter)</li>
-<li>search operation (<tt class="docutils literal"><span class="pre">baseDn</span></tt> parameter)</li>
+<li>delete operation (<code class="docutils literal"><span class="pre">dn</span></code> parameter)</li>
+<li>write operation (<code class="docutils literal"><span class="pre">dn</span></code> parameter)</li>
+<li>search operation (<code class="docutils literal"><span class="pre">baseDn</span></code> parameter)</li>
 </ul>
-<p>and automatically removed from the dn values as returned in <tt class="docutils literal"><span class="pre">SearchResult.SearchEntry.dn</span></tt> structures.[[BR]]
-In other words, all the dn values, in the userland, will be relative to that <tt class="docutils literal"><span class="pre">base_dn</span></tt>.</p>
-<p>This <tt class="docutils literal"><span class="pre">base_dn</span></tt>, however, won&#8217;t be suffixed to the <tt class="docutils literal"><span class="pre">bind_dn</span></tt>.</p>
+<p>and automatically removed from the dn values as returned in <code class="docutils literal"><span class="pre">SearchResult.SearchEntry.dn</span></code> structures.[[BR]]
+In other words, all the dn values, in the userland, will be relative to that <code class="docutils literal"><span class="pre">base_dn</span></code>.</p>
+<p>This <code class="docutils literal"><span class="pre">base_dn</span></code>, however, won&#8217;t be suffixed to the <code class="docutils literal"><span class="pre">bind_dn</span></code>.</p>
 <p>Notes:</p>
 <ul class="simple">
-<li>Bind, write and unbind operations are synchronous, i.e. it&#8217;s not use arming a timer to cancel them from the userland: they are not cancellable, and only return when they are complete. However, you still must wait for a <tt class="docutils literal"><span class="pre">BindResult</span></tt> or <tt class="docutils literal"><span class="pre">WriteResult</span></tt> before assuming the operation is complete.</li>
-<li>The synchronous bind and write implementations may be replaced with asynchronous equivalent ones one day. This        won&#8217;t have any impact on your testcases if you wait for the <tt class="docutils literal"><span class="pre">BindResult</span></tt> and <tt class="docutils literal"><span class="pre">WriteResult</span></tt> as explained above.</li>
+<li>Bind, write and unbind operations are synchronous, i.e. it&#8217;s not use arming a timer to cancel them from the userland: they are not cancellable, and only return when they are complete. However, you still must wait for a <code class="docutils literal"><span class="pre">BindResult</span></code> or <code class="docutils literal"><span class="pre">WriteResult</span></code> before assuming the operation is complete.</li>
+<li>The synchronous bind and write implementations may be replaced with asynchronous equivalent ones one day. This        won&#8217;t have any impact on your testcases if you wait for the <code class="docutils literal"><span class="pre">BindResult</span></code> and <code class="docutils literal"><span class="pre">WriteResult</span></code> as explained above.</li>
 </ul>
 <div class="section" id="availability">
 <h3>Availability<a class="headerlink" href="#availability" title="Permalink to this headline">¶</a></h3>
@@ -241,7 +241,7 @@ In other words, all the dn values, in the userland, will be relative to that <tt
 <div class="section" id="dependencies">
 <h3>Dependencies<a class="headerlink" href="#dependencies" title="Permalink to this headline">¶</a></h3>
 <p>This probe depends on the openldap library and its associated Python wrapper.</p>
-<p>On Debian-based system, this is <tt class="docutils literal"><span class="pre">python-ldap</span></tt> and its dependencies.</p>
+<p>On Debian-based system, this is <code class="docutils literal"><span class="pre">python-ldap</span></code> and its dependencies.</p>
 </div>
 <div class="section" id="see-also">
 <h3>See Also<a class="headerlink" href="#see-also" title="Permalink to this headline">¶</a></h3>
@@ -249,7 +249,7 @@ In other words, all the dn values, in the userland, will be relative to that <tt
 </div>
 <div class="section" id="ttcn-3-types-equivalence">
 <h2>TTCN-3 Types Equivalence<a class="headerlink" href="#ttcn-3-types-equivalence" title="Permalink to this headline">¶</a></h2>
-<p>The test system interface port bound to such a probe complies with the <tt class="docutils literal"><span class="pre">LdapPortType</span></tt> port type as specified below:</p>
+<p>The test system interface port bound to such a probe complies with the <code class="docutils literal"><span class="pre">LdapPortType</span></code> port type as specified below:</p>
 <div class="highlight-python"><div class="highlight"><pre>type union LdapCommand
 {
   BindCommand   bind,     // binds to the server set in properties, with the defaut or given credentials
@@ -339,7 +339,7 @@ type port LdapPortType message
     </p>
     <p>
         &copy; Copyright 2009-2014, Sébastien Lefevre and Testerman contributors.<br/>
-      Created using <a href="http://sphinx.pocoo.org/">Sphinx</a> 1.2.2.<br/>
+      Created using <a href="http://sphinx.pocoo.org/">Sphinx</a> 1.3.6.<br/>
     </p>
   </div>
 </footer>
